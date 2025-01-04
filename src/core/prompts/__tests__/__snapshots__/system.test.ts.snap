@@ -38,6 +38,11 @@ Usage:
 <command>Your command here</command>
 </execute_command>
 
+Example: Requesting to execute npm run dev
+<execute_command>
+<command>npm run dev</command>
+</execute_command>
+
 ## read_file
 Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. The output includes line numbers prefixed to each line (e.g. "1 | const x = 1"), making it easier to reference specific lines when creating diffs or discussing code. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.
 Parameters:
@@ -45,6 +50,11 @@ Parameters:
 Usage:
 <read_file>
 <path>File path here</path>
+</read_file>
+
+Example: Requesting to read frontend-config.json
+<read_file>
+<path>frontend-config.json</path>
 </read_file>
 
 ## write_to_file
@@ -62,76 +72,7 @@ Your file content here
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
-
-
-## search_files
-Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
-Parameters:
-- path: (required) The path of the directory to search in (relative to the current working directory /test/path). This directory will be recursively searched.
-- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
-- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
-Usage:
-<search_files>
-<path>Directory path here</path>
-<regex>Your regex pattern here</regex>
-<file_pattern>file pattern here (optional)</file_pattern>
-</search_files>
-
-## list_files
-Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
-Parameters:
-- path: (required) The path of the directory to list contents for (relative to the current working directory /test/path)
-- recursive: (optional) Whether to list files recursively. Use true for recursive listing, false or omit for top-level only.
-Usage:
-<list_files>
-<path>Directory path here</path>
-<recursive>true or false (optional)</recursive>
-</list_files>
-
-## list_code_definition_names
-Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
-Parameters:
-- path: (required) The path of the directory (relative to the current working directory /test/path) to list top level source code definitions for.
-Usage:
-<list_code_definition_names>
-<path>Directory path here</path>
-</list_code_definition_names>
-
-
-
-## ask_followup_question
-Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
-Parameters:
-- question: (required) The question to ask the user. This should be a clear, specific question that addresses the information you need.
-Usage:
-<ask_followup_question>
-<question>Your question here</question>
-</ask_followup_question>
-
-## attempt_completion
-Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. Optionally you may provide a CLI command to showcase the result of your work. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
-IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
-Parameters:
-- result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
-- command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
-Usage:
-<attempt_completion>
-<result>
-Your final result description here
-</result>
-<command>Command to demonstrate result (optional)</command>
-</attempt_completion>
-
-# Tool Use Examples
-
-## Example 1: Requesting to execute a command
-
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
-
-## Example 2: Requesting to write to a file
-
+Example: Requesting to write to frontend-config.json
 <write_to_file>
 <path>frontend-config.json</path>
 <content>
@@ -153,7 +94,92 @@ Your final result description here
 <line_count>14</line_count>
 </write_to_file>
 
+## search_files
+Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
+Parameters:
+- path: (required) The path of the directory to search in (relative to the current working directory /test/path). This directory will be recursively searched.
+- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
+- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
+Usage:
+<search_files>
+<path>Directory path here</path>
+<regex>Your regex pattern here</regex>
+<file_pattern>file pattern here (optional)</file_pattern>
+</search_files>
 
+Example: Requesting to search for all .ts files in the current directory
+<search_files>
+<path>.</path>
+<regex>.*</regex>
+<file_pattern>*.ts</file_pattern>
+</search_files>
+
+## list_files
+Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
+Parameters:
+- path: (required) The path of the directory to list contents for (relative to the current working directory /test/path)
+- recursive: (optional) Whether to list files recursively. Use true for recursive listing, false or omit for top-level only.
+Usage:
+<list_files>
+<path>Directory path here</path>
+<recursive>true or false (optional)</recursive>
+</list_files>
+
+Example: Requesting to list all files in the current directory
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
+## list_code_definition_names
+Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
+Parameters:
+- path: (required) The path of the directory (relative to the current working directory /test/path) to list top level source code definitions for.
+Usage:
+<list_code_definition_names>
+<path>Directory path here</path>
+</list_code_definition_names>
+
+Example: Requesting to list all top level source code definitions in the current directory
+<list_code_definition_names>
+<path>.</path>
+</list_code_definition_names>
+
+## ask_followup_question
+Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
+Parameters:
+- question: (required) The question to ask the user. This should be a clear, specific question that addresses the information you need.
+Usage:
+<ask_followup_question>
+<question>Your question here</question>
+</ask_followup_question>
+
+Example: Requesting to ask the user for the path to the frontend-config.json file
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
+</ask_followup_question>
+
+## attempt_completion
+Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. Optionally you may provide a CLI command to showcase the result of your work. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
+IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
+Parameters:
+- result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
+- command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
+Usage:
+<attempt_completion>
+<result>
+Your final result description here
+</result>
+<command>Command to demonstrate result (optional)</command>
+</attempt_completion>
+
+Example: Requesting to attempt completion with a result and command
+<attempt_completion>
+<result>
+I've updated the CSS
+</result>
+<command>open index.html</command>
+</attempt_completion>
 
 # Tool Use Guidelines
 
@@ -176,20 +202,6 @@ It is crucial to proceed step-by-step, waiting for the user's message after each
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
 
-====
-
-
-
-====
- 
-CAPABILITIES
-
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
-- You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to apply the changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
 
 
 ====
@@ -227,6 +239,8 @@ Operating System: Linux
 Default Shell: /bin/bash
 Home Directory: /home/user
 Current Working Directory: /test/path
+
+When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
 
 ====
 
@@ -279,6 +293,11 @@ Usage:
 <command>Your command here</command>
 </execute_command>
 
+Example: Requesting to execute npm run dev
+<execute_command>
+<command>npm run dev</command>
+</execute_command>
+
 ## read_file
 Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. The output includes line numbers prefixed to each line (e.g. "1 | const x = 1"), making it easier to reference specific lines when creating diffs or discussing code. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.
 Parameters:
@@ -286,6 +305,11 @@ Parameters:
 Usage:
 <read_file>
 <path>File path here</path>
+</read_file>
+
+Example: Requesting to read frontend-config.json
+<read_file>
+<path>frontend-config.json</path>
 </read_file>
 
 ## write_to_file
@@ -303,7 +327,27 @@ Your file content here
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
-
+Example: Requesting to write to frontend-config.json
+<write_to_file>
+<path>frontend-config.json</path>
+<content>
+{
+  "apiEndpoint": "https://api.example.com",
+  "theme": {
+    "primaryColor": "#007bff",
+    "secondaryColor": "#6c757d",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "features": {
+    "darkMode": true,
+    "notifications": true,
+    "analytics": false
+  },
+  "version": "1.0.0"
+}
+</content>
+<line_count>14</line_count>
+</write_to_file>
 
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
@@ -318,6 +362,13 @@ Usage:
 <file_pattern>file pattern here (optional)</file_pattern>
 </search_files>
 
+Example: Requesting to search for all .ts files in the current directory
+<search_files>
+<path>.</path>
+<regex>.*</regex>
+<file_pattern>*.ts</file_pattern>
+</search_files>
+
 ## list_files
 Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
 Parameters:
@@ -329,6 +380,12 @@ Usage:
 <recursive>true or false (optional)</recursive>
 </list_files>
 
+Example: Requesting to list all files in the current directory
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
 ## list_code_definition_names
 Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
 Parameters:
@@ -336,6 +393,11 @@ Parameters:
 Usage:
 <list_code_definition_names>
 <path>Directory path here</path>
+</list_code_definition_names>
+
+Example: Requesting to list all top level source code definitions in the current directory
+<list_code_definition_names>
+<path>.</path>
 </list_code_definition_names>
 
 ## browser_action
@@ -372,7 +434,17 @@ Usage:
 <text>Text to type (optional)</text>
 </browser_action>
 
+Example: Requesting to launch a browser at https://example.com
+<browser_action>
+<action>launch</action>
+<url>https://example.com</url>
+</browser_action>
 
+Example: Requesting to click on the element at coordinates 450,300
+<browser_action>
+<action>click</action>
+<coordinate>450,300</coordinate>
+</browser_action>
 
 ## ask_followup_question
 Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
@@ -381,6 +453,11 @@ Parameters:
 Usage:
 <ask_followup_question>
 <question>Your question here</question>
+</ask_followup_question>
+
+Example: Requesting to ask the user for the path to the frontend-config.json file
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
 </ask_followup_question>
 
 ## attempt_completion
@@ -397,38 +474,13 @@ Your final result description here
 <command>Command to demonstrate result (optional)</command>
 </attempt_completion>
 
-# Tool Use Examples
-
-## Example 1: Requesting to execute a command
-
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
-
-## Example 2: Requesting to write to a file
-
-<write_to_file>
-<path>frontend-config.json</path>
-<content>
-{
-  "apiEndpoint": "https://api.example.com",
-  "theme": {
-    "primaryColor": "#007bff",
-    "secondaryColor": "#6c757d",
-    "fontFamily": "Arial, sans-serif"
-  },
-  "features": {
-    "darkMode": true,
-    "notifications": true,
-    "analytics": false
-  },
-  "version": "1.0.0"
-}
-</content>
-<line_count>14</line_count>
-</write_to_file>
-
-
+Example: Requesting to attempt completion with a result and command
+<attempt_completion>
+<result>
+I've updated the CSS
+</result>
+<command>open index.html</command>
+</attempt_completion>
 
 # Tool Use Guidelines
 
@@ -451,22 +503,6 @@ It is crucial to proceed step-by-step, waiting for the user's message after each
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
 
-====
-
-
-
-====
- 
-CAPABILITIES
-
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, use the browser, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
-- You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to apply the changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
-- You can use the browser_action tool to interact with websites (including html files and locally running development servers) through a Puppeteer-controlled browser when you feel it is necessary in accomplishing the user's task. This tool is particularly useful for web development tasks as it allows you to launch a browser, navigate to pages, interact with elements through clicks and keyboard input, and capture the results through screenshots and console logs. This tool may be useful at key stages of web development tasks-such as after implementing new features, making substantial changes, when troubleshooting issues, or to verify the result of your work. You can analyze the provided screenshots to ensure correct rendering or identify errors, and review console logs for runtime issues.
-	- For example, if asked to add a component to a react website, you might create the necessary files, use execute_command to run the site locally, then use browser_action to launch the browser, navigate to the local server, and verify the component renders & functions correctly before closing the browser.
 
 
 ====
@@ -505,6 +541,8 @@ Operating System: Linux
 Default Shell: /bin/bash
 Home Directory: /home/user
 Current Working Directory: /test/path
+
+When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
 
 ====
 
@@ -557,6 +595,11 @@ Usage:
 <command>Your command here</command>
 </execute_command>
 
+Example: Requesting to execute npm run dev
+<execute_command>
+<command>npm run dev</command>
+</execute_command>
+
 ## read_file
 Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. The output includes line numbers prefixed to each line (e.g. "1 | const x = 1"), making it easier to reference specific lines when creating diffs or discussing code. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.
 Parameters:
@@ -564,6 +607,11 @@ Parameters:
 Usage:
 <read_file>
 <path>File path here</path>
+</read_file>
+
+Example: Requesting to read frontend-config.json
+<read_file>
+<path>frontend-config.json</path>
 </read_file>
 
 ## write_to_file
@@ -581,104 +629,7 @@ Your file content here
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
-
-
-## search_files
-Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
-Parameters:
-- path: (required) The path of the directory to search in (relative to the current working directory /test/path). This directory will be recursively searched.
-- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
-- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
-Usage:
-<search_files>
-<path>Directory path here</path>
-<regex>Your regex pattern here</regex>
-<file_pattern>file pattern here (optional)</file_pattern>
-</search_files>
-
-## list_files
-Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
-Parameters:
-- path: (required) The path of the directory to list contents for (relative to the current working directory /test/path)
-- recursive: (optional) Whether to list files recursively. Use true for recursive listing, false or omit for top-level only.
-Usage:
-<list_files>
-<path>Directory path here</path>
-<recursive>true or false (optional)</recursive>
-</list_files>
-
-## list_code_definition_names
-Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
-Parameters:
-- path: (required) The path of the directory (relative to the current working directory /test/path) to list top level source code definitions for.
-Usage:
-<list_code_definition_names>
-<path>Directory path here</path>
-</list_code_definition_names>
-
-
-## use_mcp_tool
-Description: Request to use a tool provided by a connected MCP server. Each MCP server can provide multiple tools with different capabilities. Tools have defined input schemas that specify required and optional parameters.
-Parameters:
-- server_name: (required) The name of the MCP server providing the tool
-- tool_name: (required) The name of the tool to execute
-- arguments: (required) A JSON object containing the tool's input parameters, following the tool's input schema
-Usage:
-<use_mcp_tool>
-<server_name>server name here</server_name>
-<tool_name>tool name here</tool_name>
-<arguments>
-{
-  "param1": "value1",
-  "param2": "value2"
-}
-</arguments>
-</use_mcp_tool>
-
-## access_mcp_resource
-Description: Request to access a resource provided by a connected MCP server. Resources represent data sources that can be used as context, such as files, API responses, or system information.
-Parameters:
-- server_name: (required) The name of the MCP server providing the resource
-- uri: (required) The URI identifying the specific resource to access
-Usage:
-<access_mcp_resource>
-<server_name>server name here</server_name>
-<uri>resource URI here</uri>
-</access_mcp_resource>
-
-## ask_followup_question
-Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
-Parameters:
-- question: (required) The question to ask the user. This should be a clear, specific question that addresses the information you need.
-Usage:
-<ask_followup_question>
-<question>Your question here</question>
-</ask_followup_question>
-
-## attempt_completion
-Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. Optionally you may provide a CLI command to showcase the result of your work. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
-IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
-Parameters:
-- result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
-- command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
-Usage:
-<attempt_completion>
-<result>
-Your final result description here
-</result>
-<command>Command to demonstrate result (optional)</command>
-</attempt_completion>
-
-# Tool Use Examples
-
-## Example 1: Requesting to execute a command
-
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
-
-## Example 2: Requesting to write to a file
-
+Example: Requesting to write to frontend-config.json
 <write_to_file>
 <path>frontend-config.json</path>
 <content>
@@ -700,8 +651,112 @@ Your final result description here
 <line_count>14</line_count>
 </write_to_file>
 
+## search_files
+Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
+Parameters:
+- path: (required) The path of the directory to search in (relative to the current working directory /test/path). This directory will be recursively searched.
+- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
+- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
+Usage:
+<search_files>
+<path>Directory path here</path>
+<regex>Your regex pattern here</regex>
+<file_pattern>file pattern here (optional)</file_pattern>
+</search_files>
 
-## Example 3: Requesting to use an MCP tool
+Example: Requesting to search for all .ts files in the current directory
+<search_files>
+<path>.</path>
+<regex>.*</regex>
+<file_pattern>*.ts</file_pattern>
+</search_files>
+
+## list_files
+Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
+Parameters:
+- path: (required) The path of the directory to list contents for (relative to the current working directory /test/path)
+- recursive: (optional) Whether to list files recursively. Use true for recursive listing, false or omit for top-level only.
+Usage:
+<list_files>
+<path>Directory path here</path>
+<recursive>true or false (optional)</recursive>
+</list_files>
+
+Example: Requesting to list all files in the current directory
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
+## list_code_definition_names
+Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
+Parameters:
+- path: (required) The path of the directory (relative to the current working directory /test/path) to list top level source code definitions for.
+Usage:
+<list_code_definition_names>
+<path>Directory path here</path>
+</list_code_definition_names>
+
+Example: Requesting to list all top level source code definitions in the current directory
+<list_code_definition_names>
+<path>.</path>
+</list_code_definition_names>
+
+## ask_followup_question
+Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
+Parameters:
+- question: (required) The question to ask the user. This should be a clear, specific question that addresses the information you need.
+Usage:
+<ask_followup_question>
+<question>Your question here</question>
+</ask_followup_question>
+
+Example: Requesting to ask the user for the path to the frontend-config.json file
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
+</ask_followup_question>
+
+## attempt_completion
+Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. Optionally you may provide a CLI command to showcase the result of your work. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
+IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
+Parameters:
+- result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
+- command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
+Usage:
+<attempt_completion>
+<result>
+Your final result description here
+</result>
+<command>Command to demonstrate result (optional)</command>
+</attempt_completion>
+
+Example: Requesting to attempt completion with a result and command
+<attempt_completion>
+<result>
+I've updated the CSS
+</result>
+<command>open index.html</command>
+</attempt_completion>
+
+## use_mcp_tool
+Description: Request to use a tool provided by a connected MCP server. Each MCP server can provide multiple tools with different capabilities. Tools have defined input schemas that specify required and optional parameters.
+Parameters:
+- server_name: (required) The name of the MCP server providing the tool
+- tool_name: (required) The name of the tool to execute
+- arguments: (required) A JSON object containing the tool's input parameters, following the tool's input schema
+Usage:
+<use_mcp_tool>
+<server_name>server name here</server_name>
+<tool_name>tool name here</tool_name>
+<arguments>
+{
+  "param1": "value1",
+  "param2": "value2"
+}
+</arguments>
+</use_mcp_tool>
+
+Example: Requesting to use an MCP tool
 
 <use_mcp_tool>
 <server_name>weather-server</server_name>
@@ -714,7 +769,18 @@ Your final result description here
 </arguments>
 </use_mcp_tool>
 
-## Example 4: Requesting to access an MCP resource
+## access_mcp_resource
+Description: Request to access a resource provided by a connected MCP server. Resources represent data sources that can be used as context, such as files, API responses, or system information.
+Parameters:
+- server_name: (required) The name of the MCP server providing the resource
+- uri: (required) The URI identifying the specific resource to access
+Usage:
+<access_mcp_resource>
+<server_name>server name here</server_name>
+<uri>resource URI here</uri>
+</access_mcp_resource>
+
+Example: Requesting to access an MCP resource
 
 <access_mcp_resource>
 <server_name>weather-server</server_name>
@@ -741,9 +807,6 @@ It is crucial to proceed step-by-step, waiting for the user's message after each
 4. Ensure that each action builds correctly on the previous ones.
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
-
-====
-
 
 MCP SERVERS
 
@@ -1110,20 +1173,6 @@ The user may not always request the use or creation of MCP servers. Instead, the
 Remember: The MCP documentation and example provided above are to help you understand and work with existing MCP servers or create new ones when requested by the user. You already have access to tools and capabilities that can be used to accomplish a wide range of tasks.
 
 ====
- 
-CAPABILITIES
-
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
-- You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to apply the changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
-
-- You have access to MCP servers that may provide additional tools and resources. Each server may provide different capabilities that you can use to accomplish tasks more effectively.
-
-
-====
 
 RULES
 
@@ -1158,6 +1207,8 @@ Operating System: Linux
 Default Shell: /bin/bash
 Home Directory: /home/user
 Current Working Directory: /test/path
+
+When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
 
 ====
 
@@ -1210,6 +1261,11 @@ Usage:
 <command>Your command here</command>
 </execute_command>
 
+Example: Requesting to execute npm run dev
+<execute_command>
+<command>npm run dev</command>
+</execute_command>
+
 ## read_file
 Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. The output includes line numbers prefixed to each line (e.g. "1 | const x = 1"), making it easier to reference specific lines when creating diffs or discussing code. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.
 Parameters:
@@ -1217,6 +1273,11 @@ Parameters:
 Usage:
 <read_file>
 <path>File path here</path>
+</read_file>
+
+Example: Requesting to read frontend-config.json
+<read_file>
+<path>frontend-config.json</path>
 </read_file>
 
 ## write_to_file
@@ -1234,7 +1295,27 @@ Your file content here
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
-
+Example: Requesting to write to frontend-config.json
+<write_to_file>
+<path>frontend-config.json</path>
+<content>
+{
+  "apiEndpoint": "https://api.example.com",
+  "theme": {
+    "primaryColor": "#007bff",
+    "secondaryColor": "#6c757d",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "features": {
+    "darkMode": true,
+    "notifications": true,
+    "analytics": false
+  },
+  "version": "1.0.0"
+}
+</content>
+<line_count>14</line_count>
+</write_to_file>
 
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
@@ -1249,6 +1330,13 @@ Usage:
 <file_pattern>file pattern here (optional)</file_pattern>
 </search_files>
 
+Example: Requesting to search for all .ts files in the current directory
+<search_files>
+<path>.</path>
+<regex>.*</regex>
+<file_pattern>*.ts</file_pattern>
+</search_files>
+
 ## list_files
 Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
 Parameters:
@@ -1260,6 +1348,12 @@ Usage:
 <recursive>true or false (optional)</recursive>
 </list_files>
 
+Example: Requesting to list all files in the current directory
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
 ## list_code_definition_names
 Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
 Parameters:
@@ -1267,6 +1361,11 @@ Parameters:
 Usage:
 <list_code_definition_names>
 <path>Directory path here</path>
+</list_code_definition_names>
+
+Example: Requesting to list all top level source code definitions in the current directory
+<list_code_definition_names>
+<path>.</path>
 </list_code_definition_names>
 
 ## browser_action
@@ -1303,7 +1402,17 @@ Usage:
 <text>Text to type (optional)</text>
 </browser_action>
 
+Example: Requesting to launch a browser at https://example.com
+<browser_action>
+<action>launch</action>
+<url>https://example.com</url>
+</browser_action>
 
+Example: Requesting to click on the element at coordinates 450,300
+<browser_action>
+<action>click</action>
+<coordinate>450,300</coordinate>
+</browser_action>
 
 ## ask_followup_question
 Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
@@ -1312,6 +1421,11 @@ Parameters:
 Usage:
 <ask_followup_question>
 <question>Your question here</question>
+</ask_followup_question>
+
+Example: Requesting to ask the user for the path to the frontend-config.json file
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
 </ask_followup_question>
 
 ## attempt_completion
@@ -1328,38 +1442,13 @@ Your final result description here
 <command>Command to demonstrate result (optional)</command>
 </attempt_completion>
 
-# Tool Use Examples
-
-## Example 1: Requesting to execute a command
-
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
-
-## Example 2: Requesting to write to a file
-
-<write_to_file>
-<path>frontend-config.json</path>
-<content>
-{
-  "apiEndpoint": "https://api.example.com",
-  "theme": {
-    "primaryColor": "#007bff",
-    "secondaryColor": "#6c757d",
-    "fontFamily": "Arial, sans-serif"
-  },
-  "features": {
-    "darkMode": true,
-    "notifications": true,
-    "analytics": false
-  },
-  "version": "1.0.0"
-}
-</content>
-<line_count>14</line_count>
-</write_to_file>
-
-
+Example: Requesting to attempt completion with a result and command
+<attempt_completion>
+<result>
+I've updated the CSS
+</result>
+<command>open index.html</command>
+</attempt_completion>
 
 # Tool Use Guidelines
 
@@ -1382,22 +1471,6 @@ It is crucial to proceed step-by-step, waiting for the user's message after each
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
 
-====
-
-
-
-====
- 
-CAPABILITIES
-
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, use the browser, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
-- You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to apply the changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
-- You can use the browser_action tool to interact with websites (including html files and locally running development servers) through a Puppeteer-controlled browser when you feel it is necessary in accomplishing the user's task. This tool is particularly useful for web development tasks as it allows you to launch a browser, navigate to pages, interact with elements through clicks and keyboard input, and capture the results through screenshots and console logs. This tool may be useful at key stages of web development tasks-such as after implementing new features, making substantial changes, when troubleshooting issues, or to verify the result of your work. You can analyze the provided screenshots to ensure correct rendering or identify errors, and review console logs for runtime issues.
-	- For example, if asked to add a component to a react website, you might create the necessary files, use execute_command to run the site locally, then use browser_action to launch the browser, navigate to the local server, and verify the component renders & functions correctly before closing the browser.
 
 
 ====
@@ -1436,6 +1509,8 @@ Operating System: Linux
 Default Shell: /bin/bash
 Home Directory: /home/user
 Current Working Directory: /test/path
+
+When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
 
 ====
 
@@ -1488,6 +1563,11 @@ Usage:
 <command>Your command here</command>
 </execute_command>
 
+Example: Requesting to execute npm run dev
+<execute_command>
+<command>npm run dev</command>
+</execute_command>
+
 ## read_file
 Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. The output includes line numbers prefixed to each line (e.g. "1 | const x = 1"), making it easier to reference specific lines when creating diffs or discussing code. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.
 Parameters:
@@ -1495,6 +1575,11 @@ Parameters:
 Usage:
 <read_file>
 <path>File path here</path>
+</read_file>
+
+Example: Requesting to read frontend-config.json
+<read_file>
+<path>frontend-config.json</path>
 </read_file>
 
 ## write_to_file
@@ -1512,6 +1597,28 @@ Your file content here
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
+Example: Requesting to write to frontend-config.json
+<write_to_file>
+<path>frontend-config.json</path>
+<content>
+{
+  "apiEndpoint": "https://api.example.com",
+  "theme": {
+    "primaryColor": "#007bff",
+    "secondaryColor": "#6c757d",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "features": {
+    "darkMode": true,
+    "notifications": true,
+    "analytics": false
+  },
+  "version": "1.0.0"
+}
+</content>
+<line_count>14</line_count>
+</write_to_file>
+
 ## apply_diff
 Description: Request to replace existing code using a search and replace block.
 This tool allows for precise, surgical replaces to files by specifying exactly what content to search for and what to replace it with.
@@ -1519,6 +1626,7 @@ The tool will maintain proper indentation and formatting while making changes.
 Only a single operation is allowed per tool use.
 The SEARCH section must exactly match existing content including whitespace and indentation.
 If you're not confident in the exact content to search for, use the read_file tool first to get the exact content.
+When applying the diffs, be extra careful to remember to change any closing brackets or other syntax that may be affected by the diff farther down in the file.
 
 Parameters:
 - path: (required) The path of the file to modify (relative to the current working directory /test/path)
@@ -1584,6 +1692,13 @@ Usage:
 <file_pattern>file pattern here (optional)</file_pattern>
 </search_files>
 
+Example: Requesting to search for all .ts files in the current directory
+<search_files>
+<path>.</path>
+<regex>.*</regex>
+<file_pattern>*.ts</file_pattern>
+</search_files>
+
 ## list_files
 Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
 Parameters:
@@ -1595,6 +1710,12 @@ Usage:
 <recursive>true or false (optional)</recursive>
 </list_files>
 
+Example: Requesting to list all files in the current directory
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
 ## list_code_definition_names
 Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
 Parameters:
@@ -1604,7 +1725,10 @@ Usage:
 <path>Directory path here</path>
 </list_code_definition_names>
 
-
+Example: Requesting to list all top level source code definitions in the current directory
+<list_code_definition_names>
+<path>.</path>
+</list_code_definition_names>
 
 ## ask_followup_question
 Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
@@ -1613,6 +1737,11 @@ Parameters:
 Usage:
 <ask_followup_question>
 <question>Your question here</question>
+</ask_followup_question>
+
+Example: Requesting to ask the user for the path to the frontend-config.json file
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
 </ask_followup_question>
 
 ## attempt_completion
@@ -1629,38 +1758,13 @@ Your final result description here
 <command>Command to demonstrate result (optional)</command>
 </attempt_completion>
 
-# Tool Use Examples
-
-## Example 1: Requesting to execute a command
-
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
-
-## Example 2: Requesting to write to a file
-
-<write_to_file>
-<path>frontend-config.json</path>
-<content>
-{
-  "apiEndpoint": "https://api.example.com",
-  "theme": {
-    "primaryColor": "#007bff",
-    "secondaryColor": "#6c757d",
-    "fontFamily": "Arial, sans-serif"
-  },
-  "features": {
-    "darkMode": true,
-    "notifications": true,
-    "analytics": false
-  },
-  "version": "1.0.0"
-}
-</content>
-<line_count>14</line_count>
-</write_to_file>
-
-
+Example: Requesting to attempt completion with a result and command
+<attempt_completion>
+<result>
+I've updated the CSS
+</result>
+<command>open index.html</command>
+</attempt_completion>
 
 # Tool Use Guidelines
 
@@ -1683,20 +1787,6 @@ It is crucial to proceed step-by-step, waiting for the user's message after each
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
 
-====
-
-
-
-====
- 
-CAPABILITIES
-
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
-- You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file or apply_diff tool to apply the changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
 
 
 ====
@@ -1734,6 +1824,8 @@ Operating System: Linux
 Default Shell: /bin/bash
 Home Directory: /home/user
 Current Working Directory: /test/path
+
+When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
 
 ====
 
@@ -1786,6 +1878,11 @@ Usage:
 <command>Your command here</command>
 </execute_command>
 
+Example: Requesting to execute npm run dev
+<execute_command>
+<command>npm run dev</command>
+</execute_command>
+
 ## read_file
 Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. The output includes line numbers prefixed to each line (e.g. "1 | const x = 1"), making it easier to reference specific lines when creating diffs or discussing code. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.
 Parameters:
@@ -1793,6 +1890,11 @@ Parameters:
 Usage:
 <read_file>
 <path>File path here</path>
+</read_file>
+
+Example: Requesting to read frontend-config.json
+<read_file>
+<path>frontend-config.json</path>
 </read_file>
 
 ## write_to_file
@@ -1810,76 +1912,7 @@ Your file content here
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
-
-
-## search_files
-Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
-Parameters:
-- path: (required) The path of the directory to search in (relative to the current working directory /test/path). This directory will be recursively searched.
-- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
-- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
-Usage:
-<search_files>
-<path>Directory path here</path>
-<regex>Your regex pattern here</regex>
-<file_pattern>file pattern here (optional)</file_pattern>
-</search_files>
-
-## list_files
-Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
-Parameters:
-- path: (required) The path of the directory to list contents for (relative to the current working directory /test/path)
-- recursive: (optional) Whether to list files recursively. Use true for recursive listing, false or omit for top-level only.
-Usage:
-<list_files>
-<path>Directory path here</path>
-<recursive>true or false (optional)</recursive>
-</list_files>
-
-## list_code_definition_names
-Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
-Parameters:
-- path: (required) The path of the directory (relative to the current working directory /test/path) to list top level source code definitions for.
-Usage:
-<list_code_definition_names>
-<path>Directory path here</path>
-</list_code_definition_names>
-
-
-
-## ask_followup_question
-Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
-Parameters:
-- question: (required) The question to ask the user. This should be a clear, specific question that addresses the information you need.
-Usage:
-<ask_followup_question>
-<question>Your question here</question>
-</ask_followup_question>
-
-## attempt_completion
-Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. Optionally you may provide a CLI command to showcase the result of your work. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
-IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
-Parameters:
-- result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
-- command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
-Usage:
-<attempt_completion>
-<result>
-Your final result description here
-</result>
-<command>Command to demonstrate result (optional)</command>
-</attempt_completion>
-
-# Tool Use Examples
-
-## Example 1: Requesting to execute a command
-
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
-
-## Example 2: Requesting to write to a file
-
+Example: Requesting to write to frontend-config.json
 <write_to_file>
 <path>frontend-config.json</path>
 <content>
@@ -1901,7 +1934,92 @@ Your final result description here
 <line_count>14</line_count>
 </write_to_file>
 
+## search_files
+Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
+Parameters:
+- path: (required) The path of the directory to search in (relative to the current working directory /test/path). This directory will be recursively searched.
+- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
+- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
+Usage:
+<search_files>
+<path>Directory path here</path>
+<regex>Your regex pattern here</regex>
+<file_pattern>file pattern here (optional)</file_pattern>
+</search_files>
 
+Example: Requesting to search for all .ts files in the current directory
+<search_files>
+<path>.</path>
+<regex>.*</regex>
+<file_pattern>*.ts</file_pattern>
+</search_files>
+
+## list_files
+Description: Request to list files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents. Do not use this tool to confirm the existence of files you may have created, as the user will let you know if the files were created successfully or not.
+Parameters:
+- path: (required) The path of the directory to list contents for (relative to the current working directory /test/path)
+- recursive: (optional) Whether to list files recursively. Use true for recursive listing, false or omit for top-level only.
+Usage:
+<list_files>
+<path>Directory path here</path>
+<recursive>true or false (optional)</recursive>
+</list_files>
+
+Example: Requesting to list all files in the current directory
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
+## list_code_definition_names
+Description: Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.
+Parameters:
+- path: (required) The path of the directory (relative to the current working directory /test/path) to list top level source code definitions for.
+Usage:
+<list_code_definition_names>
+<path>Directory path here</path>
+</list_code_definition_names>
+
+Example: Requesting to list all top level source code definitions in the current directory
+<list_code_definition_names>
+<path>.</path>
+</list_code_definition_names>
+
+## ask_followup_question
+Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively. It allows for interactive problem-solving by enabling direct communication with the user. Use this tool judiciously to maintain a balance between gathering necessary information and avoiding excessive back-and-forth.
+Parameters:
+- question: (required) The question to ask the user. This should be a clear, specific question that addresses the information you need.
+Usage:
+<ask_followup_question>
+<question>Your question here</question>
+</ask_followup_question>
+
+Example: Requesting to ask the user for the path to the frontend-config.json file
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
+</ask_followup_question>
+
+## attempt_completion
+Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. Optionally you may provide a CLI command to showcase the result of your work. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
+IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
+Parameters:
+- result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
+- command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
+Usage:
+<attempt_completion>
+<result>
+Your final result description here
+</result>
+<command>Command to demonstrate result (optional)</command>
+</attempt_completion>
+
+Example: Requesting to attempt completion with a result and command
+<attempt_completion>
+<result>
+I've updated the CSS
+</result>
+<command>open index.html</command>
+</attempt_completion>
 
 # Tool Use Guidelines
 
@@ -1924,20 +2042,6 @@ It is crucial to proceed step-by-step, waiting for the user's message after each
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
 
-====
-
-
-
-====
- 
-CAPABILITIES
-
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
-- You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to apply the changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
 
 
 ====
@@ -1975,6 +2079,8 @@ Operating System: Linux
 Default Shell: /bin/bash
 Home Directory: /home/user
 Current Working Directory: /test/path
+
+When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('/test/path') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
 
 ====
 
