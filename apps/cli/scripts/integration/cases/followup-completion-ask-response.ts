@@ -16,6 +16,7 @@ async function main() {
 	let followupDoneCode: string | undefined
 	let sawFollowupUserTurn = false
 	let sawMisroutedToolResult = false
+	let sawQueueEventForFollowupRequest = false
 	let followupResult = ""
 
 	await runStreamCase({
@@ -51,6 +52,11 @@ async function main() {
 				event.requestId === followupRequestId
 			) {
 				followupDoneCode = event.code
+				return
+			}
+
+			if (event.type === "queue" && event.requestId === followupRequestId) {
+				sawQueueEventForFollowupRequest = true
 				return
 			}
 
@@ -97,6 +103,9 @@ async function main() {
 			if (sawMisroutedToolResult) {
 				throw new Error("follow-up message was misrouted into tool_result (<user_message>), old bug reproduced")
 			}
+			if (sawQueueEventForFollowupRequest) {
+				throw new Error("follow-up message produced queue events despite responded routing")
+			}
 
 			if (!sawFollowupUserTurn) {
 				throw new Error("follow-up did not appear as a normal user turn in stream output")
@@ -131,6 +140,7 @@ async function main() {
 				`followupDoneCode=${followupDoneCode ?? "none"}`,
 				`sawFollowupUserTurn=${sawFollowupUserTurn}`,
 				`sawMisroutedToolResult=${sawMisroutedToolResult}`,
+				`sawQueueEventForFollowupRequest=${sawQueueEventForFollowupRequest}`,
 				`haveFollowupResult=${Boolean(followupResult)}`,
 			].join(" ")
 		},
