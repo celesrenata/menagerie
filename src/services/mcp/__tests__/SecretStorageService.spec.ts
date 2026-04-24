@@ -131,35 +131,35 @@ describe("SecretStorageService", () => {
 			const result = await service.getOAuthData("https://example.com/mcp")
 			expect(result).toBeUndefined()
 		})
+	})
 
-		describe("onDidChange", () => {
-			it("should call the callback when the key for the given URL changes", () => {
-				const cb = vi.fn()
-				service.onDidChange("https://example.com/mcp", cb)
+	describe("onDidChange", () => {
+		it("should call the callback when the key for the given URL changes", () => {
+			const cb = vi.fn()
+			service.onDidChange("https://example.com/mcp", cb)
 
-				context.secrets._emit("mcp.oauth.example.com.L21jcA.data")
+			context.secrets._emit("mcp.oauth.example.com.L21jcA.data")
 
-				expect(cb).toHaveBeenCalledTimes(1)
-			})
+			expect(cb).toHaveBeenCalledTimes(1)
+		})
 
-			it("should not call the callback for a different URL's key", () => {
-				const cb = vi.fn()
-				service.onDidChange("https://example.com/mcp", cb)
+		it("should not call the callback for a different URL's key", () => {
+			const cb = vi.fn()
+			service.onDidChange("https://example.com/mcp", cb)
 
-				context.secrets._emit("mcp.oauth.other.com.L21jcA.data")
+			context.secrets._emit("mcp.oauth.other.com.L21jcA.data")
 
-				expect(cb).not.toHaveBeenCalled()
-			})
+			expect(cb).not.toHaveBeenCalled()
+		})
 
-			it("should stop calling the callback after the returned dispose function is called", () => {
-				const cb = vi.fn()
-				const unsubscribe = service.onDidChange("https://example.com/mcp", cb)
+		it("should stop calling the callback after the returned dispose function is called", () => {
+			const cb = vi.fn()
+			const unsubscribe = service.onDidChange("https://example.com/mcp", cb)
 
-				unsubscribe()
-				context.secrets._emit("mcp.oauth.example.com.L21jcA.data")
+			unsubscribe()
+			context.secrets._emit("mcp.oauth.example.com.L21jcA.data")
 
-				expect(cb).not.toHaveBeenCalled()
-			})
+			expect(cb).not.toHaveBeenCalled()
 		})
 	})
 

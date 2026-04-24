@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
 
 // Mock vscode
 vi.mock("vscode", () => ({
@@ -21,6 +21,7 @@ vi.mock("../utils/callbackServer", () => ({
 
 // Mock fetch for auth discovery so tests don't make real network calls
 const mockFetch = vi.fn()
+const originalFetch = global.fetch
 global.fetch = mockFetch
 
 // Mock SDK auth discovery functions
@@ -84,6 +85,10 @@ describe("McpOAuthClientProvider", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		McpOAuthClientProvider.clearNonOAuthCache()
+	})
+
+	afterAll(() => {
+		global.fetch = originalFetch
 	})
 
 	describe("static negative cache", () => {
