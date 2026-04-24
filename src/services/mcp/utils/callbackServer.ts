@@ -22,6 +22,7 @@ export function startCallbackServer(
 	server: http.Server
 	port: number
 	result: Promise<CallbackResult>
+	cancel: () => void
 }> {
 	// In test mode, immediately resolve with mock data
 	if (process.env.MCP_OAUTH_TEST_MODE === "true") {
@@ -31,6 +32,7 @@ export function startCallbackServer(
 				server: mockServer,
 				port: 3000,
 				result: Promise.resolve({ code: "test-auth-code", state: expectedState }),
+				cancel: () => {},
 			})
 		})
 	}
@@ -47,63 +49,77 @@ export function startCallbackServer(
 
 			const actualPort = address.port
 
-			const resultPromise = new Promise<CallbackResult>((resolveResult, rejectResult) => {
-				let resolved = false
+			let resolveResult!: (value: CallbackResult) => void
+			let rejectResult!: (reason: unknown) => void
+			const resultPromise = new Promise<CallbackResult>((res, rej) => {
+				resolveResult = res
+				rejectResult = rej
+			})
 
-				const timeout = setTimeout(() => {
-					if (!resolved) {
-						resolved = true
-						rejectResult(new Error("Callback timeout"))
-						server.close()
-					}
-				}, OAUTH_FLOW_TIMEOUT_MS)
+			let resolved = false
 
-				server.on("request", (req: any, res: any) => {
-					if (resolved) return
+			const timeout = setTimeout(() => {
+				if (!resolved) {
+					resolved = true
+					rejectResult(new Error("Callback timeout"))
+					server.close()
+				}
+			}, OAUTH_FLOW_TIMEOUT_MS)
 
-					const url = new URL(req.url || "", `http://localhost:${actualPort}`)
-					const pathname = url.pathname
+			const cancel = () => {
+				if (!resolved) {
+					resolved = true
+					clearTimeout(timeout)
+					rejectResult(new Error("Callback cancelled"))
+				}
+			}
 
-					if (pathname === "/callback") {
-						resolved = true
-						clearTimeout(timeout)
+			server.on("request", (req: any, res: any) => {
+				if (resolved) return
 
-						const code = url.searchParams.get("code")
-						const error = url.searchParams.get("error")
-						const errorDescription = url.searchParams.get("error_description")
-						const state = url.searchParams.get("state")
-						const hasError = !!error
+				const url = new URL(req.url || "", `http://localhost:${actualPort}`)
+				const pathname = url.pathname
 
-						// Verify state for CSRF protection
-						if (expectedState && state !== expectedState) {
-							res.writeHead(400, {
-								"Content-Type": "text/html",
-								"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
-							})
-							res.end(`
-							         <!DOCTYPE html>
-							         <html>
-							           <head>
-							             <title>${t("mcp:oauth.callback.title")}</title>
-							           </head>
-							           <body>
-							             <h1>${t("mcp:oauth.callback.failed")}</h1>
-							             <p>${t("mcp:oauth.callback.invalid_state")}</p>
-							           </body>
-							         </html>
-							       `)
-							rejectResult(new Error("Invalid state parameter"))
-							server.close()
-							return
-						}
+				if (pathname === "/callback") {
+					resolved = true
+					clearTimeout(timeout)
 
-						// Send HTML response
-						res.writeHead(200, {
+					const code = url.searchParams.get("code")
+					const error = url.searchParams.get("error")
+					const errorDescription = url.searchParams.get("error_description")
+					const state = url.searchParams.get("state")
+					const hasError = !!error
+
+					// Verify state for CSRF protection
+					if (expectedState && state !== expectedState) {
+						res.writeHead(400, {
 							"Content-Type": "text/html",
-							"Content-Security-Policy":
-								"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
+							"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
 						})
 						res.end(`
+						         <!DOCTYPE html>
+						         <html>
+						           <head>
+						             <title>${t("mcp:oauth.callback.title")}</title>
+						           </head>
+						           <body>
+						             <h1>${t("mcp:oauth.callback.failed")}</h1>
+						             <p>${t("mcp:oauth.callback.invalid_state")}</p>
+						           </body>
+						         </html>
+						       `)
+						rejectResult(new Error("Invalid state parameter"))
+						server.close()
+						return
+					}
+
+					// Send HTML response
+					res.writeHead(200, {
+						"Content-Type": "text/html",
+						"Content-Security-Policy":
+							"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
+					})
+					res.end(`
 <!DOCTYPE html>
 <html>
   <head>
@@ -152,36 +168,36 @@ export function startCallbackServer(
 </html>
             `)
 
-						resolveResult({
-							code: code || undefined,
-							error: error || undefined,
-							error_description: errorDescription || undefined,
-							state: state || undefined,
-						})
+					resolveResult({
+						code: code || undefined,
+						error: error || undefined,
+						error_description: errorDescription || undefined,
+						state: state || undefined,
+					})
 
-						// Close server immediately after response drains
-						res.on("finish", () => {
-							server.close()
-						})
-					} else {
-						res.writeHead(404)
-						res.end("Not found")
-					}
-				})
+					// Close server immediately after response drains
+					res.on("finish", () => {
+						server.close()
+					})
+				} else {
+					res.writeHead(404)
+					res.end("Not found")
+				}
+			})
 
-				server.on("error", (error: any) => {
-					if (!resolved) {
-						resolved = true
-						clearTimeout(timeout)
-						rejectResult(error)
-					}
-				})
+			server.on("error", (error: any) => {
+				if (!resolved) {
+					resolved = true
+					clearTimeout(timeout)
+					rejectResult(error)
+				}
 			})
 
 			resolve({
 				server,
 				port: actualPort,
 				result: resultPromise,
+				cancel,
 			})
 		})
 
@@ -190,10 +206,11 @@ export function startCallbackServer(
 }
 
 /**
- * Stops the callback server.
- * @param server The HTTP server to stop
+ * Stops the callback server and cancels any pending result promise so its
+ * timeout doesn't fire after the provider is already closed.
  */
-export function stopCallbackServer(server: http.Server): Promise<void> {
+export function stopCallbackServer(server: http.Server, cancel: () => void): Promise<void> {
+	cancel()
 	return new Promise((resolve) => {
 		server.close(() => resolve())
 	})

@@ -9,6 +9,7 @@ vi.mock("http", () => ({
 describe("startCallbackServer", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks()
+		delete process.env.MCP_OAUTH_TEST_MODE
 	})
 
 	it("should start server and resolve with callback result", async () => {
@@ -95,7 +96,32 @@ describe("stopCallbackServer", () => {
 			close: vi.fn((callback) => callback()),
 		}
 
-		await stopCallbackServer(mockServer as any)
+		await stopCallbackServer(mockServer as any, () => {})
 		expect(mockServer.close).toHaveBeenCalled()
+	})
+
+	it("should call the cancel function before closing", async () => {
+		const mockServer = { close: vi.fn((callback) => callback()) }
+		const cancel = vi.fn()
+
+		await stopCallbackServer(mockServer as any, cancel)
+		expect(cancel).toHaveBeenCalledTimes(1)
+		expect(mockServer.close).toHaveBeenCalled()
+	})
+})
+
+describe("startCallbackServer in test mode", () => {
+	it("should resolve immediately with mock auth code when MCP_OAUTH_TEST_MODE is set", async () => {
+		process.env.MCP_OAUTH_TEST_MODE = "true"
+		try {
+			const { port, result, cancel } = await startCallbackServer(undefined, "test-state")
+			expect(port).toBe(3000)
+			expect(typeof cancel).toBe("function")
+			const callbackResult = await result
+			expect(callbackResult.code).toBe("test-auth-code")
+			expect(callbackResult.state).toBe("test-state")
+		} finally {
+			delete process.env.MCP_OAUTH_TEST_MODE
+		}
 	})
 })
