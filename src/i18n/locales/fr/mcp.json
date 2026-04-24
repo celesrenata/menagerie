@@ -36,6 +36,16 @@
 			"tab_closing_in": "Cet onglet tentera de se fermer dans <span id=\"count\">{{count}}</span>s...",
 			"safe_to_close": "Si l'onglet ne s'est pas fermé, vous pouvez le fermer manuellement en toute sécurité.",
 			"invalid_state": "Erreur : Paramètre d'état invalide"
+		},
+		"flow": {
+			"authenticating": "Le serveur MCP \"{{name}}\" requiert une authentification",
+			"waitingForBrowser": "Finalise la connexion dans ton navigateur...",
+			"clickAuthenticate": "Le serveur MCP \"{{name}}\" attend une authentification.",
+			"dismissedHint": "Notification ignorée — annule et reconnecte le serveur pour t'authentifier.",
+			"authenticateButton": "Authentifier",
+			"cancelled": "L'authentification OAuth a été annulée",
+			"timedOut": "L'authentification OAuth a expiré",
+			"connected": "Le serveur MCP \"{{name}}\" s'est connecté avec succès après l'authentification OAuth."
 		}
 	}
 }

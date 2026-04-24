@@ -2462,15 +2462,25 @@ describe("McpHub", () => {
 			)
 		})
 
-		it("should re-show toast when dismissed and complete on second attempt", async () => {
-			// First toast dismissed (undefined), second toast user clicks Authenticate
-			vsc.window.showInformationMessage
-				.mockResolvedValueOnce(undefined as any)
-				.mockResolvedValueOnce(t("mcp:oauth.flow.authenticateButton") as any)
+		it("should update progress bar hint when toast is dismissed without clicking Authenticate", async () => {
+			// Toast dismissed (undefined) without clicking Authenticate — flow stays alive
+			// via the progress bar. The progress bar message should update to the dismissedHint.
+			let capturedProgress: any
+			vsc.window.withProgress.mockImplementationOnce((_options: any, task: any) => {
+				capturedProgress = { report: vi.fn() }
+				const cancellationToken = {
+					isCancellationRequested: false,
+					onCancellationRequested: vi.fn(() => ({ dispose: vi.fn() })),
+					_fire: vi.fn(),
+				}
+				return task(capturedProgress, cancellationToken)
+			})
 
-			vi.spyOn(mcpHub as any, "_completeOAuthFlow").mockResolvedValue(undefined)
+			// Toast dismissed (no button clicked), then flow stays open forever (cancel via timeout)
+			vsc.window.showInformationMessage.mockResolvedValueOnce(undefined as any)
+			vi.useFakeTimers()
 
-			await (mcpHub as any)._initiateOAuthFlow(
+			const flowPromise = (mcpHub as any)._initiateOAuthFlow(
 				serverName,
 				source,
 				config,
@@ -2479,7 +2489,13 @@ describe("McpHub", () => {
 				mockConnection,
 			)
 
-			expect(vsc.window.showInformationMessage).toHaveBeenCalledTimes(2)
+			await vi.advanceTimersByTimeAsync(OAUTH_FLOW_TIMEOUT_MS)
+			await flowPromise
+
+			expect(vsc.window.showInformationMessage).toHaveBeenCalledTimes(1)
+			expect(capturedProgress.report).toHaveBeenCalledWith({
+				message: t("mcp:oauth.flow.dismissedHint"),
+			})
 		})
 
 		it("should resolve when cross-window tokens arrive", async () => {
@@ -2632,6 +2648,62 @@ describe("McpHub", () => {
 					mockConnection,
 				),
 			).resolves.toBeUndefined()
+		})
+
+		it("should disconnect and flag error when Cancel is pressed after Authenticate is clicked", async () => {
+			// Simulate: user clicks Authenticate in the toast, then cancels via the progress bar
+			// while waitForAuthCode is still pending.
+			let capturedCancellationToken: any
+			vsc.window.withProgress.mockImplementationOnce((_options: any, task: any) => {
+				const progress = { report: vi.fn() }
+				const tokenListeners: Array<() => void> = []
+				capturedCancellationToken = {
+					isCancellationRequested: false,
+					onCancellationRequested: vi.fn((cb: () => void) => {
+						tokenListeners.push(cb)
+						return { dispose: vi.fn() }
+					}),
+					_fire: () => {
+						capturedCancellationToken.isCancellationRequested = true
+						tokenListeners.forEach((cb) => cb())
+					},
+				}
+				return task(progress, capturedCancellationToken)
+			})
+
+			// Toast resolves immediately with Authenticate clicked
+			vsc.window.showInformationMessage.mockResolvedValueOnce(t("mcp:oauth.flow.authenticateButton") as any)
+			mockSecretStorage.getOAuthData.mockResolvedValue(null) // no pre-existing tokens
+
+			// waitForAuthCode never resolves — simulates browser waiting for the callback
+			mockAuthProvider.waitForAuthCode.mockReturnValue(new Promise(() => {}))
+
+			const flowPromise = (mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			// Let the flow advance: getOAuthData resolves, withProgress runs,
+			// showInformationMessage resolves (Authenticate clicked), getOAuthData
+			// re-checked (null), cleanup() called, _completeOAuthFlow entered,
+			// openBrowser() called, then waitForAuthCode blocks.
+			await new Promise((r) => setTimeout(r, 0))
+
+			// Fire Cancel on the progress bar while waitForAuthCode is blocked
+			capturedCancellationToken._fire()
+
+			await flowPromise
+
+			expect(mockConnection.server.status).toBe("disconnected")
+			expect((mcpHub as any).appendErrorMessage).toHaveBeenCalledWith(
+				mockConnection,
+				t("mcp:oauth.flow.cancelled"),
+			)
+			expect(mockAuthProvider.close).toHaveBeenCalled()
 		})
 
 		it("should not reconnect when hub is disposed while cross-window tokens arrive", async () => {

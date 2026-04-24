@@ -36,6 +36,16 @@
 			"tab_closing_in": "Questa scheda tenterà di chiudersi tra <span id=\"count\">{{count}}</span>s...",
 			"safe_to_close": "Se la scheda non si è chiusa, puoi chiuderla manualmente in sicurezza.",
 			"invalid_state": "Errore: Parametro di stato non valido"
+		},
+		"flow": {
+			"authenticating": "Il server MCP \"{{name}}\" richiede autenticazione",
+			"waitingForBrowser": "Completa l'accesso nel tuo browser...",
+			"clickAuthenticate": "Il server MCP \"{{name}}\" è in attesa di autenticazione.",
+			"dismissedHint": "Notifica ignorata — annulla e riconnetti il server per autenticarti.",
+			"authenticateButton": "Autenticarsi",
+			"cancelled": "L'autenticazione OAuth è stata annullata",
+			"timedOut": "L'autenticazione OAuth è scaduta",
+			"connected": "Il server MCP \"{{name}}\" si è connesso con successo dopo l'autenticazione OAuth."
 		}
 	}
 }

@@ -36,6 +36,16 @@
 			"tab_closing_in": "이 탭은 <span id=\"count\">{{count}}</span>초 후에 닫힙니다...",
 			"safe_to_close": "탭이 자동으로 닫히지 않으면 직접 닫아주세요.",
 			"invalid_state": "오류: 유효하지 않은 state 파라미터"
+		},
+		"flow": {
+			"authenticating": "MCP 서버 \"{{name}}\"는 인증이 필요합니다",
+			"waitingForBrowser": "브라우저에서 로그인을 완료하세요...",
+			"clickAuthenticate": "MCP 서버 \"{{name}}\"가 인증을 기다리고 있습니다.",
+			"dismissedHint": "알림이 닫혔습니다 — 재인증하려면 서버를 취소하고 재연결하세요.",
+			"authenticateButton": "인증",
+			"cancelled": "OAuth 인증이 취소되었습니다",
+			"timedOut": "OAuth 인증 시간이 초과되었습니다",
+			"connected": "OAuth 인증 후 MCP 서버 \"{{name}}\"가 성공적으로 연결되었습니다."
 		}
 	}
 }

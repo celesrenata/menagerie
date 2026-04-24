@@ -36,6 +36,16 @@
 			"tab_closing_in": "Dit tabblad wordt gesloten over <span id=\"count\">{{count}}</span>s...",
 			"safe_to_close": "Als het tabblad niet is gesloten, kun je het handmatig sluiten.",
 			"invalid_state": "Fout: Ongeldige state-parameter"
+		},
+		"flow": {
+			"authenticating": "MCP-server \"{{name}}\" vereist authenticatie",
+			"waitingForBrowser": "Voltooi het aanmelden in je browser...",
+			"clickAuthenticate": "MCP-server \"{{name}}\" wacht op authenticatie.",
+			"dismissedHint": "Melding gesloten — annuleer en verbind de server opnieuw om je te authenticeren.",
+			"authenticateButton": "Authenticeren",
+			"cancelled": "OAuth-authenticatie is geannuleerd",
+			"timedOut": "OAuth-authenticatie is verlopen",
+			"connected": "MCP-server \"{{name}}\" is succesvol verbonden na OAuth-authenticatie."
 		}
 	}
 }

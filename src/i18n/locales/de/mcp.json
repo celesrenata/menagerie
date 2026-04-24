@@ -36,6 +36,16 @@
 			"tab_closing_in": "Dieser Tab wird in <span id=\"count\">{{count}}</span>s geschlossen...",
 			"safe_to_close": "Falls sich der Tab nicht automatisch geschlossen hat, kannst du ihn jetzt manuell schließen.",
 			"invalid_state": "Fehler: Ungültiger State-Parameter"
+		},
+		"flow": {
+			"authenticating": "MCP-Server \"{{name}}\" erfordert Authentifizierung",
+			"waitingForBrowser": "Schließe die Anmeldung in deinem Browser ab...",
+			"clickAuthenticate": "MCP-Server \"{{name}}\" wartet auf Authentifizierung.",
+			"dismissedHint": "Benachrichtigung geschlossen — brich ab und verbinde den Server erneut, um dich zu authentifizieren.",
+			"authenticateButton": "Authentifizieren",
+			"cancelled": "OAuth-Authentifizierung wurde abgebrochen",
+			"timedOut": "OAuth-Authentifizierung ist abgelaufen",
+			"connected": "MCP-Server \"{{name}}\" wurde nach der OAuth-Authentifizierung erfolgreich verbunden."
 		}
 	}
 }

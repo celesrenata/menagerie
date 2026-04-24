@@ -36,6 +36,16 @@
 			"tab_closing_in": "Ta karta spróbuje się zamknąć za <span id=\"count\">{{count}}</span>s...",
 			"safe_to_close": "Jeśli karta nie zamknęła się automatycznie, możesz ją bezpiecznie zamknąć ręcznie.",
 			"invalid_state": "Błąd: Nieprawidłowy parametr stanu"
+		},
+		"flow": {
+			"authenticating": "Serwer MCP \"{{name}}\" wymaga uwierzytelnienia",
+			"waitingForBrowser": "Ukończ logowanie w przeglądarce...",
+			"clickAuthenticate": "Serwer MCP \"{{name}}\" oczekuje na uwierzytelnienie.",
+			"dismissedHint": "Powiadomienie odrzucone — anuluj i ponownie połącz serwer, aby się uwierzytelnić.",
+			"authenticateButton": "Uwierzytelnij",
+			"cancelled": "Uwierzytelnianie OAuth zostało anulowane",
+			"timedOut": "Uwierzytelnianie OAuth przekroczyło limit czasu",
+			"connected": "Serwer MCP \"{{name}}\" połączył się pomyślnie po uwierzytelnieniu OAuth."
 		}
 	}
 }

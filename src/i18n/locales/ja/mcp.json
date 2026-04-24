@@ -36,6 +36,16 @@
 			"tab_closing_in": "このタブは <span id=\"count\">{{count}}</span> 秒後に閉じられます...",
 			"safe_to_close": "タブが閉じなかった場合は、手動で閉じてください。",
 			"invalid_state": "エラー: 無効な state パラメータ"
+		},
+		"flow": {
+			"authenticating": "MCPサーバー \"{{name}}\" は認証が必要です",
+			"waitingForBrowser": "ブラウザでサインインを完了してください...",
+			"clickAuthenticate": "MCPサーバー \"{{name}}\" は認証を待っています。",
+			"dismissedHint": "通知が閉じられました — 再認証するにはサーバーをキャンセルして再接続してください。",
+			"authenticateButton": "認証する",
+			"cancelled": "OAuth認証がキャンセルされました",
+			"timedOut": "OAuth認証がタイムアウトしました",
+			"connected": "OAuth認証後、MCPサーバー \"{{name}}\" が正常に接続されました。"
 		}
 	}
 }

@@ -36,6 +36,16 @@
 			"tab_closing_in": "此标签页将在 <span id=\"count\">{{count}}</span> 秒后尝试关闭...",
 			"safe_to_close": "如果标签页没有关闭，您可以安全地手动关闭它。",
 			"invalid_state": "错误：无效的状态参数"
+		},
+		"flow": {
+			"authenticating": "MCP 服务 \"{{name}}\" 需要身份验证",
+			"waitingForBrowser": "在浏览器中完成登录...",
+			"clickAuthenticate": "MCP 服务 \"{{name}}\" 正在等待身份验证。",
+			"dismissedHint": "通知已关闭 — 请取消并重新连接服务以重新验证身份。",
+			"authenticateButton": "验证身份",
+			"cancelled": "OAuth 身份验证已取消",
+			"timedOut": "OAuth 身份验证已超时",
+			"connected": "OAuth 身份验证后，MCP 服务 \"{{name}}\" 已成功连接。"
 		}
 	}
 }

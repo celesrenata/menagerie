@@ -36,6 +36,16 @@
 			"tab_closing_in": "Tab ini akan mencoba menutup dalam <span id=\"count\">{{count}}</span> detik...",
 			"safe_to_close": "Jika tab tidak tertutup, Anda dapat menutupnya secara manual dengan aman.",
 			"invalid_state": "Kesalahan: Parameter state tidak valid"
+		},
+		"flow": {
+			"authenticating": "Server MCP \"{{name}}\" memerlukan autentikasi",
+			"waitingForBrowser": "Selesaikan masuk di browser Anda...",
+			"clickAuthenticate": "Server MCP \"{{name}}\" menunggu autentikasi.",
+			"dismissedHint": "Notifikasi ditutup — batalkan dan hubungkan kembali server untuk autentikasi ulang.",
+			"authenticateButton": "Autentikasi",
+			"cancelled": "Autentikasi OAuth dibatalkan",
+			"timedOut": "Autentikasi OAuth habis waktu",
+			"connected": "Server MCP \"{{name}}\" berhasil terhubung setelah autentikasi OAuth."
 		}
 	}
 }

@@ -1064,9 +1064,8 @@ export class McpHub {
 			return
 		}
 
-		// Show a persistent progress notification for the duration of the OAuth flow.
-		// Inside, a looping showInformationMessage gives the user an "Authenticate"
-		// button that reappears if dismissed, so they can trigger browser auth at any time.
+		// Persistent progress notification gives the user a visible Cancel button
+		// for the duration of the flow (even if they switch away from VS Code).
 		await vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
@@ -1074,7 +1073,7 @@ export class McpHub {
 				cancellable: true,
 			},
 			(progress, cancellationToken) =>
-				this._runOAuthFlowWithProgress(
+				this._runOAuthFlow(
 					name,
 					source,
 					config,
@@ -1088,7 +1087,7 @@ export class McpHub {
 		)
 	}
 
-	private _runOAuthFlowWithProgress(
+	private _runOAuthFlow(
 		name: string,
 		source: "global" | "project",
 		config: z.infer<typeof ServerConfigSchema>,
@@ -1155,22 +1154,6 @@ export class McpHub {
 				void onTokensChanged()
 			})
 
-			// --- Cancellation ---
-			cancellationDisposable = cancellationToken.onCancellationRequested(() => {
-				// Guard: flow may have already completed (e.g. tokens arrived via
-				// onTokensChanged) by the time VS Code fires this callback.
-				if (disposed) return
-				cleanup()
-				void authProvider.close()
-				const conn = this.findConnection(name, source)
-				if (conn && conn.server.status !== "connected") {
-					conn.server.status = "disconnected"
-					this.appendErrorMessage(conn, t("mcp:oauth.flow.cancelled"))
-					void this.notifyWebviewOfServerChanges()
-				}
-				resolve()
-			})
-
 			// --- Timeout ---
 			const timeoutHandle = setTimeout(() => {
 				if (disposed) return
@@ -1185,60 +1168,66 @@ export class McpHub {
 				resolve()
 			}, OAUTH_FLOW_TIMEOUT_MS)
 
+			// --- Cancellation (progress bar's Cancel button) ---
+			cancellationDisposable = cancellationToken.onCancellationRequested(() => {
+				if (disposed) return
+				cleanup()
+				void authProvider.close()
+				const conn = this.findConnection(name, source)
+				if (conn && conn.server.status !== "connected") {
+					conn.server.status = "disconnected"
+					this.appendErrorMessage(conn, t("mcp:oauth.flow.cancelled"))
+					void this.notifyWebviewOfServerChanges()
+				}
+				resolve()
+			})
+
 			// Register in _oauthWatchers so deleteConnection() and dispose() can clean up
 			this._oauthWatchers.set(watcherKey, { unsubscribe, abortHandle: timeoutHandle })
 
+			// Non-modal toast — fires and forgets. When it auto-dismisses, update the
+			// persistent progress bar to tell the user how to re-trigger the flow.
 			const authenticateLabel = t("mcp:oauth.flow.authenticateButton")
-			// --- Looping "Authenticate" toast ---
-			const showAuthPromptLoop = async () => {
-				while (!disposed) {
-					progress.report({ message: t("mcp:oauth.flow.waitingForBrowser") })
+			void (async () => {
+				const choice = await vscode.window.showInformationMessage(
+					t("mcp:oauth.flow.clickAuthenticate", { name }),
+					authenticateLabel,
+				)
 
-					const choice = await vscode.window.showInformationMessage(
-						t("mcp:oauth.flow.clickAuthenticate", { name }),
-						authenticateLabel,
-					)
+				if (disposed) return
 
-					if (disposed) return
-
-					if (choice === authenticateLabel) {
-						// Guard: another window may have authed while the toast was showing
-						const tokens = await this.secretStorage!.getOAuthData(serverUrl)
-						if (disposed) return
-						if (tokens && Date.now() < tokens.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
-							cleanup()
-							await authProvider.close()
-							await this.deleteConnection(name, source)
-							const validatedFastPathConfig = this.validateServerConfig(config, name)
-							await this.connectToServer(name, validatedFastPathConfig, source)
-							await this.notifyWebviewOfServerChanges()
-							resolve()
-							return
-						}
-
-						progress.report({ message: t("mcp:oauth.flow.waitingForBrowser") })
-						try {
-							await this._completeOAuthFlow(authProvider, transport, connection, name, source)
-						} catch {
-							// _completeOAuthFlow handles its own error state
-						}
-						// Cancellation may have fired while _completeOAuthFlow was running.
-						// If so, the cancellation handler already cleaned up and resolved —
-						// don't overwrite that state with a stale error.
-						if (disposed) return
-						cleanup()
-						resolve()
-						return
-					}
-
-					// Toast was dismissed or auto-timed-out — wait briefly then re-show
-					if (!disposed) {
-						await delay(3000)
-					}
+				if (choice !== authenticateLabel) {
+					// Toast was dismissed (timed out or closed) without clicking Authenticate.
+					// Update the progress bar so the user knows how to re-trigger.
+					progress.report({ message: t("mcp:oauth.flow.dismissedHint") })
+					return
 				}
-			}
 
-			void showAuthPromptLoop()
+				// Guard: another window may have authed while the toast was open
+				const tokens = await this.secretStorage!.getOAuthData(serverUrl)
+				if (disposed) return
+				if (tokens && Date.now() < tokens.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
+					cleanup()
+					await authProvider.close()
+					await this.deleteConnection(name, source)
+					const validatedFastPathConfig = this.validateServerConfig(config, name)
+					await this.connectToServer(name, validatedFastPathConfig, source)
+					await this.notifyWebviewOfServerChanges()
+					resolve()
+					return
+				}
+
+				// Clean up before exchanging tokens — this sets disposed=true so the
+				// cross-window token watcher doesn't race to reconnect when SecretStorage
+				// fires onDidChange during token exchange inside _completeOAuthFlow.
+				cleanup()
+				try {
+					await this._completeOAuthFlow(authProvider, transport, connection, name, source, cancellationToken)
+				} catch {
+					// _completeOAuthFlow handles its own error state
+				}
+				resolve()
+			})()
 		})
 	}
 
@@ -1248,15 +1237,30 @@ export class McpHub {
 		connection: ConnectedMcpConnection,
 		name: string,
 		source: "global" | "project",
+		cancellationToken: vscode.CancellationToken,
 	): Promise<void> {
 		const config = JSON.parse(connection.server.config)
+
+		// Build a promise that rejects when the progress bar Cancel is pressed,
+		// so we can race it against waitForAuthCode() which blocks indefinitely.
+		const cancelledError = new Error(t("mcp:oauth.flow.cancelled"))
+		let cancelListener: vscode.Disposable | undefined
+		const cancellationPromise = new Promise<never>((_, reject) => {
+			if (cancellationToken.isCancellationRequested) {
+				reject(cancelledError)
+				return
+			}
+			cancelListener = cancellationToken.onCancellationRequested(() => reject(cancelledError))
+		})
+
 		try {
 			// Open the browser now that the user has confirmed the toast.
 			// redirectToAuthorization() was already called by the SDK (which stored
 			// the URL in _pendingAuthorizationUrl), but deliberately did not open it.
 			await authProvider.openBrowser()
 
-			const code = await authProvider.waitForAuthCode()
+			const code = await Promise.race([authProvider.waitForAuthCode(), cancellationPromise])
+
 			// Exchange auth code for tokens using the pre-fetched token_endpoint
 			// directly. The SDK's transport.finishAuth() re-runs discovery internally
 			// and hits the same broken URL for path-prefixed issuers (see
@@ -1284,6 +1288,8 @@ export class McpHub {
 				this.appendErrorMessage(conn, error instanceof Error ? error.message : `${error}`)
 			}
 			await this.notifyWebviewOfServerChanges()
+		} finally {
+			cancelListener?.dispose()
 		}
 	}
 

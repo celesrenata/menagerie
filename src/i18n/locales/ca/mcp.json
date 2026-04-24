@@ -36,6 +36,16 @@
 			"tab_closing_in": "This tab will attempt to close in <span id=\"count\">{{count}}</span>s...",
 			"safe_to_close": "If the tab did not close, you can safely close it manually.",
 			"invalid_state": "Error: Invalid state parameter"
+		},
+		"flow": {
+			"authenticating": "El servidor MCP \"{{name}}\" requereix autenticació",
+			"waitingForBrowser": "Completa l'inici de sessió al navegador...",
+			"clickAuthenticate": "El servidor MCP \"{{name}}\" està esperant autenticació.",
+			"dismissedHint": "Notificació descartada — cancel·la i torna a connectar el servidor per autenticar-te.",
+			"authenticateButton": "Autenticar",
+			"cancelled": "L'autenticació OAuth ha estat cancel·lada",
+			"timedOut": "L'autenticació OAuth ha expirat",
+			"connected": "El servidor MCP \"{{name}}\" s'ha connectat correctament després de l'autenticació OAuth."
 		}
 	}
 }
