@@ -11,8 +11,8 @@
 		"finish": "Finish"
 	},
 	"telemetry": {
-		"helpImprove": "Help Improve Roo Code",
-		"helpImproveMessage": "Roo Code collects error and usage data to help us fix bugs and improve the extension. This telemetry does not collect code, prompts or personal information. You can turn this off in <settingsLink>settings</settingsLink>."
+		"helpImprove": "Help Improve Zoo Code",
+		"helpImproveMessage": "Zoo Code collects error and usage data to help us fix bugs and improve the extension. This telemetry does not collect code, prompts or personal information. You can turn this off in <settingsLink>settings</settingsLink>."
 	},
 	"importSettings": "Import Settings"
 }
