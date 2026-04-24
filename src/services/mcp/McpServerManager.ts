@@ -37,10 +37,8 @@ export class McpServerManager {
 			try {
 				// Double-check instance in case it was created while we were waiting
 				if (!this.instance) {
-					const hub = new McpHub(provider)
-					// Set the secret storage service for OAuth operations
 					const secretStorage = new SecretStorageService(context)
-					hub.setSecretStorage(secretStorage)
+					const hub = new McpHub(provider, secretStorage)
 					// Wait for all MCP servers to finish connecting (or timing out)
 					await hub.waitUntilReady()
 					this.instance = hub

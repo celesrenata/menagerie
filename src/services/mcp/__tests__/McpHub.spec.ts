@@ -2463,8 +2463,6 @@ describe("McpHub", () => {
 		})
 
 		it("should update progress bar hint when toast is dismissed without clicking Authenticate", async () => {
-			// Toast dismissed (undefined) without clicking Authenticate — flow stays alive
-			// via the progress bar. The progress bar message should update to the dismissedHint.
 			let capturedProgress: any
 			vsc.window.withProgress.mockImplementationOnce((_options: any, task: any) => {
 				capturedProgress = { report: vi.fn() }
@@ -2476,7 +2474,6 @@ describe("McpHub", () => {
 				return task(capturedProgress, cancellationToken)
 			})
 
-			// Toast dismissed (no button clicked), then flow stays open forever (cancel via timeout)
 			vsc.window.showInformationMessage.mockResolvedValueOnce(undefined as any)
 			vi.useFakeTimers()
 
@@ -2546,8 +2543,6 @@ describe("McpHub", () => {
 		})
 
 		it("should disconnect and flag error when user cancels the OAuth flow", async () => {
-			vsc.window.showInformationMessage.mockImplementation(() => new Promise(() => {}))
-
 			// Override withProgress for this test to capture the cancellation token
 			let capturedCancellationToken: any
 			vsc.window.withProgress.mockImplementationOnce((_options: any, task: any) => {
@@ -2736,6 +2731,75 @@ describe("McpHub", () => {
 			await flowPromise
 
 			expect((mcpHub as any).connectToServer).not.toHaveBeenCalled()
+		})
+
+		it("should not reconnect when cross-window watcher fires but token is missing or expired", async () => {
+			vi.useFakeTimers()
+			vsc.window.showInformationMessage.mockImplementation(() => new Promise(() => {}))
+
+			// onDidChange fires immediately (simulates a storage event during the read gap)
+			// but getOAuthData returns undefined — no valid token written.
+			mockSecretStorage.onDidChange.mockImplementation((_key: string, cb: () => void) => {
+				cb() // fires synchronously — sets crossWindowTokenWritten flag
+				return vi.fn()
+			})
+			mockSecretStorage.getOAuthData.mockResolvedValue(undefined)
+
+			const flowPromise = (mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			// Advance past the timeout so the flow can settle
+			await vi.advanceTimersByTimeAsync(OAUTH_FLOW_TIMEOUT_MS)
+			await flowPromise
+
+			// Should NOT have tried to reconnect — the watcher fired but no valid token exists
+			expect((mcpHub as any).connectToServer).not.toHaveBeenCalledWith(serverName, expect.anything(), source)
+		})
+
+		it("should reconnect when cross-window token is written while getOAuthData is in-flight", async () => {
+			// This covers the race: onDidChange fires BEFORE getOAuthData resolves.
+			// The flag causes a second read which finds the now-valid token.
+			let resolveGetOAuthData!: (value: any) => void
+			mockSecretStorage.getOAuthData
+				// First call (during the race window) — delayed, returns undefined
+				.mockImplementationOnce(
+					() =>
+						new Promise((r) => {
+							resolveGetOAuthData = r
+						}),
+				)
+				// Second call (after watcher fires) — valid token available
+				.mockResolvedValueOnce({ expires_at: Date.now() + 10 * 60 * 1000 })
+
+			// Watcher fires synchronously before getOAuthData resolves
+			mockSecretStorage.onDidChange.mockImplementation((_key: string, cb: () => void) => {
+				cb()
+				return vi.fn()
+			})
+
+			const flowPromise = (mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			// Now let the first getOAuthData resolve with undefined
+			resolveGetOAuthData(undefined)
+			await flowPromise
+
+			expect(mockAuthProvider.close).toHaveBeenCalled()
+			expect((mcpHub as any).deleteConnection).toHaveBeenCalledWith(serverName, source)
+			expect((mcpHub as any).connectToServer).toHaveBeenCalled()
+			expect(vsc.window.withProgress).not.toHaveBeenCalled()
 		})
 
 		it("should cancel the previous watcher when called again for the same server", async () => {

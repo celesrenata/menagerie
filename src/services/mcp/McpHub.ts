@@ -171,8 +171,11 @@ export class McpHub {
 	private reauthPromises: Map<string, Promise<void>> = new Map()
 	private _oauthWatchers: Map<string, { unsubscribe: () => void; abortHandle: NodeJS.Timeout }> = new Map()
 
-	constructor(provider: ClineProvider) {
+	constructor(provider: ClineProvider, secretStorage?: SecretStorageService) {
 		this.providerRef = new WeakRef(provider)
+		if (secretStorage) {
+			this.secretStorage = secretStorage
+		}
 		this.watchMcpSettingsFile()
 		this.watchProjectMcpFile().catch(console.error)
 		this.setupWorkspaceFoldersWatcher()
@@ -190,16 +193,12 @@ export class McpHub {
 		await this.initializationPromise
 	}
 
-	public setSecretStorage(secretStorage: SecretStorageService): void {
-		this.secretStorage = secretStorage
-	}
 	/**
 	 * Registers a client (e.g., ClineProvider) using this hub.
 	 * Increments the reference count.
 	 */
 	public registerClient(): void {
 		this.refCount++
-		// console.log(`McpHub: Client registered. Ref count: ${this.refCount}`)
 	}
 
 	/**
@@ -208,8 +207,6 @@ export class McpHub {
 	 */
 	public async unregisterClient(): Promise<void> {
 		this.refCount--
-
-		// console.log(`McpHub: Client unregistered. Ref count: ${this.refCount}`)
 
 		if (this.refCount <= 0) {
 			console.log("McpHub: Last client unregistered. Disposing hub.")
@@ -1054,9 +1051,31 @@ export class McpHub {
 			return
 		}
 
-		// Check if another window already saved valid tokens
+		// Register the cross-window token watcher BEFORE the initial token read so we
+		// don't miss a write that lands in the gap between the read and the subscription.
+		// After the read we immediately unsubscribe; the watcher inside _runOAuthFlow
+		// will set up its own long-lived subscription for the duration of the flow.
+		// Note: onDidChange fires on both writes AND deletes — the re-read below is
+		// authoritative; we only reconnect if it returns a valid (non-expired) token.
+		let tokenChangedDuringRead = false
+		const unsubscribeCrossWindow = this.secretStorage.onDidChange(serverUrl, () => {
+			tokenChangedDuringRead = true
+		})
+
+		// Check if another window already saved valid tokens.
+		// Re-read after registering the watcher in case a write landed in the gap.
 		const existing = await this.secretStorage.getOAuthData(serverUrl)
-		if (existing && Date.now() < existing.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
+		if (this.isDisposed) {
+			unsubscribeCrossWindow()
+			return
+		}
+		// If the first read missed but the watcher fired during it, re-read — a write
+		// may have landed between subscription and read completion.
+		const tokenToUse =
+			existing ?? (tokenChangedDuringRead ? await this.secretStorage.getOAuthData(serverUrl) : undefined)
+		unsubscribeCrossWindow()
+
+		if (!this.isDisposed && tokenToUse && Date.now() < tokenToUse.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
 			await authProvider.close()
 			await this.deleteConnection(name, source)
 			await this.connectToServer(name, config, source)
@@ -1185,8 +1204,8 @@ export class McpHub {
 			// Register in _oauthWatchers so deleteConnection() and dispose() can clean up
 			this._oauthWatchers.set(watcherKey, { unsubscribe, abortHandle: timeoutHandle })
 
-			// Non-modal toast — fires and forgets. When it auto-dismisses, update the
-			// persistent progress bar to tell the user how to re-trigger the flow.
+			// Non-modal toast — fires once. If dismissed without clicking Authenticate,
+			// the flow stays alive via the persistent progress bar (Cancel to abort).
 			const authenticateLabel = t("mcp:oauth.flow.authenticateButton")
 			void (async () => {
 				const choice = await vscode.window.showInformationMessage(
@@ -1197,8 +1216,6 @@ export class McpHub {
 				if (disposed) return
 
 				if (choice !== authenticateLabel) {
-					// Toast was dismissed (timed out or closed) without clicking Authenticate.
-					// Update the progress bar so the user knows how to re-trigger.
 					progress.report({ message: t("mcp:oauth.flow.dismissedHint") })
 					return
 				}
