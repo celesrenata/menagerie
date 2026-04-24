@@ -78,6 +78,7 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 		private _server: http.Server | null,
 		private _port: number,
 		private _authCodePromise: Promise<string> | null,
+		private _cancelCallbackServer: (() => void) | null,
 		private readonly _tokenEndpointAuthMethod: string,
 		private readonly _grantTypes: string[],
 		private readonly _scopes: string[],
@@ -122,9 +123,9 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 		}
 
 		// Extract auth-method preferences.
-		// Prefer "none" → first supported → "client_secret_post"
+		// Only pick methods we actually implement: "none" or "client_secret_post".
 		const authMethods: string[] = authServerMeta?.token_endpoint_auth_methods_supported ?? []
-		const tokenEndpointAuthMethod = authMethods.includes("none") ? "none" : (authMethods[0] ?? "client_secret_post")
+		const tokenEndpointAuthMethod = authMethods.includes("none") ? "none" : "client_secret_post"
 		const grantTypes: string[] = authServerMeta?.grant_types_supported ?? ["authorization_code", "refresh_token"]
 		const scopes: string[] = authServerMeta?.scopes_supported ?? []
 
@@ -141,6 +142,7 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 			secretStorage,
 			null,
 			0,
+			null,
 			null,
 			tokenEndpointAuthMethod,
 			grantTypes,
@@ -178,9 +180,10 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 
 	private async _doStartCallbackServer(): Promise<void> {
 		this._closed = false
-		const { server, port, result } = await startCallbackServer(this._port, this._state)
+		const { server, port, result, cancel } = await startCallbackServer(this._port, this._state)
 		this._server = server
 		this._port = port
+		this._cancelCallbackServer = cancel
 		this._authCodePromise = result.then((r) => {
 			if (r.error) throw new Error(`OAuth authorization failed: ${r.error}`)
 			if (!r.code) throw new Error("No authorization code received in callback")
@@ -442,6 +445,12 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 			code_verifier: codeVerifier,
 		}
 
+		// RFC 8707: include resource indicator so servers that bind token requests
+		// to a specific resource can validate the exchange.
+		if (this._resourceIndicator) {
+			params.resource = this._resourceIndicator
+		}
+
 		// Include client_secret in the body when the auth method is client_secret_post.
 		if (this._tokenEndpointAuthMethod === "client_secret_post" && this._clientInfo.client_secret) {
 			params.client_secret = this._clientInfo.client_secret
@@ -489,6 +498,11 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 			client_id: clientId,
 		}
 
+		// RFC 8707: include resource indicator in refresh requests too.
+		if (this._resourceIndicator) {
+			params.resource = this._resourceIndicator
+		}
+
 		if (this._tokenEndpointAuthMethod === "client_secret_post" && this._clientInfo?.client_secret) {
 			params.client_secret = this._clientInfo.client_secret
 		}
@@ -521,8 +535,9 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
 		}
 		if (!this._closed && this._server) {
 			this._closed = true
-			await stopCallbackServer(this._server).catch(() => {})
+			await stopCallbackServer(this._server, this._cancelCallbackServer ?? (() => {})).catch(() => {})
 			this._server = null
+			this._cancelCallbackServer = null
 			this._authCodePromise = null
 		}
 	}

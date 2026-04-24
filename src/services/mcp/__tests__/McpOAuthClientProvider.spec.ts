@@ -75,6 +75,7 @@ function setupCallbackServerMock(code = "test-auth-code", state?: string) {
 		server: mockServer,
 		port: 12345,
 		result: resultPromise,
+		cancel: vi.fn(),
 	})
 	return { mockServer, resultPromise }
 }
@@ -675,7 +676,7 @@ describe("McpOAuthClientProvider", () => {
 
 			await provider.close()
 
-			expect(stopCallbackServer).toHaveBeenCalledWith(mockServer)
+			expect(stopCallbackServer).toHaveBeenCalledWith(mockServer, expect.any(Function))
 		})
 
 		it("should be idempotent", async () => {
