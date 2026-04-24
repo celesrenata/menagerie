@@ -27,15 +27,15 @@
 	},
 	"oauth": {
 		"callback": {
-			"title": "OAuth Callback - Roo Code",
-			"success": "Success!",
-			"failed": "Failed",
-			"auth_failed": "Authentication failed. Please check the MCP server logs.",
-			"auth_success": "MCP server authenticated successfully. You can now close this browser tab.",
-			"server_connection_complete": "The server connection is complete.",
-			"tab_closing_in": "This tab will attempt to close in <span id=\"count\">{{count}}</span>s...",
-			"safe_to_close": "If the tab did not close, you can safely close it manually.",
-			"invalid_state": "Error: Invalid state parameter"
+			"title": "Callback OAuth - Roo Code",
+			"success": "Èxit!",
+			"failed": "Error",
+			"auth_failed": "L'autenticació ha fallat. Si us plau, comprova els registres del servidor MCP.",
+			"auth_success": "El servidor MCP s'ha autenticat correctament. Ara pots tancar aquesta pestanya del navegador.",
+			"server_connection_complete": "La connexió al servidor és completa.",
+			"tab_closing_in": "Aquesta pestanya intentarà tancar-se en <span id=\"count\">{{count}}</span>s...",
+			"safe_to_close": "Si la pestanya no s'ha tancat, pots tancar-la manualment sense cap problema.",
+			"invalid_state": "Error: Paràmetre d'estat no vàlid"
 		},
 		"flow": {
 			"authenticating": "El servidor MCP \"{{name}}\" requereix autenticació",
