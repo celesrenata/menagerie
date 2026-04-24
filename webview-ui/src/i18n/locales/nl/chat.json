@@ -101,7 +101,7 @@
 	"enqueueMessage": "Bericht aan de wachtrij toevoegen (wordt verzonden nadat de huidige taak is voltooid)",
 	"scrollToBottom": "Scroll naar onderaan de chat",
 	"scrollToLatestCheckpoint": "Scroll naar het vorige checkpoint",
-	"about": "Roo Code is een heel AI-ontwikkelteam in je editor.",
+	"about": "Zoo Code is een heel AI-ontwikkelteam in je editor.",
 	"docs": "Bekijk onze <DocsLink>documentatie</DocsLink> voor meer informatie.",
 	"onboarding": "Je takenlijst in deze werkruimte is leeg.",
 	"rooTips": {
@@ -124,7 +124,7 @@
 		"title": "Modi",
 		"marketplace": "Modus Marktplaats",
 		"settings": "Modus Instellingen",
-		"description": "Gespecialiseerde persona's die het gedrag van Roo aanpassen.",
+		"description": "Gespecialiseerde persona's die het gedrag van Zoo aanpassen.",
 		"searchPlaceholder": "Zoek modi...",
 		"noResults": "Geen resultaten gevonden"
 	},
@@ -188,40 +188,40 @@
 		"wantsToFetch": "Roo wil gedetailleerde instructies ophalen om te helpen met de huidige taak"
 	},
 	"fileOperations": {
-		"wantsToRead": "Roo wil dit bestand lezen",
-		"wantsToReadOutsideWorkspace": "Roo wil dit bestand buiten de werkruimte lezen",
-		"didRead": "Roo heeft dit bestand gelezen",
-		"wantsToEdit": "Roo wil dit bestand bewerken",
-		"wantsToEditOutsideWorkspace": "Roo wil dit bestand buiten de werkruimte bewerken",
-		"wantsToEditProtected": "Roo wil een beveiligd configuratiebestand bewerken",
-		"wantsToCreate": "Roo wil een nieuw bestand aanmaken",
+		"wantsToRead": "Zoo wil dit bestand lezen",
+		"wantsToReadOutsideWorkspace": "Zoo wil dit bestand buiten de werkruimte lezen",
+		"didRead": "Zoo heeft dit bestand gelezen",
+		"wantsToEdit": "Zoo wil dit bestand bewerken",
+		"wantsToEditOutsideWorkspace": "Zoo wil dit bestand buiten de werkruimte bewerken",
+		"wantsToEditProtected": "Zoo wil een beveiligd configuratiebestand bewerken",
+		"wantsToCreate": "Zoo wil een nieuw bestand aanmaken",
 		"wantsToSearchReplace": "Roo wil zoeken en vervangen in dit bestand",
 		"didSearchReplace": "Roo heeft zoeken en vervangen uitgevoerd op dit bestand",
-		"wantsToInsert": "Roo wil inhoud invoegen in dit bestand",
-		"wantsToInsertWithLineNumber": "Roo wil inhoud invoegen in dit bestand op regel {{lineNumber}}",
-		"wantsToInsertAtEnd": "Roo wil inhoud toevoegen aan het einde van dit bestand",
-		"wantsToReadAndXMore": "Roo wil dit bestand en nog {{count}} andere lezen",
-		"wantsToReadMultiple": "Roo wil meerdere bestanden lezen",
-		"wantsToApplyBatchChanges": "Roo wil wijzigingen toepassen op meerdere bestanden",
-		"wantsToGenerateImage": "Roo wil een afbeelding genereren",
-		"wantsToGenerateImageOutsideWorkspace": "Roo wil een afbeelding genereren buiten de werkruimte",
-		"wantsToGenerateImageProtected": "Roo wil een afbeelding genereren op een beschermde locatie",
-		"didGenerateImage": "Roo heeft een afbeelding gegenereerd"
+		"wantsToInsert": "Zoo wil inhoud invoegen in dit bestand",
+		"wantsToInsertWithLineNumber": "Zoo wil inhoud invoegen in dit bestand op regel {{lineNumber}}",
+		"wantsToInsertAtEnd": "Zoo wil inhoud toevoegen aan het einde van dit bestand",
+		"wantsToReadAndXMore": "Zoo wil dit bestand en nog {{count}} andere lezen",
+		"wantsToReadMultiple": "Zoo wil meerdere bestanden lezen",
+		"wantsToApplyBatchChanges": "Zoo wil wijzigingen toepassen op meerdere bestanden",
+		"wantsToGenerateImage": "Zoo wil een afbeelding genereren",
+		"wantsToGenerateImageOutsideWorkspace": "Zoo wil een afbeelding genereren buiten de werkruimte",
+		"wantsToGenerateImageProtected": "Zoo wil een afbeelding genereren op een beschermde locatie",
+		"didGenerateImage": "Zoo heeft een afbeelding gegenereerd"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Roo wil de bovenliggende bestanden in deze map bekijken",
-		"didViewTopLevel": "Roo heeft de bovenliggende bestanden in deze map bekeken",
-		"wantsToViewRecursive": "Roo wil alle bestanden in deze map recursief bekijken",
-		"didViewRecursive": "Roo heeft alle bestanden in deze map recursief bekeken",
-		"wantsToSearch": "Roo wil deze map doorzoeken op <code>{{regex}}</code>",
-		"didSearch": "Roo heeft deze map doorzocht op <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Roo wil deze map (buiten werkruimte) doorzoeken op <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Roo heeft deze map (buiten werkruimte) doorzocht op <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Roo wil de bovenliggende bestanden in deze map (buiten werkruimte) bekijken",
-		"didViewTopLevelOutsideWorkspace": "Roo heeft de bovenliggende bestanden in deze map (buiten werkruimte) bekeken",
-		"wantsToViewRecursiveOutsideWorkspace": "Roo wil alle bestanden in deze map (buiten werkruimte) recursief bekijken",
-		"didViewRecursiveOutsideWorkspace": "Roo heeft alle bestanden in deze map (buiten werkruimte) recursief bekeken",
-		"wantsToViewMultipleDirectories": "Roo wil meerdere mappen bekijken"
+		"wantsToViewTopLevel": "Zoo wil de bovenliggende bestanden in deze map bekijken",
+		"didViewTopLevel": "Zoo heeft de bovenliggende bestanden in deze map bekeken",
+		"wantsToViewRecursive": "Zoo wil alle bestanden in deze map recursief bekijken",
+		"didViewRecursive": "Zoo heeft alle bestanden in deze map recursief bekeken",
+		"wantsToSearch": "Zoo wil deze map doorzoeken op <code>{{regex}}</code>",
+		"didSearch": "Zoo heeft deze map doorzocht op <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Zoo wil deze map (buiten werkruimte) doorzoeken op <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Zoo heeft deze map (buiten werkruimte) doorzocht op <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Zoo wil de bovenliggende bestanden in deze map (buiten werkruimte) bekijken",
+		"didViewTopLevelOutsideWorkspace": "Zoo heeft de bovenliggende bestanden in deze map (buiten werkruimte) bekeken",
+		"wantsToViewRecursiveOutsideWorkspace": "Zoo wil alle bestanden in deze map (buiten werkruimte) recursief bekijken",
+		"didViewRecursiveOutsideWorkspace": "Zoo heeft alle bestanden in deze map (buiten werkruimte) recursief bekeken",
+		"wantsToViewMultipleDirectories": "Zoo wil meerdere mappen bekijken"
 	},
 	"commandOutput": "Commando-uitvoer",
 	"commandExecution": {
@@ -243,24 +243,24 @@
 	"response": "Antwoord",
 	"arguments": "Argumenten",
 	"text": {
-		"rooSaid": "Roo zei"
+		"rooSaid": "Zoo zei"
 	},
 	"feedback": {
 		"youSaid": "Jij zei"
 	},
 	"mcp": {
-		"wantsToUseTool": "Roo wil een tool gebruiken op de {{serverName}} MCP-server",
-		"wantsToAccessResource": "Roo wil een bron benaderen op de {{serverName}} MCP-server"
+		"wantsToUseTool": "Zoo wil een tool gebruiken op de {{serverName}} MCP-server",
+		"wantsToAccessResource": "Zoo wil een bron benaderen op de {{serverName}} MCP-server"
 	},
 	"modes": {
-		"wantsToSwitch": "Roo wil overschakelen naar {{mode}} modus",
-		"wantsToSwitchWithReason": "Roo wil overschakelen naar {{mode}} modus omdat: {{reason}}",
-		"didSwitch": "Roo is overgeschakeld naar {{mode}} modus",
-		"didSwitchWithReason": "Roo is overgeschakeld naar {{mode}} modus omdat: {{reason}}"
+		"wantsToSwitch": "Zoo wil overschakelen naar {{mode}} modus",
+		"wantsToSwitchWithReason": "Zoo wil overschakelen naar {{mode}} modus omdat: {{reason}}",
+		"didSwitch": "Zoo is overgeschakeld naar {{mode}} modus",
+		"didSwitchWithReason": "Zoo is overgeschakeld naar {{mode}} modus omdat: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Roo wil een nieuwe subtaak aanmaken in {{mode}} modus",
-		"wantsToFinish": "Roo wil deze subtaak voltooien",
+		"wantsToCreate": "Zoo wil een nieuwe subtaak aanmaken in {{mode}} modus",
+		"wantsToFinish": "Zoo wil deze subtaak voltooien",
 		"newTaskContent": "Subtaak-instructies",
 		"completionContent": "Subtaak voltooid",
 		"resultContent": "Subtaakresultaten",
@@ -269,7 +269,7 @@
 		"goToSubtask": "Taak weergeven"
 	},
 	"questions": {
-		"hasQuestion": "Roo heeft een vraag"
+		"hasQuestion": "Zoo heeft een vraag"
 	},
 	"taskCompleted": "Taak voltooid",
 	"error": "Fout",
@@ -283,14 +283,14 @@
 	"diffError": {
 		"title": "Bewerking mislukt"
 	},
-	"troubleMessage": "Roo ondervindt problemen...",
+	"troubleMessage": "Zoo ondervindt problemen...",
 	"errorDetails": {
 		"link": "Details",
 		"title": "Foutdetails",
 		"copyToClipboard": "Naar klembord kopiëren",
 		"copied": "Gekopieerd!",
 		"diagnostics": "Gedetailleerde foutinformatie ophalen",
-		"proxyProvider": "Je lijkt een proxy-gebaseerde provider te gebruiken. Zorg ervoor dat je de logs controleert en dat het geen Roo-verzoeken herschrijft."
+		"proxyProvider": "Je lijkt een proxy-gebaseerde provider te gebruiken. Zorg ervoor dat je de logs controleert en dat het geen Zoo-verzoeken herschrijft."
 	},
 	"powershell": {
 		"issues": "Het lijkt erop dat je problemen hebt met Windows PowerShell, zie deze"
@@ -329,8 +329,8 @@
 		},
 >>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
-			"heading": "Roo Code is terug, nu als een door de community onderhouden plugin genaamd Zoo Code!!",
-			"description": "Als je het gemist hebt: het Roo Code-team heeft onlangs aangekondigd dat het de ontwikkeling van Roo Code afbouwt en het bestaande werk archiveert. Maar geen zorgen: de community is opgestaan om de erfenis van Roo Code voort te zetten met een nieuwe naam en een nieuw thuis. We zijn niet langer slechts één \"Roo\", maar een community — een \"Zoo\", zogezegd. Zoo Code is een door de community onderhouden plugin die verdergaat waar Roo Code ophield, en we zetten ons ervoor in om de geest van Roo levend te houden terwijl we ook nieuwe functies en verbeteringen introduceren. We willen het hele Roo Code-team enorm bedanken voor hun geweldige werk en voor het maken van zo'n fantastisch hulpmiddel voor ontwikkelaars. We kijken ernaar uit om verder te bouwen op hun fundament en te zien waar de community Zoo Code in de toekomst naartoe brengt!",
+			"heading": "Zoo Code is terug, nu als een door de community onderhouden plugin genaamd Zoo Code!!",
+			"description": "Als je het gemist hebt: het Zoo Code-team heeft onlangs aangekondigd dat het de ontwikkeling van Zoo Code afbouwt en het bestaande werk archiveert. Maar geen zorgen: de community is opgestaan om de erfenis van Zoo Code voort te zetten met een nieuwe naam en een nieuw thuis. We zijn niet langer slechts één \"Roo\", maar een community — een \"Zoo\", zogezegd. Zoo Code is een door de community onderhouden plugin die verdergaat waar Zoo Code ophield, en we zetten ons ervoor in om de geest van Roo levend te houden terwijl we ook nieuwe functies en verbeteringen introduceren. We willen het hele Zoo Code-team enorm bedanken voor hun geweldige werk en voor het maken van zo'n fantastisch hulpmiddel voor ontwikkelaars. We kijken ernaar uit om verder te bouwen op hun fundament en te zien waar de community Zoo Code in de toekomst naartoe brengt!",
 			"readMore": "Bekijk de nieuwe homepage van Zoo Code en lees de volledige aankondiging"
 		},
 		"release": {
@@ -366,8 +366,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Roo wil een vaardigheid laden",
-		"didLoad": "Roo heeft een vaardigheid geladen"
+		"wantsToLoad": "Zoo wil een vaardigheid laden",
+		"didLoad": "Zoo heeft een vaardigheid geladen"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Kopiëren naar invoer (zelfde als shift + klik)",
@@ -394,18 +394,18 @@
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Limiet voor automatisch goedgekeurde verzoeken bereikt",
-			"description": "Roo heeft de automatisch goedgekeurde limiet van {{count}} API-verzoek(en) bereikt. Wil je de teller resetten en doorgaan met de taak?",
+			"description": "Zoo heeft de automatisch goedgekeurde limiet van {{count}} API-verzoek(en) bereikt. Wil je de teller resetten en doorgaan met de taak?",
 			"button": "Resetten en doorgaan"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "Limiet voor automatisch goedgekeurde kosten bereikt",
 			"button": "Resetten en doorgaan",
-			"description": "Roo heeft de automatisch goedgekeurde kostenlimiet van ${{count}} bereikt. Wilt u de kosten resetten en doorgaan met de taak?"
+			"description": "Zoo heeft de automatisch goedgekeurde kostenlimiet van ${{count}} bereikt. Wilt u de kosten resetten en doorgaan met de taak?"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Roo wil de codebase doorzoeken op <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Roo wil de codebase doorzoeken op <code>{{query}}</code> in <code>{{path}}</code>",
+		"wantsToSearch": "Zoo wil de codebase doorzoeken op <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Zoo wil de codebase doorzoeken op <code>{{query}}</code> in <code>{{path}}</code>",
 		"didSearch_one": "1 resultaat gevonden",
 		"didSearch_other": "{{count}} resultaten gevonden",
 		"resultTooltip": "Gelijkenisscore: {{score}} (klik om bestand te openen)"
@@ -446,7 +446,7 @@
 		"ariaLabel": "Versie {{version}} - Klik om release notes te bekijken"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud evolueert!",
+		"title": "Zoo Code Cloud evolueert!",
 		"description": "Voer externe agenten uit in de cloud, krijg overal toegang tot je taken, werk samen met anderen en nog veel meer.",
 		"joinWaitlist": "Meld je aan om de laatste updates te ontvangen."
 	},
@@ -487,8 +487,8 @@
 		"clickToEdit": "Klik om bericht te bewerken"
 	},
 	"slashCommand": {
-		"wantsToRun": "Roo wil een slash commando uitvoeren",
-		"didRun": "Roo heeft een slash commando uitgevoerd"
+		"wantsToRun": "Zoo wil een slash commando uitvoeren",
+		"didRun": "Zoo heeft een slash commando uitgevoerd"
 	},
 	"todo": {
 		"partial": "{{completed}} van {{total}} to-do's voltooid",
@@ -507,11 +507,15 @@
 		"openMcpSettings": "MCP-instellingen openen"
 	},
 	"readCommandOutput": {
-		"title": "Roo read command output"
+		"title": "Zoo read command output"
 	},
 	"retiredProvider": {
 		"title": "Provider wordt niet meer ondersteund",
+<<<<<<< HEAD
 		"message": "Deze provider is niet meer beschikbaar. Selecteer een ondersteunde provider om door te gaan.",
+=======
+		"message": "Sorry, deze provider wordt niet meer ondersteund. We zagen dat heel weinig Zoo-gebruikers het daadwerkelijk gebruikten en we moeten de omvang van onze codebase verkleinen zodat we snel kunnen blijven leveren en onze community goed kunnen blijven bedienen. Het was een heel moeilijke beslissing, maar het stelt ons in staat om ons te richten op wat het belangrijkst voor je is. Het is vervelend, dat weten we.",
+>>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Instellingen openen"
 	}
 }

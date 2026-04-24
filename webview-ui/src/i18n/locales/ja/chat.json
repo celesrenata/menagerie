@@ -101,7 +101,7 @@
 	"enqueueMessage": "メッセージをキューに追加（現在のタスク完了後に送信されます）",
 	"scrollToBottom": "チャットの最下部にスクロール",
 	"scrollToLatestCheckpoint": "前のチェックポイントまでスクロール",
-	"about": "Roo Codeは、エディタに常駐するAI開発チームです。",
+	"about": "Zoo Codeは、エディタに常駐するAI開発チームです。",
 	"docs": "詳細については、<DocsLink>ドキュメント</DocsLink>をご確認ください。",
 	"onboarding": "このワークスペースのタスクリストは空です。",
 	"rooTips": {
@@ -205,7 +205,7 @@
 		"wantsToInsert": "Rooはこのファイルにコンテンツを挿入したい",
 		"wantsToInsertWithLineNumber": "Rooはこのファイルの{{lineNumber}}行目にコンテンツを挿入したい",
 		"wantsToInsertAtEnd": "Rooはこのファイルの末尾にコンテンツを追加したい",
-		"wantsToReadAndXMore": "Roo はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
+		"wantsToReadAndXMore": "Zoo はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
 		"wantsToReadMultiple": "Rooは複数のファイルを読み取ろうとしています",
 		"wantsToApplyBatchChanges": "Rooは複数のファイルに変更を適用したい",
 		"wantsToGenerateImage": "Rooは画像を生成したい",
@@ -226,7 +226,7 @@
 		"didViewTopLevelOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示しました",
 		"wantsToViewRecursiveOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示したい",
 		"didViewRecursiveOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示しました",
-		"wantsToViewMultipleDirectories": "Roo は複数のディレクトリを表示したい"
+		"wantsToViewMultipleDirectories": "Zoo は複数のディレクトリを表示したい"
 	},
 	"commandOutput": "コマンド出力",
 	"commandExecution": {
@@ -356,8 +356,8 @@
 		},
 >>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
-			"heading": "Roo Code が帰ってきた。今度はコミュニティメンテナンスのプラグイン、Zoo Code です！！",
-			"description": "まだ追えていない方のために言うと、Roo Code チームは最近、Roo Code の開発を終了し、これまでの成果をアーカイブすると発表しました。でも心配はいりません。コミュニティが新しい名前と新しい拠点のもとで、Roo Code のレガシーを引き継ぐために立ち上がりました！ もう私たちは 1 匹の「Roo」ではなく、いわば「Zoo」というコミュニティです。Zoo Code は Roo Code が残したところを引き継ぐコミュニティメンテナンスのプラグインで、Roo の精神を大切にしながら、新機能や改善も加えていくことを約束します。開発者のための素晴らしいツールを生み出してくれた Roo Code チーム全員に、心から大きな感謝を伝えたいです。彼らの土台の上にさらに築いていき、これからコミュニティが Zoo Code をどこまで育てていくのかを見るのが楽しみです！",
+			"heading": "Zoo Code が帰ってきた。今度はコミュニティメンテナンスのプラグイン、Zoo Code です！！",
+			"description": "まだ追えていない方のために言うと、Zoo Code チームは最近、Zoo Code の開発を終了し、これまでの成果をアーカイブすると発表しました。でも心配はいりません。コミュニティが新しい名前と新しい拠点のもとで、Zoo Code のレガシーを引き継ぐために立ち上がりました！ もう私たちは 1 匹の「Roo」ではなく、いわば「Zoo」というコミュニティです。Zoo Code は Zoo Code が残したところを引き継ぐコミュニティメンテナンスのプラグインで、Roo の精神を大切にしながら、新機能や改善も加えていくことを約束します。開発者のための素晴らしいツールを生み出してくれた Zoo Code チーム全員に、心から大きな感謝を伝えたいです。彼らの土台の上にさらに築いていき、これからコミュニティが Zoo Code をどこまで育てていくのかを見るのが楽しみです！",
 			"readMore": "Zoo Code の新しいホームページを見て、完全なお知らせを読む"
 		},
 		"release": {
@@ -446,7 +446,7 @@
 		"ariaLabel": "バージョン {{version}} - クリックしてリリースノートを表示"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud が進化中！",
+		"title": "Zoo Code Cloud が進化中！",
 		"description": "クラウドでリモートエージェントを実行し、どこからでもタスクにアクセスし、他の人と協力し、その他多くの機能を利用できます。",
 		"joinWaitlist": "最新のアップデートを受け取るためにサインアップしてください。"
 	},
