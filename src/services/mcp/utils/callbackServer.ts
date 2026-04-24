@@ -76,7 +76,10 @@ export function startCallbackServer(
 
 						// Verify state for CSRF protection
 						if (expectedState && state !== expectedState) {
-							res.writeHead(400, { "Content-Type": "text/html" })
+							res.writeHead(400, {
+								"Content-Type": "text/html",
+								"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+							})
 							res.end(`
 							         <!DOCTYPE html>
 							         <html>
@@ -90,11 +93,16 @@ export function startCallbackServer(
 							         </html>
 							       `)
 							rejectResult(new Error("Invalid state parameter"))
+							server.close()
 							return
 						}
 
 						// Send HTML response
-						res.writeHead(200, { "Content-Type": "text/html" })
+						res.writeHead(200, {
+							"Content-Type": "text/html",
+							"Content-Security-Policy":
+								"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
+						})
 						res.end(`
 <!DOCTYPE html>
 <html>
@@ -122,7 +130,6 @@ export function startCallbackServer(
       const isError = ${hasError ? "true" : "false"};
       if (!isError) {
         let count = 5;
-        const countEl = document.getElementById('count');
         const countdownEl = document.getElementById('countdown');
         if (countdownEl) {
           countdownEl.innerHTML = \`${t("mcp:oauth.callback.tab_closing_in", { count: 5 })}\`;

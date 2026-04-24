@@ -1111,20 +1111,32 @@ export class McpHub {
 
 		return new Promise<void>((resolve) => {
 			let disposed = false
+			let cancellationDisposable: vscode.Disposable | undefined
 
 			const cleanup = () => {
 				if (disposed) return
 				disposed = true
 				clearTimeout(timeoutHandle)
 				unsubscribe()
+				cancellationDisposable?.dispose()
 				this._oauthWatchers.delete(watcherKey)
 			}
 
 			// --- Cross-window token watcher ---
 			const onTokensChanged = async () => {
 				if (disposed || this.isDisposed) return
+				// Don't reconnect if the server is already connected (e.g. a token refresh
+				// from another window fired after _completeOAuthFlow already succeeded).
+				const conn = this.findConnection(name, source)
+				if (!conn || conn.server.status === "connected") {
+					cleanup()
+					return
+				}
 				try {
 					const data = await this.secretStorage?.getOAuthData(serverUrl)
+					// Re-check after the async yield — cancellation or completion may have
+					// fired while getOAuthData was in flight.
+					if (disposed || this.isDisposed) return
 					if (data && Date.now() < data.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
 						cleanup()
 						await authProvider.close()
@@ -1144,7 +1156,10 @@ export class McpHub {
 			})
 
 			// --- Cancellation ---
-			cancellationToken.onCancellationRequested(() => {
+			cancellationDisposable = cancellationToken.onCancellationRequested(() => {
+				// Guard: flow may have already completed (e.g. tokens arrived via
+				// onTokensChanged) by the time VS Code fires this callback.
+				if (disposed) return
 				cleanup()
 				void authProvider.close()
 				const conn = this.findConnection(name, source)
@@ -1189,6 +1204,7 @@ export class McpHub {
 					if (choice === authenticateLabel) {
 						// Guard: another window may have authed while the toast was showing
 						const tokens = await this.secretStorage!.getOAuthData(serverUrl)
+						if (disposed) return
 						if (tokens && Date.now() < tokens.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
 							cleanup()
 							await authProvider.close()
@@ -1206,6 +1222,10 @@ export class McpHub {
 						} catch {
 							// _completeOAuthFlow handles its own error state
 						}
+						// Cancellation may have fired while _completeOAuthFlow was running.
+						// If so, the cancellation handler already cleaned up and resolved —
+						// don't overwrite that state with a stale error.
+						if (disposed) return
 						cleanup()
 						resolve()
 						return
@@ -2414,12 +2434,13 @@ export class McpHub {
 
 		this.isProgrammaticUpdate = false
 
-		// Cancel all active OAuth token watchers
+		// Cancel all active OAuth token watchers and in-flight reauth promises
 		for (const { unsubscribe, abortHandle } of this._oauthWatchers.values()) {
 			unsubscribe()
 			clearTimeout(abortHandle)
 		}
 		this._oauthWatchers.clear()
+		this.reauthPromises.clear()
 
 		this.removeAllFileWatchers()
 

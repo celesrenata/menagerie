@@ -2558,7 +2558,9 @@ describe("McpHub", () => {
 			)
 
 			// _initiateOAuthFlow awaits getOAuthData() before calling withProgress.
-			// Flush that microtask so withProgress runs and capturedCancellationToken is set.
+			// Two ticks: tick 1 resolves getOAuthData, tick 2 runs the continuation
+			// that calls withProgress, setting capturedCancellationToken.
+			await Promise.resolve()
 			await Promise.resolve()
 			capturedCancellationToken._fire()
 
@@ -2591,11 +2593,13 @@ describe("McpHub", () => {
 		})
 
 		it("should resolve without calling _completeOAuthFlow when tokens exist at click time", async () => {
-			// Tokens are present when Authenticate is clicked (cross-window guard in the loop)
+			// Tokens are present when Authenticate is clicked (click-time guard in the loop).
+			// First call (pre-withProgress early-return check) returns null so withProgress runs.
+			// Second call (after click) returns valid tokens, exercising the click-time guard.
 			vsc.window.showInformationMessage.mockResolvedValueOnce(t("mcp:oauth.flow.authenticateButton") as any)
-			mockSecretStorage.getOAuthData.mockResolvedValue({
-				expires_at: Date.now() + 10 * 60 * 1000,
-			})
+			mockSecretStorage.getOAuthData
+				.mockResolvedValueOnce(null) // pre-check: no tokens yet, flow proceeds to withProgress
+				.mockResolvedValue({ expires_at: Date.now() + 10 * 60 * 1000 }) // at click time
 
 			const completeOAuthSpy = vi.spyOn(mcpHub as any, "_completeOAuthFlow")
 
@@ -2628,6 +2632,81 @@ describe("McpHub", () => {
 					mockConnection,
 				),
 			).resolves.toBeUndefined()
+		})
+
+		it("should not reconnect when hub is disposed while cross-window tokens arrive", async () => {
+			vi.useFakeTimers()
+			vsc.window.showInformationMessage.mockImplementation(() => new Promise(() => {}))
+
+			mockSecretStorage.onDidChange.mockImplementation((_key: string, cb: () => void) => {
+				Promise.resolve().then(() => {
+					// Dispose the hub before the token callback runs
+					;(mcpHub as any).isDisposed = true
+					mockSecretStorage.getOAuthData.mockResolvedValue({
+						expires_at: Date.now() + 10 * 60 * 1000,
+					})
+					cb()
+				})
+				return vi.fn()
+			})
+
+			const flowPromise = (mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			// Timeout to unblock the flow (watcher bailed due to isDisposed)
+			await vi.advanceTimersByTimeAsync(OAUTH_FLOW_TIMEOUT_MS)
+			await flowPromise
+
+			expect((mcpHub as any).connectToServer).not.toHaveBeenCalled()
+		})
+
+		it("should cancel the previous watcher when called again for the same server", async () => {
+			vi.useFakeTimers()
+			vsc.window.showInformationMessage.mockImplementation(() => new Promise(() => {}))
+
+			// Start first flow (intentionally not awaited — the second call orphans it)
+			;(mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			// Two ticks: getOAuthData resolves, then withProgress registers the watcher
+			await Promise.resolve()
+			await Promise.resolve()
+			expect((mcpHub as any)._oauthWatchers.size).toBe(1)
+			const firstEntry = (mcpHub as any)._oauthWatchers.get(`${serverName}:${source}`)
+
+			// Start second flow for the same server — should tear down the first watcher
+			const secondFlow = (mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			await Promise.resolve()
+			await Promise.resolve()
+			// Still exactly one watcher for this server key
+			expect((mcpHub as any)._oauthWatchers.size).toBe(1)
+			// Watcher entry was replaced (second flow's entry, not first)
+			const secondEntry = (mcpHub as any)._oauthWatchers.get(`${serverName}:${source}`)
+			expect(secondEntry).not.toBe(firstEntry)
+
+			// Advance past timeout so the second flow resolves
+			await vi.advanceTimersByTimeAsync(OAUTH_FLOW_TIMEOUT_MS)
+			await secondFlow
 		})
 	})
 })

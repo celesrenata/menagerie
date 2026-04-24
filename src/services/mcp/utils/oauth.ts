@@ -44,11 +44,19 @@ export interface OAuthDiscoveryResult {
  *
  * Returns an {@link OAuthDiscoveryResult} on success, or `null` if any step fails.
  */
+const DISCOVERY_TIMEOUT_MS = 5_000
+
 export async function fetchOAuthAuthServerMetadata(serverUrl: string): Promise<OAuthDiscoveryResult | null> {
 	try {
 		// Step 1 – RFC 9728: resolve the authorization server issuer URL and
 		// capture the resource indicator for RFC 8707.
-		const resourceMeta = await discoverOAuthProtectedResourceMetadata(serverUrl)
+		// The SDK does not accept an AbortSignal, so we race it against a timeout.
+		const resourceMeta = await Promise.race([
+			discoverOAuthProtectedResourceMetadata(serverUrl),
+			new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new Error("OAuth discovery timeout")), DISCOVERY_TIMEOUT_MS),
+			),
+		])
 		const authServers = resourceMeta.authorization_servers
 		if (!authServers?.length) return null
 
@@ -68,6 +76,7 @@ export async function fetchOAuthAuthServerMetadata(serverUrl: string): Promise<O
 
 		const response = await fetch(discoveryUrl, {
 			headers: { Accept: "application/json" },
+			signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
 		})
 		if (!response.ok) return null
 		const authServerMeta = (await response.json()) as Record<string, any>
