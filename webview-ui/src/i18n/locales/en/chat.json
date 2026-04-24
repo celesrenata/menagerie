@@ -1,5 +1,5 @@
 {
-	"greeting": "Welcome to Roo Code!",
+	"greeting": "Welcome to Zoo Code!",
 	"task": {
 		"title": "Task",
 		"expand": "Expand task",
@@ -175,7 +175,7 @@
 			"docs": "Docs",
 			"goToSettings": "Settings",
 			"connection": "Connection error. Make sure you have a working internet connection.",
-			"unknown": "Unknown API error. Please contact Roo Code support.",
+			"unknown": "Unknown API error. Please contact Zoo Code support.",
 			"claudeCodeNotAuthenticated": "You need to sign in to use Claude Code. Go to Settings and click \"Sign in to Claude Code\" to authenticate."
 		}
 	},
@@ -347,16 +347,28 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
+<<<<<<< HEAD
 		"title": "Roo Code {{version}} Released",
 		"support": "Please support Roo Code by starring us on <githubLink>GitHub</githubLink>.",
+=======
+		"title": "Zoo Code {{version}} Released",
+		"support": "Please support Zoo Code by starring us on <githubLink>GitHub</githubLink>.",
+		"stealthModel": {
+			"feature": "<bold>Limited-time FREE stealth model</bold> - Code Supernova: Now upgraded with a <bold>1M token context window</bold>! A versatile agentic coding model that supports image inputs, accessible through Zoo Code Cloud.",
+			"note": "(Note: prompts and completions are logged by the model creator and used to improve the model)",
+			"connectButton": "Connect to Zoo Code Cloud",
+			"selectModel": "Select <code>roo/code-supernova</code> from the Zoo Code Cloud provider in Settings to get started.",
+			"goToSettingsButton": "Go to Settings"
+		},
+>>>>>>> 2f6f4c8d3 (Rename Roo Code mentions to Zoo Code in English chat locale)
 		"handoff": {
-			"heading": "The Roo Code plugin is not going away.",
-			"description": "You may have seen the recent announcement that Roo Code hit 3 million installs and the original team is going all-in on Roomote. We know that news was hard for a lot of you. This plugin means a lot to us and to you, and we hear you. The good news: <bold>a community team has stepped up to carry Roo Code forward</bold>, and we're working with them on an official handoff so the plugin you rely on keeps getting maintained and improved.",
-			"readMore": "Read the original announcement from Matt Rubens"
+			"heading": "Roo Code is back, now as a community-maintained plugin called Zoo Code!!",
+			"description": "If you haven't been following, the Roo Code team recently announced they are sun setting the development of Roo Code and are archiving the work they have done. But fear not, the community has stepped up to continue the legacy of Roo Code with a new name and a new home! We are not just a single \"Roo\" anymore, we are a community, a \"Zoo\" if you will, Zoo Code is a community-maintained plugin that picks up where Roo Code left off, and we're committed to keeping the spirit of Roo alive while also introducing new features and improvements. We want to give a huge shoutout to the entire Roo Code team for their incredible work and for creating such an amazing tool for developers. We're excited to continue building on their foundation and to see where the community takes Zoo Code in the future!",
+			"readMore": "See the new home page of Zoo Code and read the full announcement"
 		},
 		"release": {
 			"heading": "What's New:",
-			"gpt55": "GPT-5.5 via OpenAI Codex: Added GPT-5.5 support in the OpenAI Codex provider so you can use the latest model straight from Roo Code.",
+			"gpt55": "GPT-5.5 via OpenAI Codex: Added GPT-5.5 support in the OpenAI Codex provider so you can use the latest model straight from Zoo Code.",
 			"claudeOpus47": "Claude Opus 4.7 on Vertex AI: Added Claude Opus 4.7 to the Vertex AI provider for Anthropic's newest flagship reasoning model.",
 			"checkpointNav": "Previous Checkpoint Navigation: Added controls in chat to jump back through prior checkpoints, with full i18n support."
 		},
@@ -390,7 +402,7 @@
 	"profileViolationWarning": "The current profile isn't compatible with your organization's settings",
 	"shellIntegration": {
 		"title": "Command Execution Warning",
-		"description": "Your command is being executed without VSCode terminal shell integration. To suppress this warning you can disable shell integration in the <strong>Terminal</strong> section of the <settingsLink>Roo Code settings</settingsLink> or troubleshoot VSCode terminal integration using the link below.",
+		"description": "Your command is being executed without VSCode terminal shell integration. To suppress this warning you can disable shell integration in the <strong>Terminal</strong> section of the <settingsLink>Zoo Code settings</settingsLink> or troubleshoot VSCode terminal integration using the link below.",
 		"troubleshooting": "Click here for shell integration documentation."
 	},
 	"ask": {
