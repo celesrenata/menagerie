@@ -29,10 +29,9 @@ export class SecretStorageService {
 
 	private _key(serverUrl: string): string {
 		const url = new URL(serverUrl)
-		// Use host + pathname for stricter isolation between different MCP servers on the same host.
-		// We sanitize the pathname to ensure it's a valid key component.
-		const sanitizedPath = url.pathname.replace(/[^a-zA-Z0-9]/g, "_").replace(/^_+|_+$/g, "")
-		const pathSuffix = sanitizedPath ? `.${sanitizedPath}` : ""
+		const normalizedPath = url.pathname.replace(/\/$/, "")
+		// Use base64url encoding to avoid collisions between paths like /a-b, /a_b, /a/b.
+		const pathSuffix = normalizedPath ? `.${Buffer.from(normalizedPath).toString("base64url")}` : ""
 		return `${this._namespace}${url.host}${pathSuffix}.data`
 	}
 

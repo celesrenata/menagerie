@@ -59,8 +59,8 @@ describe("SecretStorageService", () => {
 		})
 
 		it("should return undefined for malformed JSON", async () => {
-			// Manually store garbage via the underlying mock
-			context.secrets.store("mcp.oauth.example.com.mcp.data", "not-json")
+			// Manually store garbage via the underlying mock (key uses base64url-encoded path)
+			context.secrets.store("mcp.oauth.example.com.L21jcA.data", "not-json")
 
 			const result = await service.getOAuthData("https://example.com/mcp")
 			expect(result).toBeUndefined()
@@ -75,7 +75,10 @@ describe("SecretStorageService", () => {
 			}
 			await service.saveOAuthData("https://example.com/mcp", data)
 
-			expect(context.secrets.store).toHaveBeenCalledWith("mcp.oauth.example.com.mcp.data", JSON.stringify(data))
+			expect(context.secrets.store).toHaveBeenCalledWith(
+				"mcp.oauth.example.com.L21jcA.data",
+				JSON.stringify(data),
+			)
 		})
 
 		it("should handle root path correctly", async () => {
@@ -124,7 +127,7 @@ describe("SecretStorageService", () => {
 
 			await service.deleteOAuthData("https://example.com/mcp")
 
-			expect(context.secrets.delete).toHaveBeenCalledWith("mcp.oauth.example.com.mcp.data")
+			expect(context.secrets.delete).toHaveBeenCalledWith("mcp.oauth.example.com.L21jcA.data")
 			const result = await service.getOAuthData("https://example.com/mcp")
 			expect(result).toBeUndefined()
 		})
@@ -134,7 +137,7 @@ describe("SecretStorageService", () => {
 				const cb = vi.fn()
 				service.onDidChange("https://example.com/mcp", cb)
 
-				context.secrets._emit("mcp.oauth.example.com.mcp.data")
+				context.secrets._emit("mcp.oauth.example.com.L21jcA.data")
 
 				expect(cb).toHaveBeenCalledTimes(1)
 			})
@@ -143,7 +146,7 @@ describe("SecretStorageService", () => {
 				const cb = vi.fn()
 				service.onDidChange("https://example.com/mcp", cb)
 
-				context.secrets._emit("mcp.oauth.other.com.mcp.data")
+				context.secrets._emit("mcp.oauth.other.com.L21jcA.data")
 
 				expect(cb).not.toHaveBeenCalled()
 			})
@@ -153,7 +156,7 @@ describe("SecretStorageService", () => {
 				const unsubscribe = service.onDidChange("https://example.com/mcp", cb)
 
 				unsubscribe()
-				context.secrets._emit("mcp.oauth.example.com.mcp.data")
+				context.secrets._emit("mcp.oauth.example.com.L21jcA.data")
 
 				expect(cb).not.toHaveBeenCalled()
 			})
@@ -216,6 +219,20 @@ describe("SecretStorageService", () => {
 
 			expect((await service.getOAuthData("https://example.com/service1"))?.tokens.access_token).toBe("path1")
 			expect((await service.getOAuthData("https://example.com/service2"))?.tokens.access_token).toBe("path2")
+		})
+
+		it("should not collide between paths that differ only in separators (/a-b, /a_b, /a/b)", async () => {
+			const urls = ["https://example.com/a-b", "https://example.com/a_b", "https://example.com/a/b"]
+			for (const [i, url] of urls.entries()) {
+				await service.saveOAuthData(url, {
+					tokens: { access_token: `tok-${i}`, token_type: "Bearer" },
+					expires_at: i,
+				})
+			}
+
+			for (const [i, url] of urls.entries()) {
+				expect((await service.getOAuthData(url))?.tokens.access_token).toBe(`tok-${i}`)
+			}
 		})
 	})
 })
