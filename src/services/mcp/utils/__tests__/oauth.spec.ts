@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
 
 // Mock the SDK's discoverOAuthProtectedResourceMetadata
 vi.mock("@modelcontextprotocol/sdk/client/auth.js", () => ({
@@ -9,11 +9,16 @@ import { discoverOAuthProtectedResourceMetadata } from "@modelcontextprotocol/sd
 import { fetchOAuthAuthServerMetadata } from "../oauth"
 
 const mockFetch = vi.fn()
+const originalFetch = global.fetch
 global.fetch = mockFetch
 
 describe("fetchOAuthAuthServerMetadata", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+	})
+
+	afterAll(() => {
+		global.fetch = originalFetch
 	})
 
 	it("returns null when resource metadata has no authorization_servers", async () => {
