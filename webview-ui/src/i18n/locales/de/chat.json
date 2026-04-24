@@ -1,5 +1,5 @@
 {
-	"greeting": "Willkommen bei Roo Code",
+	"greeting": "Willkommen bei Zoo Code!",
 	"task": {
 		"title": "Aufgabe",
 		"expand": "Aufgabe erweitern",
@@ -15,6 +15,18 @@
 		"export": "Aufgabenverlauf exportieren",
 		"delete": "Aufgabe löschen (Shift + Klick zum Überspringen der Bestätigung)",
 		"condenseContext": "Kontext intelligent komprimieren",
+<<<<<<< HEAD
+=======
+		"shareWithOrganization": "Mit Organisation teilen",
+		"shareWithOrganizationDescription": "Nur Mitglieder deiner Organisation können zugreifen",
+		"sharePublicly": "Öffentlich teilen",
+		"sharePubliclyDescription": "Jeder mit dem Link kann zugreifen",
+		"connectToCloud": "Mit Cloud verbinden",
+		"connectToCloudDescription": "Melde dich bei Zoo Code Cloud an, um Aufgaben zu teilen",
+		"sharingDisabledByOrganization": "Freigabe von der Organisation deaktiviert",
+		"shareSuccessOrganization": "Organisationslink in die Zwischenablage kopiert",
+		"shareSuccessPublic": "Öffentlicher Link in die Zwischenablage kopiert",
+>>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "API-Verlauf öffnen",
 		"openUiHistory": "UI-Verlauf öffnen",
 		"backToParentTask": "Übergeordnete Aufgabe"
@@ -152,7 +164,7 @@
 			"500": "Fehler auf dem Server des Anbieters. Es stimmt etwas mit der Anbieterseite nicht, mit deiner Anfrage stimmt alles.",
 			"docs": "Dokumentation",
 			"goToSettings": "Einstellungen",
-			"unknown": "Unbekannter API-Fehler. Bitte kontaktiere den Roo Code Support.",
+			"unknown": "Unbekannter API-Fehler. Bitte kontaktiere den Zoo Code Support.",
 			"connection": "Verbindungsfehler. Stelle sicher, dass du eine funktionierende Internetverbindung hast.",
 			"claudeCodeNotAuthenticated": "Du musst dich anmelden, um Claude Code zu verwenden. Gehe zu den Einstellungen und klicke auf \"Bei Claude Code anmelden\", um dich zu authentifizieren."
 		}
@@ -328,16 +340,28 @@
 		"timerPrefix": "Automatische Genehmigung aktiviert. Wähle in {{seconds}}s…"
 	},
 	"announcement": {
+<<<<<<< HEAD
 		"title": "Roo Code {{version}} veröffentlicht",
 		"support": "Bitte unterstütze Roo Code, indem du uns auf <githubLink>GitHub</githubLink> einen Stern gibst.",
+=======
+		"title": "Zoo Code {{version}} veröffentlicht",
+		"support": "Bitte unterstütze Zoo Code, indem du uns auf <githubLink>GitHub</githubLink> einen Stern gibst.",
+		"stealthModel": {
+			"feature": "<bold>Zeitlich begrenztes KOSTENLOSES Stealth-Modell</bold> - Code Supernova: Jetzt mit einem <bold>1M Token Kontextfenster</bold> erweitert! Ein vielseitiges agentisches Coding-Modell, das Bildeingaben unterstützt und über Zoo Code Cloud zugänglich ist.",
+			"note": "(Hinweis: Prompts und Vervollständigungen werden vom Modellersteller protokolliert und zur Verbesserung des Modells verwendet)",
+			"connectButton": "Mit Zoo Code Cloud verbinden",
+			"selectModel": "Wähle <code>roo/code-supernova</code> vom Zoo Code Cloud-Provider in den Einstellungen aus, um zu beginnen.",
+			"goToSettingsButton": "Zu den Einstellungen"
+		},
+>>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
-			"heading": "Das Roo Code-Plugin verschwindet nicht.",
-			"description": "Du hast vielleicht die neuliche Ankündigung gesehen, dass Roo Code 3 Millionen Installationen erreicht hat und das ursprüngliche Team sich voll auf Roomote konzentriert. Wir wissen, dass diese Nachricht für viele von euch schwer war. Dieses Plugin bedeutet uns und dir sehr viel, und wir hören dich. Die gute Nachricht: <bold>ein Community-Team hat sich bereit erklärt, Roo Code weiterzuführen</bold>, und wir arbeiten mit ihnen an einer offiziellen Übergabe, damit das Plugin, auf das du dich verlässt, weiterhin gepflegt und verbessert wird.",
-			"readMore": "Die ursprüngliche Ankündigung von Matt Rubens lesen"
+			"heading": "Roo Code ist zurück – jetzt als Community-gepflegtes Plugin namens Zoo Code!!",
+			"description": "Falls du es nicht mitbekommen hast: Das Roo Code Team hat vor Kurzem angekündigt, die Entwicklung von Roo Code einzustellen und die bisherige Arbeit zu archivieren. Aber keine Sorge: Die Community ist eingesprungen, um das Vermächtnis von Roo Code unter neuem Namen und in einem neuen Zuhause weiterzuführen! Wir sind nicht mehr nur ein einzelnes \"Roo\", sondern eine Community – ein \"Zoo\", wenn du so willst. Zoo Code ist ein Community-gepflegtes Plugin, das dort weitermacht, wo Roo Code aufgehört hat. Wir wollen den Geist von Roo bewahren und gleichzeitig neue Funktionen und Verbesserungen einführen. Dem gesamten Roo Code Team gilt ein riesiges Dankeschön für die unglaubliche Arbeit und dafür, dass es so ein großartiges Tool für Entwickler geschaffen hat. Wir freuen uns darauf, auf diesem Fundament weiterzubauen und zu sehen, wohin die Community Zoo Code in Zukunft führt!",
+			"readMore": "Sieh dir die neue Zoo Code Startseite an und lies die vollständige Ankündigung"
 		},
 		"release": {
 			"heading": "Was ist neu:",
-			"gpt55": "GPT-5.5 via OpenAI Codex: GPT-5.5-Unterstützung im OpenAI Codex-Provider hinzugefügt, damit du das neueste Modell direkt aus Roo Code heraus nutzen kannst.",
+			"gpt55": "GPT-5.5 via OpenAI Codex: GPT-5.5-Unterstützung im OpenAI Codex-Provider hinzugefügt, damit du das neueste Modell direkt in Zoo Code nutzen kannst.",
 			"claudeOpus47": "Claude Opus 4.7 auf Vertex AI: Claude Opus 4.7 zum Vertex AI-Provider hinzugefügt – Anthropics neuestes Flaggschiff-Reasoning-Modell.",
 			"checkpointNav": "Navigation zu vorherigen Checkpoints: Neue Steuerelemente im Chat, um durch frühere Checkpoints zurückzuspringen, mit vollständiger i18n-Unterstützung."
 		},
@@ -363,7 +387,7 @@
 	"profileViolationWarning": "Das aktuelle Profil ist nicht kompatibel mit den Einstellungen deiner Organisation",
 	"shellIntegration": {
 		"title": "Befehlsausführungswarnung",
-		"description": "Dein Befehl wird ohne VSCode Terminal-Shell-Integration ausgeführt. Um diese Warnung zu unterdrücken, kannst du die Shell-Integration im Abschnitt <strong>Terminal</strong> der <settingsLink>Roo Code Einstellungen</settingsLink> deaktivieren oder die VSCode Terminal-Integration mit dem Link unten beheben.",
+		"description": "Dein Befehl wird ohne VSCode Terminal-Shell-Integration ausgeführt. Um diese Warnung zu unterdrücken, kannst du die Shell-Integration im Abschnitt <strong>Terminal</strong> der <settingsLink>Zoo Code Einstellungen</settingsLink> deaktivieren oder die VSCode Terminal-Integration mit dem Link unten beheben.",
 		"troubleshooting": "Klicke hier für die Shell-Integrationsdokumentation."
 	},
 	"ask": {

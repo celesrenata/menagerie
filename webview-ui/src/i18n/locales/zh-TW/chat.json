@@ -1,5 +1,5 @@
 {
-	"greeting": "歡迎使用 Roo Code！",
+	"greeting": "歡迎使用 Zoo Code！",
 	"task": {
 		"title": "工作",
 		"expand": "展開工作",
@@ -15,6 +15,18 @@
 		"closeAndStart": "關閉現有工作並開始新工作",
 		"export": "匯出工作記錄",
 		"delete": "刪除工作（按住 Shift 並點選可跳過確認）",
+<<<<<<< HEAD
+=======
+		"shareWithOrganization": "與組織分享",
+		"shareWithOrganizationDescription": "僅組織成員可存取",
+		"sharePublicly": "公開分享",
+		"sharePubliclyDescription": "任何擁有連結的人都可存取",
+		"connectToCloud": "連線至雲端",
+		"connectToCloudDescription": "登入 Zoo Code Cloud 以分享工作",
+		"sharingDisabledByOrganization": "組織已停用分享功能",
+		"shareSuccessOrganization": "組織連結已複製到剪貼簿",
+		"shareSuccessPublic": "公開連結已複製到剪貼簿",
+>>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "開啟 API 歷史紀錄",
 		"openUiHistory": "開啟 UI 歷史紀錄",
 		"backToParentTask": "上層工作"
@@ -175,7 +187,7 @@
 			"docs": "說明文件",
 			"goToSettings": "設定",
 			"connection": "連線錯誤。請確保您有可用的網際網路連線。",
-			"unknown": "未知 API 錯誤。請聯絡 Roo Code 技術支援。",
+			"unknown": "未知 API 錯誤。請聯絡 Zoo Code 技術支援。",
 			"claudeCodeNotAuthenticated": "您需要登入才能使用 Claude Code。前往設定並點選「登入 Claude Code」以進行驗證。"
 		}
 	},
@@ -350,16 +362,28 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
+<<<<<<< HEAD
 		"title": "Roo Code {{version}} 已發布",
 		"support": "請在 <githubLink>GitHub</githubLink> 上給 Roo Code 星星支持我們。",
+=======
+		"title": "Zoo Code {{version}} 已發布",
+		"support": "請在 <githubLink>GitHub</githubLink> 上為 Zoo Code 加星支持我們。",
+		"stealthModel": {
+			"feature": "<bold>限時免費隱形模型</bold> - Code Supernova：現已升級為 <bold>1M Token 上下文視窗</bold>！一款支援影像輸入的多功能代理式程式設計模型，可透過 Zoo Code Cloud 使用。",
+			"note": "（注意：提示詞和回應會被模型建立者記錄並用於改進模型）",
+			"connectButton": "連線到 Zoo Code Cloud",
+			"selectModel": "在設定中從 Zoo Code Cloud 供應商選擇 <code>roo/code-supernova</code> 即可開始使用。",
+			"goToSettingsButton": "前往設定"
+		},
+>>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
-			"heading": "Roo Code 外掛不會消失。",
-			"description": "你可能已經看到最近的公告：Roo Code 已突破 300 萬次安裝，原團隊將全心投入 Roomote。我們知道這個消息讓許多人感到難受。這個外掛對我們和你都意義重大，你的心聲我們聽到了。好消息是：<bold>一支社群團隊已挺身而出，繼續推進 Roo Code</bold>，我們正與他們協作進行正式交接，讓你所仰賴的外掛持續受到維護與改進。",
-			"readMore": "閱讀 Matt Rubens 的原始公告"
+			"heading": "Roo Code 回來了，現在以社群維護的 Zoo Code 外掛重新登場！！",
+			"description": "如果你最近沒有追蹤消息，Roo Code 團隊最近宣布將逐步停止 Roo Code 的開發，並封存他們至今完成的工作。不過別擔心，社群已經挺身而出，將以新名稱與新家園延續 Roo Code 的傳承！我們不再只是單一的「Roo」，而是一個社群，也就是你可以稱之為「Zoo」的集合。Zoo Code 是一款由社群維護的外掛，接續 Roo Code 停下的地方繼續前進；我們承諾在保留 Roo 精神的同時，也會帶來新功能與改進。我們也要向整個 Roo Code 團隊致上最深的敬意，感謝他們不可思議的付出，以及為開發者打造出如此出色的工具。我們很期待在他們奠定的基礎上繼續建設，也期待看看社群未來會把 Zoo Code 帶往何方！",
+			"readMore": "查看 Zoo Code 的新首頁並閱讀完整公告"
 		},
 		"release": {
 			"heading": "新增功能：",
-			"gpt55": "透過 OpenAI Codex 支援 GPT-5.5：已在 OpenAI Codex 供應商中新增 GPT-5.5 支援，讓你可以直接在 Roo Code 中使用最新模型。",
+			"gpt55": "透過 OpenAI Codex 支援 GPT-5.5：已在 OpenAI Codex 供應商中新增 GPT-5.5 支援，讓你可以直接在 Zoo Code 中使用最新模型。",
 			"claudeOpus47": "Vertex AI 上的 Claude Opus 4.7：已將 Anthropic 最新旗艦推理模型 Claude Opus 4.7 新增至 Vertex AI 供應商。",
 			"checkpointNav": "前一個存檔點導覽：在聊天中新增控制項，可回到此前的存檔點，並提供完整的 i18n 支援。"
 		},
@@ -393,7 +417,7 @@
 	"profileViolationWarning": "目前設定檔與您的組織設定不相容",
 	"shellIntegration": {
 		"title": "命令執行警告",
-		"description": "命令正在沒有 VS Code 終端機 Shell 整合的情況下執行。若要隱藏此警告，可在 <settingsLink>Roo Code 設定</settingsLink> 的 <strong>終端機</strong> 區塊中停用 Shell 整合，或使用下方連結排解 VS Code 終端機整合問題。",
+		"description": "命令正在沒有 VS Code 終端機 Shell 整合的情況下執行。若要隱藏此警告，可在 <settingsLink>Zoo Code 設定</settingsLink> 的 <strong>終端機</strong> 區塊中停用 Shell 整合，或使用下方連結排解 VS Code 終端機整合問題。",
 		"troubleshooting": "點選此處查看 Shell 整合說明文件。"
 	},
 	"ask": {

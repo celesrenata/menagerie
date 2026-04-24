@@ -1,5 +1,5 @@
 {
-	"greeting": "Witamy w Roo Code",
+	"greeting": "Witamy w Zoo Code!",
 	"task": {
 		"title": "Zadanie",
 		"expand": "Rozwiń zadanie",
@@ -15,6 +15,19 @@
 		"export": "Eksportuj historię zadań",
 		"delete": "Usuń zadanie (Shift + Kliknięcie, aby pominąć potwierdzenie)",
 		"condenseContext": "Inteligentnie skondensuj kontekst",
+<<<<<<< HEAD
+=======
+		"share": "Udostępnij zadanie",
+		"shareWithOrganization": "Udostępnij organizacji",
+		"shareWithOrganizationDescription": "Tylko członkowie twojej organizacji mogą uzyskać dostęp",
+		"sharePublicly": "Udostępnij publicznie",
+		"sharePubliclyDescription": "Każdy z linkiem może uzyskać dostęp",
+		"connectToCloud": "Połącz z chmurą",
+		"connectToCloudDescription": "Zaloguj się do Zoo Code Cloud, aby udostępniać zadania",
+		"sharingDisabledByOrganization": "Udostępnianie wyłączone przez organizację",
+		"shareSuccessOrganization": "Link organizacji skopiowany do schowka",
+		"shareSuccessPublic": "Link publiczny skopiowany do schowka",
+>>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "Otwórz historię API",
 		"openUiHistory": "Otwórz historię UI",
 		"backToParentTask": "Zadanie nadrzędne"
@@ -152,7 +165,7 @@
 			"500": "Błąd serwera dostawcy. Po stronie dostawcy coś się nie powiodło, w Twoim żądaniu nie ma nic złego.",
 			"docs": "Dokumentacja",
 			"goToSettings": "Ustawienia",
-			"unknown": "Nieznany błąd API. Skontaktuj się z pomocą techniczną Roo Code.",
+			"unknown": "Nieznany błąd API. Skontaktuj się z pomocą techniczną Zoo Code.",
 			"connection": "Błąd połączenia. Upewnij się, że masz działające połączenie internetowe.",
 			"claudeCodeNotAuthenticated": "Musisz się zalogować, aby korzystać z Claude Code. Przejdź do Ustawień i kliknij \"Zaloguj się do Claude Code\", aby się uwierzytelnić."
 		}
@@ -328,16 +341,28 @@
 		"timerPrefix": "Automatyczne zatwierdzanie włączone. Zaznaczanie za {{seconds}}s…"
 	},
 	"announcement": {
+<<<<<<< HEAD
 		"title": "Roo Code {{version}} wydany",
 		"support": "Wesprzyj Roo Code, dając nam gwiazdkę na <githubLink>GitHub</githubLink>.",
+=======
+		"title": "Zoo Code {{version}} wydany",
+		"support": "Wesprzyj Zoo Code, dając nam gwiazdkę na <githubLink>GitHub</githubLink>.",
+		"stealthModel": {
+			"feature": "<bold>Darmowy model stealth na ograniczony czas</bold> - Code Supernova: Teraz ulepszony o <bold>okno kontekstu 1M tokenów</bold>! Wszechstronny model kodowania agentowego, który obsługuje wprowadzanie obrazów i jest dostępny przez Zoo Code Cloud.",
+			"note": "(Uwaga: prompty i uzupełnienia są rejestrowane przez twórcę modelu i używane do jego ulepszania)",
+			"connectButton": "Połącz z Zoo Code Cloud",
+			"selectModel": "Wybierz <code>roo/code-supernova</code> od dostawcy Zoo Code Cloud w Ustawieniach, aby rozpocząć.",
+			"goToSettingsButton": "Przejdź do Ustawień"
+		},
+>>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
-			"heading": "Wtyczka Roo Code nie znika.",
-			"description": "Być może widziałeś niedawne ogłoszenie, że Roo Code osiągnął 3 miliony instalacji, a oryginalny zespół całkowicie skupia się na Roomote. Wiemy, że ta wiadomość była trudna dla wielu z was. Ta wtyczka wiele dla nas i dla ciebie znaczy, i słyszymy was. Dobra wiadomość: <bold>zespół społeczności zgłosił się, żeby poprowadzić Roo Code dalej</bold>, i pracujemy z nimi nad oficjalnym przekazaniem, żeby wtyczka, na której polegasz, była nadal utrzymywana i ulepszana.",
-			"readMore": "Przeczytaj oryginalne ogłoszenie Matta Rubensa"
+			"heading": "Roo Code wraca — teraz jako wtyczka utrzymywana przez społeczność pod nazwą Zoo Code!!",
+			"description": "Jeśli nie jesteś na bieżąco, zespół Roo Code niedawno ogłosił, że wygasza rozwój Roo Code i archiwizuje dotychczasową pracę. Ale bez obaw — społeczność ruszyła do działania, aby kontynuować dziedzictwo Roo Code pod nową nazwą i w nowym domu! Nie jesteśmy już tylko jednym „Roo” — jesteśmy społecznością, czyli „Zoo”, jeśli wolisz. Zoo Code to wtyczka utrzymywana przez społeczność, która przejmuje pałeczkę tam, gdzie Roo Code skończył, i zobowiązujemy się zachować ducha Roo, jednocześnie wprowadzając nowe funkcje i ulepszenia. Chcemy też ogromnie podziękować całemu zespołowi Roo Code za ich niesamowitą pracę i stworzenie tak świetnego narzędzia dla deweloperów. Cieszymy się, że możemy rozwijać ich dorobek i zobaczyć, dokąd społeczność zaprowadzi Zoo Code w przyszłości!",
+			"readMore": "Zobacz nową stronę główną Zoo Code i przeczytaj pełne ogłoszenie"
 		},
 		"release": {
 			"heading": "Co nowego:",
-			"gpt55": "GPT-5.5 przez OpenAI Codex: Dodano obsługę GPT-5.5 w dostawcy OpenAI Codex, żebyś mógł korzystać z najnowszego modelu bezpośrednio z Roo Code.",
+			"gpt55": "GPT-5.5 przez OpenAI Codex: Dodano obsługę GPT-5.5 w dostawcy OpenAI Codex, żebyś mógł korzystać z najnowszego modelu bezpośrednio z Zoo Code.",
 			"claudeOpus47": "Claude Opus 4.7 w Vertex AI: Dodano Claude Opus 4.7 do dostawcy Vertex AI - najnowszy flagowy model rozumowania od Anthropic.",
 			"checkpointNav": "Nawigacja po poprzednich checkpointach: Dodano kontrolki w czacie, żebyś mógł cofać się do wcześniejszych checkpointów, z pełną obsługą i18n."
 		},
@@ -363,7 +388,7 @@
 	"profileViolationWarning": "Bieżący profil nie jest kompatybilny z ustawieniami Twojej organizacji",
 	"shellIntegration": {
 		"title": "Ostrzeżenie wykonania polecenia",
-		"description": "Twoje polecenie jest wykonywane bez integracji powłoki terminala VSCode. Aby ukryć to ostrzeżenie, możesz wyłączyć integrację powłoki w sekcji <strong>Terminal</strong> w <settingsLink>ustawieniach Roo Code</settingsLink> lub rozwiązać problemy z integracją terminala VSCode korzystając z poniższego linku.",
+		"description": "Twoje polecenie jest wykonywane bez integracji powłoki terminala VSCode. Aby ukryć to ostrzeżenie, możesz wyłączyć integrację powłoki w sekcji <strong>Terminal</strong> w <settingsLink>ustawieniach Zoo Code</settingsLink> lub rozwiązać problemy z integracją terminala VSCode korzystając z poniższego linku.",
 		"troubleshooting": "Kliknij tutaj, aby zobaczyć dokumentację integracji powłoki."
 	},
 	"ask": {
