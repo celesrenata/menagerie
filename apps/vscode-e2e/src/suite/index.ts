@@ -3,7 +3,7 @@ import Mocha from "mocha"
 import { glob } from "glob"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type RooCodeAPI } from "@roo-code/types"
+import type { RooCodeAPI, RooCodeEventName } from "@roo-code/types"
 
 import { waitFor } from "./utils"
 
@@ -33,7 +33,7 @@ export async function run() {
 
 	// Automatically approve completion_result asks so tests don't stall waiting
 	// for a button that the webview routes to "start new task" rather than "yes".
-	api.on(RooCodeEventName.Message, ({ message }) => {
+	api.on("message" as RooCodeEventName.Message, ({ message }) => {
 		if (message.type === "ask" && message.ask === "completion_result") {
 			api.approveCurrentAsk()
 		}
