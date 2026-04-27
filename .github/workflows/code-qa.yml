@@ -58,6 +58,14 @@ jobs:
               uses: actions/checkout@v4
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
+            - name: Cache Turbo
+              uses: actions/cache@v4
+              with:
+                  path: .turbo/cache
+                  key: ${{ runner.os }}-turbo-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
+                  restore-keys: |
+                      ${{ runner.os }}-turbo-${{ hashFiles('**/pnpm-lock.yaml') }}-
+                      ${{ runner.os }}-turbo-
             - name: Run unit tests with coverage
               run: pnpm test:coverage
             - name: Upload coverage to Codecov
