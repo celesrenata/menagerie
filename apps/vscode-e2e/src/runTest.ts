@@ -7,6 +7,11 @@ import { LLMock } from "@copilotkit/aimock"
 
 async function main() {
 	const isRecord = process.env.AIMOCK_RECORD === "true"
+
+	if (isRecord && !process.env.OPENROUTER_API_KEY) {
+		throw new Error("AIMOCK_RECORD=true requires OPENROUTER_API_KEY to record fixtures")
+	}
+
 	// Record mode always needs aimock running (to capture traffic).
 	// Replay mode starts aimock when no real API key is present or USE_MOCK is forced.
 	const useMock = isRecord || !process.env.OPENROUTER_API_KEY || process.env.USE_MOCK === "true"
@@ -92,7 +97,7 @@ async function main() {
 		})
 	} catch (error) {
 		console.error("Failed to run tests", error)
-		process.exit(1)
+		process.exitCode = 1
 	} finally {
 		await fs.rm(testWorkspace, { recursive: true, force: true })
 		await mock?.stop()

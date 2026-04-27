@@ -34,7 +34,7 @@ Record mode uses **record-on-miss**: if an existing fixture already matches a re
 4. Find the auto-recorded file for your test:
 
     ```sh
-    grep -l "your unique prompt text" fixtures/openai-*.json
+    grep -l "your unique prompt text" apps/vscode-e2e/fixtures/openai-*.json
     ```
 
 5. Inspect it to find the `response` block (tool calls the LLM made).
