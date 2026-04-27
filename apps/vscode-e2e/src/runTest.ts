@@ -67,10 +67,11 @@ async function main() {
 	// Passed to --extensionTestsPath
 	const extensionTestsPath = path.resolve(__dirname, "./suite/index")
 
-	// Create a temporary workspace folder for tests
-	const testWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-workspace-"))
+	let testWorkspace: string | undefined
 
 	try {
+		// Create a temporary workspace folder for tests
+		testWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-workspace-"))
 		// Get test filter from command line arguments or environment variable
 		// Usage examples:
 		// - npm run test:e2e -- --grep "write-to-file"
@@ -99,7 +100,9 @@ async function main() {
 		console.error("Failed to run tests", error)
 		process.exitCode = 1
 	} finally {
-		await fs.rm(testWorkspace, { recursive: true, force: true })
+		if (testWorkspace) {
+			await fs.rm(testWorkspace, { recursive: true, force: true })
+		}
 		await mock?.stop()
 	}
 }
