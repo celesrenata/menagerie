@@ -103,6 +103,14 @@ export const webviewMessageHandler = async (
 		return provider.getCurrentTask()?.cwd || provider.cwd
 	}
 
+	const isCloudServiceAvailable = () => CloudService.hasInstance()
+
+	const showCloudUnavailableMessage = () => {
+		vscode.window.showInformationMessage(
+			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
+		)
+	}
+
 	const getCurrentMode = async (): Promise<string> => {
 		const currentTask = provider.getCurrentTask()
 
@@ -783,48 +791,13 @@ export const webviewMessageHandler = async (
 			break
 		case "shareCurrentTask":
 			const shareTaskId = provider.getCurrentTask()?.taskId
-			const clineMessages = provider.getCurrentTask()?.clineMessages
 
 			if (!shareTaskId) {
 				vscode.window.showErrorMessage(t("common:errors.share_no_active_task"))
 				break
 			}
 
-			try {
-				const visibility = message.visibility || "organization"
-				const result = await CloudService.instance.shareTask(shareTaskId, visibility, clineMessages)
-
-				if (result.success && result.shareUrl) {
-					// Show success notification
-					const messageKey =
-						visibility === "public"
-							? "common:info.public_share_link_copied"
-							: "common:info.organization_share_link_copied"
-					vscode.window.showInformationMessage(t(messageKey))
-
-					// Send success feedback to webview for inline display
-					await provider.postMessageToWebview({
-						type: "shareTaskSuccess",
-						visibility,
-						text: result.shareUrl,
-					})
-				} else {
-					// Handle error
-					const errorMessage = result.error || "Failed to create share link"
-					if (errorMessage.includes("Authentication")) {
-						vscode.window.showErrorMessage(t("common:errors.share_auth_required"))
-					} else if (errorMessage.includes("sharing is not enabled")) {
-						vscode.window.showErrorMessage(t("common:errors.share_not_enabled"))
-					} else if (errorMessage.includes("not found")) {
-						vscode.window.showErrorMessage(t("common:errors.share_task_not_found"))
-					} else {
-						vscode.window.showErrorMessage(errorMessage)
-					}
-				}
-			} catch (error) {
-				provider.log(`[shareCurrentTask] Unexpected error: ${error}`)
-				vscode.window.showErrorMessage(t("common:errors.share_task_failed"))
-			}
+			vscode.window.showErrorMessage(t("common:errors.share_not_enabled"))
 			break
 		case "showTaskWithId":
 			provider.showTaskWithId(message.text!)
@@ -995,9 +968,7 @@ export const webviewMessageHandler = async (
 					options: {
 						provider: "roo",
 						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-						apiKey: CloudService.hasInstance()
-							? CloudService.instance.authService?.getSessionToken()
-							: undefined,
+						apiKey: apiConfiguration.rooApiKey,
 					},
 				},
 			]
@@ -1130,16 +1101,14 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "requestRooModels": {
-			// Specific handler for Roo models only - flushes cache to ensure fresh auth token is used
+			const { apiConfiguration: rooApiConfig } = await provider.getState()
 			try {
 				const rooOptions = {
 					provider: "roo" as const,
 					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-					apiKey: CloudService.hasInstance()
-						? CloudService.instance.authService?.getSessionToken()
-						: undefined,
+					apiKey: rooApiConfig.rooApiKey,
 				}
-				// Flush cache and refresh to ensure fresh models with current auth state
+				// Flush cache and refresh to ensure fresh models with current profile credentials.
 				await flushModels(rooOptions, true)
 
 				const rooModels = await getModels(rooOptions)
@@ -1163,28 +1132,12 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "requestRooCreditBalance": {
-			// Fetch Roo credit balance using CloudAPI
 			const requestId = message.requestId
-			try {
-				if (!CloudService.hasInstance() || !CloudService.instance.cloudAPI) {
-					throw new Error("Cloud service not available")
-				}
-
-				const balance = await CloudService.instance.cloudAPI.creditBalance()
-
-				provider.postMessageToWebview({
-					type: "rooCreditBalance",
-					requestId,
-					values: { balance },
-				})
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				provider.postMessageToWebview({
-					type: "rooCreditBalance",
-					requestId,
-					values: { error: errorMessage },
-				})
-			}
+			provider.postMessageToWebview({
+				type: "rooCreditBalance",
+				requestId,
+				values: { error: "Roo credit balance is no longer available." },
+			})
 			break
 		}
 		case "requestOpenAiModels":
@@ -1491,15 +1444,7 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "taskSyncEnabled":
-			const enabled = message.bool ?? false
-			const updatedSettings: Partial<UserSettingsConfig> = { taskSyncEnabled: enabled }
-
-			try {
-				await CloudService.instance.updateUserSettings(updatedSettings)
-			} catch (error) {
-				provider.log(`Failed to update cloud settings for task sync: ${error}`)
-			}
-
+			provider.log("Ignoring taskSyncEnabled update because cloud task sync is disabled")
 			break
 
 		case "refreshAllMcpServers": {
@@ -2345,12 +2290,13 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		}
-		case "cloudButtonClicked": {
-			// Navigate to the cloud tab.
-			provider.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
-			break
-		}
 		case "rooCloudSignIn": {
+			if (!isCloudServiceAvailable()) {
+				provider.log("CloudService unavailable; ignoring rooCloudSignIn")
+				showCloudUnavailableMessage()
+				break
+			}
+
 			try {
 				TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
 				// Use provider signup flow if useProviderSignup is explicitly true
@@ -2363,6 +2309,12 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "cloudLandingPageSignIn": {
+			if (!isCloudServiceAvailable()) {
+				provider.log("CloudService unavailable; ignoring cloudLandingPageSignIn")
+				showCloudUnavailableMessage()
+				break
+			}
+
 			try {
 				const landingPageSlug = message.text || "supernova"
 				TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
@@ -2374,6 +2326,12 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "rooCloudSignOut": {
+			if (!isCloudServiceAvailable()) {
+				await provider.postStateToWebview()
+				provider.postMessageToWebview({ type: "authenticatedUser", userInfo: undefined })
+				break
+			}
+
 			try {
 				await CloudService.instance.logout()
 				await provider.postStateToWebview()
@@ -2425,6 +2383,12 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "rooCloudManualUrl": {
+			if (!isCloudServiceAvailable()) {
+				provider.log("CloudService unavailable; ignoring rooCloudManualUrl")
+				showCloudUnavailableMessage()
+				break
+			}
+
 			try {
 				if (!message.text) {
 					vscode.window.showErrorMessage(t("common:errors.manual_url_empty"))

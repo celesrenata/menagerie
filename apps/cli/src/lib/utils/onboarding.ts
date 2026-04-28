@@ -18,6 +18,16 @@ export async function runOnboarding(): Promise<OnboardingResult> {
 
 			if (choice === OnboardingProviderChoice.Roo) {
 				const result = await login()
+
+				if (!result.success) {
+					console.log("Roo sign-in was not completed.")
+					console.log("Continuing with the standard login-free provider setup.")
+					console.log("")
+					await saveSettings({ onboardingProviderChoice: OnboardingProviderChoice.Byok })
+					resolve({ choice: OnboardingProviderChoice.Byok, skipped: false })
+					return
+				}
+
 				await saveSettings({ onboardingProviderChoice: choice })
 
 				resolve({
@@ -26,7 +36,7 @@ export async function runOnboarding(): Promise<OnboardingResult> {
 					skipped: false,
 				})
 			} else {
-				console.log("Using your own API key.")
+				console.log("Using the standard login-free provider path.")
 				console.log("Set your API key via --api-key or environment variable.")
 				console.log("")
 				resolve({ choice: OnboardingProviderChoice.Byok, skipped: false })

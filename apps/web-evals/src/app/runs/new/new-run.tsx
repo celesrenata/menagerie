@@ -52,7 +52,7 @@ import { loadRooLastModelSelection, saveRooLastModelSelection } from "@/lib/roo-
 import { normalizeCreateRunForSubmit } from "@/lib/normalize-create-run"
 
 import { useOpenRouterModels } from "@/hooks/use-open-router-models"
-import { useRooCodeCloudModels } from "@/hooks/use-roo-code-cloud-models"
+import { useRooProviderModels } from "@/hooks/use-roo-provider-models"
 
 import {
 	Button,
@@ -123,11 +123,11 @@ export function NewRun() {
 	])
 
 	const openRouter = useOpenRouterModels()
-	const rooCodeCloud = useRooCodeCloudModels()
-	const models = provider === "openrouter" ? openRouter.data : rooCodeCloud.data
-	const searchValue = provider === "openrouter" ? openRouter.searchValue : rooCodeCloud.searchValue
-	const setSearchValue = provider === "openrouter" ? openRouter.setSearchValue : rooCodeCloud.setSearchValue
-	const onFilter = provider === "openrouter" ? openRouter.onFilter : rooCodeCloud.onFilter
+	const rooProvider = useRooProviderModels()
+	const models = provider === "openrouter" ? openRouter.data : rooProvider.data
+	const searchValue = provider === "openrouter" ? openRouter.searchValue : rooProvider.searchValue
+	const setSearchValue = provider === "openrouter" ? openRouter.setSearchValue : rooProvider.setSearchValue
+	const onFilter = provider === "openrouter" ? openRouter.onFilter : rooProvider.onFilter
 
 	const exercises = useQuery({ queryKey: ["getExercises"], queryFn: () => getExercises() })
 
@@ -781,25 +781,26 @@ export function NewRun() {
 							render={({ field }) => (
 								<FormItem>
 									<div className="flex items-center gap-1">
-										<FormLabel>Roo Code Cloud Token</FormLabel>
+										<FormLabel>Roo Provider Token</FormLabel>
 										<Tooltip>
 											<TooltipTrigger asChild>
 												<Info className="size-4 text-muted-foreground cursor-help" />
 											</TooltipTrigger>
 											<TooltipContent side="right" className="max-w-xs">
 												<p>
-													If you have access to the Roo Code Cloud repository and the
-													decryption key for the .env.* files, generate a token with:
+													Optional token for the Roo-hosted provider path. Only supply this if
+													your internal eval environment still routes Roo runs through a
+													protected auth service.
 												</p>
-												<code className="text-xs block mt-1">
-													pnpm --filter @roo-code-cloud/auth production:create-auth-token
-													[email] [org] [ttl]
-												</code>
 											</TooltipContent>
 										</Tooltip>
 									</div>
 									<FormControl>
-										<Input type="password" placeholder="Required" {...field} />
+										<Input
+											type="password"
+											placeholder="Only required for Roo-backed runs"
+											{...field}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>

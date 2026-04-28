@@ -130,12 +130,14 @@ printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | roo --print --
 printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | roo --print --stdin-prompt-stream --output-format stream-json
 ```
 
-### Roo Code Cloud Authentication
+### Optional Roo Provider Authentication
 
-To use Roo Code Cloud features (like the provider proxy), you need to authenticate:
+Normal CLI usage is login-free. Use `--provider` with your own API key, or set the provider environment variable directly.
+
+The `auth` commands are only for the optional Roo-hosted provider compatibility path:
 
 ```bash
-# Log in to Roo Code Cloud (opens browser)
+# Store an optional Roo auth token (opens browser)
 roo auth login
 
 # Check authentication status
@@ -147,23 +149,23 @@ roo auth logout
 
 The `auth login` command:
 
-1. Opens your browser to authenticate with Roo Code Cloud
+1. Opens your browser to sign in for the optional Roo provider path
 2. Receives a secure token via localhost callback
-3. Stores the token in `~/.config/roo/credentials.json`
+3. Stores the token in `~/.config/roo/cli-credentials.json`
 
-Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when your token expires.
+If you do not use the Roo provider, you can skip this entirely.
 
-**Authentication Flow:**
+**Optional sign-in flow:**
 
 ```
 ┌──────┐         ┌─────────┐         ┌───────────────┐
-│  CLI │         │ Browser │         │ Roo Code Cloud│
+│  CLI │         │ Browser │         │ Roo sign-in   │
 └──┬───┘         └────┬────┘         └───────┬───────┘
    │                  │                      │
    │ Open auth URL    │                      │
    │─────────────────>│                      │
    │                  │                      │
-   │                  │ Authenticate         │
+   │                  │ Sign in              │
    │                  │─────────────────────>│
    │                  │                      │
    │                  │<─────────────────────│
@@ -176,35 +178,35 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Options
 
-| Option                                  | Description                                                                             | Default                                  |
-| --------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                                     |
-| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                                     |
-| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                                     |
-| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory                        |
-| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                                  |
-| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                                  |
-| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected                            |
-| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                                  |
-| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                                  |
-| `-k, --api-key <key>`                   | API key for the LLM provider                                                            | From env var                             |
-| `--provider <provider>`                 | API provider (roo, anthropic, openai, openrouter, etc.)                                 | `openrouter` (or `roo` if authenticated) |
-| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6`              |
-| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                                   |
-| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell                      |
-| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                                 |
-| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                                     |
-| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                                  |
-| `--oneshot`                             | Exit upon task completion                                                               | `false`                                  |
-| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                                   |
+| Option                                  | Description                                                                             | Default                     |
+| --------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------- |
+| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                        |
+| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                        |
+| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                        |
+| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory           |
+| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                     |
+| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                     |
+| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected               |
+| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                     |
+| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                     |
+| `-k, --api-key <key>`                   | API key for the LLM provider                                                            | From env var                |
+| `--provider <provider>`                 | API provider (roo, anthropic, openai, openrouter, etc.)                                 | `openrouter`                |
+| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6` |
+| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                      |
+| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell         |
+| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                    |
+| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                        |
+| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                     |
+| `--oneshot`                             | Exit upon task completion                                                               | `false`                     |
+| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                      |
 
 ## Auth Commands
 
-| Command           | Description                        |
-| ----------------- | ---------------------------------- |
-| `roo auth login`  | Authenticate with Roo Code Cloud   |
-| `roo auth logout` | Clear stored authentication token  |
-| `roo auth status` | Show current authentication status |
+| Command           | Description                      |
+| ----------------- | -------------------------------- |
+| `roo auth login`  | Store an optional Roo auth token |
+| `roo auth logout` | Clear the stored Roo auth token  |
+| `roo auth status` | Show optional Roo token status   |
 
 ## Environment Variables
 
@@ -219,11 +221,12 @@ The CLI will look for API keys in environment variables if not provided via `--a
 | gemini            | `GOOGLE_API_KEY`            |
 | vercel-ai-gateway | `VERCEL_AI_GATEWAY_API_KEY` |
 
-**Authentication Environment Variables:**
+**Optional Roo compatibility environment variables:**
 
-| Variable          | Description                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| `ROO_WEB_APP_URL` | Override the Roo Code Cloud URL (default: `https://app.roocode.com`) |
+| Variable            | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `ROO_AUTH_BASE_URL` | Override the Roo sign-in URL (default: `https://app.roocode.com`) |
+| `ROO_SDK_BASE_URL`  | Override the Roo compatibility API base URL                       |
 
 ## Architecture
 

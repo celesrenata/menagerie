@@ -136,11 +136,11 @@ program
 		await runUpgradeAction(() => upgrade())
 	})
 
-const authCommand = program.command("auth").description("Manage authentication for Roo Code Cloud")
+const authCommand = program.command("auth").description("Manage optional Roo provider authentication")
 
 authCommand
 	.command("login")
-	.description("Authenticate with Roo Code Cloud")
+	.description("Store an optional Roo auth token for the Roo provider compatibility path")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
 		const result = await login({ verbose: options.verbose })
@@ -149,7 +149,7 @@ authCommand
 
 authCommand
 	.command("logout")
-	.description("Log out from Roo Code Cloud")
+	.description("Remove a stored Roo auth token")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
 		const result = await logout({ verbose: options.verbose })
@@ -158,11 +158,11 @@ authCommand
 
 authCommand
 	.command("status")
-	.description("Show authentication status")
+	.description("Show optional Roo auth token status")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
-		const result = await status({ verbose: options.verbose })
-		process.exit(result.authenticated ? 0 : 1)
+		await status({ verbose: options.verbose })
+		process.exit(0)
 	})
 
 program.parse()

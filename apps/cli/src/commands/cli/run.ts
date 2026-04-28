@@ -13,9 +13,11 @@ import {
 	OnboardingProviderChoice,
 	supportedProviders,
 	DEFAULT_FLAGS,
+	DEFAULT_PROVIDER,
 	REASONING_EFFORTS,
 	SDK_BASE_URL,
 	OutputFormat,
+	SupportedProvider,
 } from "@/types/index.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
@@ -52,6 +54,42 @@ async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: str
 
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
+}
+
+export function hasRooCredential({
+	storedToken,
+	flagApiKey,
+	envApiKey,
+}: {
+	storedToken: string | null
+	flagApiKey?: string
+	envApiKey?: string
+}): boolean {
+	return Boolean(storedToken || flagApiKey || envApiKey)
+}
+
+export function resolveProviderPreference({
+	flagProvider,
+	settingsProvider,
+	hasStoredOrExplicitRooCredential,
+}: {
+	flagProvider?: FlagOptions["provider"]
+	settingsProvider?: FlagOptions["provider"]
+	hasStoredOrExplicitRooCredential: boolean
+}): {
+	provider: SupportedProvider
+	fellBackFromStoredRooPreference: boolean
+} {
+	const configuredProvider = flagProvider ?? settingsProvider ?? DEFAULT_PROVIDER
+
+	if (configuredProvider === "roo" && !flagProvider && !hasStoredOrExplicitRooCredential) {
+		return {
+			provider: DEFAULT_PROVIDER,
+			fellBackFromStoredRooPreference: settingsProvider === "roo",
+		}
+	}
+
+	return { provider: configuredProvider, fellBackFromStoredRooPreference: false }
 }
 
 async function warmRooModels(host: ExtensionHost): Promise<void> {
@@ -171,17 +209,26 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	let rooToken = await loadToken()
 	const settings = await loadSettings()
+	const rooApiKeyFromEnv = getApiKeyFromEnv("roo")
 
 	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
 	const isTuiEnabled = !flagOptions.print && isTuiSupported
-	const isOnboardingEnabled = isTuiEnabled && !rooToken && !flagOptions.provider && !settings.provider
+	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
 
 	// Determine effective values: CLI flags > settings file > DEFAULT_FLAGS.
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
 	const effectiveModel = flagOptions.model || settings.model || DEFAULT_FLAGS.model
 	const effectiveReasoningEffort =
 		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
-	const effectiveProvider = flagOptions.provider ?? settings.provider ?? (rooToken ? "roo" : "openrouter")
+	const { provider: effectiveProvider, fellBackFromStoredRooPreference } = resolveProviderPreference({
+		flagProvider: flagOptions.provider,
+		settingsProvider: settings.provider,
+		hasStoredOrExplicitRooCredential: hasRooCredential({
+			storedToken: rooToken,
+			flagApiKey: flagOptions.apiKey,
+			envApiKey: rooApiKeyFromEnv,
+		}),
+	})
 	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
 	const legacyRequireApprovalFromSettings =
 		settings.requireApproval ??
@@ -191,6 +238,12 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const rawConsecutiveMistakeLimit =
 		flagOptions.consecutiveMistakeLimit ?? settings.consecutiveMistakeLimit ?? DEFAULT_FLAGS.consecutiveMistakeLimit
 	const effectiveConsecutiveMistakeLimit = Number(rawConsecutiveMistakeLimit)
+
+	if (fellBackFromStoredRooPreference) {
+		console.warn(
+			`[CLI] Saved Roo provider preference found without usable Roo credentials. Continuing with the default login-free provider (${DEFAULT_PROVIDER}).`,
+		)
+	}
 
 	if (!Number.isInteger(effectiveConsecutiveMistakeLimit) || effectiveConsecutiveMistakeLimit < 0) {
 		console.error(
@@ -241,7 +294,19 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		}
 
 		if (onboardingProviderChoice === OnboardingProviderChoice.Roo) {
-			extensionHostOptions.provider = "roo"
+			if (
+				hasRooCredential({
+					storedToken: rooToken,
+					flagApiKey: flagOptions.apiKey,
+					envApiKey: rooApiKeyFromEnv,
+				})
+			) {
+				extensionHostOptions.provider = "roo"
+			} else {
+				console.warn(
+					`[CLI] Roo compatibility mode was selected, but no Roo credentials are available. Continuing with the default login-free provider (${DEFAULT_PROVIDER}).`,
+				)
+			}
 		}
 	}
 
@@ -260,10 +325,14 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			} catch {
 				// If an explicit API key was provided via flag or env var, fall through
 				// to the general API key resolution below instead of exiting.
-				if (!flagOptions.apiKey && !getApiKeyFromEnv(extensionHostOptions.provider)) {
-					console.error("[CLI] Your Roo Code Router token is not valid.")
-					console.error("[CLI] Please run: roo auth login")
-					console.error("[CLI] Or use --api-key or set ROO_API_KEY to provide your own API key.")
+				if (!flagOptions.apiKey && !rooApiKeyFromEnv) {
+					console.error("[CLI] Your stored Roo token is not valid.")
+					console.error(
+						`[CLI] Standard CLI usage does not require login. Re-run with --provider ${DEFAULT_PROVIDER}, or configure another provider.`,
+					)
+					console.error(
+						"[CLI] To keep using the Roo provider, run `roo auth login`, or use --api-key / ROO_API_KEY.",
+					)
 					process.exit(1)
 				}
 			}
@@ -284,13 +353,19 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	}
 
 	extensionHostOptions.apiKey =
-		extensionHostOptions.apiKey || flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider)
+		extensionHostOptions.apiKey ||
+		flagOptions.apiKey ||
+		(extensionHostOptions.provider === "roo" ? rooApiKeyFromEnv : getApiKeyFromEnv(extensionHostOptions.provider))
 
 	if (!extensionHostOptions.apiKey) {
 		if (extensionHostOptions.provider === "roo") {
-			console.error("[CLI] Error: Authentication with Roo Code Cloud failed or was cancelled.")
-			console.error("[CLI] Please run: roo auth login")
-			console.error("[CLI] Or use --api-key to provide your own API key.")
+			console.error(
+				"[CLI] Error: The Roo provider needs a valid ROO_API_KEY or an optional stored Roo auth token.",
+			)
+			console.error(
+				`[CLI] Standard CLI usage is login-free. Use --provider ${DEFAULT_PROVIDER}, or set ${getEnvVarName(DEFAULT_PROVIDER)}.`,
+			)
+			console.error("[CLI] To keep using the Roo provider, run `roo auth login`, or use --api-key / ROO_API_KEY.")
 		} else {
 			console.error(
 				`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`,

@@ -107,7 +107,6 @@ import { TemperatureControl } from "./TemperatureControl"
 import { RateLimitSecondsControl } from "./RateLimitSecondsControl"
 import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl"
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
-import { RooBalanceDisplay } from "./providers/RooBalanceDisplay"
 import { buildDocLink } from "@src/utils/docLinks"
 import { BookOpenText } from "lucide-react"
 
@@ -133,7 +132,7 @@ const ApiOptions = ({
 	setErrorMessage,
 }: ApiOptionsProps) => {
 	const { t } = useAppTranslation()
-	const { organizationAllowList, cloudIsAuthenticated, openAiCodexIsAuthenticated } = useExtensionState()
+	const { organizationAllowList, openAiCodexIsAuthenticated } = useExtensionState()
 
 	const [customHeaders, setCustomHeaders] = useState<[string, string][]>(() => {
 		const headers = apiConfiguration?.openAiHeaders || {}
@@ -467,15 +466,11 @@ const ApiOptions = ({
 			<div className="flex flex-col gap-1 relative">
 				<div className="flex justify-between items-center">
 					<label className="block font-medium">{t("settings:providers.apiProvider")}</label>
-					{selectedProvider === "roo" && cloudIsAuthenticated ? (
-						<RooBalanceDisplay />
-					) : (
-						docs && (
-							<VSCodeLink href={docs.url} target="_blank" className="flex gap-2">
-								{t("settings:providers.apiProviderDocs")}
-								<BookOpenText className="size-4 inline ml-2" />
-							</VSCodeLink>
-						)
+					{docs && (
+						<VSCodeLink href={docs.url} target="_blank" className="flex gap-2">
+							{t("settings:providers.apiProviderDocs")}
+							<BookOpenText className="size-4 inline ml-2" />
+						</VSCodeLink>
 					)}
 				</div>
 				<SearchableSelect
@@ -723,7 +718,6 @@ const ApiOptions = ({
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
 							routerModels={routerModels}
-							cloudIsAuthenticated={cloudIsAuthenticated}
 							organizationAllowList={organizationAllowList}
 							modelValidationError={modelValidationError}
 							simplifySettings={fromWelcomeView}

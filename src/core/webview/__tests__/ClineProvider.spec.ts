@@ -576,6 +576,29 @@ describe("ClineProvider", () => {
 		await expect(provider.postMessageToWebview(message)).resolves.toBeUndefined()
 	})
 
+	test("postStateToWebview does not force action navigation for non-compliant MDM state", async () => {
+		const mdmService = {
+			requiresCloudAuth: vi.fn().mockReturnValue(true),
+			isCompliant: vi.fn().mockReturnValue({ compliant: false, reason: "auth required" }),
+		} as any
+
+		provider = new ClineProvider(
+			mockContext,
+			mockOutputChannel,
+			"sidebar",
+			new ContextProxy(mockContext),
+			mdmService,
+		)
+
+		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockImplementation(async () => undefined)
+		vi.spyOn(provider as any, "getStateToPostToWebview").mockResolvedValue({ version: "1.0.0" })
+
+		await provider.postStateToWebview()
+
+		expect(postMessageSpy).toHaveBeenCalledTimes(1)
+		expect(postMessageSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: "action" }))
+	})
+
 	test("postMessageToWebview skips postMessage after dispose", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 

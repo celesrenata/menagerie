@@ -215,14 +215,7 @@ vi.mock("../providers/LiteLLM", () => ({
 
 // Mock Roo provider for tests
 vi.mock("../providers/Roo", () => ({
-	Roo: ({ cloudIsAuthenticated }: any) => (
-		<div data-testid="roo-provider">{cloudIsAuthenticated ? "Authenticated" : "Not Authenticated"}</div>
-	),
-}))
-
-// Mock RooBalanceDisplay for tests
-vi.mock("../providers/RooBalanceDisplay", () => ({
-	RooBalanceDisplay: () => <div data-testid="roo-balance-display">Balance: $10.00</div>,
+	Roo: () => <div data-testid="roo-provider">Roo Provider</div>,
 }))
 
 vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
@@ -570,25 +563,7 @@ describe("ApiOptions", () => {
 	})
 
 	describe("Roo provider tests", () => {
-		it("shows balance display when authenticated", () => {
-			// Mock useExtensionState to return authenticated state
-			const useExtensionStateMock = vi.spyOn(ExtensionStateContext, "useExtensionState")
-			useExtensionStateMock.mockReturnValue({
-				cloudIsAuthenticated: true,
-				organizationAllowList: { providers: {} },
-			} as any)
-
-			renderApiOptions({
-				apiConfiguration: {
-					apiProvider: "roo",
-				},
-			})
-
-			expect(screen.getByTestId("roo-balance-display")).toBeInTheDocument()
-		})
-
-		it("does not show balance display when not authenticated", () => {
-			// Mock useExtensionState to return unauthenticated state
+		it("renders roo provider without cloud account UI", () => {
 			const useExtensionStateMock = vi.spyOn(ExtensionStateContext, "useExtensionState")
 			useExtensionStateMock.mockReturnValue({
 				cloudIsAuthenticated: false,
@@ -601,7 +576,9 @@ describe("ApiOptions", () => {
 				},
 			})
 
-			expect(screen.queryByTestId("roo-balance-display")).not.toBeInTheDocument()
+			expect(screen.getByTestId("roo-provider")).toBeInTheDocument()
+			expect(screen.queryByText("Authenticated")).not.toBeInTheDocument()
+			expect(screen.queryByText("Not Authenticated")).not.toBeInTheDocument()
 		})
 
 		it("pins roo provider to the top when not on welcome screen", () => {

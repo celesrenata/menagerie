@@ -91,11 +91,11 @@ const WelcomeViewProvider = () => {
 	)
 
 	const handleGetStarted = useCallback(() => {
-		// Landing screen - always trigger auth with Roo
+		// Landing screen - move directly to provider selection without requiring login
 		if (selectedProvider === null) {
-			setAuthOrigin("landing")
-			vscode.postMessage({ type: "rooCloudSignIn", useProviderSignup: true })
-			setAuthInProgress(true)
+			setSelectedProvider("custom")
+			setErrorMessage(undefined)
+			return
 		}
 		// Provider Selection screen
 		else if (selectedProvider === "roo") {
@@ -130,8 +130,8 @@ const WelcomeViewProvider = () => {
 	}, [selectedProvider, cloudIsAuthenticated, apiConfiguration, currentApiConfigName])
 
 	const handleNoAccount = useCallback(() => {
-		// Navigate to Provider Selection, defaulting to Roo option
-		setSelectedProvider("roo")
+		// Navigate to Provider Selection, defaulting to a non-Cloud provider path
+		setSelectedProvider("custom")
 	}, [])
 
 	const handleBackToLanding = useCallback(() => {

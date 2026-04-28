@@ -95,7 +95,7 @@ export async function login({ timeout = 5 * 60 * 1000, verbose = false }: LoginO
 	authUrl.searchParams.set("state", state)
 	authUrl.searchParams.set("callback", `${host}/callback`)
 
-	console.log("Opening browser for authentication...")
+	console.log("Opening browser for optional Roo provider sign-in...")
 	console.log(`If the browser doesn't open, visit: ${authUrl.toString()}`)
 
 	try {
@@ -111,11 +111,11 @@ export async function login({ timeout = 5 * 60 * 1000, verbose = false }: LoginO
 	try {
 		const { token } = await tokenPromise
 		await saveToken(token)
-		console.log("✓ Successfully authenticated!")
+		console.log("✓ Stored Roo auth token for optional Roo provider access.")
 		return { success: true, token }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
-		console.error(`✗ Authentication failed: ${message}`)
+		console.error(`✗ Optional Roo sign-in failed: ${message}`)
 		return { success: false, error: message }
 	}
 }

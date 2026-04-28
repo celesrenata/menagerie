@@ -56,7 +56,7 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		mockProvider = {
 			// Only methods used by this code path
 			postMessageToWebview: vi.fn(),
-			getState: vi.fn().mockResolvedValue({ apiConfiguration: {} }),
+			getState: vi.fn().mockResolvedValue({ apiConfiguration: { rooApiKey: "roo-test-key" } }),
 			contextProxy: {
 				getValue: vi.fn(),
 				setValue: vi.fn(),
@@ -113,6 +113,11 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		// getModels should have been called exactly once for roo
 		const providersCalled = getModelsMock.mock.calls.map((c: any[]) => c[0]?.provider)
 		expect(providersCalled).toEqual(["roo"])
+		expect(getModelsMock).toHaveBeenCalledWith({
+			provider: "roo",
+			baseUrl: expect.any(String),
+			apiKey: "roo-test-key",
+		})
 	})
 
 	it("defaults to aggregate fetching when no provider filter is sent", async () => {
