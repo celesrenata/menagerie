@@ -1,39 +1,50 @@
 import { DEFAULT_PROVIDER } from "@/types/index.js"
-import { hasRooCredential, resolveProviderPreference } from "../run.js"
+import { resolveProviderPreference } from "../run.js"
 
 describe("run provider resolution", () => {
-	it("defaults to the login-free provider even when a Roo token is stored", () => {
-		const result = resolveProviderPreference({
-			hasStoredOrExplicitRooCredential: hasRooCredential({ storedToken: "stored-token" }),
-		})
+	it("defaults to the login-free provider when nothing is configured", () => {
+		const result = resolveProviderPreference({})
 
 		expect(result).toEqual({
 			provider: DEFAULT_PROVIDER,
 			fellBackFromStoredRooPreference: false,
+			fellBackFromExplicitRooRequest: false,
 		})
 	})
 
-	it("falls back from saved Roo preferences when credentials are missing", () => {
+	it("falls back from saved Roo preferences", () => {
 		const result = resolveProviderPreference({
 			settingsProvider: "roo",
-			hasStoredOrExplicitRooCredential: false,
 		})
 
 		expect(result).toEqual({
 			provider: DEFAULT_PROVIDER,
 			fellBackFromStoredRooPreference: true,
+			fellBackFromExplicitRooRequest: false,
 		})
 	})
 
-	it("keeps an explicitly requested Roo provider selection", () => {
+	it("falls back from an explicitly requested Roo provider selection", () => {
 		const result = resolveProviderPreference({
 			flagProvider: "roo",
-			hasStoredOrExplicitRooCredential: false,
 		})
 
 		expect(result).toEqual({
-			provider: "roo",
+			provider: DEFAULT_PROVIDER,
 			fellBackFromStoredRooPreference: false,
+			fellBackFromExplicitRooRequest: true,
+		})
+	})
+
+	it("preserves supported providers", () => {
+		const result = resolveProviderPreference({
+			settingsProvider: "anthropic",
+		})
+
+		expect(result).toEqual({
+			provider: "anthropic",
+			fellBackFromStoredRooPreference: false,
+			fellBackFromExplicitRooRequest: false,
 		})
 	})
 })

@@ -30,7 +30,7 @@ describe("auth commands", () => {
 
 		expect(result).toEqual({ authenticated: false })
 		expect(consoleLog.mock.calls.flat().join("\n")).toContain("Normal CLI usage does not require login.")
-		expect(consoleLog.mock.calls.flat().join("\n")).toContain("optional Roo provider compatibility path")
+		expect(consoleLog.mock.calls.flat().join("\n")).toContain("Roo Code Router has been removed")
 	})
 
 	it("reports optional Roo auth token details when available", async () => {
@@ -48,7 +48,7 @@ describe("auth commands", () => {
 		const result = await status({ verbose: true })
 
 		expect(result.authenticated).toBe(true)
-		expect(consoleLog.mock.calls.flat().join("\n")).toContain("Optional Roo auth token available")
+		expect(consoleLog.mock.calls.flat().join("\n")).toContain("Legacy Roo auth token still stored")
 		expect(consoleLog.mock.calls.flat().join("\n")).toContain("/tmp/roo/cli-credentials.json")
 	})
 
@@ -60,7 +60,7 @@ describe("auth commands", () => {
 
 		expect(result).toEqual({ success: true, wasLoggedIn: true })
 		expect(clearToken).toHaveBeenCalledTimes(1)
-		expect(consoleLog.mock.calls.flat().join("\n")).toContain("Removed stored Roo auth token")
+		expect(consoleLog.mock.calls.flat().join("\n")).toContain("Removed stored legacy Roo auth token")
 	})
 
 	it("treats missing Roo auth tokens as already logged out", async () => {
@@ -71,6 +71,6 @@ describe("auth commands", () => {
 
 		expect(result).toEqual({ success: true, wasLoggedIn: false })
 		expect(clearToken).not.toHaveBeenCalled()
-		expect(consoleLog.mock.calls.flat().join("\n")).toContain("No Roo auth token stored.")
+		expect(consoleLog.mock.calls.flat().join("\n")).toContain("No legacy Roo auth token stored.")
 	})
 })

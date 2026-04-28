@@ -47,6 +47,7 @@ import { MessageEnhancer } from "./messageEnhancer"
 
 import { CodeIndexManager } from "../../services/code-index/manager"
 import { checkExistKey } from "../../shared/checkExistApiConfig"
+import { ROUTER_REMOVAL_MESSAGE } from "../config/routerRemoval"
 import { experimentDefault } from "../../shared/experiments"
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { openFile } from "../../integrations/misc/open-file"
@@ -963,14 +964,6 @@ export const webviewMessageHandler = async (
 					},
 				},
 				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
-				{
-					key: "roo",
-					options: {
-						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-						apiKey: apiConfiguration.rooApiKey,
-					},
-				},
 			]
 
 			// LiteLLM is conditional on baseUrl+apiKey
@@ -1101,34 +1094,12 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "requestRooModels": {
-			const { apiConfiguration: rooApiConfig } = await provider.getState()
-			try {
-				const rooOptions = {
-					provider: "roo" as const,
-					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-					apiKey: rooApiConfig.rooApiKey,
-				}
-				// Flush cache and refresh to ensure fresh models with current profile credentials.
-				await flushModels(rooOptions, true)
-
-				const rooModels = await getModels(rooOptions)
-
-				// Always send a response, even if no models are returned
-				provider.postMessageToWebview({
-					type: "singleRouterModelFetchResponse",
-					success: true,
-					values: { provider: "roo", models: rooModels },
-				})
-			} catch (error) {
-				// Send error response
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				provider.postMessageToWebview({
-					type: "singleRouterModelFetchResponse",
-					success: false,
-					error: errorMessage,
-					values: { provider: "roo" },
-				})
-			}
+			provider.postMessageToWebview({
+				type: "singleRouterModelFetchResponse",
+				success: false,
+				error: ROUTER_REMOVAL_MESSAGE,
+				values: { provider: "roo" },
+			})
 			break
 		}
 		case "requestRooCreditBalance": {

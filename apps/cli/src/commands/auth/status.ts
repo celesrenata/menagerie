@@ -21,10 +21,10 @@ export async function status(options: StatusOptions = {}): Promise<StatusResult>
 	const token = await loadToken()
 
 	if (!token) {
-		console.log("No Roo auth token stored.")
+		console.log("No legacy Roo auth token stored.")
 		console.log("")
 		console.log("Normal CLI usage does not require login.")
-		console.log("Only run `roo auth login` if you need the optional Roo provider compatibility path.")
+		console.log("Roo Code Router has been removed, so no legacy Roo sign-in is required.")
 		return { authenticated: false }
 	}
 
@@ -36,10 +36,10 @@ export async function status(options: StatusOptions = {}): Promise<StatusResult>
 	const createdAt = credentials?.createdAt ? new Date(credentials.createdAt) : undefined
 
 	if (expired) {
-		console.log("Stored Roo auth token expired.")
+		console.log("Stored legacy Roo auth token expired.")
 		console.log("")
 		console.log("Standard CLI usage still works without login.")
-		console.log("Run `roo auth login` only if you still use the Roo provider compatibility path.")
+		console.log("Roo Code Router has been removed, so you can safely ignore or delete this token.")
 
 		return {
 			authenticated: false,
@@ -49,9 +49,9 @@ export async function status(options: StatusOptions = {}): Promise<StatusResult>
 	}
 
 	if (expiringSoon) {
-		console.log("⚠ Optional Roo auth token expires soon; refresh with `roo auth login` if you still use Roo.")
+		console.log("⚠ Legacy Roo auth token expires soon; use `roo auth logout` if you want to clean it up.")
 	} else {
-		console.log("✓ Optional Roo auth token available")
+		console.log("✓ Legacy Roo auth token still stored")
 	}
 
 	if (expiresAt) {

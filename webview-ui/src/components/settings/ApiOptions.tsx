@@ -29,7 +29,6 @@ import {
 	internationalZAiDefaultModelId,
 	mainlandZAiDefaultModelId,
 	fireworksDefaultModelId,
-	rooDefaultModelId,
 	vercelAiGatewayDefaultModelId,
 	minimaxDefaultModelId,
 	unboundDefaultModelId,
@@ -84,7 +83,6 @@ import {
 	Poe,
 	QwenCode,
 	Requesty,
-	Roo,
 	SambaNova,
 	Unbound,
 	Vertex,
@@ -183,11 +181,13 @@ const ApiOptions = ({
 		id: selectedModelId,
 		info: selectedModelInfo,
 	} = useSelectedModel(apiConfiguration)
+	const isLegacyRooSelected = apiConfiguration.apiProvider === "roo"
 	const activeSelectedProvider: ProviderName | undefined = isRetiredProvider(selectedProvider)
 		? undefined
 		: selectedProvider
 	const isRetiredSelectedProvider =
-		typeof apiConfiguration.apiProvider === "string" && isRetiredProvider(apiConfiguration.apiProvider)
+		isLegacyRooSelected ||
+		(typeof apiConfiguration.apiProvider === "string" && isRetiredProvider(apiConfiguration.apiProvider))
 
 	const { data: routerModels, refetch: refetchRouterModels } = useRouterModels()
 
@@ -239,7 +239,7 @@ const ApiOptions = ({
 				vscode.postMessage({ type: "requestLmStudioModels" })
 			} else if (selectedProvider === "vscode-lm") {
 				vscode.postMessage({ type: "requestVsCodeLmModels" })
-			} else if (selectedProvider === "litellm" || selectedProvider === "roo" || selectedProvider === "poe") {
+			} else if (selectedProvider === "litellm" || selectedProvider === "poe") {
 				vscode.postMessage({ type: "requestRouterModels" })
 			}
 		},
@@ -360,7 +360,6 @@ const ApiOptions = ({
 				},
 				fireworks: { field: "apiModelId", default: fireworksDefaultModelId },
 				poe: { field: "apiModelId", default: poeDefaultModelId },
-				roo: { field: "apiModelId", default: rooDefaultModelId },
 				"vercel-ai-gateway": { field: "vercelAiGatewayModelId", default: vercelAiGatewayDefaultModelId },
 				openai: { field: "openAiModelId" },
 				ollama: { field: "ollamaModelId" },
@@ -438,19 +437,7 @@ const ApiOptions = ({
 			label,
 		}))
 
-		// Pin "roo" to the top if not on welcome screen
-		if (!fromWelcomeView) {
-			const rooIndex = options.findIndex((opt) => opt.value === "roo")
-			if (rooIndex > 0) {
-				const [rooOption] = options.splice(rooIndex, 1)
-				options.unshift(rooOption)
-			}
-		} else {
-			// Filter out roo from the welcome view
-			const filteredOptions = options.filter((opt) => opt.value !== "roo")
-			options.length = 0
-			options.push(...filteredOptions)
-
+		if (fromWelcomeView) {
 			const openRouterIndex = options.findIndex((opt) => opt.value === "openrouter")
 			if (openRouterIndex > 0) {
 				const [openRouterOption] = options.splice(openRouterIndex, 1)
@@ -458,8 +445,15 @@ const ApiOptions = ({
 			}
 		}
 
+		if (isLegacyRooSelected) {
+			options.unshift({
+				value: "roo",
+				label: "Roo Code Router",
+			})
+		}
+
 		return options
-	}, [organizationAllowList, apiConfiguration.apiProvider, fromWelcomeView])
+	}, [organizationAllowList, apiConfiguration.apiProvider, fromWelcomeView, isLegacyRooSelected])
 
 	return (
 		<div className="flex flex-col gap-3">
@@ -707,17 +701,6 @@ const ApiOptions = ({
 						<Poe
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
-							organizationAllowList={organizationAllowList}
-							modelValidationError={modelValidationError}
-							simplifySettings={fromWelcomeView}
-						/>
-					)}
-
-					{selectedProvider === "roo" && (
-						<Roo
-							apiConfiguration={apiConfiguration}
-							setApiConfigurationField={setApiConfigurationField}
-							routerModels={routerModels}
 							organizationAllowList={organizationAllowList}
 							modelValidationError={modelValidationError}
 							simplifySettings={fromWelcomeView}

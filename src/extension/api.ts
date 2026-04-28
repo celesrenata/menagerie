@@ -136,15 +136,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 						break
 					case TaskCommandName.GetModels:
 						try {
-							const { apiConfiguration } = await this.sidebarProvider.getState()
-
-							const models = await getModels({
-								provider: "roo" as const,
-								baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-								apiKey: apiConfiguration.rooApiKey,
-							})
-
-							sendResponse(RooCodeEventName.ModelsResponse, [models])
+							sendResponse(RooCodeEventName.ModelsResponse, [{}])
 						} catch (error) {
 							sendResponse(RooCodeEventName.ModelsResponse, [{}])
 						}

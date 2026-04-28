@@ -17,10 +17,7 @@ export function OnboardingScreen({ onSelect }: OnboardingScreenProps) {
 				Welcome! Roo Code works without login. Choose how you want to connect to an LLM provider.
 			</Text>
 			<Select
-				options={[
-					{ label: "Bring your own API key (recommended)", value: OnboardingProviderChoice.Byok },
-					{ label: "Use the optional Roo provider compatibility path", value: OnboardingProviderChoice.Roo },
-				]}
+				options={[{ label: "Continue with your own API key", value: OnboardingProviderChoice.Byok }]}
 				onChange={(value: string) => {
 					onSelect(value as OnboardingProviderChoice)
 				}}

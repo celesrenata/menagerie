@@ -563,7 +563,7 @@ describe("ApiOptions", () => {
 	})
 
 	describe("Roo provider tests", () => {
-		it("renders roo provider without cloud account UI", () => {
+		it("renders the retired provider message for legacy roo selections without cloud account UI", () => {
 			const useExtensionStateMock = vi.spyOn(ExtensionStateContext, "useExtensionState")
 			useExtensionStateMock.mockReturnValue({
 				cloudIsAuthenticated: false,
@@ -576,7 +576,9 @@ describe("ApiOptions", () => {
 				},
 			})
 
-			expect(screen.getByTestId("roo-provider")).toBeInTheDocument()
+			expect(screen.getByTestId("retired-provider-message")).toHaveTextContent(
+				"settings:providers.retiredProviderMessage",
+			)
 			expect(screen.queryByText("Authenticated")).not.toBeInTheDocument()
 			expect(screen.queryByText("Not Authenticated")).not.toBeInTheDocument()
 		})

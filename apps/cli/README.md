@@ -130,51 +130,21 @@ printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | roo --print --
 printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | roo --print --stdin-prompt-stream --output-format stream-json
 ```
 
-### Optional Roo Provider Authentication
+### Legacy Roo Auth Token Cleanup
 
 Normal CLI usage is login-free. Use `--provider` with your own API key, or set the provider environment variable directly.
 
-The `auth` commands are only for the optional Roo-hosted provider compatibility path:
+Roo Code Router has been removed from the CLI. The remaining `auth` commands only help inspect or delete any legacy Roo auth token still stored from older releases:
 
 ```bash
-# Store an optional Roo auth token (opens browser)
-roo auth login
-
-# Check authentication status
+# Check whether a legacy Roo auth token is still stored
 roo auth status
 
-# Log out
+# Remove an old stored Roo auth token
 roo auth logout
 ```
 
-The `auth login` command:
-
-1. Opens your browser to sign in for the optional Roo provider path
-2. Receives a secure token via localhost callback
-3. Stores the token in `~/.config/roo/cli-credentials.json`
-
-If you do not use the Roo provider, you can skip this entirely.
-
-**Optional sign-in flow:**
-
-```
-┌──────┐         ┌─────────┐         ┌───────────────┐
-│  CLI │         │ Browser │         │ Roo sign-in   │
-└──┬───┘         └────┬────┘         └───────┬───────┘
-   │                  │                      │
-   │ Open auth URL    │                      │
-   │─────────────────>│                      │
-   │                  │                      │
-   │                  │ Sign in              │
-   │                  │─────────────────────>│
-   │                  │                      │
-   │                  │<─────────────────────│
-   │                  │ Token via callback   │
-   │<─────────────────│                      │
-   │                  │                      │
-   │ Store token      │                      │
-   │                  │                      │
-```
+If you never used Roo Code Router, you can ignore this section entirely.
 
 ## Options
 
@@ -190,7 +160,7 @@ If you do not use the Roo provider, you can skip this entirely.
 | `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                     |
 | `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                     |
 | `-k, --api-key <key>`                   | API key for the LLM provider                                                            | From env var                |
-| `--provider <provider>`                 | API provider (roo, anthropic, openai, openrouter, etc.)                                 | `openrouter`                |
+| `--provider <provider>`                 | API provider (anthropic, openai-native, gemini, openrouter, vercel-ai-gateway)          | `openrouter`                |
 | `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6` |
 | `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                      |
 | `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell         |
@@ -202,11 +172,10 @@ If you do not use the Roo provider, you can skip this entirely.
 
 ## Auth Commands
 
-| Command           | Description                      |
-| ----------------- | -------------------------------- |
-| `roo auth login`  | Store an optional Roo auth token |
-| `roo auth logout` | Clear the stored Roo auth token  |
-| `roo auth status` | Show optional Roo token status   |
+| Command           | Description                          |
+| ----------------- | ------------------------------------ |
+| `roo auth logout` | Clear a stored legacy Roo auth token |
+| `roo auth status` | Show legacy Roo token status         |
 
 ## Environment Variables
 
@@ -214,19 +183,11 @@ The CLI will look for API keys in environment variables if not provided via `--a
 
 | Provider          | Environment Variable        |
 | ----------------- | --------------------------- |
-| roo               | `ROO_API_KEY`               |
 | anthropic         | `ANTHROPIC_API_KEY`         |
 | openai-native     | `OPENAI_API_KEY`            |
 | openrouter        | `OPENROUTER_API_KEY`        |
 | gemini            | `GOOGLE_API_KEY`            |
 | vercel-ai-gateway | `VERCEL_AI_GATEWAY_API_KEY` |
-
-**Optional Roo compatibility environment variables:**
-
-| Variable            | Description                                                       |
-| ------------------- | ----------------------------------------------------------------- |
-| `ROO_AUTH_BASE_URL` | Override the Roo sign-in URL (default: `https://app.roocode.com`) |
-| `ROO_SDK_BASE_URL`  | Override the Roo compatibility API base URL                       |
 
 ## Architecture
 
@@ -271,7 +232,7 @@ The CLI will look for API keys in environment variables if not provided via `--a
 
 ```bash
 # Run directly from source (no build required)
-pnpm dev --provider roo --api-key $ROO_API_KEY --print "Hello"
+pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
 
 # Run tests
 pnpm test
@@ -283,10 +244,10 @@ pnpm check-types
 pnpm lint
 ```
 
-By default the `start` script points `ROO_CODE_PROVIDER_URL` at `http://localhost:8080/proxy` for local development. To point at the production API instead, override the environment variable:
+By default the dev script still points `ROO_CODE_PROVIDER_URL` at `http://localhost:8080/proxy` for local extension-host development. The CLI provider selection itself should use a non-Router provider such as OpenRouter. To point the backend URL at production instead, override the environment variable:
 
 ```bash
-ROO_CODE_PROVIDER_URL=https://api.roocode.com/proxy pnpm dev --provider roo --api-key $ROO_API_KEY --print "Hello"
+ROO_CODE_PROVIDER_URL=https://api.roocode.com/proxy pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
 ```
 
 ## Releasing
