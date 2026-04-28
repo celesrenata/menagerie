@@ -629,7 +629,8 @@ describe("CloudService", () => {
 
 		it("captureEvent is a no-op in compatibility mode", async () => {
 			const log = vi.fn()
-			const compatService = await CloudService.createInstance(mockContext, log)
+			const compatService = cloudService
+			vi.spyOn(compatService as unknown as { log: (...args: unknown[]) => void }, "log").mockImplementation(log)
 
 			const telemetryEvent: TelemetryEvent = {
 				event: TelemetryEventName.TASK_CREATED,
