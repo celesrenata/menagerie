@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 
+import { getRouterUnavailableSignInMessage } from "../core/config/routerRemoval"
 import { ClineProvider } from "../core/webview/ClineProvider"
 
 export const handleUri = async (uri: vscode.Uri) => {
@@ -28,7 +29,7 @@ export const handleUri = async (uri: vscode.Uri) => {
 			break
 		}
 		case "/auth/clerk/callback": {
-			// Legacy Roo Cloud auth callbacks are ignored during compatibility mode.
+			vscode.window.showInformationMessage(getRouterUnavailableSignInMessage())
 			break
 		}
 		default:

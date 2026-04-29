@@ -112,7 +112,8 @@
 			"thinking_complete_recitation": "(Pensiero completato, ma l'output è stato bloccato a causa del controllo di recitazione.)"
 		},
 		"roo": {
-			"authenticationRequired": "Il provider Roo richiede l'autenticazione cloud. Accedi a Roo Code Cloud."
+			"authenticationRequired": "Il provider Roo richiede l'autenticazione cloud. Accedi a Roo Code Cloud.",
+			"routerRemoved": "Roo Code Router è stato rimosso. Seleziona e configura un provider diverso."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "La chiave API contiene caratteri non validi.",
@@ -161,7 +162,10 @@
 		"organization_share_link_copied": "Link di condivisione organizzazione copiato negli appunti!",
 		"public_share_link_copied": "Link di condivisione pubblica copiato negli appunti!",
 		"mode_exported": "Modalità '{{mode}}' esportata con successo",
-		"mode_imported": "Modalità importata con successo"
+		"mode_imported": "Modalità importata con successo",
+		"roo": {
+			"signInUnavailable": "L'accesso a Roo Code Cloud non è attualmente disponibile. Configura un altro provider per continuare."
+		}
 	},
 	"answers": {
 		"yes": "Sì",

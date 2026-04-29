@@ -112,7 +112,8 @@
 			"thinking_complete_recitation": "(Размышление завершено, но вывод заблокирован проверкой цитирования.)"
 		},
 		"roo": {
-			"authenticationRequired": "Провайдер Roo требует облачной аутентификации. Войдите в Roo Code Cloud."
+			"authenticationRequired": "Провайдер Roo требует облачной аутентификации. Войдите в Roo Code Cloud.",
+			"routerRemoved": "Roo Code Router был удалён. Выберите и настройте другого провайдера."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "API-ключ содержит недопустимые символы.",
@@ -161,7 +162,10 @@
 		"organization_share_link_copied": "Ссылка для совместного доступа организации скопирована в буфер обмена!",
 		"public_share_link_copied": "Публичная ссылка для совместного доступа скопирована в буфер обмена!",
 		"mode_exported": "Режим '{{mode}}' успешно экспортирован",
-		"mode_imported": "Режим успешно импортирован"
+		"mode_imported": "Режим успешно импортирован",
+		"roo": {
+			"signInUnavailable": "Вход в Roo Code Cloud сейчас недоступен. Настрой другого провайдера, чтобы продолжить."
+		}
 	},
 	"answers": {
 		"yes": "Да",

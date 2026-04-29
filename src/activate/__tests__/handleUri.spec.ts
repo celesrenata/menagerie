@@ -1,3 +1,11 @@
+vi.mock("vscode", () => ({
+	window: {
+		showInformationMessage: vi.fn(),
+	},
+}))
+
+import * as vscode from "vscode"
+
 import { handleUri } from "../handleUri"
 
 const mockVisibleProvider = {
@@ -24,5 +32,8 @@ describe("handleUri", () => {
 
 		expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
 		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
+		)
 	})
 })

@@ -47,7 +47,7 @@ import { MessageEnhancer } from "./messageEnhancer"
 
 import { CodeIndexManager } from "../../services/code-index/manager"
 import { checkExistKey } from "../../shared/checkExistApiConfig"
-import { ROUTER_REMOVAL_MESSAGE } from "../config/routerRemoval"
+import { getRouterRemovalMessage, getRouterUnavailableSignInMessage } from "../config/routerRemoval"
 import { experimentDefault } from "../../shared/experiments"
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { openFile } from "../../integrations/misc/open-file"
@@ -107,9 +107,7 @@ export const webviewMessageHandler = async (
 	const isCloudServiceAvailable = () => CloudService.hasInstance()
 
 	const showCloudUnavailableMessage = () => {
-		vscode.window.showInformationMessage(
-			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
-		)
+		vscode.window.showInformationMessage(getRouterUnavailableSignInMessage())
 	}
 
 	const getCurrentMode = async (): Promise<string> => {
@@ -1097,7 +1095,7 @@ export const webviewMessageHandler = async (
 			provider.postMessageToWebview({
 				type: "singleRouterModelFetchResponse",
 				success: false,
-				error: ROUTER_REMOVAL_MESSAGE,
+				error: getRouterRemovalMessage(),
 				values: { provider: "roo" },
 			})
 			break
