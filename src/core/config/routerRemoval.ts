@@ -21,8 +21,6 @@ export const getRouterRemovalMessage = () =>
 export const getRouterUnavailableSignInMessage = () =>
 	getLocalizedMessage(ROUTER_SIGN_IN_UNAVAILABLE_I18N_KEY, ROUTER_SIGN_IN_UNAVAILABLE_DEFAULT_MESSAGE)
 
-export const ROUTER_REMOVAL_MESSAGE = getRouterRemovalMessage()
-
 export const ROUTER_REMOVAL_IMPORT_WARNING =
 	"Roo Code Router was removed. The imported profile was downgraded and needs to be reconfigured."
 

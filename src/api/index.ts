@@ -3,7 +3,7 @@ import OpenAI from "openai"
 
 import { isRetiredProvider, type ProviderSettings, type ModelInfo } from "@roo-code/types"
 
-import { ROUTER_REMOVAL_MESSAGE } from "../core/config/routerRemoval"
+import { getRouterRemovalMessage } from "../core/config/routerRemoval"
 import { ApiStream } from "./transform/stream"
 
 import {
@@ -113,7 +113,7 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 	const { apiProvider, ...options } = configuration
 
 	if (apiProvider === "roo") {
-		throw new Error(ROUTER_REMOVAL_MESSAGE)
+		throw new Error(getRouterRemovalMessage())
 	}
 
 	if (apiProvider && isRetiredProvider(apiProvider)) {
