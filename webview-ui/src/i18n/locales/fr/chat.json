@@ -15,19 +15,6 @@
 		"export": "Exporter l'historique des tâches",
 		"delete": "Supprimer la tâche (Shift + Clic pour ignorer la confirmation)",
 		"condenseContext": "Condenser intelligemment le contexte",
-<<<<<<< HEAD
-=======
-		"share": "Partager la tâche",
-		"shareWithOrganization": "Partager avec l'organisation",
-		"shareWithOrganizationDescription": "Seuls les membres de ton organisation peuvent accéder",
-		"sharePublicly": "Partager publiquement",
-		"sharePubliclyDescription": "Toute personne avec le lien peut accéder",
-		"connectToCloud": "Se connecter au Cloud",
-		"connectToCloudDescription": "Connecte-toi à Zoo Code Cloud pour partager des tâches",
-		"sharingDisabledByOrganization": "Partage désactivé par l'organisation",
-		"shareSuccessOrganization": "Lien d'organisation copié dans le presse-papiers",
-		"shareSuccessPublic": "Lien public copié dans le presse-papiers",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "Ouvrir l'historique de l'API",
 		"openUiHistory": "Ouvrir l'historique de l'UI",
 		"backToParentTask": "Tâche parente"
@@ -341,20 +328,8 @@
 		"timerPrefix": "Approbation automatique activée. Sélection dans {{seconds}}s…"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} est sortie",
-		"support": "Soutiens Roo Code en nous donnant une étoile sur <githubLink>GitHub</githubLink>.",
-=======
 		"title": "Zoo Code {{version}} est disponible",
 		"support": "Soutiens Zoo Code en nous donnant une étoile sur <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Modèle stealth GRATUIT pour une durée limitée</bold> - Code Supernova : maintenant amélioré avec une <bold>fenêtre de contexte de 1M tokens</bold> ! Un modèle de codage agentique polyvalent qui prend en charge les entrées d'images, accessible via Zoo Code Cloud.",
-			"note": "(Note : les prompts et complétions sont enregistrés par le créateur du modèle et utilisés pour l'améliorer)",
-			"connectButton": "Se connecter à Zoo Code Cloud",
-			"selectModel": "Sélectionne <code>roo/code-supernova</code> dans le fournisseur Zoo Code Cloud des paramètres pour commencer.",
-			"goToSettingsButton": "Aller aux Paramètres"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code est de retour, désormais comme plugin maintenu par la communauté sous le nom Zoo Code !!",
 			"description": "Si tu n'as pas suivi, l'équipe Zoo Code a récemment annoncé qu'elle arrêtait le développement de Zoo Code et archivait le travail accompli. Mais pas de panique : la communauté a pris le relais pour faire vivre l'héritage de Zoo Code avec un nouveau nom et un nouveau foyer ! Nous ne sommes plus juste un seul « Roo », nous sommes une communauté, un « Zoo » si tu veux. Zoo Code est un plugin maintenu par la communauté qui reprend là où Zoo Code s'est arrêté, et nous nous engageons à préserver l'esprit de Roo tout en ajoutant de nouvelles fonctionnalités et améliorations. Nous voulons adresser un immense merci à toute l'équipe Zoo Code pour son travail incroyable et pour avoir créé un outil aussi formidable pour les développeurs. Nous sommes ravis de poursuivre sur leurs bases et de voir jusqu'où la communauté mènera Zoo Code.",
@@ -511,11 +486,7 @@
 	},
 	"retiredProvider": {
 		"title": "Fournisseur plus pris en charge",
-<<<<<<< HEAD
 		"message": "Ce fournisseur n'est plus disponible. Choisis un fournisseur pris en charge pour continuer.",
-=======
-		"message": "Désolé, ce fournisseur n'est plus pris en charge. Nous avons constaté que très peu d'utilisateurs de Zoo l'utilisaient réellement et nous devons réduire la portée de notre code pour continuer à avancer rapidement et bien servir notre communauté. C'était une décision vraiment difficile, mais elle nous permet de nous concentrer sur ce qui compte le plus pour toi. C'est rageant, on le sait.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Ouvrir les paramètres"
 	}
 }

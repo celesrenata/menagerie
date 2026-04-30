@@ -15,18 +15,6 @@
 		"export": "Aufgabenverlauf exportieren",
 		"delete": "Aufgabe löschen (Shift + Klick zum Überspringen der Bestätigung)",
 		"condenseContext": "Kontext intelligent komprimieren",
-<<<<<<< HEAD
-=======
-		"shareWithOrganization": "Mit Organisation teilen",
-		"shareWithOrganizationDescription": "Nur Mitglieder deiner Organisation können zugreifen",
-		"sharePublicly": "Öffentlich teilen",
-		"sharePubliclyDescription": "Jeder mit dem Link kann zugreifen",
-		"connectToCloud": "Mit Cloud verbinden",
-		"connectToCloudDescription": "Melde dich bei Zoo Code Cloud an, um Aufgaben zu teilen",
-		"sharingDisabledByOrganization": "Freigabe von der Organisation deaktiviert",
-		"shareSuccessOrganization": "Organisationslink in die Zwischenablage kopiert",
-		"shareSuccessPublic": "Öffentlicher Link in die Zwischenablage kopiert",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "API-Verlauf öffnen",
 		"openUiHistory": "UI-Verlauf öffnen",
 		"backToParentTask": "Übergeordnete Aufgabe"
@@ -340,20 +328,8 @@
 		"timerPrefix": "Automatische Genehmigung aktiviert. Wähle in {{seconds}}s…"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} veröffentlicht",
-		"support": "Bitte unterstütze Roo Code, indem du uns auf <githubLink>GitHub</githubLink> einen Stern gibst.",
-=======
 		"title": "Zoo Code {{version}} veröffentlicht",
 		"support": "Bitte unterstütze Zoo Code, indem du uns auf <githubLink>GitHub</githubLink> einen Stern gibst.",
-		"stealthModel": {
-			"feature": "<bold>Zeitlich begrenztes KOSTENLOSES Stealth-Modell</bold> - Code Supernova: Jetzt mit einem <bold>1M Token Kontextfenster</bold> erweitert! Ein vielseitiges agentisches Coding-Modell, das Bildeingaben unterstützt und über Zoo Code Cloud zugänglich ist.",
-			"note": "(Hinweis: Prompts und Vervollständigungen werden vom Modellersteller protokolliert und zur Verbesserung des Modells verwendet)",
-			"connectButton": "Mit Zoo Code Cloud verbinden",
-			"selectModel": "Wähle <code>roo/code-supernova</code> vom Zoo Code Cloud-Provider in den Einstellungen aus, um zu beginnen.",
-			"goToSettingsButton": "Zu den Einstellungen"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code ist zurück – jetzt als Community-gepflegtes Plugin namens Zoo Code!!",
 			"description": "Falls du es nicht mitbekommen hast: Das Zoo Code Team hat vor Kurzem angekündigt, die Entwicklung von Zoo Code einzustellen und die bisherige Arbeit zu archivieren. Aber keine Sorge: Die Community ist eingesprungen, um das Vermächtnis von Zoo Code unter neuem Namen und in einem neuen Zuhause weiterzuführen! Wir sind nicht mehr nur ein einzelnes \"Roo\", sondern eine Community – ein \"Zoo\", wenn du so willst. Zoo Code ist ein Community-gepflegtes Plugin, das dort weitermacht, wo Zoo Code aufgehört hat. Wir wollen den Geist von Roo bewahren und gleichzeitig neue Funktionen und Verbesserungen einführen. Dem gesamten Zoo Code Team gilt ein riesiges Dankeschön für die unglaubliche Arbeit und dafür, dass es so ein großartiges Tool für Entwickler geschaffen hat. Wir freuen uns darauf, auf diesem Fundament weiterzubauen und zu sehen, wohin die Community Zoo Code in Zukunft führt!",
@@ -510,11 +486,7 @@
 	},
 	"retiredProvider": {
 		"title": "Anbieter wird nicht mehr unterstützt",
-<<<<<<< HEAD
 		"message": "Dieser Anbieter ist nicht mehr verfügbar. Wähle einen unterstützten Anbieter aus, um fortzufahren.",
-=======
-		"message": "Leider wird dieser Anbieter nicht mehr unterstützt. Wir haben festgestellt, dass nur sehr wenige Zoo-Nutzer ihn tatsächlich verwendet haben, und wir müssen den Umfang unserer Codebasis reduzieren, damit wir weiterhin schnell liefern und unserer Community in diesem Bereich gut dienen können. Es war eine wirklich schwere Entscheidung, aber sie ermöglicht uns, uns auf das zu konzentrieren, was dir am wichtigsten ist. Es ist ärgerlich, das wissen wir.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Einstellungen öffnen"
 	}
 }

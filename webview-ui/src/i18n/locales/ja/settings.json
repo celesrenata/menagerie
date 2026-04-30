@@ -468,13 +468,6 @@
 			"description": "Ollamaを使用すると、ローカルコンピューターでモデルを実行できます。始め方については、クイックスタートガイドをご覧ください。",
 			"warning": "注意：Zoo Codeは複雑なプロンプトを使用し、Claudeモデルで最適に動作します。能力の低いモデルは期待通りに動作しない場合があります。"
 		},
-<<<<<<< HEAD
-=======
-		"roo": {
-			"authenticatedMessage": "Zoo Code Cloudアカウントを通じて安全に認証されています。",
-			"connectButton": "Zoo Code Cloudに接続"
-		},
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openRouter": {
 			"providerRouting": {
 				"title": "OpenRouterプロバイダールーティング",

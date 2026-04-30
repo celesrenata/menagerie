@@ -15,19 +15,6 @@
 		"export": "Görev geçmişini dışa aktar",
 		"delete": "Görevi sil (Onayı atlamak için Shift + Tıkla)",
 		"condenseContext": "Bağlamı akıllıca yoğunlaştır",
-<<<<<<< HEAD
-=======
-		"share": "Görevi paylaş",
-		"shareWithOrganization": "Kuruluşla paylaş",
-		"shareWithOrganizationDescription": "Sadece kuruluşunuzun üyeleri erişebilir",
-		"sharePublicly": "Herkese açık paylaş",
-		"sharePubliclyDescription": "Bağlantıya sahip herkes erişebilir",
-		"connectToCloud": "Buluta bağlan",
-		"connectToCloudDescription": "Görevleri paylaşmak için Zoo Code Cloud'da oturum aç",
-		"sharingDisabledByOrganization": "Paylaşım kuruluş tarafından devre dışı bırakıldı",
-		"shareSuccessOrganization": "Organizasyon bağlantısı panoya kopyalandı",
-		"shareSuccessPublic": "Genel bağlantı panoya kopyalandı",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "API Geçmişini Aç",
 		"openUiHistory": "UI Geçmişini Aç",
 		"backToParentTask": "Üst görev"
@@ -342,20 +329,8 @@
 		"timerPrefix": "Otomatik onay etkinleştirildi. {{seconds}}s içinde seçim yapılıyor…"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} Yayınlandı",
-		"support": "<githubLink>GitHub</githubLink>'da yıldız vererek Roo Code'u destekle.",
-=======
 		"title": "Zoo Code {{version}} yayınlandı",
 		"support": "Lütfen <githubLink>GitHub</githubLink>'da bize yıldız vererek Zoo Code'u destekle.",
-		"stealthModel": {
-			"feature": "<bold>Sınırlı süre ÜCRETSİZ gizli model</bold> - Code Supernova: Artık <bold>1M token bağlam penceresi</bold> ile yükseltildi! Görsel girdilerini destekleyen çok yönlü ajan tabanlı kodlama modeli, Zoo Code Cloud üzerinden erişilebilir.",
-			"note": "(Not: istemler ve tamamlamalar model yaratıcısı tarafından kaydedilir ve modeli geliştirmek için kullanılır)",
-			"connectButton": "Zoo Code Cloud'a bağlan",
-			"selectModel": "Başlamak için Ayarlar'da Zoo Code Cloud sağlayıcısından <code>roo/code-supernova</code>'yı seç.",
-			"goToSettingsButton": "Ayarlar'a Git"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code geri döndü; artık Zoo Code adlı, topluluk tarafından sürdürülen bir eklenti!!",
 			"description": "Takip etmiyorsan kaçırmış olabilirsin: Zoo Code ekibi kısa süre önce Zoo Code geliştirmesini aşamalı olarak sonlandırdığını ve yaptıkları çalışmaları arşivlediğini duyurdu. Ama endişelenme; topluluk, Zoo Code mirasını yeni bir ad ve yeni bir yuva ile sürdürmek için öne çıktı! Artık sadece tek bir \"Roo\" değiliz; bir topluluğuz, istersen bir \"Zoo\" diyebilirsin. Zoo Code, Zoo Code'un bıraktığı yerden devam eden, topluluk tarafından sürdürülen bir eklenti ve Roo'nun ruhunu korurken yeni özellikler ve iyileştirmeler sunmaya kararlıyız. Geliştiriciler için böylesine harika bir araç yarattıkları ve yaptıkları inanılmaz iş için tüm Zoo Code ekibine kocaman bir teşekkür göndermek istiyoruz. Onların temeli üzerine inşa etmeyi sürdürmekten ve topluluğun gelecekte Zoo Code'u nereye taşıyacağını görmekten heyecan duyuyoruz!",
@@ -512,11 +487,7 @@
 	},
 	"retiredProvider": {
 		"title": "Sağlayıcı artık desteklenmiyor",
-<<<<<<< HEAD
 		"message": "Bu sağlayıcı artık kullanılamıyor. Devam etmek için desteklenen bir sağlayıcı seçin.",
-=======
-		"message": "Üzgünüz, bu sağlayıcı artık desteklenmiyor. Çok az Zoo kullanıcısının bunu gerçekten kullandığını gördük ve hızlı gelişmeye devam edip topluluğumuza iyi hizmet verebilmek için kod tabanımızın kapsamını daraltmamız gerekiyor. Gerçekten zor bir karardı ama senin için en önemli olana odaklanmamızı sağlıyor. Bunun can sıkıcı olduğunu biliyoruz.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Ayarları aç"
 	}
 }

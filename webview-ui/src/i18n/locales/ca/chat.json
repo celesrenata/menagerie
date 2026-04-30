@@ -15,19 +15,6 @@
 		"export": "Exportar historial de tasques",
 		"delete": "Eliminar tasca (Shift + Clic per ometre confirmació)",
 		"condenseContext": "Condensar context de forma intel·ligent",
-<<<<<<< HEAD
-=======
-		"share": "Compartir tasca",
-		"shareWithOrganization": "Compartir amb l'organització",
-		"shareWithOrganizationDescription": "Només els membres de la teva organització poden accedir",
-		"sharePublicly": "Compartir públicament",
-		"sharePubliclyDescription": "Qualsevol amb l'enllaç pot accedir",
-		"connectToCloud": "Connecta al núvol",
-		"connectToCloudDescription": "Inicia sessió a Zoo Code Cloud per compartir tasques",
-		"sharingDisabledByOrganization": "Compartició deshabilitada per l'organització",
-		"shareSuccessOrganization": "Enllaç d'organització copiat al porta-retalls",
-		"shareSuccessPublic": "Enllaç públic copiat al porta-retalls",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "Obrir historial d'API",
 		"openUiHistory": "Obrir historial d'UI",
 		"backToParentTask": "Tasca principal"
@@ -341,20 +328,8 @@
 		"timerPrefix": "Aprovació automàtica habilitada. Seleccionant en {{seconds}}s…"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} Llançat",
-		"support": "Si us plau, dona suport a Roo Code fent una estrella al nostre <githubLink>GitHub</githubLink>.",
-=======
 		"title": "S'ha publicat Zoo Code {{version}}",
 		"support": "Dona suport a Zoo Code fent-nos una estrella a <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Model stealth GRATUÏT per temps limitat</bold> - Code Supernova: Ara actualitzat amb una <bold>finestra de context d'1M tokens</bold>! Un model de codificació agèntica versàtil que admet entrades d'imatges, disponible a través de Zoo Code Cloud.",
-			"note": "(Nota: els prompts i completacions són registrats pel creador del model i utilitzats per millorar-lo)",
-			"connectButton": "Connecta't a Zoo Code Cloud",
-			"selectModel": "Selecciona <code>roo/code-supernova</code> del proveïdor Zoo Code Cloud a Configuració per començar.",
-			"goToSettingsButton": "Anar a Configuració"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code ha tornat, ara com a connector mantingut per la comunitat anomenat Zoo Code!!",
 			"description": "Per si no ho havies seguit, l'equip de Zoo Code ha anunciat fa poc que deixa de desenvolupar Zoo Code i n'arxiva la feina feta. Però no pateixis: la comunitat ha fet un pas endavant per continuar el llegat de Zoo Code amb un nom nou i una llar nova! Ja no som només un sol \"Roo\", som una comunitat, un \"Zoo\" si vols. Zoo Code és un connector mantingut per la comunitat que reprèn el camí on Zoo Code ho va deixar, i ens comprometem a mantenir viu l'esperit de Roo mentre també hi incorporem funcions i millores noves. Volem donar un enorme agraïment a tot l'equip de Zoo Code per la feina increïble que han fet i per haver creat una eina tan extraordinària per als desenvolupadors. Ens fa molta il·lusió continuar construint sobre la seva base i veure fins on porta la comunitat Zoo Code en el futur!",
@@ -511,11 +486,7 @@
 	},
 	"retiredProvider": {
 		"title": "Proveïdor ja no compatible",
-<<<<<<< HEAD
 		"message": "Aquest proveïdor ja no està disponible. Selecciona un proveïdor compatible per continuar.",
-=======
-		"message": "Ho sentim, aquest proveïdor ja no és compatible. Hem vist molt pocs usuaris de Zoo que realment l'utilitzaven i necessitem reduir l'abast del nostre codi per poder seguir avançant ràpidament i servir bé la nostra comunitat en aquest espai. Va ser una decisió molt difícil, però ens permet centrar-nos en el que més t'importa. Ho sabem, és una llàstima.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Obrir configuració"
 	}
 }

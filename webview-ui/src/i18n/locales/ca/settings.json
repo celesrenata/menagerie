@@ -306,11 +306,7 @@
 		"searchProviderPlaceholder": "Cerca proveïdors",
 		"noProviderMatchFound": "No s'han trobat proveïdors",
 		"noMatchFound": "No s'han trobat perfils coincidents",
-<<<<<<< HEAD
 		"retiredProviderMessage": "Aquest proveïdor ja no està disponible. Selecciona un proveïdor compatible per continuar.",
-=======
-		"retiredProviderMessage": "Ho sentim, aquest proveïdor ja no és compatible. Hem vist molt pocs usuaris de Zoo que realment l'utilitzaven i necessitem reduir l'abast del nostre codi per poder seguir avançant ràpidament i servir bé la nostra comunitat en aquest espai. Va ser una decisió molt difícil, però ens permet centrar-nos en el que més t'importa. Ho sabem, és una llàstima.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"vscodeLmDescription": "L'API del model de llenguatge de VS Code us permet executar models proporcionats per altres extensions de VS Code (incloent-hi, però no limitat a, GitHub Copilot). La manera més senzilla de començar és instal·lar les extensions Copilot i Copilot Chat des del VS Code Marketplace.",
 		"awsCustomArnUse": "Introduïu un ARN vàlid d'Amazon Bedrock per al model que voleu utilitzar. Exemples de format:",
 		"awsCustomArnDesc": "Assegureu-vos que la regió a l'ARN coincideix amb la regió d'AWS seleccionada anteriorment.",
@@ -472,13 +468,6 @@
 			"description": "Ollama permet executar models localment al vostre ordinador. Per a instruccions sobre com començar, consulteu la Guia d'inici ràpid.",
 			"warning": "Nota: Zoo Code utilitza prompts complexos i funciona millor amb models Claude. Els models menys capaços poden no funcionar com s'espera."
 		},
-<<<<<<< HEAD
-=======
-		"roo": {
-			"authenticatedMessage": "Autenticat de forma segura a través del teu compte de Zoo Code Cloud.",
-			"connectButton": "Connecta amb Zoo Code Cloud"
-		},
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openRouter": {
 			"providerRouting": {
 				"title": "Encaminament de Proveïdors d'OpenRouter",

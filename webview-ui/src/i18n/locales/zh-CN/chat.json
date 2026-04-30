@@ -15,18 +15,6 @@
 		"export": "导出任务历史",
 		"delete": "删除任务（Shift + 点击跳过确认）",
 		"condenseContext": "智能压缩上下文",
-<<<<<<< HEAD
-=======
-		"shareWithOrganization": "与组织分享",
-		"shareWithOrganizationDescription": "仅组织成员可访问",
-		"sharePublicly": "公开分享",
-		"sharePubliclyDescription": "任何拥有链接的人都可访问",
-		"connectToCloud": "连接到云端",
-		"connectToCloudDescription": "登录 Zoo Code Cloud 以分享任务",
-		"sharingDisabledByOrganization": "组织已禁用分享功能",
-		"shareSuccessOrganization": "组织链接已复制到剪贴板",
-		"shareSuccessPublic": "公开链接已复制到剪贴板",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "打开 API 历史",
 		"openUiHistory": "打开 UI 历史",
 		"backToParentTask": "父任务"
@@ -341,20 +329,8 @@
 		"timerPrefix": "自动批准已启用。{{seconds}}秒后选择中…"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} 已发布",
-		"support": "请在 <githubLink>GitHub</githubLink> 上为我们点星支持 Roo Code。",
-=======
 		"title": "Zoo Code {{version}} 已发布",
 		"support": "请在 <githubLink>GitHub</githubLink> 上为 Zoo Code 点星支持我们。",
-		"stealthModel": {
-			"feature": "<bold>限时免费隐形模型</bold> - Code Supernova：现已升级为 <bold>1M Token 上下文窗口</bold>！这是一款支持图像输入的多功能代理式编程模型，可通过 Zoo Code Cloud 使用。",
-			"note": "(注意：提示词和补全内容会被模型创建者记录并用于改进模型)",
-			"connectButton": "连接到 Zoo Code Cloud",
-			"selectModel": "前往设置，从 Zoo Code Cloud 提供商中选择 <code>roo/code-supernova</code> 即可开始使用。",
-			"goToSettingsButton": "前往设置"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code 回来了，现在以社区维护的 Zoo Code 插件之名继续前进！！",
 			"description": "如果你还没关注到，Zoo Code 团队最近宣布将逐步停止 Zoo Code 的开发，并归档他们已经完成的工作。但别担心，社区已经站了出来，以全新的名称和新家园延续 Zoo Code 的传承！我们不再只是一个单独的“Roo”，而是一个社区，一个“Zoo”。Zoo Code 是一个由社区维护的插件，在 Zoo Code 停下的地方继续前进。我们会继续保留 Roo 的精神，同时带来新功能和改进。我们也要向整个 Zoo Code 团队致以诚挚感谢，感谢他们的卓越工作，打造出这样一款出色的开发者工具。我们很高兴能在他们打下的基础上继续建设，也期待看到社区未来会把 Zoo Code 带到哪里！",
@@ -511,11 +487,7 @@
 	},
 	"retiredProvider": {
 		"title": "供应商不再受支持",
-<<<<<<< HEAD
 		"message": "此提供商已不可用。请选择受支持的提供商以继续。",
-=======
-		"message": "抱歉，此供应商已不再受支持。我们发现实际使用它的 Zoo 用户非常少，我们需要缩减代码库的范围，以便继续快速交付并更好地服务社区。这是一个非常艰难的决定，但它能让我们专注于对你最重要的事情。我们知道这很遗憾。",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "打开设置"
 	}
 }

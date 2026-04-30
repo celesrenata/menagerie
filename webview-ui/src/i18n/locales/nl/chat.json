@@ -15,19 +15,6 @@
 		"export": "Taakgeschiedenis exporteren",
 		"delete": "Taak verwijderen (Shift + Klik om bevestiging over te slaan)",
 		"condenseContext": "Context intelligent samenvatten",
-<<<<<<< HEAD
-=======
-		"share": "Taak delen",
-		"shareWithOrganization": "Delen met organisatie",
-		"shareWithOrganizationDescription": "Alleen leden van je organisatie kunnen toegang krijgen",
-		"sharePublicly": "Openbaar delen",
-		"sharePubliclyDescription": "Iedereen met de link kan toegang krijgen",
-		"connectToCloud": "Verbind met Cloud",
-		"connectToCloudDescription": "Meld je aan bij Zoo Code Cloud om taken te delen",
-		"sharingDisabledByOrganization": "Delen uitgeschakeld door organisatie",
-		"shareSuccessOrganization": "Organisatielink gekopieerd naar klembord",
-		"shareSuccessPublic": "Openbare link gekopieerd naar klembord",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "API-geschiedenis openen",
 		"openUiHistory": "UI-geschiedenis openen",
 		"backToParentTask": "Bovenliggende taak"
@@ -314,20 +301,8 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} uitgebracht",
-		"support": "Steun Roo Code door ons een ster te geven op <githubLink>GitHub</githubLink>.",
-=======
 		"title": "Zoo Code {{version}} uitgebracht",
 		"support": "Steun Zoo Code door ons een ster te geven op <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Beperkt tijd GRATIS stealth model</bold> - Code Supernova: Nu geüpgraded met een <bold>1M token contextvenster</bold>! Een veelzijdig agentisch codeermodel dat beeldinvoer ondersteunt, beschikbaar via Zoo Code Cloud.",
-			"note": "(Opmerking: prompts en aanvullingen worden gelogd door de modelmaker en gebruikt om het model te verbeteren)",
-			"connectButton": "Verbinden met Zoo Code Cloud",
-			"selectModel": "Selecteer <code>roo/code-supernova</code> bij de Zoo Code Cloud-provider in Instellingen om te beginnen.",
-			"goToSettingsButton": "Ga naar Instellingen"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code is terug, nu als een door de community onderhouden plugin genaamd Zoo Code!!",
 			"description": "Als je het gemist hebt: het Zoo Code-team heeft onlangs aangekondigd dat het de ontwikkeling van Zoo Code afbouwt en het bestaande werk archiveert. Maar geen zorgen: de community is opgestaan om de erfenis van Zoo Code voort te zetten met een nieuwe naam en een nieuw thuis. We zijn niet langer slechts één \"Roo\", maar een community — een \"Zoo\", zogezegd. Zoo Code is een door de community onderhouden plugin die verdergaat waar Zoo Code ophield, en we zetten ons ervoor in om de geest van Roo levend te houden terwijl we ook nieuwe functies en verbeteringen introduceren. We willen het hele Zoo Code-team enorm bedanken voor hun geweldige werk en voor het maken van zo'n fantastisch hulpmiddel voor ontwikkelaars. We kijken ernaar uit om verder te bouwen op hun fundament en te zien waar de community Zoo Code in de toekomst naartoe brengt!",
@@ -511,11 +486,7 @@
 	},
 	"retiredProvider": {
 		"title": "Provider wordt niet meer ondersteund",
-<<<<<<< HEAD
 		"message": "Deze provider is niet meer beschikbaar. Selecteer een ondersteunde provider om door te gaan.",
-=======
-		"message": "Sorry, deze provider wordt niet meer ondersteund. We zagen dat heel weinig Zoo-gebruikers het daadwerkelijk gebruikten en we moeten de omvang van onze codebase verkleinen zodat we snel kunnen blijven leveren en onze community goed kunnen blijven bedienen. Het was een heel moeilijke beslissing, maar het stelt ons in staat om ons te richten op wat het belangrijkst voor je is. Het is vervelend, dat weten we.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Instellingen openen"
 	}
 }

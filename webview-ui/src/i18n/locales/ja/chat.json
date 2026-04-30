@@ -15,19 +15,6 @@
 		"export": "タスク履歴をエクスポート",
 		"delete": "タスクを削除（Shift + クリックで確認をスキップ）",
 		"condenseContext": "コンテキストをインテリジェントに圧縮",
-<<<<<<< HEAD
-=======
-		"share": "タスクを共有",
-		"shareWithOrganization": "組織と共有",
-		"shareWithOrganizationDescription": "組織のメンバーのみがアクセスできます",
-		"sharePublicly": "公開で共有",
-		"sharePubliclyDescription": "リンクを持つ誰でもアクセスできます",
-		"connectToCloud": "クラウドに接続",
-		"connectToCloudDescription": "タスクを共有するには Zoo Code Cloud にサインイン",
-		"sharingDisabledByOrganization": "組織により共有が無効化されています",
-		"shareSuccessOrganization": "組織リンクをクリップボードにコピーしました",
-		"shareSuccessPublic": "公開リンクをクリップボードにコピーしました",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "API履歴を開く",
 		"openUiHistory": "UI履歴を開く",
 		"backToParentTask": "親タスク"
@@ -341,20 +328,8 @@
 		"timerPrefix": "自動承認が有効です。{{seconds}}秒後に選択中…"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} リリース",
-		"support": "<githubLink>GitHub</githubLink>でスターを付けてRoo Codeを応援してください。",
-=======
 		"title": "Zoo Code {{version}} リリース",
 		"support": "<githubLink>GitHub</githubLink>でスターを付けて Zoo Code を応援してください。",
-		"stealthModel": {
-			"feature": "<bold>期間限定無料ステルスモデル</bold> - Code Supernova：<bold>1Mトークンコンテキストウィンドウ</bold>にアップグレード！画像入力に対応した汎用エージェント型コーディングモデルで、Zoo Code Cloud から利用できます。",
-			"note": "(注意：プロンプトと補完はモデル作成者によってログに記録され、モデルの改善に使用されます)",
-			"connectButton": "Zoo Code Cloud に接続",
-			"selectModel": "設定で Zoo Code Cloud プロバイダーから <code>roo/code-supernova</code> を選択して開始してください。",
-			"goToSettingsButton": "設定に移動"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code が帰ってきた。今度はコミュニティメンテナンスのプラグイン、Zoo Code です！！",
 			"description": "まだ追えていない方のために言うと、Zoo Code チームは最近、Zoo Code の開発を終了し、これまでの成果をアーカイブすると発表しました。でも心配はいりません。コミュニティが新しい名前と新しい拠点のもとで、Zoo Code のレガシーを引き継ぐために立ち上がりました！ もう私たちは 1 匹の「Roo」ではなく、いわば「Zoo」というコミュニティです。Zoo Code は Zoo Code が残したところを引き継ぐコミュニティメンテナンスのプラグインで、Roo の精神を大切にしながら、新機能や改善も加えていくことを約束します。開発者のための素晴らしいツールを生み出してくれた Zoo Code チーム全員に、心から大きな感謝を伝えたいです。彼らの土台の上にさらに築いていき、これからコミュニティが Zoo Code をどこまで育てていくのかを見るのが楽しみです！",

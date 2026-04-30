@@ -306,11 +306,7 @@
 		"searchProviderPlaceholder": "Cari penyedia",
 		"noProviderMatchFound": "Tidak ada penyedia ditemukan",
 		"noMatchFound": "Tidak ada profil yang cocok ditemukan",
-<<<<<<< HEAD
 		"retiredProviderMessage": "Penyedia ini sudah tidak tersedia. Pilih penyedia yang didukung untuk melanjutkan.",
-=======
-		"retiredProviderMessage": "Maaf, penyedia ini tidak lagi didukung. Kami melihat sangat sedikit pengguna Zoo yang benar-benar menggunakannya dan kami perlu mengurangi cakupan kode kami agar bisa terus bergerak cepat dan melayani komunitas kami dengan baik. Ini adalah keputusan yang sangat sulit, tapi ini memungkinkan kami fokus pada apa yang paling penting bagimu. Memang menyebalkan, kami tahu.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"vscodeLmDescription": " API Model Bahasa VS Code memungkinkan kamu menjalankan model yang disediakan oleh ekstensi VS Code lainnya (termasuk namun tidak terbatas pada GitHub Copilot). Cara termudah untuk memulai adalah menginstal ekstensi Copilot dan Copilot Chat dari VS Code Marketplace.",
 		"awsCustomArnUse": "Masukkan ARN Amazon Bedrock yang valid untuk model yang ingin kamu gunakan. Contoh format:",
 		"awsCustomArnDesc": "Pastikan region di ARN cocok dengan AWS Region yang kamu pilih di atas.",
@@ -472,13 +468,6 @@
 			"description": "Ollama memungkinkan kamu menjalankan model secara lokal di komputer. Untuk instruksi cara memulai, lihat panduan quickstart mereka.",
 			"warning": "Catatan: Zoo Code menggunakan prompt kompleks dan bekerja terbaik dengan model Claude. Model yang kurang mampu mungkin tidak bekerja seperti yang diharapkan."
 		},
-<<<<<<< HEAD
-=======
-		"roo": {
-			"authenticatedMessage": "Terautentikasi dengan aman melalui akun Zoo Code Cloud Anda.",
-			"connectButton": "Hubungkan ke Zoo Code Cloud"
-		},
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openRouter": {
 			"providerRouting": {
 				"title": "OpenRouter Provider Routing",

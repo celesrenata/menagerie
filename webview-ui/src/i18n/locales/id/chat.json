@@ -15,18 +15,6 @@
 		"closeAndStart": "Tutup tugas dan mulai yang baru",
 		"export": "Ekspor riwayat tugas",
 		"delete": "Hapus Tugas (Shift + Klik untuk lewati konfirmasi)",
-<<<<<<< HEAD
-=======
-		"shareWithOrganization": "Bagikan dengan organisasi",
-		"shareWithOrganizationDescription": "Hanya anggota organisasi Anda yang dapat mengakses",
-		"sharePublicly": "Bagikan secara publik",
-		"sharePubliclyDescription": "Siapa pun dengan tautan dapat mengakses",
-		"connectToCloud": "Hubungkan ke Cloud",
-		"connectToCloudDescription": "Masuk ke Zoo Code Cloud untuk berbagi tugas",
-		"sharingDisabledByOrganization": "Berbagi dinonaktifkan oleh organisasi",
-		"shareSuccessOrganization": "Tautan organisasi disalin ke clipboard",
-		"shareSuccessPublic": "Tautan publik disalin ke clipboard",
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"openApiHistory": "Buka Riwayat API",
 		"openUiHistory": "Buka Riwayat UI",
 		"backToParentTask": "Tugas Induk"
@@ -369,20 +357,8 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
-<<<<<<< HEAD
-		"title": "Roo Code {{version}} Dirilis",
-		"support": "Dukung Roo Code dengan memberi kami bintang di <githubLink>GitHub</githubLink>.",
-=======
 		"title": "Zoo Code {{version}} Dirilis",
 		"support": "Dukung Zoo Code dengan memberi kami bintang di <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Model stealth GRATIS waktu terbatas</bold> - Code Supernova: Sekarang diupgrade dengan <bold>jendela konteks 1M token</bold>! Model coding agentik serbaguna yang mendukung input gambar, tersedia melalui Zoo Code Cloud.",
-			"note": "(Catatan: prompt dan completion dicatat oleh pembuat model dan digunakan untuk meningkatkan model)",
-			"connectButton": "Hubungkan ke Zoo Code Cloud",
-			"selectModel": "Pilih <code>roo/code-supernova</code> dari penyedia Zoo Code Cloud di Pengaturan untuk memulai.",
-			"goToSettingsButton": "Pergi ke Pengaturan"
-		},
->>>>>>> 2d60e3318 (Update localized chat locales for Zoo Code rebrand)
 		"handoff": {
 			"heading": "Zoo Code kembali, sekarang sebagai plugin yang dikelola komunitas bernama Zoo Code!!",
 			"description": "Kalau kamu belum mengikuti kabarnya, tim Zoo Code baru-baru ini mengumumkan bahwa mereka menghentikan pengembangan Zoo Code dan mengarsipkan pekerjaan yang telah mereka lakukan. Tapi jangan khawatir, komunitas telah melangkah maju untuk melanjutkan warisan Zoo Code dengan nama baru dan rumah baru! Kita bukan lagi satu \"Roo\" saja, kita adalah sebuah komunitas, sebuah \"Zoo\" kalau boleh dibilang. Zoo Code adalah plugin yang dikelola komunitas dan melanjutkan dari titik terakhir Zoo Code, dan kami berkomitmen menjaga semangat Roo tetap hidup sambil menghadirkan fitur dan peningkatan baru. Kami juga ingin memberi apresiasi besar kepada seluruh tim Zoo Code atas kerja luar biasa mereka dan karena telah menciptakan alat yang luar biasa untuk para developer. Kami antusias melanjutkan fondasi mereka dan melihat ke mana komunitas akan membawa Zoo Code ke depannya!",
@@ -516,11 +492,7 @@
 	},
 	"retiredProvider": {
 		"title": "Penyedia tidak lagi didukung",
-<<<<<<< HEAD
 		"message": "Penyedia ini sudah tidak tersedia. Pilih penyedia yang didukung untuk melanjutkan.",
-=======
-		"message": "Maaf, penyedia ini tidak lagi didukung. Kami melihat sangat sedikit pengguna Zoo yang benar-benar menggunakannya dan kami perlu mengurangi cakupan kode kami agar bisa terus bergerak cepat dan melayani komunitas kami dengan baik. Ini adalah keputusan yang sangat sulit, tapi ini memungkinkan kami fokus pada apa yang paling penting bagimu. Memang menyebalkan, kami tahu.",
->>>>>>> edc1551fd (chore: update webview locale translations for Zoo rename)
 		"openSettings": "Buka Pengaturan"
 	}
 }
