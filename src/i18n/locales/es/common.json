@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Pensamiento completado, pero la salida fue bloqueada debido a la comprobación de recitación.)"
 		},
 		"roo": {
-			"authenticationRequired": "El proveedor Zoo requiere autenticación en la nube. Por favor, inicia sesión en Zoo Code Cloud."
+			"authenticationRequired": "El proveedor Zoo requiere autenticación en la nube. Por favor, inicia sesión en Zoo Code Cloud.",
 			"routerRemoved": "Roo Code Router ha sido eliminado. Selecciona y configura un proveedor diferente."
 		},
 		"api": {

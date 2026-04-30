@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Berpikir selesai, tetapi output diblokir karena pemeriksaan resitasi.)"
 		},
 		"roo": {
-			"authenticationRequired": "Penyedia Zoo memerlukan autentikasi cloud. Silakan masuk ke Zoo Code Cloud."
+			"authenticationRequired": "Penyedia Zoo memerlukan autentikasi cloud. Silakan masuk ke Zoo Code Cloud.",
 			"routerRemoved": "Roo Code Router telah dihapus. Pilih dan konfigurasikan penyedia lain."
 		},
 		"api": {

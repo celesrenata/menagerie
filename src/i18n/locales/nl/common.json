@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Nadenken voltooid, maar uitvoer is geblokkeerd vanwege recitatiecontrole.)"
 		},
 		"roo": {
-			"authenticationRequired": "Zoo provider vereist cloud authenticatie. Log in bij Zoo Code Cloud."
+			"authenticationRequired": "Zoo provider vereist cloud authenticatie. Log in bij Zoo Code Cloud.",
 			"routerRemoved": "Roo Code Router is verwijderd. Selecteer en configureer een andere provider."
 		},
 		"api": {

@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Размышление завершено, но вывод заблокирован проверкой цитирования.)"
 		},
 		"roo": {
-			"authenticationRequired": "Провайдер Zoo требует облачной аутентификации. Войдите в Zoo Code Cloud."
+			"authenticationRequired": "Провайдер Zoo требует облачной аутентификации. Войдите в Zoo Code Cloud.",
 			"routerRemoved": "Roo Code Router был удалён. Выберите и настройте другого провайдера."
 		},
 		"api": {

@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Thinking complete, but output was blocked due to recitation check.)"
 		},
 		"roo": {
-			"authenticationRequired": "Zoo provider requires cloud authentication. Please sign in to Zoo Code Cloud."
+			"authenticationRequired": "Zoo provider requires cloud authentication. Please sign in to Zoo Code Cloud.",
 			"routerRemoved": "Roo Code Router has been removed. Please select and configure a different provider."
 		},
 		"openAiCodex": {
