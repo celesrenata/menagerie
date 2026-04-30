@@ -14,17 +14,7 @@
 		"contextWindow": "Context Length",
 		"closeAndStart": "Close task and start a new one",
 		"export": "Export task history",
-		"share": "Share task",
 		"delete": "Delete Task (Shift + Click to skip confirmation)",
-		"shareWithOrganization": "Share with Organization",
-		"shareWithOrganizationDescription": "Only members of your organization can access",
-		"sharePublicly": "Share Publicly",
-		"sharePubliclyDescription": "Anyone with the link can access",
-		"connectToCloud": "Connect to Cloud",
-		"connectToCloudDescription": "Sign in to Roo Code Cloud to share tasks",
-		"sharingDisabledByOrganization": "Sharing disabled by organization",
-		"shareSuccessOrganization": "Organization link copied to clipboard",
-		"shareSuccessPublic": "Public link copied to clipboard",
 		"openApiHistory": "Open API History",
 		"openUiHistory": "Open UI History",
 		"backToParentTask": "Parent task"
@@ -359,13 +349,6 @@
 	"announcement": {
 		"title": "Roo Code {{version}} Released",
 		"support": "Please support Roo Code by starring us on <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Limited-time FREE stealth model</bold> - Code Supernova: Now upgraded with a <bold>1M token context window</bold>! A versatile agentic coding model that supports image inputs, accessible through Roo Code Cloud.",
-			"note": "(Note: prompts and completions are logged by the model creator and used to improve the model)",
-			"connectButton": "Connect to Roo Code Cloud",
-			"selectModel": "Select <code>roo/code-supernova</code> from the Roo Code Cloud provider in Settings to get started.",
-			"goToSettingsButton": "Go to Settings"
-		},
 		"handoff": {
 			"heading": "The Roo Code plugin is not going away.",
 			"description": "You may have seen the recent announcement that Roo Code hit 3 million installs and the original team is going all-in on Roomote. We know that news was hard for a lot of you. This plugin means a lot to us and to you, and we hear you. The good news: <bold>a community team has stepped up to carry Roo Code forward</bold>, and we're working with them on an official handoff so the plugin you rely on keeps getting maintained and improved.",
@@ -491,7 +474,7 @@
 	},
 	"retiredProvider": {
 		"title": "Provider no longer supported",
-		"message": "Sorry, this provider is no longer supported. We saw very few Roo users actually using it and we need to reduce the surface area of our codebase so we can keep shipping fast and serving our community well in this space. It was a really hard decision but it lets us focus on what matters most to you. It sucks, we know.",
+		"message": "This provider is no longer available. Select a supported provider to continue.",
 		"openSettings": "Open Settings"
 	}
 }

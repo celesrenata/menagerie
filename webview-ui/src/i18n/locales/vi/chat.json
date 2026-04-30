@@ -15,16 +15,6 @@
 		"export": "Xuất lịch sử nhiệm vụ",
 		"delete": "Xóa nhiệm vụ (Shift + Click để bỏ qua xác nhận)",
 		"condenseContext": "Cô đọng ngữ cảnh thông minh",
-		"share": "Chia sẻ nhiệm vụ",
-		"shareWithOrganization": "Chia sẻ với tổ chức",
-		"shareWithOrganizationDescription": "Chỉ thành viên tổ chức của bạn mới có thể truy cập",
-		"sharePublicly": "Chia sẻ công khai",
-		"sharePubliclyDescription": "Bất kỳ ai có liên kết đều có thể truy cập",
-		"connectToCloud": "Kết nối với Cloud",
-		"connectToCloudDescription": "Đăng nhập vào Roo Code Cloud để chia sẻ tác vụ",
-		"sharingDisabledByOrganization": "Chia sẻ bị tổ chức vô hiệu hóa",
-		"shareSuccessOrganization": "Liên kết tổ chức đã được sao chép vào clipboard",
-		"shareSuccessPublic": "Liên kết công khai đã được sao chép vào clipboard",
 		"openApiHistory": "Mở lịch sử API",
 		"openUiHistory": "Mở lịch sử UI",
 		"backToParentTask": "Nhiệm vụ cha"
@@ -341,13 +331,6 @@
 	"announcement": {
 		"title": "Roo Code {{version}} Đã phát hành",
 		"support": "Hãy ủng hộ Roo Code bằng cách gắn sao cho chúng tôi trên <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Mô hình stealth MIỄN PHÍ có thời hạn</bold> - Code Supernova: Hiện đã được nâng cấp với <bold>cửa sổ ngữ cảnh 1M token</bold>! Một mô hình lập trình agentic đa năng hỗ trợ đầu vào hình ảnh, có sẵn qua Roo Code Cloud.",
-			"note": "(Lưu ý: các prompt và completion được ghi lại bởi người tạo mô hình và được sử dụng để cải thiện mô hình)",
-			"connectButton": "Kết nối với Roo Code Cloud",
-			"selectModel": "Chọn <code>roo/code-supernova</code> từ nhà cung cấp Roo Code Cloud trong Cài đặt để bắt đầu.",
-			"goToSettingsButton": "Đi tới Cài đặt"
-		},
 		"handoff": {
 			"heading": "Plugin Roo Code sẽ không biến mất.",
 			"description": "Bạn có thể đã thấy thông báo gần đây rằng Roo Code đã đạt 3 triệu lượt cài đặt và đội ngũ ban đầu đang dồn toàn lực cho Roomote. Chúng tôi biết rằng tin này thật khó khăn với nhiều bạn. Plugin này có ý nghĩa rất lớn với chúng tôi và với bạn, và chúng tôi lắng nghe bạn. Tin tốt: <bold>một đội ngũ từ cộng đồng đã đứng ra tiếp tục đưa Roo Code đi tiếp</bold>, và chúng tôi đang làm việc với họ về việc bàn giao chính thức để plugin mà bạn đang tin cậy tiếp tục được bảo trì và cải thiện.",
@@ -504,7 +487,7 @@
 	},
 	"retiredProvider": {
 		"title": "Nhà cung cấp không còn được hỗ trợ",
-		"message": "Xin lỗi, nhà cung cấp này không còn được hỗ trợ. Chúng tôi nhận thấy rất ít người dùng Roo thực sự sử dụng nó và chúng tôi cần thu hẹp phạm vi mã nguồn để tiếp tục phát triển nhanh và phục vụ tốt cộng đồng. Đây là một quyết định thực sự khó khăn nhưng nó cho phép chúng tôi tập trung vào điều quan trọng nhất với bạn. Chúng tôi biết điều này thật phiền, xin thông cảm.",
+		"message": "Nhà cung cấp này không còn khả dụng. Hãy chọn một nhà cung cấp được hỗ trợ để tiếp tục.",
 		"openSettings": "Mở cài đặt"
 	}
 }

@@ -306,7 +306,7 @@
 		"searchProviderPlaceholder": "Szukaj dostawców",
 		"noProviderMatchFound": "Nie znaleziono dostawców",
 		"noMatchFound": "Nie znaleziono pasujących profili",
-		"retiredProviderMessage": "Przepraszamy, ten dostawca nie jest już obsługiwany. Zauważyliśmy, że bardzo niewielu użytkowników Roo faktycznie z niego korzystało, a my musimy zmniejszyć zakres naszego kodu, aby móc dalej szybko dostarczać i dobrze służyć naszej społeczności. To była naprawdę trudna decyzja, ale pozwala nam skupić się na tym, co jest dla ciebie najważniejsze. Wiemy, że to frustrujące.",
+		"retiredProviderMessage": "Ten dostawca nie jest już dostępny. Wybierz obsługiwanego dostawcę, aby kontynuować.",
 		"vscodeLmDescription": "Interfejs API modelu językowego VS Code umożliwia uruchamianie modeli dostarczanych przez inne rozszerzenia VS Code (w tym, ale nie tylko, GitHub Copilot). Najłatwiejszym sposobem na rozpoczęcie jest zainstalowanie rozszerzeń Copilot i Copilot Chat z VS Code Marketplace.",
 		"awsCustomArnUse": "Wprowadź prawidłowy Amazon Bedrock ARN dla modelu, którego chcesz użyć. Przykłady formatu:",
 		"awsCustomArnDesc": "Upewnij się, że region w ARN odpowiada wybranemu powyżej regionowi AWS.",
@@ -467,10 +467,6 @@
 			"numCtxHelp": "Zastępuje domyślny rozmiar okna kontekstu modelu. Pozostaw puste, aby użyć konfiguracji Modelfile modelu. Minimalna wartość to 128.",
 			"description": "Ollama pozwala na lokalne uruchamianie modeli na twoim komputerze. Aby rozpocząć, zapoznaj się z przewodnikiem szybkiego startu.",
 			"warning": "Uwaga: Roo Code używa złożonych podpowiedzi i działa najlepiej z modelami Claude. Modele o niższych możliwościach mogą nie działać zgodnie z oczekiwaniami."
-		},
-		"roo": {
-			"authenticatedMessage": "Bezpiecznie uwierzytelniony przez twoje konto Roo Code Cloud.",
-			"connectButton": "Połącz z Roo Code Cloud"
 		},
 		"openRouter": {
 			"providerRouting": {

@@ -843,6 +843,45 @@ describe("importExport", () => {
 				expect(importedProfiles.apiConfigs["another-invalid"].apiProvider).toBeUndefined()
 			})
 
+			it("should downgrade imported Roo profiles without failing the import", async () => {
+				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+
+				const mockFileContent = JSON.stringify({
+					providerProfiles: {
+						currentApiConfigName: "router-profile",
+						apiConfigs: {
+							"router-profile": {
+								apiProvider: "roo",
+								apiModelId: "roo/code-supernova",
+								rooApiKey: "router-key",
+								id: "router-id",
+							},
+						},
+					},
+					globalSettings: { mode: "code" },
+				})
+
+				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
+
+				mockProviderSettingsManager.export.mockResolvedValue({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				})
+
+				const result = await importSettings({
+					providerSettingsManager: mockProviderSettingsManager,
+					contextProxy: mockContextProxy,
+					customModesManager: mockCustomModesManager,
+				})
+
+				expect(result.success).toBe(true)
+				expect((result as { warnings?: string[] }).warnings?.[0]).toContain("Roo Code Router was removed")
+
+				const importedProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
+				expect(importedProfiles.currentApiConfigName).toBe("router-profile")
+				expect(importedProfiles.apiConfigs["router-profile"]).toEqual({ id: "router-id" })
+			})
+
 			it("should fallback currentApiConfigName when the imported current profile was skipped", async () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 

@@ -14,17 +14,7 @@
 		"closeAndStart": "关闭任务并开始新任务",
 		"export": "导出任务历史",
 		"delete": "删除任务（Shift + 点击跳过确认）",
-		"share": "分享任务",
 		"condenseContext": "智能压缩上下文",
-		"shareWithOrganization": "与组织分享",
-		"shareWithOrganizationDescription": "仅组织成员可访问",
-		"sharePublicly": "公开分享",
-		"sharePubliclyDescription": "任何拥有链接的人都可访问",
-		"connectToCloud": "连接到云端",
-		"connectToCloudDescription": "登录 Roo Code Cloud 以分享任务",
-		"sharingDisabledByOrganization": "组织已禁用分享功能",
-		"shareSuccessOrganization": "组织链接已复制到剪贴板",
-		"shareSuccessPublic": "公开链接已复制到剪贴板",
 		"openApiHistory": "打开 API 历史",
 		"openUiHistory": "打开 UI 历史",
 		"backToParentTask": "父任务"
@@ -341,13 +331,6 @@
 	"announcement": {
 		"title": "Roo Code {{version}} 已发布",
 		"support": "请在 <githubLink>GitHub</githubLink> 上为我们点星支持 Roo Code。",
-		"stealthModel": {
-			"feature": "<bold>限时免费隐形模型</bold> - Code Supernova：现已升级为 <bold>1M Token 上下文窗口</bold>！一个支持图像输入的多功能代理编程模型，通过 Roo Code Cloud 提供。",
-			"note": "(注意：提示词和补全内容会被模型创建者记录并用于改进模型)",
-			"connectButton": "连接到 Roo Code Cloud",
-			"selectModel": "在设置中从 Roo Code Cloud 提供商选择 <code>roo/code-supernova</code> 开始使用。",
-			"goToSettingsButton": "前往设置"
-		},
 		"handoff": {
 			"heading": "Roo Code 插件不会消失。",
 			"description": "你可能已经看到最近的公告：Roo Code 已突破 300 万次安装，原团队正全力投入 Roomote。我们知道这个消息让许多人感到难受。这个插件对我们和你都意义重大，你的心声我们听到了。好消息是：<bold>一支社区团队已挺身而出，继续推进 Roo Code</bold>，我们正与他们协作进行正式交接，让你所依赖的插件继续得到维护和改进。",
@@ -504,7 +487,7 @@
 	},
 	"retiredProvider": {
 		"title": "供应商不再受支持",
-		"message": "抱歉，此供应商已不再受支持。我们发现实际使用它的 Roo 用户非常少，我们需要缩减代码库的范围，以便继续快速交付并更好地服务社区。这是一个非常艰难的决定，但它能让我们专注于对你最重要的事情。我们知道这很遗憾。",
+		"message": "此提供商已不可用。请选择受支持的提供商以继续。",
 		"openSettings": "打开设置"
 	}
 }

@@ -112,7 +112,8 @@
 			"thinking_complete_recitation": "(Düşünme tamamlandı, ancak çıktı okuma kontrolü nedeniyle engellendi.)"
 		},
 		"roo": {
-			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın."
+			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın.",
+			"routerRemoved": "Roo Code Router kaldırıldı. Lütfen farklı bir sağlayıcı seçip yapılandırın."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "API anahtarı geçersiz karakterler içeriyor.",
@@ -161,7 +162,10 @@
 		"organization_share_link_copied": "Kuruluş paylaşım bağlantısı panoya kopyalandı!",
 		"public_share_link_copied": "Herkese açık paylaşım bağlantısı panoya kopyalandı!",
 		"mode_exported": "'{{mode}}' modu başarıyla dışa aktarıldı",
-		"mode_imported": "Mod başarıyla içe aktarıldı"
+		"mode_imported": "Mod başarıyla içe aktarıldı",
+		"roo": {
+			"signInUnavailable": "Roo Code Cloud girişi şu anda kullanılamıyor. Devam etmek için farklı bir sağlayıcı yapılandırın."
+		}
 	},
 	"answers": {
 		"yes": "Evet",

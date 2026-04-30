@@ -68,8 +68,6 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		// Default mock: return distinct model maps per provider so we can verify keys
 		getModelsMock.mockImplementation(async (options: any) => {
 			switch (options?.provider) {
-				case "roo":
-					return { "roo/sonnet": { contextWindow: 8192, supportsPromptCache: false } }
 				case "openrouter":
 					return { "openrouter/qwen2.5": { contextWindow: 32768, supportsPromptCache: false } }
 				case "requesty":
@@ -84,18 +82,13 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		})
 	})
 
-	it("fetches only requested provider when values.provider is present ('roo')", async () => {
+	it("returns an empty Roo result when values.provider is present ('roo')", async () => {
 		await webviewMessageHandler(
 			mockProvider as any,
 			{
 				type: "requestRouterModels",
 				values: { provider: "roo" },
 			} as any,
-		)
-
-		// Should post a single routerModels message
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({ type: "routerModels", routerModels: expect.any(Object) }),
 		)
 
 		const call = (mockProvider.postMessageToWebview as any).mock.calls.find(
@@ -105,14 +98,21 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		const payload = call[0]
 		const routerModels = payload.routerModels as Record<string, Record<string, any>>
 
-		// Only "roo" key should be present
-		const keys = Object.keys(routerModels)
-		expect(keys).toEqual(["roo"])
-		expect(Object.keys(routerModels.roo || {})).toContain("roo/sonnet")
+		// No fetch candidates remain for Roo, so the filtered aggregate payload is empty.
+		expect(routerModels).toEqual({})
 
-		// getModels should have been called exactly once for roo
-		const providersCalled = getModelsMock.mock.calls.map((c: any[]) => c[0]?.provider)
-		expect(providersCalled).toEqual(["roo"])
+		expect(getModelsMock).not.toHaveBeenCalledWith(expect.objectContaining({ provider: "roo" }))
+	})
+
+	it("returns explicit removal error for requestRooModels", async () => {
+		await webviewMessageHandler(mockProvider as any, { type: "requestRooModels" } as any)
+
+		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "singleRouterModelFetchResponse",
+			success: false,
+			error: "Roo Code Router has been removed. Please select and configure a different provider.",
+			values: { provider: "roo" },
+		})
 	})
 
 	it("defaults to aggregate fetching when no provider filter is sent", async () => {
@@ -133,6 +133,7 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		expect(routerModels).toHaveProperty("openrouter")
 		expect(routerModels).toHaveProperty("roo")
 		expect(routerModels).toHaveProperty("requesty")
+		expect(routerModels.roo).toEqual({})
 	})
 
 	it("supports filtering another single provider ('openrouter')", async () => {

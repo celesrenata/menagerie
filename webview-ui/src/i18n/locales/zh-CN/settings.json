@@ -306,7 +306,7 @@
 		"searchProviderPlaceholder": "搜索提供商",
 		"noProviderMatchFound": "未找到提供商",
 		"noMatchFound": "未找到匹配的配置文件",
-		"retiredProviderMessage": "抱歉，此供应商已不再受支持。我们发现实际使用它的 Roo 用户非常少，我们需要缩减代码库的范围，以便继续快速交付并更好地服务社区。这是一个非常艰难的决定，但它能让我们专注于对你最重要的事情。我们知道这很遗憾。",
+		"retiredProviderMessage": "此提供商已不可用。请选择受支持的提供商以继续。",
 		"vscodeLmDescription": "VS Code 语言模型 API 允许您运行由其他 VS Code 扩展（包括但不限于 GitHub Copilot）提供的模型。最简单的方法是从 VS Code 市场安装 Copilot 和 Copilot Chat 扩展。",
 		"awsCustomArnUse": "请输入有效的 Amazon Bedrock ARN（Amazon资源名称），格式示例：",
 		"awsCustomArnDesc": "请确保ARN中的区域与上方选择的AWS区域一致。",
@@ -467,10 +467,6 @@
 			"numCtxHelp": "覆盖模型的默认上下文窗口大小。留空以使用模型的 Modelfile 配置。最小值为 128。",
 			"description": "Ollama 允许您在本地计算机上运行模型。有关如何开始使用的说明，请参阅其快速入门指南。",
 			"warning": "注意：Roo Code 使用复杂的提示，与 Claude 模型配合最佳。功能较弱的模型可能无法按预期工作。"
-		},
-		"roo": {
-			"authenticatedMessage": "已通过 Roo Code Cloud 账户安全认证。",
-			"connectButton": "连接到 Roo Code Cloud"
 		},
 		"openRouter": {
 			"providerRouting": {

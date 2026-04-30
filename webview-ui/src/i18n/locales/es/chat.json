@@ -15,16 +15,6 @@
 		"export": "Exportar historial de tareas",
 		"delete": "Eliminar tarea (Shift + Clic para omitir confirmación)",
 		"condenseContext": "Condensar contexto de forma inteligente",
-		"share": "Compartir tarea",
-		"shareWithOrganization": "Compartir con organización",
-		"shareWithOrganizationDescription": "Solo los miembros de tu organización pueden acceder",
-		"sharePublicly": "Compartir públicamente",
-		"sharePubliclyDescription": "Cualquiera con el enlace puede acceder",
-		"connectToCloud": "Conectar al Cloud",
-		"connectToCloudDescription": "Inicia sesión en Roo Code Cloud para compartir tareas",
-		"sharingDisabledByOrganization": "Compartir deshabilitado por la organización",
-		"shareSuccessOrganization": "Enlace de organización copiado al portapapeles",
-		"shareSuccessPublic": "Enlace público copiado al portapapeles",
 		"openApiHistory": "Abrir historial de API",
 		"openUiHistory": "Abrir historial de UI",
 		"backToParentTask": "Tarea principal"
@@ -340,13 +330,6 @@
 	"announcement": {
 		"title": "Roo Code {{version}} publicado",
 		"support": "Por favor, apoya a Roo Code dándonos una estrella en <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Modelo stealth GRATUITO por tiempo limitado</bold> - Code Supernova: ¡Ahora actualizado con una <bold>ventana de contexto de 1M tokens</bold>! Un modelo de codificación agéntica versátil que soporta entradas de imágenes, accesible a través de Roo Code Cloud.",
-			"note": "(Nota: los prompts y completaciones son registrados por el creador del modelo y utilizados para mejorarlo)",
-			"connectButton": "Conectar a Roo Code Cloud",
-			"selectModel": "Selecciona <code>roo/code-supernova</code> del proveedor Roo Code Cloud en Configuración para comenzar.",
-			"goToSettingsButton": "Ir a Configuración"
-		},
 		"handoff": {
 			"heading": "El plugin de Roo Code no va a desaparecer.",
 			"description": "Puede que hayas visto el anuncio reciente de que Roo Code ha llegado a 3 millones de instalaciones y que el equipo original se está volcando por completo en Roomote. Sabemos que esa noticia fue dura para muchos de vosotros. Este plugin significa mucho para nosotros y para ti, y te escuchamos. La buena noticia: <bold>un equipo de la comunidad ha dado un paso adelante para seguir adelante con Roo Code</bold>, y estamos trabajando con ellos en un relevo oficial para que el plugin del que dependes siga recibiendo mantenimiento y mejoras.",
@@ -503,7 +486,7 @@
 	},
 	"retiredProvider": {
 		"title": "Proveedor ya no compatible",
-		"message": "Lo sentimos, este proveedor ya no es compatible. Vimos que muy pocos usuarios de Roo lo usaban realmente y necesitamos reducir el alcance de nuestro código para poder seguir avanzando rápido y servir bien a nuestra comunidad en este espacio. Fue una decisión muy difícil, pero nos permite enfocarnos en lo que más te importa. Lo sabemos, es una lástima.",
+		"message": "Este proveedor ya no está disponible. Selecciona un proveedor compatible para continuar.",
 		"openSettings": "Abrir configuración"
 	}
 }

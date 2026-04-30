@@ -75,15 +75,6 @@ function nullDefaultModule() {
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 vi.mock("use-sound", () => ({ default: vi.fn().mockImplementation(() => [vi.fn()]) }))
-vi.mock("@src/components/cloud/CloudUpsellDialog", () => ({ CloudUpsellDialog: () => null }))
-vi.mock("@src/hooks/useCloudUpsell", () => ({
-	useCloudUpsell: () => ({
-		isOpen: false,
-		openUpsell: vi.fn(),
-		closeUpsell: vi.fn(),
-		handleConnect: vi.fn(),
-	}),
-}))
 
 vi.mock("../common/TelemetryBanner", nullDefaultModule)
 vi.mock("../common/VersionIndicator", nullDefaultModule)

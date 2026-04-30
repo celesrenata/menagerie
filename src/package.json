@@ -91,11 +91,6 @@
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "roo-cline.cloudButtonClicked",
-				"title": "%command.cloud.title%",
-				"icon": "$(cloud)"
-			},
-			{
 				"command": "roo-cline.settingsButtonClicked",
 				"title": "%command.settings.title%",
 				"icon": "$(settings-gear)"
@@ -224,13 +219,8 @@
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.cloudButtonClicked",
-					"group": "navigation@3",
-					"when": "view == roo-cline.SidebarProvider"
-				},
-				{
 					"command": "roo-cline.marketplaceButtonClicked",
-					"group": "navigation@4",
+					"group": "navigation@3",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
@@ -256,13 +246,8 @@
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.cloudButtonClicked",
-					"group": "navigation@3",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
 					"command": "roo-cline.marketplaceButtonClicked",
-					"group": "navigation@4",
+					"group": "navigation@3",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{

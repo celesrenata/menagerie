@@ -15,16 +15,6 @@
 		"export": "Görev geçmişini dışa aktar",
 		"delete": "Görevi sil (Onayı atlamak için Shift + Tıkla)",
 		"condenseContext": "Bağlamı akıllıca yoğunlaştır",
-		"share": "Görevi paylaş",
-		"shareWithOrganization": "Kuruluşla paylaş",
-		"shareWithOrganizationDescription": "Sadece kuruluşunuzun üyeleri erişebilir",
-		"sharePublicly": "Herkese açık paylaş",
-		"sharePubliclyDescription": "Bağlantıya sahip herkes erişebilir",
-		"connectToCloud": "Buluta bağlan",
-		"connectToCloudDescription": "Görevleri paylaşmak için Roo Code Cloud'a giriş yap",
-		"sharingDisabledByOrganization": "Paylaşım kuruluş tarafından devre dışı bırakıldı",
-		"shareSuccessOrganization": "Organizasyon bağlantısı panoya kopyalandı",
-		"shareSuccessPublic": "Genel bağlantı panoya kopyalandı",
 		"openApiHistory": "API Geçmişini Aç",
 		"openUiHistory": "UI Geçmişini Aç",
 		"backToParentTask": "Üst görev"
@@ -341,13 +331,6 @@
 	"announcement": {
 		"title": "Roo Code {{version}} Yayınlandı",
 		"support": "<githubLink>GitHub</githubLink>'da yıldız vererek Roo Code'u destekle.",
-		"stealthModel": {
-			"feature": "<bold>Sınırlı süre ÜCRETSİZ gizli model</bold> - Code Supernova: Artık <bold>1M token bağlam penceresi</bold> ile yükseltildi! Görüntü girişlerini destekleyen çok amaçlı acentik kodlama modeli, Roo Code Cloud üzerinden kullanılabilir.",
-			"note": "(Not: istemler ve tamamlamalar model yaratıcısı tarafından kaydedilir ve modeli geliştirmek için kullanılır)",
-			"connectButton": "Roo Code Cloud'a bağlan",
-			"selectModel": "Başlamak için Ayarlar'da Roo Code Cloud sağlayıcısından <code>roo/code-supernova</code>'yı seçin.",
-			"goToSettingsButton": "Ayarlar'a Git"
-		},
 		"handoff": {
 			"heading": "Roo Code eklentisi bir yere gitmiyor.",
 			"description": "Roo Code'un 3 milyon kuruluma ulaştığı ve orijinal ekibin tüm enerjisini Roomote'a verdiği son duyuruyu görmüş olabilirsin. Bu haberin birçoğunuz için zor olduğunu biliyoruz. Bu eklenti bizim ve senin için çok şey ifade ediyor ve seni duyuyoruz. İyi haber: <bold>bir topluluk ekibi Roo Code'u ileriye taşımak için öne çıktı</bold> ve güvendiğin eklentinin bakımı ve geliştirilmesinin sürmesi için onlarla resmi bir devir çalışması yürütüyoruz.",
@@ -504,7 +487,7 @@
 	},
 	"retiredProvider": {
 		"title": "Sağlayıcı artık desteklenmiyor",
-		"message": "Üzgünüz, bu sağlayıcı artık desteklenmiyor. Çok az Roo kullanıcısının bunu gerçekten kullandığını gördük ve hızlı gelişmeye devam edip topluluğumuza iyi hizmet verebilmek için kod tabanımızın kapsamını daraltmamız gerekiyor. Gerçekten zor bir karardı ama senin için en önemli olana odaklanmamızı sağlıyor. Bunun can sıkıcı olduğunu biliyoruz.",
+		"message": "Bu sağlayıcı artık kullanılamıyor. Devam etmek için desteklenen bir sağlayıcı seçin.",
 		"openSettings": "Ayarları aç"
 	}
 }
