@@ -11,8 +11,8 @@
 		"finish": "Selesai"
 	},
 	"telemetry": {
-		"helpImprove": "Bantu Tingkatkan Roo Code",
-		"helpImproveMessage": "Roo Code mengumpulkan data kesalahan dan penggunaan untuk membantu kami memperbaiki bug dan meningkatkan ekstensi. Telemetri ini tidak mengumpulkan kode, prompt, atau informasi pribadi. Anda dapat menonaktifkannya di <settingsLink>pengaturan</settingsLink>."
+		"helpImprove": "Bantu Tingkatkan Zoo Code",
+		"helpImproveMessage": "Zoo Code mengumpulkan data kesalahan dan penggunaan untuk membantu kami memperbaiki bug dan meningkatkan ekstensi. Telemetri ini tidak mengumpulkan kode, prompt, atau informasi pribadi. Anda dapat menonaktifkannya di <settingsLink>pengaturan</settingsLink>."
 	},
 	"importSettings": "Impor Pengaturan"
 }

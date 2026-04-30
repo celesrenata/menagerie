@@ -11,8 +11,8 @@
 		"finish": "Hoàn thành"
 	},
 	"telemetry": {
-		"helpImprove": "Giúp cải thiện Roo Code",
-		"helpImproveMessage": "Roo Code thu thập dữ liệu lỗi và sử dụng để giúp chúng tôi sửa lỗi và cải thiện tiện ích mở rộng. Dữ liệu từ xa này không thu thập mã, lời nhắc hoặc thông tin cá nhân. Bạn có thể vô hiệu hóa nó trong <settingsLink>cài đặt</settingsLink>."
+		"helpImprove": "Giúp cải thiện Zoo Code",
+		"helpImproveMessage": "Zoo Code thu thập dữ liệu lỗi và sử dụng để giúp chúng tôi sửa lỗi và cải thiện tiện ích mở rộng. Dữ liệu từ xa này không thu thập mã, lời nhắc hoặc thông tin cá nhân. Bạn có thể vô hiệu hóa nó trong <settingsLink>cài đặt</settingsLink>."
 	},
 	"importSettings": "Nhập Cài đặt"
 }
