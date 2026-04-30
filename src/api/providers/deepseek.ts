@@ -24,7 +24,8 @@ type DeepSeekChatCompletionParams = Omit<OpenAI.Chat.ChatCompletionCreateParamsS
 	reasoning_effort?: "high" | "max"
 }
 
-const supportsDeepSeekThinkingToggle = (modelId: string) => modelId.startsWith("deepseek-v4-")
+const deepSeekV4ThinkingModels = new Set(["deepseek-v4-flash", "deepseek-v4-pro"])
+const supportsDeepSeekThinkingToggle = (modelId: string) => deepSeekV4ThinkingModels.has(modelId)
 
 // Only known V4 models and the legacy reasoner alias support DeepSeek's
 // thinking fields. Custom model IDs still fall back to default metadata, but
@@ -34,7 +35,7 @@ const isDeepSeekThinkingEnabled = (modelId: string, options: ApiHandlerOptions, 
 		return false
 	}
 
-	return modelId.includes("deepseek-reasoner") || supportsDeepSeekThinkingToggle(modelId)
+	return modelId === "deepseek-reasoner" || supportsDeepSeekThinkingToggle(modelId)
 }
 
 const normalizeDeepSeekReasoningEffort = (reasoningEffort?: string): "high" | "max" | undefined => {
