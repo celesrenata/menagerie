@@ -232,7 +232,10 @@ function getSelectedModel({
 			return { id, info }
 		}
 		case "deepseek": {
-			const id = getValidatedModelId(apiConfiguration.apiModelId, routerModels.deepseek, defaultModelId)
+			const availableModels = routerModels.deepseek
+				? { ...deepSeekModels, ...routerModels.deepseek }
+				: deepSeekModels
+			const id = getValidatedModelId(apiConfiguration.apiModelId, availableModels, defaultModelId)
 			const routerInfo = routerModels.deepseek?.[id]
 			const staticInfo = deepSeekModels[id as keyof typeof deepSeekModels]
 			return { id, info: routerInfo ?? staticInfo }
