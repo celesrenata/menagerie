@@ -1036,8 +1036,8 @@ export const webviewMessageHandler = async (
 			}
 
 			// DeepSeek is conditional on apiKey
-			const deepSeekApiKey = apiConfiguration.deepSeekApiKey || message?.values?.deepSeekApiKey
-			const deepSeekBaseUrl = apiConfiguration.deepSeekBaseUrl || message?.values?.deepSeekBaseUrl
+			const deepSeekApiKey = message?.values?.deepSeekApiKey ?? apiConfiguration.deepSeekApiKey
+			const deepSeekBaseUrl = message?.values?.deepSeekBaseUrl ?? apiConfiguration.deepSeekBaseUrl
 
 			if (deepSeekApiKey) {
 				if (message?.values?.deepSeekApiKey || message?.values?.deepSeekBaseUrl) {
