@@ -18,47 +18,6 @@ async function main() {
 
 	let mock: InstanceType<typeof LLMock> | undefined
 
-	if (useMock) {
-		const fixturesDir = path.resolve(__dirname, "../fixtures")
-
-		mock = new LLMock({
-			port: 0, // random free port
-			...(isRecord && {
-				record: {
-					// OpenRouter is OpenAI-compatible; aimock proxies using the openai provider key.
-					// Use /api (not /api/v1) — aimock appends the request path (/v1/chat/completions)
-					// so including /v1 here would produce a doubled /v1/v1 upstream URL.
-					providers: { openai: "https://openrouter.ai/api" },
-					fixturePath: fixturesDir,
-				},
-			}),
-		})
-
-		mock.loadFixtureDir(fixturesDir)
-
-		if (!isRecord) {
-			// The modes test (switch_mode → ask) triggers a second API call whose last
-			// user message starts with <environment_details> directly — no <user_message>
-			// wrapper. JSON fixtures use substring matching so a bare "<environment_details>"
-			// match would collide with all other requests. A regex anchored to the start
-			// uniquely identifies this post-switch turn.
-			mock.addFixture({
-				match: { userMessage: /^<environment_details>/ },
-				response: {
-					toolCalls: [
-						{
-							name: "attempt_completion",
-							arguments: JSON.stringify({ result: "Switched to ❓ Ask mode as requested." }),
-							id: "call_modes_post_switch_001",
-						},
-					],
-				},
-			})
-		}
-
-		await mock.start()
-	}
-
 	// The folder containing the Extension Manifest package.json
 	// Passed to `--extensionDevelopmentPath`
 	const extensionDevelopmentPath = path.resolve(__dirname, "../../../src")
@@ -70,6 +29,47 @@ async function main() {
 	let testWorkspace: string | undefined
 
 	try {
+		if (useMock) {
+			const fixturesDir = path.resolve(__dirname, "../fixtures")
+
+			mock = new LLMock({
+				port: 0, // random free port
+				...(isRecord && {
+					record: {
+						// OpenRouter is OpenAI-compatible; aimock proxies using the openai provider key.
+						// Use /api (not /api/v1) — aimock appends the request path (/v1/chat/completions)
+						// so including /v1 here would produce a doubled /v1/v1 upstream URL.
+						providers: { openai: "https://openrouter.ai/api" },
+						fixturePath: fixturesDir,
+					},
+				}),
+			})
+
+			mock.loadFixtureDir(fixturesDir)
+
+			if (!isRecord) {
+				// The modes test (switch_mode → ask) triggers a second API call whose last
+				// user message starts with <environment_details> directly — no <user_message>
+				// wrapper. JSON fixtures use substring matching so a bare "<environment_details>"
+				// match would collide with all other requests. A regex anchored to the start
+				// uniquely identifies this post-switch turn.
+				mock.addFixture({
+					match: { userMessage: /^<environment_details>/ },
+					response: {
+						toolCalls: [
+							{
+								name: "attempt_completion",
+								arguments: JSON.stringify({ result: "Switched to ❓ Ask mode as requested." }),
+								id: "call_modes_post_switch_001",
+							},
+						],
+					},
+				})
+			}
+
+			await mock.start()
+		}
+
 		// Create a temporary workspace folder for tests
 		testWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-workspace-"))
 		// Get test filter from command line arguments or environment variable

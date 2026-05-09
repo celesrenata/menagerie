@@ -10,6 +10,10 @@ on:
             - "webview-ui/**"
             - "apps/vscode-e2e/**"
             - "packages/core/**"
+            - "package.json"
+            - "pnpm-lock.yaml"
+            - "turbo.json"
+            - ".github/actions/setup-node-pnpm/**"
 
 jobs:
     e2e-mock:

@@ -9,7 +9,7 @@ coverage:
     patch:
       default:
         target: 80%       # new lines must be 80% covered
-        threshold: 5%
+        threshold: 0%
 
 comment:
   layout: "diff, flags"
