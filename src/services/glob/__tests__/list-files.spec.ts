@@ -231,12 +231,12 @@ describe("hidden directory exclusion", () => {
 			.mockResolvedValueOnce([
 				{ name: ".git", isDirectory: () => true, isSymbolicLink: () => false },
 				{ name: "src", isDirectory: () => true, isSymbolicLink: () => false },
-			])
+			] as any)
 			.mockResolvedValueOnce([
 				// src subdirectories (should be included)
 				{ name: "components", isDirectory: () => true, isSymbolicLink: () => false },
-			])
-			.mockResolvedValueOnce([]) // components/ is empty
+			] as any)
+			.mockResolvedValueOnce([] as any) // components/ is empty
 
 		// Mock ripgrep to return no files
 		const mockSpawn = vi.mocked(childProcess.spawn)
@@ -272,7 +272,7 @@ describe("hidden directory exclusion", () => {
 		mockReaddir.mockResolvedValueOnce([
 			{ name: "tasks", isDirectory: () => true, isSymbolicLink: () => false },
 			{ name: "context", isDirectory: () => true, isSymbolicLink: () => false },
-		])
+		] as any)
 
 		// Mock ripgrep to return no files
 		const mockSpawn = vi.mocked(childProcess.spawn)
@@ -301,7 +301,7 @@ describe("hidden directory exclusion", () => {
 
 		// Mock directory listing for .roo/temp
 		const mockReaddir = vi.mocked(fs.promises.readdir)
-		mockReaddir.mockResolvedValueOnce([{ name: "22", isDirectory: () => true, isSymbolicLink: () => false }])
+		mockReaddir.mockResolvedValueOnce([{ name: "22", isDirectory: () => true, isSymbolicLink: () => false }] as any)
 
 		// Call listFiles targeting .roo/temp (which is both hidden and in DIRS_TO_IGNORE)
 		const [files] = await listFiles("/test/.roo/temp", true, 100)

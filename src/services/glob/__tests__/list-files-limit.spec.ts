@@ -139,7 +139,7 @@ describe("listFiles limit handling for large projects", () => {
 
 		// Mock directory structure
 		let directoriesScanned = 0
-		mockReaddir.mockImplementation(async (dirPath: string) => {
+		mockReaddir.mockImplementation(async () => {
 			directoriesScanned++
 
 			// Root directory has many subdirectories
