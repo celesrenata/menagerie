@@ -53,9 +53,10 @@ suite("Claude Opus 4.7 (Anthropic)", function () {
 
 		await waitUntilCompleted({ api, taskId })
 
-		assert.ok(
-			messages.some(({ say }) => say === "completion_result" || say === "text"),
-			"Task should produce a completion result",
+		const completionMessage = messages.find(
+			({ say, text }) => (say === "completion_result" || say === "text") && text?.trim() === "4",
 		)
+
+		assert.ok(completionMessage, "Task should complete with the expected Claude Opus 4.7 response")
 	})
 })

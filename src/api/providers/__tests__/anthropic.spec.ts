@@ -228,7 +228,9 @@ describe("AnthropicHandler", () => {
 				// Consume stream
 			}
 
+			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
 			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
+			expect(requestBody?.temperature).toBeUndefined()
 			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
 			expect(requestOptions?.headers?.["anthropic-beta"]).not.toContain("context-1m-2025-08-07")
 		})
