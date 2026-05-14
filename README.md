@@ -1,22 +1,54 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=ZooCodeOrganization.zoo-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://discord.gg/roocode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/RooCode/"><img src="https://img.shields.io/badge/Join%20r%2FRooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/RooCode"></a>
+  <a href="https://x.com/ZooCodeDev"><img src="https://img.shields.io/badge/ZooCode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
+  <a href="https://youtube.com/@roocodeyt?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
+  <a href="https://discord.gg/SfHYG44NUA"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
+  <a href="https://www.reddit.com/r/ZooCode/"><img src="https://img.shields.io/badge/Join%20r%2FZooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/ZooCode"></a>
   <a href="https://github.com/Zoo-Code-Org/Zoo-Code/issues"><img src="https://img.shields.io/badge/GitHub-Issues-181717?style=flat&logo=github&logoColor=white" alt="GitHub Issues"></a>
 </p>
 <p align="center">
-  <em>Get help fast → <a href="https://discord.gg/roocode">Join Discord</a> • Prefer async? → <a href="https://www.reddit.com/r/RooCode/">Join r/RooCode</a></em>
+  <em>Get help fast → <a href="https://discord.gg/SfHYG44NUA">Join Discord</a> • Prefer async? → <a href="https://www.reddit.com/r/ZooCode/">Join r/ZooCode</a></em>
 </p>
 
 # Zoo Code
 
 > Your AI-Powered Dev Team, Right in Your Editor
 
-Zoo Code is a community-maintained fork of
-[Roo Code](https://github.com/RooCodeInc/Roo-Code), continuing active
-development of the extension you rely on.
+## We are Zoo Code
 
-## What's New in v3.54.0
+> You may have seen the
+> [recent announcement](https://x.com/mattrubens/status/2046636598859559114)
+> from the Roo team 🦘🦘🦘. The TLDR is that they are sunsetting Roo in favour
+> of working on another product, [Roomote](https://roomote.dev/). That news was
+> difficult for many Roo users; this plugin means a lot to this community.
+>
+> We want to thank the entire Roo team for the work they put into this plugin.
+> We won't call out each person by name here, but we can all agree they are
+> exceptional developers and, just as importantly, thoughtful people. Thank you
+> to the Roo team.
+>
+> As Roo coders, we come in all kinds of shapes and sizes. Some of us are using
+> it professionally in our day-to-day work, some are using it to tinker and
+> scheme unimaginably complicated workflows. Some are using it to improve Roo
+> itself while others are using it to improve the very models that Roo is using
+> (super meta). I guess the point we are making is that the community is
+> diverse, and although a kangaroo 🦘🦘🦘 is a distinguished and noble animal,
+> we felt a "Zoo" 🐘🦡🦒🦓🦛🦧🦭🦦 of different species better reflected this
+> diversity of the plugin's users.
+>
+> So we would like to announce that **Zoo Code** will continue development on
+> this important project. The core team is a group of developers who contributed
+> to Roo previously and care deeply about this plugin. We will continue to make
+> model updates, fix bugs, and release features. But more than anything, we plan
+> to listen to the community that made this plugin so special. Feel free to join
+> us on [Discord](https://discord.gg/SfHYG44NUA),
+> [Reddit](https://www.reddit.com/r/ZooCode), or
+> [open a PR or issue](https://github.com/Zoo-Code-Org/Zoo-Code), and above all,
+> please stay involved, connected, and active as a community.
+>
+> _-Zoo Code Team_
+
+## What's New in v3.53.0
 
 **Initial Zoo Code release** — establishes Zoo Code as an independent extension
 on the VS Code Marketplace under `ZooCodeOrganization.zoo-code`, with
@@ -91,18 +123,18 @@ Learn more: [Using Modes](https://docs.zoocode.dev/basic-usage/using-modes) •
 
 </div>
 <p align="center">
-<a href="https://docs.roocode.com/tutorial-videos">More quick tutorial and feature videos...</a>
+<a href="https://docs.zoocode.dev/tutorial-videos">More quick tutorial and feature videos...</a>
 </p>
 
 ## Resources
 
 - **[Documentation](https://docs.zoocode.dev):** The official guide to
-  installing, configuring, and mastering Roo Code.
+  installing, configuring, and mastering Zoo Code.
 - **[YouTube Channel](https://youtube.com/@roocodeyt?feature=shared):** Watch
   tutorials and see features in action.
-- **[Discord Server](https://discord.gg/roocode):** Join the community for
+- **[Discord Server](https://discord.gg/SfHYG44NUA):** Join the community for
   real-time help and discussion.
-- **[Reddit Community](https://www.reddit.com/r/RooCode):** Share your
+- **[Reddit Community](https://www.reddit.com/r/ZooCode/):** Share your
   experiences and see what others are building.
 - **[GitHub Issues](https://github.com/Zoo-Code-Org/Zoo-Code/issues):** Report
   bugs and track development.
@@ -208,12 +240,12 @@ We love community contributions! Get started by reading our
 
 ## License
 
-[Apache 2.0 © 2025 Zoo Code Org](./LICENSE)
+[Apache 2.0 © 2026 Zoo Code Org](./LICENSE)
 
 ---
 
 **Enjoy Zoo Code!** Whether you keep it on a short leash or let it roam
-autonomously, we can't wait to see what you build. If you have questions or
-feature ideas, open an [issue](https://github.com/Zoo-Code-Org/Zoo-Code/issues)
-or start a [discussion](https://github.com/Zoo-Code-Org/Zoo-Code/discussions).
-Happy coding!
+autonomously, we can’t wait to see what you build. If you have questions or
+feature ideas, drop by our [Reddit community](https://www.reddit.com/r/ZooCode/)
+or [Discord](https://discord.gg/SfHYG44NUA), or open an
+[issue](https://github.com/Zoo-Code-Org/Zoo-Code/issues). Happy coding!

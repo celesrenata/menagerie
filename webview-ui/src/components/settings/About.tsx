@@ -53,7 +53,7 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 						<Trans
 							i18nKey="settings:footer.telemetry.description"
 							components={{
-								privacyLink: <VSCodeLink href="https://roocode.com/privacy" />,
+								privacyLink: <VSCodeLink href="https://www.zoocode.dev/privacy" />,
 							}}
 						/>
 					</p>
@@ -96,8 +96,8 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 							<Trans
 								i18nKey="settings:about.community"
 								components={{
-									redditLink: <VSCodeLink href="https://reddit.com/r/RooCode" />,
-									discordLink: <VSCodeLink href="https://discord.gg/roocode" />,
+									redditLink: <VSCodeLink href={EXTERNAL_LINKS.REDDIT} />,
+									discordLink: <VSCodeLink href={EXTERNAL_LINKS.DISCORD} />,
 								}}
 							/>
 						</span>

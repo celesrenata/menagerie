@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Düşünme tamamlandı, ancak çıktı okuma kontrolü nedeniyle engellendi.)"
 		},
 		"roo": {
-			"authenticationRequired": "Zoo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Zoo Code Cloud'a giriş yapın.",
+			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın.",
 			"routerRemoved": "Roo Code Router kaldırıldı. Lütfen farklı bir sağlayıcı seçip yapılandırın."
 		},
 		"api": {
@@ -254,7 +254,7 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.roocode.com"
+		"url": "https://docs.zoocode.dev"
 	},
 	"zooAuth": {
 		"errors": {

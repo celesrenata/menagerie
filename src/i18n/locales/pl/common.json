@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Myślenie zakończone, ale dane wyjściowe zostały zablokowane przez kontrolę recytacji.)"
 		},
 		"roo": {
-			"authenticationRequired": "Dostawca Zoo wymaga uwierzytelnienia w chmurze. Zaloguj się do Zoo Code Cloud.",
+			"authenticationRequired": "Dostawca Roo wymaga uwierzytelnienia w chmurze. Zaloguj się do Roo Code Cloud.",
 			"routerRemoved": "Roo Code Router został usunięty. Wybierz i skonfiguruj innego dostawcę."
 		},
 		"api": {
@@ -254,7 +254,7 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.roocode.com"
+		"url": "https://docs.zoocode.dev"
 	},
 	"zooAuth": {
 		"errors": {

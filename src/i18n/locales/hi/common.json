@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(सोचना पूरा हुआ, लेकिन पाठ जाँच के कारण आउटपुट अवरुद्ध कर दिया गया।)"
 		},
 		"roo": {
-			"authenticationRequired": "Zoo प्रदाता को क्लाउड प्रमाणीकरण की आवश्यकता है। कृपया Zoo Code Cloud में साइन इन करें।",
+			"authenticationRequired": "Roo प्रदाता को क्लाउड प्रमाणीकरण की आवश्यकता है। कृपया Roo Code Cloud में साइन इन करें।",
 			"routerRemoved": "Roo Code Router हटा दिया गया है। कृपया कोई दूसरा प्रदाता चुनें और कॉन्फ़िगर करें।"
 		},
 		"api": {
@@ -254,7 +254,7 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.roocode.com"
+		"url": "https://docs.zoocode.dev"
 	},
 	"zooAuth": {
 		"errors": {

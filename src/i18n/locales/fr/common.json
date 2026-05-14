@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Réflexion terminée, mais la sortie a été bloquée en raison de la vérification de récitation.)"
 		},
 		"roo": {
-			"authenticationRequired": "Le fournisseur Zoo nécessite une authentification cloud. Veuillez vous connecter à Zoo Code Cloud.",
+			"authenticationRequired": "Le fournisseur Roo nécessite une authentification cloud. Veuillez vous connecter à Roo Code Cloud.",
 			"routerRemoved": "Roo Code Router a été supprimé. Sélectionne et configure un autre fournisseur."
 		},
 		"api": {
@@ -254,7 +254,7 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.roocode.com"
+		"url": "https://docs.zoocode.dev"
 	},
 	"zooAuth": {
 		"errors": {

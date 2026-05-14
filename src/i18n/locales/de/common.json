@@ -112,7 +112,7 @@
 			"thinking_complete_recitation": "(Denken abgeschlossen, aber die Ausgabe wurde aufgrund der Rezitationsprüfung blockiert.)"
 		},
 		"roo": {
-			"authenticationRequired": "Zoo-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Zoo Code Cloud an.",
+			"authenticationRequired": "Roo-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Roo Code Cloud an.",
 			"routerRemoved": "Roo Code Router wurde entfernt. Bitte wähle einen anderen Anbieter und konfiguriere ihn."
 		},
 		"openAiCodex": {
@@ -249,7 +249,7 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.roocode.com"
+		"url": "https://docs.zoocode.dev"
 	},
 	"zooAuth": {
 		"errors": {

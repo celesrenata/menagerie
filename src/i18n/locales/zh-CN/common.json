@@ -117,7 +117,7 @@
 			"thinking_complete_recitation": "（思考完成，但由于引用检查输出被阻止。）"
 		},
 		"roo": {
-			"authenticationRequired": "Zoo 提供商需要云认证。请登录 Zoo Code Cloud。",
+			"authenticationRequired": "Roo 提供商需要云认证。请登录 Roo Code Cloud。",
 			"routerRemoved": "Roo Code Router 已被移除。请选择并配置其他提供商。"
 		},
 		"api": {
@@ -259,7 +259,7 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.roocode.com"
+		"url": "https://docs.zoocode.dev"
 	},
 	"zooAuth": {
 		"errors": {
