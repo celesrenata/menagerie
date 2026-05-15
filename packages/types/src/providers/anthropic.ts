@@ -100,7 +100,12 @@ export const anthropicModels = {
 		outputPrice: 25.0, // $25 per million output tokens
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
+		// Keep the hybrid-reasoning capability so Anthropic token-cap handling and
+		// stored max-token overrides behave the same as before.
 		supportsReasoningBudget: true,
+		// Direct Anthropic Opus 4.7 no longer accepts budget-token thinking payloads,
+		// so the UI should still present a simple on/off toggle on this provider path.
+		supportsReasoningBinary: true,
 		supportsTemperature: false,
 	},
 	"claude-opus-4-5-20251101": {
