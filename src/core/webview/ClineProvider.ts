@@ -193,7 +193,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "jun-2026-v3.58.0-zoo-gateway-gemini35flash-semble" // v3.58.0 Zoo Gateway, Gemini 3.5 Flash, Semble embedding
+	public readonly latestAnnouncementId = "jun-2026-v3.60.0-fable5-gpt55-mcp-allowlists-rootresolution" // v3.60.0 Fable 5, GPT-5.5, per-mode MCP allowlists, workspace rootResolution
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
