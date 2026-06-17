@@ -1236,7 +1236,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 		}
 
-		let timeouts: NodeJS.Timeout[] = []
+		const timeouts: NodeJS.Timeout[] = []
 
 		if (approval.decision === "approve") {
 			this.approveAsk()
@@ -1951,7 +1951,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Make sure that the api conversation history can be resumed by the API,
 			// even if it goes out of sync with cline messages.
-			let existingApiConversationHistory: ApiMessage[] = await this.getSavedApiConversationHistory()
+			const existingApiConversationHistory: ApiMessage[] = await this.getSavedApiConversationHistory()
 
 			// Tool blocks are always preserved; native tool calling only.
 
@@ -2048,7 +2048,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				throw new Error("Unexpected: No existing API conversation history")
 			}
 
-			let newUserContent: Anthropic.Messages.ContentBlockParam[] = [...modifiedOldUserContent]
+			const newUserContent: Anthropic.Messages.ContentBlockParam[] = [...modifiedOldUserContent]
 
 			const agoText = ((): string => {
 				const timestamp = lastClineMessage?.ts ?? Date.now()
@@ -2518,7 +2518,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Add environment details as its own text block, separate from tool
 			// results.
-			let finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
+			const finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
 			// Only add user message to conversation history if:
 			// 1. This is the first attempt (retryAttempt === 0), AND
 			// 2. The original userContent was not empty (empty signals delegation resume where
@@ -2664,7 +2664,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, { skipProviderRateLimit: true })
 				let assistantMessage = ""
 				let reasoningMessage = ""
-				let pendingGroundingSources: GroundingSource[] = []
+				const pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
 				try {
@@ -3534,7 +3534,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// apiConversationHistory at line 1876. Since the assistant failed to respond,
 					// we need to remove that message before retrying to avoid having two consecutive
 					// user messages (which would cause tool_result validation errors).
-					let state = await this.providerRef.deref()?.getState()
+					const state = await this.providerRef.deref()?.getState()
 					if (this.apiConversationHistory.length > 0) {
 						const lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
 						if (lastMessage.role === "user") {

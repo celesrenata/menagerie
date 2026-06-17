@@ -342,9 +342,8 @@ describe("Cache Strategy", () => {
 				convertToBedrockConverseMessagesMock.lastConfig = config
 
 				// Create a strategy based on the config
-				let strategy
 				// Use MultiPointStrategy for all cases
-				strategy = new MultiPointStrategy(config as any)
+				const strategy = new MultiPointStrategy(config as any)
 
 				// Store the result
 				const result = strategy.determineOptimalCachePoints()
@@ -484,9 +483,8 @@ describe("Cache Strategy", () => {
 				convertToBedrockConverseMessagesMock.lastConfig = config
 
 				// Create a strategy based on the config
-				let strategy
 				// Use MultiPointStrategy for all cases
-				strategy = new MultiPointStrategy(config as any)
+				const strategy = new MultiPointStrategy(config as any)
 
 				// Store the result
 				const result = strategy.determineOptimalCachePoints()

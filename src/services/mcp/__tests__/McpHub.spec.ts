@@ -240,7 +240,8 @@ describe("McpHub", () => {
 				return mockClient
 			})
 
-			// Mock the config file read
+			// Mock the config file read BEFORE creating McpHub to avoid racing
+			// the constructor's initializeGlobalMcpServers()
 			vi.mocked(fs.readFile).mockResolvedValue(
 				JSON.stringify({
 					mcpServers: {
@@ -252,9 +253,9 @@ describe("McpHub", () => {
 				}),
 			)
 
-			// Create McpHub and let it initialize
+			// Create McpHub and wait for constructor init to complete
 			const mcpHub = new McpHub(mockProvider as ClineProvider)
-			await new Promise((resolve) => setTimeout(resolve, 100))
+			await mcpHub.waitUntilReady()
 
 			// Find the connection
 			const connection = mcpHub.connections.find((conn) => conn.server.name === "union-test-server")
@@ -271,7 +272,8 @@ describe("McpHub", () => {
 		})
 
 		it("should create disconnected connections for disabled servers", async () => {
-			// Mock the config file read with a disabled server
+			// Mock the config file read BEFORE creating McpHub to avoid racing
+			// the constructor's initializeGlobalMcpServers()
 			vi.mocked(fs.readFile).mockResolvedValue(
 				JSON.stringify({
 					mcpServers: {
@@ -284,9 +286,9 @@ describe("McpHub", () => {
 				}),
 			)
 
-			// Create McpHub and let it initialize
+			// Create McpHub and wait for constructor init to complete
 			const mcpHub = new McpHub(mockProvider as ClineProvider)
-			await new Promise((resolve) => setTimeout(resolve, 100))
+			await mcpHub.waitUntilReady()
 
 			// Find the connection
 			const connection = mcpHub.connections.find((conn) => conn.server.name === "disabled-union-server")
@@ -311,11 +313,9 @@ describe("McpHub", () => {
 				}),
 			)
 
-			// Create a mock McpHub instance
+			// Create McpHub and wait for constructor init to complete
 			const mcpHub = new McpHub(mockProvider as ClineProvider)
-
-			// Wait for initialization
-			await new Promise((resolve) => setTimeout(resolve, 100))
+			await mcpHub.waitUntilReady()
 
 			// Clear any connections that might have been created
 			mcpHub.connections = []
@@ -2622,6 +2622,53 @@ describe("McpHub", () => {
 			expect(mockAuthProvider.close).toHaveBeenCalled()
 		})
 
+		it("should handle a token that is already cancelled at listener registration time", async () => {
+			// Regression: VS Code's CancellationToken.onCancellationRequested() fires the
+			// callback synchronously inside the registration call when the token is already
+			// cancelled. If cleanup() captures `const cancellationDisposable = onCancellationRequested(...)`
+			// from outer scope, the callback runs while that binding is still in the temporal
+			// dead zone and accessing it throws ReferenceError. cleanup() must therefore
+			// receive the disposable as a parameter and the cancellation callback must invoke
+			// cleanup() without it.
+			vsc.window.withProgress.mockImplementationOnce((_options: any, task: any) => {
+				const progress = { report: vi.fn() }
+				const cancellationToken = {
+					isCancellationRequested: true,
+					// Fire synchronously during registration — simulates an already-cancelled
+					// token in real VS Code.
+					onCancellationRequested: vi.fn((cb: () => void) => {
+						cb()
+						return { dispose: vi.fn() }
+					}),
+				}
+				return task(progress, cancellationToken)
+			})
+
+			await expect(
+				(mcpHub as any)._initiateOAuthFlow(
+					serverName,
+					source,
+					config,
+					mockAuthProvider,
+					mockTransport,
+					mockConnection,
+				),
+			).resolves.toBeUndefined()
+
+			expect(mockConnection.server.status).toBe("disconnected")
+			expect((mcpHub as any).appendErrorMessage).toHaveBeenCalled()
+			expect(mockAuthProvider.close).toHaveBeenCalled()
+
+			// Pin the watcher-after-cleanup race: when the cancellation callback fires
+			// synchronously during onCancellationRequested(...) registration, cleanup()
+			// runs before the _oauthWatchers.set() that would have added the entry.
+			// If the registration happens AFTER the callback is installed, the entry
+			// is added after disposal and remains orphaned in the map. Registering the
+			// watcher BEFORE installing the callback ensures cleanup() finds and
+			// deletes it cleanly.
+			expect((mcpHub as any)._oauthWatchers.has(`${serverName}:${source}`)).toBe(false)
+		})
+
 		it("should disconnect and flag error when OAuth flow times out", async () => {
 			vi.useFakeTimers()
 			vsc.window.showInformationMessage.mockImplementation(() => {
@@ -2643,6 +2690,35 @@ describe("McpHub", () => {
 			expect(mockConnection.server.status).toBe("disconnected")
 			expect((mcpHub as any).appendErrorMessage).toHaveBeenCalled()
 			expect(mockAuthProvider.close).toHaveBeenCalled()
+		})
+
+		it("should dispose the cancellation listener when the OAuth flow times out", async () => {
+			vi.useFakeTimers()
+			const mockDispose = vi.fn()
+			vsc.window.withProgress.mockImplementationOnce((_options: any, task: any) => {
+				const progress = { report: vi.fn() }
+				const cancellationToken = {
+					isCancellationRequested: false,
+					onCancellationRequested: vi.fn(() => ({ dispose: mockDispose })),
+				}
+				return task(progress, cancellationToken)
+			})
+			vsc.window.showInformationMessage.mockImplementation(() => new Promise(() => {}))
+
+			const flowPromise = (mcpHub as any)._initiateOAuthFlow(
+				serverName,
+				source,
+				config,
+				mockAuthProvider,
+				mockTransport,
+				mockConnection,
+			)
+
+			await vi.advanceTimersByTimeAsync(OAUTH_FLOW_TIMEOUT_MS)
+			await flowPromise
+
+			// cleanup(cancellationDisposable) inside the timeout handler must dispose the listener
+			expect(mockDispose).toHaveBeenCalled()
 		})
 
 		it("should resolve without calling _completeOAuthFlow when tokens exist at click time", async () => {
