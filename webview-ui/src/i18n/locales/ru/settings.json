@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Включить режим отладки",
 			"description": "Включите режим отладки для отображения дополнительных кнопок в заголовке задачи для просмотра истории разговоров API и сообщений UI в виде форматированного JSON во временных файлах."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Импортировать историю из Roo Code",
+			"cardTitle": "История Roo Code",
+			"cardDescription": "Скопировать сохранённые разговоры Roo Code в Zoo Code.",
+			"statusImporting": "Импорт истории",
+			"statusFailed": "Импорт не удался",
+			"statusComplete": "Импорт завершён",
+			"buttonImporting": "Импорт из Roo Code...",
+			"buttonIdle": "Импортировать историю из Roo Code",
+			"summaryFailedWithFiles": "Скопировано {{copied}} из {{total}} файлов до остановки импорта.",
+			"summaryFailedNoFiles": "Импорт остановился до копирования каких-либо файлов.",
+			"summaryCopied": "Скопировано {{copied}} из {{total}} файлов",
+			"detailFailed": "Начни новую попытку импорта, чтобы повторить.",
+			"detailTasksImported_one": "Импортирована {{count}} из {{total}} история задач.",
+			"detailTasksImported_other": "Импортировано {{count}} из {{total}} историй задач.",
+			"detailPreparing": "Подготовка импорта истории Roo Code.",
+			"progressAriaLabel": "Ход импорта истории Roo Code"
 		}
 	},
 	"slashCommands": {

@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Enable debug mode",
 			"description": "Enable debug mode to show additional buttons in the task header for viewing API conversation history and UI messages as prettified JSON in temporary files."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Import history from Roo Code",
+			"cardTitle": "Roo Code history",
+			"cardDescription": "Copy saved Roo Code conversations into Zoo Code.",
+			"statusImporting": "Importing history",
+			"statusFailed": "Import failed",
+			"statusComplete": "Import complete",
+			"buttonImporting": "Importing from Roo Code...",
+			"buttonIdle": "Import history from Roo Code",
+			"summaryFailedWithFiles": "{{copied}} of {{total}} files copied before the import stopped.",
+			"summaryFailedNoFiles": "The import stopped before any files were copied.",
+			"summaryCopied": "{{copied}} of {{total}} files copied",
+			"detailFailed": "Start a new import attempt to try again.",
+			"detailTasksImported_one": "Imported {{count}} of {{total}} task history.",
+			"detailTasksImported_other": "Imported {{count}} of {{total}} task histories.",
+			"detailPreparing": "Preparing Roo Code history import.",
+			"progressAriaLabel": "Roo history import progress"
 		}
 	},
 	"slashCommands": {

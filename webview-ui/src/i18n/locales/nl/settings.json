@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Debugmodus inschakelen",
 			"description": "Schakel de debugmodus in om extra knoppen in de taakkoptekst te tonen voor het bekijken van API-gesprekgeschiedenis en UI-berichten als opgemaakte JSON in tijdelijke bestanden."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Geschiedenis importeren van Roo Code",
+			"cardTitle": "Roo Code-geschiedenis",
+			"cardDescription": "Opgeslagen Roo Code-gesprekken naar Zoo Code kopiëren.",
+			"statusImporting": "Geschiedenis importeren",
+			"statusFailed": "Importeren mislukt",
+			"statusComplete": "Importeren voltooid",
+			"buttonImporting": "Importeren van Roo Code...",
+			"buttonIdle": "Geschiedenis importeren van Roo Code",
+			"summaryFailedWithFiles": "{{copied}} van {{total}} bestanden gekopieerd voordat het importeren stopte.",
+			"summaryFailedNoFiles": "Het importeren is gestopt voordat er bestanden werden gekopieerd.",
+			"summaryCopied": "{{copied}} van {{total}} bestanden gekopieerd",
+			"detailFailed": "Start een nieuwe importpoging om het opnieuw te proberen.",
+			"detailTasksImported_one": "{{count}} van {{total}} taakgeschiedenis geïmporteerd.",
+			"detailTasksImported_other": "{{count}} van {{total}} taakgeschiedenissen geïmporteerd.",
+			"detailPreparing": "Importeren van Roo Code-geschiedenis voorbereiden.",
+			"progressAriaLabel": "Voortgang van import van Roo Code-geschiedenis"
 		}
 	},
 	"slashCommands": {

@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Abilita modalità debug",
 			"description": "Abilita la modalità debug per mostrare pulsanti aggiuntivi nell'intestazione dell'attività che consentano di visualizzare la cronologia delle conversazioni API e i messaggi dell'interfaccia utente come JSON formattato in file temporanei."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Importa la cronologia da Roo Code",
+			"cardTitle": "Cronologia Roo Code",
+			"cardDescription": "Copia le conversazioni salvate di Roo Code in Zoo Code.",
+			"statusImporting": "Importazione cronologia",
+			"statusFailed": "Importazione fallita",
+			"statusComplete": "Importazione completata",
+			"buttonImporting": "Importazione da Roo Code...",
+			"buttonIdle": "Importa la cronologia da Roo Code",
+			"summaryFailedWithFiles": "{{copied}} di {{total}} file copiati prima dell'interruzione dell'importazione.",
+			"summaryFailedNoFiles": "L'importazione si è interrotta prima che venissero copiati dei file.",
+			"summaryCopied": "{{copied}} di {{total}} file copiati",
+			"detailFailed": "Avvia un nuovo tentativo di importazione per riprovare.",
+			"detailTasksImported_one": "Importato {{count}} di {{total}} cronologia attività.",
+			"detailTasksImported_other": "Importati {{count}} di {{total}} cronologie attività.",
+			"detailPreparing": "Preparazione dell'importazione della cronologia Roo Code.",
+			"progressAriaLabel": "Avanzamento importazione cronologia Roo Code"
 		}
 	},
 	"slashCommands": {

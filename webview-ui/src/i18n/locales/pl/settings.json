@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Włącz tryb debugowania",
 			"description": "Włącz tryb debugowania, aby wyświetlić dodatkowe przyciski w nagłówku zadania umożliwiające przeglądanie historii konwersacji API i komunikatów UI jako sformatowany JSON w plikach tymczasowych."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Importuj historię z Roo Code",
+			"cardTitle": "Historia Roo Code",
+			"cardDescription": "Skopiuj zapisane rozmowy Roo Code do Zoo Code.",
+			"statusImporting": "Importowanie historii",
+			"statusFailed": "Import nie powiódł się",
+			"statusComplete": "Import zakończony",
+			"buttonImporting": "Importowanie z Roo Code...",
+			"buttonIdle": "Importuj historię z Roo Code",
+			"summaryFailedWithFiles": "Skopiowano {{copied}} z {{total}} plików przed zatrzymaniem importu.",
+			"summaryFailedNoFiles": "Import zatrzymał się przed skopiowaniem jakichkolwiek plików.",
+			"summaryCopied": "Skopiowano {{copied}} z {{total}} plików",
+			"detailFailed": "Rozpocznij nową próbę importu, aby spróbować ponownie.",
+			"detailTasksImported_one": "Zaimportowano {{count}} z {{total}} historię zadań.",
+			"detailTasksImported_other": "Zaimportowano {{count}} z {{total}} historii zadań.",
+			"detailPreparing": "Przygotowywanie importu historii Roo Code.",
+			"progressAriaLabel": "Postęp importu historii Roo Code"
 		}
 	},
 	"slashCommands": {

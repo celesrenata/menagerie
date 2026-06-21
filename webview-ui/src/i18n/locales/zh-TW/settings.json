@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "啟用偵錯模式",
 			"description": "啟用偵錯模式以在工作標題顯示額外按鈕，用於在暫存檔案中檢視 API 對話歷史記錄和 UI 訊息的格式化 JSON。"
+		},
+		"rooHistoryImport": {
+			"settingLabel": "從 Roo Code 匯入歷史記錄",
+			"cardTitle": "Roo Code 歷史記錄",
+			"cardDescription": "將已儲存的 Roo Code 對話複製到 Zoo Code。",
+			"statusImporting": "正在匯入歷史記錄",
+			"statusFailed": "匯入失敗",
+			"statusComplete": "匯入完成",
+			"buttonImporting": "正在從 Roo Code 匯入...",
+			"buttonIdle": "從 Roo Code 匯入歷史記錄",
+			"summaryFailedWithFiles": "匯入停止前已複製 {{total}} 個檔案中的 {{copied}} 個。",
+			"summaryFailedNoFiles": "匯入在複製任何檔案之前已停止。",
+			"summaryCopied": "已複製 {{total}} 個檔案中的 {{copied}} 個",
+			"detailFailed": "開始新的匯入嘗試以重試。",
+			"detailTasksImported_one": "已匯入 {{total}} 個工作歷史記錄中的 {{count}} 個。",
+			"detailTasksImported_other": "已匯入 {{total}} 個工作歷史記錄中的 {{count}} 個。",
+			"detailPreparing": "正在準備匯入 Roo Code 歷史記錄。",
+			"progressAriaLabel": "Roo Code 歷史記錄匯入進度"
 		}
 	},
 	"slashCommands": {

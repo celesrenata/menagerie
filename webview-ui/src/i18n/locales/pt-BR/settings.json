@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Ativar modo de debug",
 			"description": "Ative o modo de depuração para mostrar botões adicionais no cabeçalho da tarefa para visualizar o histórico de conversação da API e as mensagens da UI como JSON formatado em arquivos temporários."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Importar histórico do Roo Code",
+			"cardTitle": "Histórico do Roo Code",
+			"cardDescription": "Copiar conversas salvas do Roo Code para o Zoo Code.",
+			"statusImporting": "Importando histórico",
+			"statusFailed": "Falha na importação",
+			"statusComplete": "Importação concluída",
+			"buttonImporting": "Importando do Roo Code...",
+			"buttonIdle": "Importar histórico do Roo Code",
+			"summaryFailedWithFiles": "{{copied}} de {{total}} arquivos copiados antes da importação ser interrompida.",
+			"summaryFailedNoFiles": "A importação foi interrompida antes de qualquer arquivo ser copiado.",
+			"summaryCopied": "{{copied}} de {{total}} arquivos copiados",
+			"detailFailed": "Inicie uma nova tentativa de importação para tentar novamente.",
+			"detailTasksImported_one": "{{count}} de {{total}} histórico de tarefa importado.",
+			"detailTasksImported_other": "{{count}} de {{total}} históricos de tarefas importados.",
+			"detailPreparing": "Preparando a importação do histórico do Roo Code.",
+			"progressAriaLabel": "Progresso da importação do histórico do Roo Code"
 		}
 	},
 	"slashCommands": {

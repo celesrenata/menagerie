@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "디버그 모드 활성화",
 			"description": "디버그 모드를 활성화하여 작업 헤더에 API 대화 기록과 UI 메시지를 임시 파일에 포맷된 JSON으로 볼 수 있는 추가 버튼을 표시합니다."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Roo Code에서 기록 가져오기",
+			"cardTitle": "Roo Code 기록",
+			"cardDescription": "저장된 Roo Code 대화를 Zoo Code로 복사합니다.",
+			"statusImporting": "기록 가져오는 중",
+			"statusFailed": "가져오기 실패",
+			"statusComplete": "가져오기 완료",
+			"buttonImporting": "Roo Code에서 가져오는 중...",
+			"buttonIdle": "Roo Code에서 기록 가져오기",
+			"summaryFailedWithFiles": "가져오기가 중단되기 전에 {{total}}개 중 {{copied}}개의 파일이 복사되었습니다.",
+			"summaryFailedNoFiles": "파일이 복사되기 전에 가져오기가 중단되었습니다.",
+			"summaryCopied": "{{total}}개 중 {{copied}}개 파일 복사됨",
+			"detailFailed": "다시 시도하려면 새 가져오기를 시작하세요.",
+			"detailTasksImported_one": "{{total}}개 중 {{count}}개의 작업 기록을 가져왔습니다.",
+			"detailTasksImported_other": "{{total}}개 중 {{count}}개의 작업 기록을 가져왔습니다.",
+			"detailPreparing": "Roo Code 기록 가져오기를 준비 중입니다.",
+			"progressAriaLabel": "Roo Code 기록 가져오기 진행률"
 		}
 	},
 	"slashCommands": {

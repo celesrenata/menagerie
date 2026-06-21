@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Debug modunu etkinleştir",
 			"description": "Görev başlığında API konuşma geçmişini ve UI mesajlarını geçici dosyalarda biçimlendirilmiş JSON olarak görüntülemek için ek düğmeler göstermek üzere debug modunu etkinleştirin."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Roo Code'dan geçmişi içe aktar",
+			"cardTitle": "Roo Code geçmişi",
+			"cardDescription": "Kayıtlı Roo Code konuşmalarını Zoo Code'a kopyala.",
+			"statusImporting": "Geçmiş içe aktarılıyor",
+			"statusFailed": "İçe aktarma başarısız",
+			"statusComplete": "İçe aktarma tamamlandı",
+			"buttonImporting": "Roo Code'dan içe aktarılıyor...",
+			"buttonIdle": "Roo Code'dan geçmişi içe aktar",
+			"summaryFailedWithFiles": "İçe aktarma durduğunda {{total}} dosyanın {{copied}} tanesi kopyalandı.",
+			"summaryFailedNoFiles": "Herhangi bir dosya kopyalanmadan içe aktarma durdu.",
+			"summaryCopied": "{{total}} dosyadan {{copied}} tanesi kopyalandı",
+			"detailFailed": "Yeniden denemek için yeni bir içe aktarma başlat.",
+			"detailTasksImported_one": "{{total}} görev geçmişinden {{count}} tanesi içe aktarıldı.",
+			"detailTasksImported_other": "{{total}} görev geçmişinden {{count}} tanesi içe aktarıldı.",
+			"detailPreparing": "Roo Code geçmişi içe aktarma hazırlanıyor.",
+			"progressAriaLabel": "Roo Code geçmişi içe aktarma ilerlemesi"
 		}
 	},
 	"slashCommands": {

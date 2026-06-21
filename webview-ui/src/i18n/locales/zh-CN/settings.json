@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "启用调试模式",
 			"description": "启用调试模式以在任务标题栏显示额外按钮，用于在临时文件中查看 API 对话历史和 UI 消息的格式化 JSON。"
+		},
+		"rooHistoryImport": {
+			"settingLabel": "从 Roo Code 导入历史记录",
+			"cardTitle": "Roo Code 历史记录",
+			"cardDescription": "将保存的 Roo Code 对话复制到 Zoo Code。",
+			"statusImporting": "正在导入历史记录",
+			"statusFailed": "导入失败",
+			"statusComplete": "导入完成",
+			"buttonImporting": "正在从 Roo Code 导入...",
+			"buttonIdle": "从 Roo Code 导入历史记录",
+			"summaryFailedWithFiles": "导入停止前已复制 {{total}} 个文件中的 {{copied}} 个。",
+			"summaryFailedNoFiles": "导入在复制任何文件之前已停止。",
+			"summaryCopied": "已复制 {{total}} 个文件中的 {{copied}} 个",
+			"detailFailed": "开始新的导入尝试以重试。",
+			"detailTasksImported_one": "已导入 {{total}} 个任务历史记录中的 {{count}} 个。",
+			"detailTasksImported_other": "已导入 {{total}} 个任务历史记录中的 {{count}} 个。",
+			"detailPreparing": "正在准备导入 Roo Code 历史记录。",
+			"progressAriaLabel": "Roo Code 历史记录导入进度"
 		}
 	},
 	"slashCommands": {

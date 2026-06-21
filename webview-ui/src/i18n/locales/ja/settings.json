@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "デバッグモードを有効にする",
 			"description": "デバッグモードを有効にすると、タスクヘッダーにAPI会話履歴とUIメッセージをフォーマットされたJSONとして一時ファイルで表示するための追加ボタンが表示されます。"
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Roo Code から履歴をインポート",
+			"cardTitle": "Roo Code の履歴",
+			"cardDescription": "保存済みの Roo Code の会話を Zoo Code にコピーします。",
+			"statusImporting": "履歴をインポート中",
+			"statusFailed": "インポート失敗",
+			"statusComplete": "インポート完了",
+			"buttonImporting": "Roo Code からインポート中...",
+			"buttonIdle": "Roo Code から履歴をインポート",
+			"summaryFailedWithFiles": "インポートが停止する前に {{total}} 件中 {{copied}} 件のファイルがコピーされました。",
+			"summaryFailedNoFiles": "ファイルがコピーされる前にインポートが停止しました。",
+			"summaryCopied": "{{total}} 件中 {{copied}} 件のファイルをコピー済み",
+			"detailFailed": "新しいインポートを開始して再試行してください。",
+			"detailTasksImported_one": "{{total}} 件中 {{count}} 件のタスク履歴をインポートしました。",
+			"detailTasksImported_other": "{{total}} 件中 {{count}} 件のタスク履歴をインポートしました。",
+			"detailPreparing": "Roo Code の履歴インポートを準備中です。",
+			"progressAriaLabel": "Roo Code の履歴インポートの進行状況"
 		}
 	},
 	"slashCommands": {

@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Activa el mode de depuració",
 			"description": "Activa el mode de depuració per mostrar botons addicionals a la capçalera de la tasca que permetin veure l'historial de conversa de l'API i els missatges de la UI com a JSON formatejat en fitxers temporals."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Importa l'historial des de Roo Code",
+			"cardTitle": "Historial de Roo Code",
+			"cardDescription": "Copia les converses desades de Roo Code a Zoo Code.",
+			"statusImporting": "Important l'historial",
+			"statusFailed": "La importació ha fallat",
+			"statusComplete": "Importació completada",
+			"buttonImporting": "Important des de Roo Code...",
+			"buttonIdle": "Importa l'historial des de Roo Code",
+			"summaryFailedWithFiles": "S'han copiat {{copied}} de {{total}} fitxers abans que s'aturés la importació.",
+			"summaryFailedNoFiles": "La importació s'ha aturat abans de copiar cap fitxer.",
+			"summaryCopied": "S'han copiat {{copied}} de {{total}} fitxers",
+			"detailFailed": "Inicia un nou intent d'importació per tornar-ho a provar.",
+			"detailTasksImported_one": "S'ha importat {{count}} de {{total}} historial de tasques.",
+			"detailTasksImported_other": "S'han importat {{count}} de {{total}} historials de tasques.",
+			"detailPreparing": "Preparant la importació de l'historial de Roo Code.",
+			"progressAriaLabel": "Progrés de la importació de l'historial de Roo Code"
 		}
 	},
 	"slashCommands": {

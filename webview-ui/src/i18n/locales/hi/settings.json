@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "डिबग मोड सक्षम करें",
 			"description": "टास्क हेडर में अतिरिक्त बटन दिखाने के लिए डिबग मोड सक्षम करें जो API वार्तालाप इतिहास और UI संदेशों को अस्थायी फ़ाइलों में सुंदर JSON के रूप में देखने की अनुमति देते हैं।"
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Roo Code से इतिहास आयात करें",
+			"cardTitle": "Roo Code इतिहास",
+			"cardDescription": "सहेजी गई Roo Code बातचीत को Zoo Code में कॉपी करें।",
+			"statusImporting": "इतिहास आयात हो रहा है",
+			"statusFailed": "आयात विफल",
+			"statusComplete": "आयात पूर्ण",
+			"buttonImporting": "Roo Code से आयात हो रहा है...",
+			"buttonIdle": "Roo Code से इतिहास आयात करें",
+			"summaryFailedWithFiles": "आयात रुकने से पहले {{total}} में से {{copied}} फ़ाइलें कॉपी हुईं।",
+			"summaryFailedNoFiles": "कोई भी फ़ाइल कॉपी होने से पहले आयात रुक गया।",
+			"summaryCopied": "{{total}} में से {{copied}} फ़ाइलें कॉपी हुईं",
+			"detailFailed": "दोबारा प्रयास करने के लिए नया आयात शुरू करें।",
+			"detailTasksImported_one": "{{total}} में से {{count}} कार्य इतिहास आयात किया।",
+			"detailTasksImported_other": "{{total}} में से {{count}} कार्य इतिहास आयात किए।",
+			"detailPreparing": "Roo Code इतिहास आयात की तैयारी हो रही है।",
+			"progressAriaLabel": "Roo Code इतिहास आयात की प्रगति"
 		}
 	},
 	"slashCommands": {

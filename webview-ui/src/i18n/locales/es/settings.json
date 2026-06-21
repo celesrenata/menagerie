@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Activar modo de depuración",
 			"description": "Activa el modo de depuración para mostrar botones adicionales en el encabezado de la tarea que permitan ver el historial de conversación de la API y los mensajes de la UI como JSON formateado en archivos temporales."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Importar historial desde Roo Code",
+			"cardTitle": "Historial de Roo Code",
+			"cardDescription": "Copia las conversaciones guardadas de Roo Code a Zoo Code.",
+			"statusImporting": "Importando historial",
+			"statusFailed": "Importación fallida",
+			"statusComplete": "Importación completada",
+			"buttonImporting": "Importando desde Roo Code...",
+			"buttonIdle": "Importar historial desde Roo Code",
+			"summaryFailedWithFiles": "Se copiaron {{copied}} de {{total}} archivos antes de que se detuviera la importación.",
+			"summaryFailedNoFiles": "La importación se detuvo antes de copiar cualquier archivo.",
+			"summaryCopied": "{{copied}} de {{total}} archivos copiados",
+			"detailFailed": "Inicia un nuevo intento de importación para volver a intentarlo.",
+			"detailTasksImported_one": "Importado {{count}} de {{total}} historial de tareas.",
+			"detailTasksImported_other": "Importados {{count}} de {{total}} historiales de tareas.",
+			"detailPreparing": "Preparando la importación del historial de Roo Code.",
+			"progressAriaLabel": "Progreso de importación del historial de Roo Code"
 		}
 	},
 	"slashCommands": {

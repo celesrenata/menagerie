@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Aktifkan mode debug",
 			"description": "Aktifkan mode debug untuk menampilkan tombol tambahan di header tugas yang memungkinkan melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Impor riwayat dari Roo Code",
+			"cardTitle": "Riwayat Roo Code",
+			"cardDescription": "Salin percakapan Roo Code yang tersimpan ke Zoo Code.",
+			"statusImporting": "Mengimpor riwayat",
+			"statusFailed": "Impor gagal",
+			"statusComplete": "Impor selesai",
+			"buttonImporting": "Mengimpor dari Roo Code...",
+			"buttonIdle": "Impor riwayat dari Roo Code",
+			"summaryFailedWithFiles": "{{copied}} dari {{total}} file disalin sebelum impor berhenti.",
+			"summaryFailedNoFiles": "Impor berhenti sebelum file apa pun disalin.",
+			"summaryCopied": "{{copied}} dari {{total}} file disalin",
+			"detailFailed": "Mulai percobaan impor baru untuk mencoba lagi.",
+			"detailTasksImported_one": "{{count}} dari {{total}} riwayat tugas diimpor.",
+			"detailTasksImported_other": "{{count}} dari {{total}} riwayat tugas diimpor.",
+			"detailPreparing": "Mempersiapkan impor riwayat Roo Code.",
+			"progressAriaLabel": "Progres impor riwayat Roo Code"
 		}
 	},
 	"slashCommands": {

@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Debug-Modus aktivieren",
 			"description": "Aktiviere den Debug-Modus, um zusätzliche Buttons im Task-Header zum Anzeigen der API-Konversationshistorie und UI-Nachrichten als formatiertes JSON in temporären Dateien zu erhalten."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Verlauf aus Roo Code importieren",
+			"cardTitle": "Roo Code-Verlauf",
+			"cardDescription": "Gespeicherte Roo Code-Gespräche in Zoo Code kopieren.",
+			"statusImporting": "Verlauf wird importiert",
+			"statusFailed": "Import fehlgeschlagen",
+			"statusComplete": "Import abgeschlossen",
+			"buttonImporting": "Importiere aus Roo Code...",
+			"buttonIdle": "Verlauf aus Roo Code importieren",
+			"summaryFailedWithFiles": "{{copied}} von {{total}} Dateien wurden kopiert, bevor der Import abgebrochen wurde.",
+			"summaryFailedNoFiles": "Der Import wurde abgebrochen, bevor Dateien kopiert wurden.",
+			"summaryCopied": "{{copied}} von {{total}} Dateien kopiert",
+			"detailFailed": "Starte einen neuen Importversuch, um es erneut zu versuchen.",
+			"detailTasksImported_one": "{{count}} von {{total}} Aufgabenverlauf importiert.",
+			"detailTasksImported_other": "{{count}} von {{total}} Aufgabenverläufe importiert.",
+			"detailPreparing": "Roo Code-Verlaufsimport wird vorbereitet.",
+			"progressAriaLabel": "Fortschritt des Roo Code-Verlaufsimports"
 		}
 	},
 	"slashCommands": {

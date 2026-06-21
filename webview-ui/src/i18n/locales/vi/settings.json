@@ -62,6 +62,24 @@
 		"debugMode": {
 			"label": "Bật chế độ debug",
 			"description": "Bật chế độ debug để hiển thị các nút bổ sung trong tiêu đề nhiệm vụ cho phép xem lịch sử hội thoại API và tin nhắn UI dưới dạng JSON được định dạng trong các tệp tạm thời."
+		},
+		"rooHistoryImport": {
+			"settingLabel": "Nhập lịch sử từ Roo Code",
+			"cardTitle": "Lịch sử Roo Code",
+			"cardDescription": "Sao chép các cuộc trò chuyện Roo Code đã lưu vào Zoo Code.",
+			"statusImporting": "Đang nhập lịch sử",
+			"statusFailed": "Nhập thất bại",
+			"statusComplete": "Nhập hoàn tất",
+			"buttonImporting": "Đang nhập từ Roo Code...",
+			"buttonIdle": "Nhập lịch sử từ Roo Code",
+			"summaryFailedWithFiles": "Đã sao chép {{copied}} trong {{total}} tệp trước khi quá trình nhập dừng lại.",
+			"summaryFailedNoFiles": "Quá trình nhập đã dừng trước khi bất kỳ tệp nào được sao chép.",
+			"summaryCopied": "Đã sao chép {{copied}} trong {{total}} tệp",
+			"detailFailed": "Bắt đầu một lần thử nhập mới để thử lại.",
+			"detailTasksImported_one": "Đã nhập {{count}} trong {{total}} lịch sử nhiệm vụ.",
+			"detailTasksImported_other": "Đã nhập {{count}} trong {{total}} lịch sử nhiệm vụ.",
+			"detailPreparing": "Đang chuẩn bị nhập lịch sử Roo Code.",
+			"progressAriaLabel": "Tiến trình nhập lịch sử Roo Code"
 		}
 	},
 	"slashCommands": {
