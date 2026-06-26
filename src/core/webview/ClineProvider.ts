@@ -199,7 +199,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "jun-2026-v3.62.0-glm52-opencodego-toolwriter" // v3.62.0 GLM-5.2, OpenCode-Go native model params & routing, tool-writer mode
+	public readonly latestAnnouncementId = "jun-2026-v3.64.0-rules-ui-completion-actions-diff-thresholds" // v3.64.0 Rules Management UI, completion change review actions, relaxed diff thresholds
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
