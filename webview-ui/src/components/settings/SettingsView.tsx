@@ -29,6 +29,7 @@ import {
 	ArrowLeft,
 	GitCommitVertical,
 	GraduationCap,
+	ScrollText,
 } from "lucide-react"
 
 import {
@@ -80,6 +81,7 @@ import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
+import { RulesSettings } from "./RulesSettings"
 import { UISettings } from "./UISettings"
 import ModesView from "../modes/ModesView"
 import McpView from "../mcp/McpView"
@@ -103,6 +105,7 @@ export const sectionNames = [
 	"autoApprove",
 	"slashCommands",
 	"skills",
+	"rules",
 	"checkpoints",
 	"notifications",
 	"contextManagement",
@@ -528,6 +531,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "modes", icon: Users2 },
 			{ id: "skills", icon: GraduationCap },
 			{ id: "slashCommands", icon: SquareSlash },
+			{ id: "rules", icon: ScrollText },
 			{ id: "autoApprove", icon: CheckCheck },
 			{ id: "mcp", icon: Server },
 			{ id: "checkpoints", icon: GitCommitVertical },
@@ -820,6 +824,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 						{/* Skills Section */}
 						{renderTab === "skills" && <SkillsSettings />}
+
+						{/* Rules Section */}
+						{renderTab === "rules" && <RulesSettings />}
 
 						{/* Checkpoints Section */}
 						{renderTab === "checkpoints" && (

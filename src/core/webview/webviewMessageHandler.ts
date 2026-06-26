@@ -42,6 +42,13 @@ import {
 	handleUpdateSkillModes,
 	handleOpenSkillFile,
 } from "./skillsMessageHandler"
+import {
+	handleRequestRules,
+	handleCreateRule,
+	handleDeleteRule,
+	handleOpenRuleFile,
+	handleOpenRulesDirectory,
+} from "./rulesMessageHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
 import { type RouterName, toRouterName } from "../../shared/api"
@@ -3277,6 +3284,26 @@ export const webviewMessageHandler = async (
 		}
 		case "openSkillFile": {
 			await handleOpenSkillFile(provider, message)
+			break
+		}
+		case "requestRules": {
+			await handleRequestRules(provider, getCurrentCwd())
+			break
+		}
+		case "createRule": {
+			await handleCreateRule(provider, getCurrentCwd(), message)
+			break
+		}
+		case "deleteRule": {
+			await handleDeleteRule(provider, getCurrentCwd(), message)
+			break
+		}
+		case "openRuleFile": {
+			await handleOpenRuleFile(provider, getCurrentCwd(), message)
+			break
+		}
+		case "openRulesDirectory": {
+			await handleOpenRulesDirectory(provider, getCurrentCwd(), message)
 			break
 		}
 		case "openCommandFile": {
