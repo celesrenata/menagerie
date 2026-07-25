@@ -1263,23 +1263,48 @@ export const webviewMessageHandler = async (
 		case "requestOllamaModels": {
 			// Specific handler for Ollama models only.
 			const { apiConfiguration: ollamaApiConfig } = await provider.getState()
+			// Prefer the baseUrl/apiKey from the message values (which reflect
+			// the user's unsaved edits in the settings form) over the saved
+			// state, so the refresh uses the URL the user is actually looking
+			// at — not the stale one from before they started editing.
+			const baseUrl = message.values?.baseUrl ?? ollamaApiConfig.ollamaBaseUrl
+			const apiKey = message.values?.apiKey ?? ollamaApiConfig.ollamaApiKey
+			const logBaseUrl = baseUrl || "http://localhost:11434"
+			const ollamaOptions = {
+				provider: "ollama" as const,
+				baseUrl,
+				apiKey,
+			}
 			try {
-				const ollamaOptions = {
-					provider: "ollama" as const,
-					baseUrl: ollamaApiConfig.ollamaBaseUrl,
-					apiKey: ollamaApiConfig.ollamaApiKey,
-				}
-				// Flush cache and refresh to ensure fresh models.
+				// Refresh the cache before reading the models. Keep this error
+				// separate from the read below so diagnostics identify which
+				// cache operation failed.
 				await flushModels(ollamaOptions, true)
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error)
+				provider.log(`[requestOllamaModels] Failed to refresh model cache for ${logBaseUrl}: ${errorMsg}`)
+				provider.postMessageToWebview({
+					type: "ollamaModels",
+					ollamaModels: {},
+					error: errorMsg,
+				})
+				break
+			}
 
+			try {
 				const ollamaModels = await getModels(ollamaOptions)
 
-				if (Object.keys(ollamaModels).length > 0) {
-					provider.postMessageToWebview({ type: "ollamaModels", ollamaModels: ollamaModels })
-				}
+				// Always post a response so the webview refresh status can
+				// transition out of "loading" — even when no models are found.
+				provider.postMessageToWebview({ type: "ollamaModels", ollamaModels })
 			} catch (error) {
-				// Silently fail - user hasn't configured Ollama yet
-				console.debug("Ollama models fetch failed:", error)
+				const errorMsg = error instanceof Error ? error.message : String(error)
+				provider.log(`[requestOllamaModels] Failed to read models for ${logBaseUrl}: ${errorMsg}`)
+				provider.postMessageToWebview({
+					type: "ollamaModels",
+					ollamaModels: {},
+					error: errorMsg,
+				})
 			}
 			break
 		}

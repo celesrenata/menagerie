@@ -294,6 +294,9 @@ describe("webviewMessageHandler - image mentions", () => {
 describe("webviewMessageHandler - requestOllamaModels", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockFlushModels.mockReset()
+		mockFlushModels.mockResolvedValue(undefined)
+		mockGetModels.mockReset()
 		mockClineProvider.getState = vi.fn().mockResolvedValue({
 			apiConfiguration: {
 				ollamaModelId: "model-1",
@@ -325,6 +328,97 @@ describe("webviewMessageHandler - requestOllamaModels", () => {
 		})
 
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "ollama", baseUrl: "http://localhost:1234" })
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "ollamaModels",
+			ollamaModels: mockModels,
+		})
+	})
+
+	it("posts empty models response when no models are found", async () => {
+		mockGetModels.mockResolvedValue({})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestOllamaModels",
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "ollamaModels",
+			ollamaModels: {},
+		})
+	})
+
+	it("posts empty models response with error message and logs to output on fetch failure", async () => {
+		mockGetModels.mockRejectedValue(new Error("Connection refused"))
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestOllamaModels",
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "ollamaModels",
+			ollamaModels: {},
+			error: "Connection refused",
+		})
+
+		expect(mockClineProvider.log).toHaveBeenCalledWith(
+			"[requestOllamaModels] Failed to read models for http://localhost:1234: Connection refused",
+		)
+	})
+
+	it("distinguishes a model cache refresh failure from a model read failure", async () => {
+		mockFlushModels.mockRejectedValue(new Error("Cache write failed"))
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestOllamaModels",
+			values: { baseUrl: "https://ollama.example.com" },
+		})
+
+		expect(mockGetModels).not.toHaveBeenCalled()
+		expect(mockClineProvider.log).toHaveBeenCalledWith(
+			"[requestOllamaModels] Failed to refresh model cache for https://ollama.example.com: Cache write failed",
+		)
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "ollamaModels",
+			ollamaModels: {},
+			error: "Cache write failed",
+		})
+	})
+
+	it("uses baseUrl from message values over saved state", async () => {
+		const mockModels: ModelRecord = {
+			"remote-model": {
+				maxTokens: 4096,
+				contextWindow: 8192,
+				supportsPromptCache: false,
+				description: "Remote model",
+			},
+		}
+
+		mockGetModels.mockResolvedValue(mockModels)
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestOllamaModels",
+			values: {
+				baseUrl: "https://ollama.example.com",
+				apiKey: "secret-key",
+			},
+		})
+
+		// Should use the URL from message values, not the saved state
+		expect(mockFlushModels).toHaveBeenCalledWith(
+			{
+				provider: "ollama",
+				baseUrl: "https://ollama.example.com",
+				apiKey: "secret-key",
+			},
+			true,
+		)
+		expect(mockGetModels).toHaveBeenCalledWith({
+			provider: "ollama",
+			baseUrl: "https://ollama.example.com",
+			apiKey: "secret-key",
+		})
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "ollamaModels",

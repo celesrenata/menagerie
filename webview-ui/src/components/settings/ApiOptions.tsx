@@ -221,7 +221,13 @@ const ApiOptions = ({
 					},
 				})
 			} else if (selectedProvider === "ollama") {
-				vscode.postMessage({ type: "requestOllamaModels" })
+				vscode.postMessage({
+					type: "requestOllamaModels",
+					values: {
+						baseUrl: apiConfiguration?.ollamaBaseUrl,
+						apiKey: apiConfiguration?.ollamaApiKey,
+					},
+				})
 			} else if (selectedProvider === "lmstudio") {
 				requestLmStudioModels(apiConfiguration?.lmStudioBaseUrl)
 			} else if (selectedProvider === "vscode-lm") {
@@ -245,6 +251,7 @@ const ApiOptions = ({
 			apiConfiguration?.openAiBaseUrl,
 			apiConfiguration?.openAiApiKey,
 			apiConfiguration?.ollamaBaseUrl,
+			apiConfiguration?.ollamaApiKey,
 			apiConfiguration?.lmStudioBaseUrl,
 			apiConfiguration?.litellmBaseUrl,
 			apiConfiguration?.litellmApiKey,
