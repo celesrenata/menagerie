@@ -18,6 +18,22 @@ vi.mock("@aws-sdk/credential-providers", () => {
 	return { fromIni: mockFromIni }
 })
 
+vi.mock("../../../utils/networkProxy", () => ({
+	getSystemProxyUrl: vi.fn().mockReturnValue(undefined),
+}))
+
+vi.mock("@smithy/node-http-handler", () => ({
+	NodeHttpHandler: vi.fn(),
+}))
+
+vi.mock("http-proxy-agent", () => ({
+	HttpProxyAgent: vi.fn(),
+}))
+
+vi.mock("https-proxy-agent", () => ({
+	HttpsProxyAgent: vi.fn(),
+}))
+
 // Mock BedrockRuntimeClient and ConverseStreamCommand
 vi.mock("@aws-sdk/client-bedrock-runtime", () => {
 	const mockSend = vi.fn().mockResolvedValue({
@@ -46,10 +62,18 @@ import {
 } from "@roo-code/types"
 
 import type { Anthropic } from "@anthropic-ai/sdk"
+import { getSystemProxyUrl } from "../../../utils/networkProxy"
+import { NodeHttpHandler } from "@smithy/node-http-handler"
+import { HttpProxyAgent } from "http-proxy-agent"
+import { HttpsProxyAgent } from "https-proxy-agent"
 
 // Get access to the mocked functions
 const mockConverseStreamCommand = vi.mocked(ConverseStreamCommand)
 const mockBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient)
+const mockGetSystemProxyUrl = vi.mocked(getSystemProxyUrl)
+const mockNodeHttpHandler = vi.mocked(NodeHttpHandler)
+const mockHttpProxyAgent = vi.mocked(HttpProxyAgent)
+const mockHttpsProxyAgent = vi.mocked(HttpsProxyAgent)
 
 describe("AwsBedrockHandler", () => {
 	let handler: AwsBedrockHandler
@@ -115,6 +139,95 @@ describe("AwsBedrockHandler", () => {
 			)
 			expect(modelInfo.info).toBeDefined()
 			expect(modelInfo.info.maxTokens).toBe(4096)
+		})
+	})
+
+	describe("proxy configuration", () => {
+		afterEach(() => {
+			mockGetSystemProxyUrl.mockReturnValue(undefined)
+		})
+
+		it("should configure NodeHttpHandler with HttpProxyAgent and HttpsProxyAgent when proxy URL is set", () => {
+			mockGetSystemProxyUrl.mockReturnValue("http://proxy.corp.local:3128")
+
+			new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+			})
+
+			// Verify both proxy agents were created with the correct URL
+			expect(mockHttpProxyAgent).toHaveBeenCalledWith("http://proxy.corp.local:3128")
+			expect(mockHttpsProxyAgent).toHaveBeenCalledWith("http://proxy.corp.local:3128")
+
+			// Verify NodeHttpHandler was created with both agents
+			expect(mockNodeHttpHandler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					httpAgent: expect.anything(),
+					httpsAgent: expect.anything(),
+					requestTimeout: 0,
+				}),
+			)
+
+			// Verify requestHandler was set on BedrockRuntimeClient config
+			expect(mockBedrockRuntimeClient).toHaveBeenLastCalledWith(
+				expect.objectContaining({ requestHandler: expect.anything() }),
+			)
+		})
+
+		it("should not create a proxy requestHandler when no proxy is configured", () => {
+			new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+			})
+
+			expect(mockNodeHttpHandler).not.toHaveBeenCalled()
+			expect(mockBedrockRuntimeClient.mock.lastCall?.[0]?.requestHandler).toBeUndefined()
+		})
+
+		it("should apply proxy for API key authentication", () => {
+			mockGetSystemProxyUrl.mockReturnValue("http://proxy.corp.local:3128")
+
+			new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				awsUseApiKey: true,
+				awsApiKey: "test-api-key",
+				awsRegion: "us-east-1",
+			})
+
+			expect(mockNodeHttpHandler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					httpsAgent: expect.anything(),
+					requestTimeout: 0,
+				}),
+			)
+		})
+
+		it("should pass a custom endpoint to getSystemProxyUrl for NO_PROXY matching", () => {
+			new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsBedrockEndpoint: "https://bedrock.vpce.internal",
+				awsBedrockEndpointEnabled: true,
+			})
+
+			expect(mockGetSystemProxyUrl).toHaveBeenCalledWith("https://bedrock.vpce.internal")
+		})
+
+		it("should pass undefined to getSystemProxyUrl when no custom endpoint is set", () => {
+			new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+			})
+
+			expect(mockGetSystemProxyUrl).toHaveBeenCalledWith(undefined)
 		})
 	})
 
