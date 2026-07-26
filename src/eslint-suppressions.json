@@ -1684,11 +1684,6 @@
 			"count": 2
 		}
 	},
-	"shared/__tests__/ProfileValidator.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 2
-		}
-	},
 	"shared/__tests__/api.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 8
