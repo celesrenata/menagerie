@@ -594,7 +594,7 @@ importers:
         version: 12.0.0
       shell-quote:
         specifier: ^1.8.2
-        version: 1.8.4
+        version: 1.9.0
       simple-git:
         specifier: ^3.27.0
         version: 3.36.0
@@ -665,9 +665,6 @@ importers:
       '@types/semver-compare':
         specifier: 1.0.3
         version: 1.0.3
-      '@types/shell-quote':
-        specifier: 1.7.5
-        version: 1.7.5
       '@types/vscode':
         specifier: 1.100.0
         version: 1.100.0
@@ -862,7 +859,7 @@ importers:
         version: 0.6.4
       shell-quote:
         specifier: ^1.8.2
-        version: 1.8.4
+        version: 1.9.0
       shiki:
         specifier: ^3.2.1
         version: 3.4.1
@@ -933,9 +930,6 @@ importers:
       '@types/react-dom':
         specifier: 18.3.7
         version: 18.3.7(@types/react@18.3.31)
-      '@types/shell-quote':
-        specifier: 1.7.5
-        version: 1.7.5
       '@types/stacktrace-js':
         specifier: 2.0.3
         version: 2.0.3
@@ -3196,9 +3190,6 @@ packages:
 
   '@types/semver-compare@1.0.3':
     resolution: {integrity: sha512-mVZkB2QjXmZhh+MrtwMlJ8BqUnmbiSkpd88uOWskfwB8yitBT0tBRAKt+41VRgZD9zr9Sc+Xs02qGgvzd1Rq/Q==}
-
-  '@types/shell-quote@1.7.5':
-    resolution: {integrity: sha512-+UE8GAGRPbJVQDdxi16dgadcBfQ+KG2vgZhV1+3A1XmHbmwcdwhCUwIdy+d3pAGrbvgRoVSjeI9vOWyq376Yzw==}
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
@@ -7277,8 +7268,8 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shell-quote@1.8.4:
-    resolution: {integrity: sha512-VsC6n6vz1ihYYyZZwX7YZSF5l5x36ca17OC+a69h94YqB7X6XLwf+5MOgynYir2SLFUbl8gIYvBo8K8RoNQ6bQ==}
+  shell-quote@1.9.0:
+    resolution: {integrity: sha512-Iov+JwFv/2HcTpcwNMKd8+IWNb8tboQJNQTkAY/LLVK7gGH9jy+LGkVqPxfekHl+yMmiqXszdGWXgkfml7hjqA==}
     engines: {node: '>= 0.4'}
 
   shiki@3.4.1:
@@ -10843,8 +10834,6 @@ snapshots:
   '@types/sarif@2.1.7': {}
 
   '@types/semver-compare@1.0.3': {}
-
-  '@types/shell-quote@1.7.5': {}
 
   '@types/stack-utils@2.0.3': {}
 
@@ -15720,7 +15709,7 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  shell-quote@1.8.4: {}
+  shell-quote@1.9.0: {}
 
   shiki@3.4.1:
     dependencies:
