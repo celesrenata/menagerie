@@ -14,7 +14,7 @@ export const deepSeekModels = {
 		contextWindow: 1_000_000,
 		supportsImages: false,
 		supportsPromptCache: true,
-		supportsReasoningEffort: ["disable", "low", "high", "max"], // Updated 2026-08-01
+		supportsReasoningEffort: ["disable", "low", "high", "max"], // Updated 2026-08-13
 		preserveReasoning: true,
 		reasoningEffort: "high",
 		inputPrice: 0, // the inputs are priced as cache read/write, so `inputPrice` should be 0
@@ -30,7 +30,7 @@ export const deepSeekModels = {
 		contextWindow: 1_000_000,
 		supportsImages: false,
 		supportsPromptCache: true,
-		supportsReasoningEffort: ["disable", "high", "max"], // Updated 2026-08-01
+		supportsReasoningEffort: ["disable", "low", "high", "max"], // Updated 2026-08-13
 		preserveReasoning: true,
 		reasoningEffort: "high",
 		inputPrice: 0, // the inputs are priced as cache read/write, so `inputPrice` should be 0
