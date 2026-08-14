@@ -307,6 +307,19 @@ export const opencodeGoModels: Record<string, ModelInfo> = {
 		description:
 			"Qwen3.7 Max - Alibaba's flagship text-only reasoning agent model with a 1M context window, designed for long-horizon agent workflows. Available via the Opencode Go plan.",
 	},
+	"qwen3.8-max": {
+		maxTokens: 131_072,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsMaxTokens: true,
+		inputPrice: 2.0,
+		outputPrice: 6.0,
+		cacheReadsPrice: 0.25,
+		cacheWritesPrice: 2.5,
+		description:
+			"Qwen3.8 Max - Alibaba's flagship multimodal reasoning model with a 1M context window, 128k max output, and long-horizon coding and agentic capabilities. Available via the Opencode Go plan.",
+	},
 
 	// --- DeepSeek ---
 	"deepseek-v4-pro": {
@@ -364,6 +377,7 @@ export const opencodeGoModels: Record<string, ModelInfo> = {
  */
 export const OPENCODE_GO_ANTHROPIC_FORMAT_MODELS = new Set<string>([
 	// --- Alibaba Qwen ---
+	"qwen3.8-max",
 	"qwen3.7-max",
 	"qwen3.7-plus",
 	"qwen3.6-plus",

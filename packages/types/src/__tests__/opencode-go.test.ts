@@ -10,6 +10,7 @@ import {
 
 describe("opencode-go registry", () => {
 	const anthropicFormatModels = [
+		"qwen3.8-max",
 		"qwen3.7-max",
 		"qwen3.7-plus",
 		"qwen3.6-plus",
@@ -78,6 +79,22 @@ describe("opencode-go registry", () => {
 			expect(info?.inputPrice).toBe(3.0)
 			expect(info?.outputPrice).toBe(15.0)
 			expect(info?.cacheReadsPrice).toBe(0.3)
+		})
+
+		it("exposes current Qwen3.8 Max capabilities and Go pricing", () => {
+			const info = getOpencodeGoModelInfo("qwen3.8-max")
+			expect(info).toMatchObject({
+				maxTokens: 131_072,
+				contextWindow: 1_000_000,
+				supportsImages: true,
+				supportsPromptCache: true,
+				supportsMaxTokens: true,
+				inputPrice: 2.0,
+				outputPrice: 6.0,
+				cacheReadsPrice: 0.25,
+				cacheWritesPrice: 2.5,
+			})
+			expect(info?.preserveReasoning).toBeUndefined()
 		})
 
 		it("glm-5.3 exposes its native context, pricing, and always-on reasoning levels", () => {

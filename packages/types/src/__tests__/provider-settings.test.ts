@@ -130,6 +130,7 @@ describe("getApiProtocol", () => {
 
 	describe("Opencode Go provider", () => {
 		it("should return 'anthropic' for opencode-go Anthropic-format models (Qwen/MiniMax)", () => {
+			expect(getApiProtocol(providerIdentifiers.opencodeGo, "qwen3.8-max")).toBe(ANTHROPIC_API_PROTOCOL)
 			expect(getApiProtocol(providerIdentifiers.opencodeGo, "qwen3.7-max")).toBe(ANTHROPIC_API_PROTOCOL)
 			expect(getApiProtocol(providerIdentifiers.opencodeGo, "qwen3.7-plus")).toBe(ANTHROPIC_API_PROTOCOL)
 			expect(getApiProtocol(providerIdentifiers.opencodeGo, "qwen3.6-plus")).toBe(ANTHROPIC_API_PROTOCOL)
