@@ -1,5 +1,47 @@
 # Zoo Code Changelog
 
+## [3.78.0]
+
+### Minor Changes
+
+- Add NanoGPT as a configurable provider with dynamic model discovery, streaming and prompt completions, and routing preferences for speed, price, latency, throughput, tool support, and caching (PR #1239 by @taltas)
+- Add the new Gemini 3.7 Flash model to Google Gemini and Vertex AI with a 1M context window, multimodal input, prompt caching, and configurable reasoning (PR #1241 by @app/zoomote)
+- Add the new GLM 5.3 model to Z AI coding plans and OpenCode Go with a 1M context window, prompt caching, and extended reasoning controls (PR #1244 by @app/zoomote)
+- Add the new Qwen3.8 Max model to OpenCode Go with multimodal input, caching, streamed reasoning, and Anthropic Messages routing (PR #1245 by @app/zoomote)
+- Fix Azure OpenAI resource endpoints and improve Azure-specific setup guidance in OpenAI Compatible settings (#1191 by @edelauna, PR #1192 by @app/zoomote)
+- Preserve task-history titles when rapidly navigating away before a task's messages finish loading (#1180 by @edelauna, PR #1181 by @edelauna)
+- Correct Kimi Code output-token defaults and honor model limits returned by the server (#1215 by @myk1yt, PR #1217 by @myk1yt)
+- Update DeepSeek V4 Pro reasoning efforts and normalize medium, high, and extended reasoning mappings (#1235 by @WHMHammer, PR #1236 by @WHMHammer)
+- Correct DeepSeek V4 pricing and expand provider coverage for the V4 Pro 0813 checkpoint (PR #1237 by @app/zoomote)
+- Rename the default settings import/export file to `zoo-code-settings.json` throughout the extension (#1176 by @Rafael-Silva-Oliveira, PR #1177 by @Rafael-Silva-Oliveira)
+- Add Destructive Command Guard support for Intel-based macOS systems (PR #1213 by @app/zoomote)
+- Update `undici` to 6.28.0 to address security vulnerabilities (PR #1161 by @app/renovate)
+- Update Mermaid to 11.16.1 to address a prototype-pollution vulnerability (PR #1193 by @app/renovate)
+- Record tool usage centrally to prevent duplicate telemetry and sanitize raw tool names (PR #1073 by @edelauna)
+- Canonicalize shared provider settings identifiers and add registry-alignment coverage (PR #1109 by @WebMad)
+- Canonicalize provider identifiers across CLI configuration, environment mappings, and model selection (PR #1110 by @WebMad)
+- Complete the webview migration to canonical provider identifiers across provider settings and routing (PR #1141 by @WebMad)
+- Use canonical provider identifiers throughout API options and add focused interaction coverage (PR #1146 by @WebMad)
+- Canonicalize provider model configuration identifiers and provider-specific settings behavior (PR #1147 by @WebMad)
+- Migrate model-selection UI hooks to canonical provider identifiers (PR #1148 by @WebMad)
+- Reuse the retired Roo provider identifier registry while preserving migration compatibility (PR #1166 by @WebMad)
+- Introduce typed shared test utilities for API options, filesystem mocks, reset operations, VS Code doubles, and webview rendering (PR #1171 by @app/zoomote)
+- Reuse shared API option factories across Requesty, OpenRouter, and Vercel AI Gateway provider tests (PR #1178 by @app/zoomote)
+- Reuse the shared Responses client mock in X.AI provider tests (PR #1182 by @app/zoomote)
+- Reuse shared VS Code context, URI, and reset helpers in custom-mode configuration tests (PR #1190 by @app/zoomote)
+- Reuse shared reset helpers across code-index embedder tests (PR #1194 by @app/zoomote)
+- Reuse shared config test helpers and remove obsolete lint suppressions (PR #1195 by @app/zoomote)
+- Reuse shared webview render helpers across focused chat tests (PR #1196 by @app/zoomote)
+- Reuse shared reset helpers across terminal integration tests (PR #1197 by @app/zoomote)
+- Reuse shared VS Code and reset helpers in settings import/export tests (PR #1198 by @app/zoomote)
+- Reuse shared reset helpers across additional code-index tests (PR #1199 by @app/zoomote)
+- Complete another batch of shared reset-helper adoption in code-index tests (PR #1200 by @app/zoomote)
+- Finish reset-helper adoption in Semble and terminal test suites (PR #1201 by @app/zoomote)
+- Complete shared reset-helper adoption across provider tests (PR #1202 by @app/zoomote)
+- Reuse shared webview render helpers across chat and settings tests (PR #1203 by @app/zoomote)
+- Complete shared webview render-helper adoption in the remaining settings tests (PR #1204 by @app/zoomote)
+- Merge the v3.76.0 release preparation branch into `main` (PR #1173 by @navedmerchant)
+
 ## [3.76.0]
 
 ### Minor Changes
