@@ -2,7 +2,12 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import axios from "axios"
 
-import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import {
+	type ModelInfo,
+	openAiModelInfoSaneDefaults,
+	LMSTUDIO_DEFAULT_TEMPERATURE,
+	providerIdentifiers,
+} from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -171,7 +176,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 	override getModel(): { id: string; info: ModelInfo } {
 		const models = getModelsFromCache({
-			provider: "lmstudio",
+			provider: providerIdentifiers.lmstudio,
 			baseUrl: this.options.lmStudioBaseUrl,
 		})
 		if (models && this.options.lmStudioModelId && models[this.options.lmStudioModelId]) {
