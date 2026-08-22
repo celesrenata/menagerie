@@ -1322,6 +1322,68 @@ describe("ClineProvider", () => {
 		expect(state.destructiveCommandGuardEnabled).toBe(true)
 	})
 
+	test("getState returns the saved allowed read files", async () => {
+		await provider.contextProxy.setValue("allowedReadFiles", ["notes.md"])
+
+		const state = await provider.getState()
+
+		expect(state.allowedReadFiles).toEqual(["notes.md"])
+	})
+
+	test("getState defaults allowed read files to an empty list", async () => {
+		const state = await provider.getState()
+
+		expect(state.allowedReadFiles).toEqual([])
+	})
+
+	test("getStateToPostToWebview returns the saved allowed read files", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setValue("allowedReadFiles", ["notes.md"])
+
+		const state = await provider.getStateToPostToWebview()
+
+		expect(state.allowedReadFiles).toEqual(["notes.md"])
+	})
+
+	test("getStateToPostToWebview defaults allowed read files to an empty list", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+
+		const state = await provider.getStateToPostToWebview()
+
+		expect(state.allowedReadFiles).toEqual([])
+	})
+
+	test("getState returns the saved allowed write files", async () => {
+		await provider.contextProxy.setValue("allowedWriteFiles", ["notes.md"])
+
+		const state = await provider.getState()
+
+		expect(state.allowedWriteFiles).toEqual(["notes.md"])
+	})
+
+	test("getState defaults allowed write files to an empty list", async () => {
+		const state = await provider.getState()
+
+		expect(state.allowedWriteFiles).toEqual([])
+	})
+
+	test("getStateToPostToWebview returns the saved allowed write files", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setValue("allowedWriteFiles", ["notes.md"])
+
+		const state = await provider.getStateToPostToWebview()
+
+		expect(state.allowedWriteFiles).toEqual(["notes.md"])
+	})
+
+	test("getStateToPostToWebview defaults allowed write files to an empty list", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+
+		const state = await provider.getStateToPostToWebview()
+
+		expect(state.allowedWriteFiles).toEqual([])
+	})
+
 	test("getStateToPostToWebview returns the saved destructive command guard setting", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		await provider.contextProxy.setValue("destructiveCommandGuardEnabled", true)
