@@ -49,9 +49,6 @@ importers:
       lint-staged:
         specifier: 16.4.0
         version: 16.4.0
-      mkdirp:
-        specifier: 3.0.1
-        version: 3.0.1
       ovsx:
         specifier: 0.10.12
         version: 0.10.12
@@ -192,17 +189,7 @@ importers:
         specifier: 6.0.1
         version: 6.0.1
 
-  apps/vscode-nightly:
-    devDependencies:
-      '@roo-code/build':
-        specifier: workspace:^
-        version: link:../../packages/build
-
   packages/build:
-    dependencies:
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
