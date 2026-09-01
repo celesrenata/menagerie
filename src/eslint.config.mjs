@@ -1,10 +1,11 @@
 import { config } from "@roo-code/config-eslint/base"
-
-import { noRawProviderIdentifiers } from "./eslint-rules/no-raw-provider-identifiers.mjs"
+import { createProviderIdentifierConfig } from "@roo-code/config-eslint/provider-identifiers"
+import { providerIdentifiers, retiredProviderIdentifiers } from "@roo-code/types/provider-identifiers"
 
 /** @type {import("eslint").Linter.Config} */
 export default [
 	...config,
+	createProviderIdentifierConfig({ providerIdentifiers, retiredProviderIdentifiers }),
 	{
 		rules: {
 			"prefer-const": ["error", { destructuring: "all" }],
@@ -31,22 +32,6 @@ export default [
 		files: ["__mocks__/**/*.js"],
 		rules: {
 			"no-undef": "off",
-		},
-	},
-	{
-		files: ["**/*.ts", "**/*.tsx"],
-		ignores: [
-			"**/fixtures/**",
-		],
-		plugins: {
-			zoo: {
-				rules: {
-					"no-raw-provider-identifiers": noRawProviderIdentifiers,
-				},
-			},
-		},
-		rules: {
-			"zoo/no-raw-provider-identifiers": "error",
 		},
 	},
 	{
