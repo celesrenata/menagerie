@@ -45,7 +45,7 @@ export class SearchFilesTool extends BaseTool<"search_files"> {
 		task.consecutiveMistakeCount = 0
 
 		const absolutePath = path.resolve(task.cwd, relDirPath)
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: "searchFiles",
@@ -77,7 +77,7 @@ export class SearchFilesTool extends BaseTool<"search_files"> {
 		const filePattern = block.params.file_pattern
 
 		const absolutePath = relDirPath ? path.resolve(task.cwd, relDirPath) : task.cwd
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: "searchFiles",

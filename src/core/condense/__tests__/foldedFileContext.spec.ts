@@ -63,6 +63,18 @@ describe("foldedFileContext", () => {
 			expect(result.filesSkipped).toBe(0)
 		})
 
+		it("skips worker artifacts outside the task workspace", async () => {
+			mockedParseSourceCodeDefinitions.mockResolvedValue("1--2 | export const x = 1")
+			const result = await generateFoldedFileContext(["/other/worker.patch", "/test/src/current.ts"], {
+				cwd: "/test",
+			})
+			expect(result.filesProcessed).toBe(1)
+			expect(result.filesSkipped).toBe(1)
+			expect(result.content).toContain("/test/src/current.ts")
+			expect(result.content).not.toContain("worker.patch")
+			expect(mockedParseSourceCodeDefinitions).toHaveBeenCalledTimes(1)
+		})
+
 		it("should generate folded context for a JavaScript file with its own system-reminder block", async () => {
 			const mockDefinitions = `1--3 | function greet(name)
 5--15 | class Calculator`
@@ -312,6 +324,7 @@ describe("foldedFileContext", () => {
 			expect(mockedGenerateFoldedFileContext).toHaveBeenCalledWith(filesReadByRoo, {
 				cwd,
 				rooIgnoreController: undefined,
+				maxCharacters: 10_000,
 			})
 
 			// Verify the summary was created

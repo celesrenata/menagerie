@@ -1,0 +1,41 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "NIT",
+			"location": "design.md §4 and Technology stack; Task.ts:65",
+			"problem": "buildApiHandler import cited at Task.ts:64; actual import is at :65.",
+			"fix": "Cite Task.ts:65 or drop the line number. The claim (import exists, no new import needed) is correct."
+		},
+		{
+			"id": 2,
+			"severity": "NIT",
+			"location": "design.md §4 step 4; ProviderSettingsManager.ts:478-479",
+			"problem": "getProfile throw cited at :480 guarded by :479; actual is throw at :479, guard (if (!entry)) at :478.",
+			"fix": "Cite :478/:479 or drop exact line numbers. The throw-on-missing-id and re-wrap behavior is exactly as described."
+		},
+		{
+			"id": 3,
+			"severity": "NIT",
+			"location": "design.md §2; webviewMessageHandler.ts:731,876",
+			"problem": "updateSettings handler cited at :732 and generic setValue loop at :875; actual lines are :731 and :876.",
+			"fix": "Adjust to :731/:876 or drop the numbers. The generic-persistence-for-free claim is correct and verified."
+		},
+		{
+			"id": 4,
+			"severity": "NIT",
+			"location": "design.md §7; importExport.ts:230",
+			"problem": "contextProxy.setValues(sanitizedGlobalSettings) cited at importExport.ts:231; actual line is :230.",
+			"fix": "Cite :230 or drop the number. The import/export round-trip claim (field not in omit list) is correct."
+		},
+		{
+			"id": 5,
+			"severity": "NIT",
+			"location": "design.md §4 step 5 vs messageEnhancer.ts",
+			"problem": "getProfile destructure written as 'name: _name'; the reference uses 'name: _'. Cosmetic divergence from the cited reference.",
+			"fix": "No action required; _name is acceptable and arguably clearer. Flagged only so the coder knows the divergence is deliberate and both avoid the unused-var lint."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/zoo-parallel-fabric/design-review.md"
+}

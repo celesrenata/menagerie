@@ -81,6 +81,9 @@ export default defineConfig(({ mode }) => {
 	]
 
 	return {
+		// VS Code serves the bundle from an extension-scoped webview URI.
+		// Absolute /assets/ chunk URLs resolve outside that scope and return 401.
+		base: "./",
 		plugins,
 		resolve: {
 			tsconfigPaths: true,

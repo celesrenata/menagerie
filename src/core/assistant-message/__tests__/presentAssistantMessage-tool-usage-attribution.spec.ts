@@ -6,6 +6,9 @@ import { presentAssistantMessage } from "../presentAssistantMessage"
 import { validateToolUse } from "../../tools/validateToolUse"
 import { getModeBySlug } from "../../../shared/modes"
 import type { Task } from "../../task/Task"
+import { readFileTool } from "../../tools/ReadFileTool"
+import { executeCommandTool } from "../../tools/ExecuteCommandTool"
+import { ParallelTaskArgumentRecovery } from "../../task/ParallelTaskArgumentRecovery"
 
 vi.mock("../../task/Task")
 vi.mock("../../../shared/modes", async (importOriginal) => {
@@ -56,6 +59,10 @@ interface MockTask {
 	assistantMessageContent: unknown[]
 	userMessageContent: Anthropic.ToolResultBlockParam[]
 	didCompleteReadingStream: boolean
+	userMessageContentReady?: boolean
+	parallelToolBatch?: boolean
+	parallelTaskArgumentRecovery: ParallelTaskArgumentRecovery
+	waitForCurrentAssistantMessagePersistence?: () => Promise<boolean>
 	didRejectTool: boolean
 	didAlreadyUseTool: boolean
 	consecutiveMistakeCount: number
@@ -98,6 +105,7 @@ describe("presentAssistantMessage - tool usage attribution", () => {
 			didRejectTool: false,
 			didAlreadyUseTool: false,
 			consecutiveMistakeCount: 0,
+			parallelTaskArgumentRecovery: new ParallelTaskArgumentRecovery(),
 			clineMessages: [],
 			getTaskMode: vi.fn().mockResolvedValue("code"),
 			api: {
@@ -135,6 +143,69 @@ describe("presentAssistantMessage - tool usage attribution", () => {
 			})
 	})
 
+	it("joins concurrent reads before a command barrier and publishes one result per call", async () => {
+		mockTask.didCompleteReadingStream = true
+		mockTask.userMessageContentReady = false
+		mockTask.waitForCurrentAssistantMessagePersistence = vi.fn().mockResolvedValue(true)
+		mockTask.providerRef = {
+			deref: () => ({
+				getState: vi.fn().mockResolvedValue({ mode: "code", experiments: { parallelToolExecution: true } }),
+			}),
+		}
+		mockTask.assistantMessageContent = [
+			...["read_1", "read_2"].map((id) => ({
+				type: "tool_use",
+				name: "read_file",
+				id,
+				params: {},
+				nativeArgs: { path: id },
+				partial: false,
+			})),
+			{
+				type: "tool_use",
+				name: "execute_command",
+				id: "command_1",
+				params: {},
+				nativeArgs: { command: "test" },
+				partial: false,
+			},
+		]
+		let entered = 0
+		let release!: () => void
+		const barrier = new Promise<void>((resolve) => {
+			release = resolve
+		})
+		const read = vi.spyOn(readFileTool, "handle").mockImplementation(async (_task, _block, callbacks) => {
+			entered++
+			await barrier
+			callbacks.pushToolResult("Read completed")
+		})
+		const command = vi.spyOn(executeCommandTool, "handle").mockImplementation(async (_task, _block, callbacks) => {
+			expect(mockTask.userMessageContent).toHaveLength(2)
+			callbacks.pushToolResult("Command completed")
+		})
+		try {
+			// This fixture supplies only the presenter's contract, rather than constructing a live Task.
+			const pending = presentAssistantMessage(mockTask as unknown as Task)
+			await vi.waitFor(() => expect(entered).toBe(2))
+			expect(command).not.toHaveBeenCalled()
+			expect(mockTask.userMessageContentReady).toBe(false)
+			release()
+			await pending
+			expect(mockTask.userMessageContent.map((item) => item.tool_use_id).sort()).toEqual([
+				"command_1",
+				"read_1",
+				"read_2",
+			])
+			expect(mockTask.userMessageContentReady).toBe(true)
+			expect(mockTask.parallelToolBatch).toBe(false)
+		} finally {
+			release()
+			read.mockRestore()
+			command.mockRestore()
+		}
+	})
+
 	it("records exactly one attempt for a normal static tool", async () => {
 		mockTask.assistantMessageContent = [
 			{
@@ -153,6 +224,33 @@ describe("presentAssistantMessage - tool usage attribution", () => {
 		expect(mockTask.recordToolUsage).toHaveBeenCalledWith("read_file")
 		expect(TelemetryService.instance.captureToolUsage).toHaveBeenCalledTimes(1)
 		expect(TelemetryService.instance.captureToolUsage).toHaveBeenCalledWith(mockTask.taskId, "read_file")
+	})
+
+	it("returns the required batch shape when parallel_tasks arrives without native arguments", async () => {
+		mockTask.assistantMessageContent = [
+			{
+				type: "tool_use",
+				id: "call_empty_batch",
+				name: "parallel_tasks",
+				params: {},
+				nativeArgs: undefined,
+				partial: false,
+			},
+		]
+
+		await presentAssistantMessage(mockTask as unknown as Task)
+
+		expect(mockTask.userMessageContent).toHaveLength(1)
+		expect(mockTask.userMessageContent[0]).toMatchObject({
+			type: "tool_result",
+			tool_use_id: "call_empty_batch",
+			is_error: true,
+		})
+		const result = JSON.parse(String(mockTask.userMessageContent[0].content)) as { error: string }
+		expect(result.error).toContain('"tasks"')
+		expect(result.error).toContain("Retry parallel_tasks alone")
+		expect(mockTask.recordToolUsage).not.toHaveBeenCalled()
+		expect(mockTask.parallelTaskArgumentRecovery.consume(true)).toBe(true)
 	})
 
 	it("records a valid dynamic mcp_ tool name as use_mcp_tool", async () => {

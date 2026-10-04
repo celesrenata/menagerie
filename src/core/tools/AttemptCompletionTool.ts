@@ -218,6 +218,11 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 				task.flushTelemetryInstallment("attempt_completion")
 			}
 
+			if (task.parallelWorker) {
+				if (await askFinishSubTaskApproval()) await this.emitPublicTaskCompleted(task)
+				return
+			}
+
 			const { response, text, images, queuedMessageId } = await task.ask("completion_result", "", false)
 
 			if (response === "yesButtonClicked") {

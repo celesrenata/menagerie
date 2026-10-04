@@ -28,6 +28,7 @@ export type AutoApprovalState =
 // Some of these actions have additional settings associated with them.
 export type AutoApprovalStateOptions =
 	| "autoApprovalEnabled"
+	| "yoloModeEnabled"
 	| "alwaysAllowReadOnlyOutsideWorkspace" // For `alwaysAllowReadOnly`.
 	| "allowedReadFiles" // Grants reads per file, without `alwaysAllowReadOnly`.
 	| "alwaysAllowWriteOutsideWorkspace" // For `alwaysAllowWrite`.
@@ -173,6 +174,27 @@ export async function checkAutoApproval({
 		return { decision: "approve" }
 	}
 
+	// YOLO is a reversible overlay. It does not rewrite the user's saved BRRR
+	// toggles, and the existing protected/outside-workspace checks still apply.
+	if (state?.yoloModeEnabled === true) {
+		state = {
+			...state,
+			autoApprovalEnabled: true,
+			alwaysAllowReadOnly: true,
+			alwaysAllowReadOnlyOutsideWorkspace: true,
+			alwaysAllowWrite: true,
+			alwaysAllowWriteOutsideWorkspace: true,
+			alwaysAllowWriteProtected: true,
+			alwaysAllowMcp: true,
+			alwaysAllowModeSwitch: true,
+			alwaysAllowSubtasks: true,
+			alwaysAllowExecute: true,
+			alwaysAllowFollowupQuestions: true,
+			followupAutoApproveTimeoutMs: 1_000,
+			destructiveCommandGuardEnabled: true,
+		}
+	}
+
 	if (!state || !state.autoApprovalEnabled) {
 		return { decision: "ask" }
 	}
@@ -234,7 +256,7 @@ export async function checkAutoApproval({
 			return { decision: "ask" }
 		}
 		if (isProtected) {
-			return { decision: "ask" }
+			return state.yoloModeEnabled === true ? { decision: "deny" } : { decision: "ask" }
 		}
 
 		if (state.alwaysAllowExecute === true) {

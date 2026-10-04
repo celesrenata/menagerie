@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Roo Codeの履歴のインポートに失敗しました: {{error}}"
+		"rooHistoryImport": "Roo Codeの履歴のインポートに失敗しました: {{error}}",
+		"presenter_failed": "ツールの実行が予期せず失敗しました: {{message}}。未応答のツール呼び出しについて、モデルにエラー結果を送信しました。",
+		"parallel_worker_failed": "並列ワーカーが停止しました: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "選択されたターミナルコンテンツがありません",

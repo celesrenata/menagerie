@@ -1,0 +1,20 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "location": "§3 (Live catalog + connection check)",
+      "problem": "Opens with \"Reuse the existing model-fetch plumbing\" citing getOpenAiModels, but getOpenAiModels (src/api/providers/openai.ts:569) returns a de-duplicated string[] (response.data?.data?.map(m => m.id)) and hardcodes ${baseUrl}/models, so it cannot carry the enriched catalog fields (family, toolCalling, vision, reasoning-effort metadata, per-model url). The design correctly adds a dedicated omniRouteCatalog message pair, but the word \"reuse\" is misleading: only the message round-trip pattern and the message.values unsaved-edit convention are reused, not the fetch itself.",
+      "fix": "Reword to reuse the message pattern only, and add a dedicated fetch (e.g. getOmniRouteCatalog(base, apiKey) returning OmniRouteCatalogEntry[]); state explicitly that getOpenAiModels returns only string[] and cannot be reused."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "location": "§3 (Live catalog + connection check)",
+      "problem": "Ungrammatical clause \"filters is done server-side\" momentarily reads as ambiguous about whether the client filters. Filtering is server-side (src/app/api/v1/vscode/[token]/models/route.ts:349 applies .filter(isUsableChatModel)), so intent is correct but wording is unclear.",
+      "fix": "Reword to \"chat-model filtering happens server-side (isUsableChatModel), and the handler returns the enriched entries verbatim.\""
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-integration/design-review.md"
+}

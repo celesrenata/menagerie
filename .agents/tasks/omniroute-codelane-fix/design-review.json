@@ -1,0 +1,30 @@
+{
+	"verdict": "CHANGES_REQUESTED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "HIGH",
+			"title": "Central crash mechanism unproven: Next.js's own app-route handler intercepts the chatCore.ts:4705 propagation chain before it could reach process.on('uncaughtException')",
+			"location": "design.md: 'Why the incident still crashed' possibility #2; 'Response to design review' Finding 1; Open Question 1a",
+			"detail": "The design traces a SEMAPHORE_TIMEOUT rejection from chatCore.ts:4705 through chatHelpers.ts/chatDispatch.ts/chat.ts/chatAdmission.ts's unconditional rethrows and stops at chatAdmission.ts, calling this 'uncaught.' chatAdmission.ts's withChatAdmission IS the Next.js route handler (export const POST = withChatAdmission(...) in src/app/api/v1/messages/route.ts). Direct inspection of node_modules next/dist/build/templates/app-route.js shows the generated route handler's responseGenerator/handleResponse wraps routeModule.handle(...) in try/catch that, for any non-ISR route (which /v1/messages is), converts a thrown/rejected error into a plain HTTP 500 response via sendResponse — it never reaches process.on('uncaughtException'). The design itself raised this exact gap as Open Question 1a and explicitly deferred it ('not traced to that final layer in this pass... does not change the design's recommendation'), but that conclusion is backwards: if the framework already converts the rejection to a 500, the 4705 path is not a crash candidate, undermining the design's claim (upgraded from hypothesis to 'confirmed' in a prior review response) that this is 'a confirmed, non-hypothetical leak candidate, not a safe path.'",
+			"fix": "Trace the rejection through the actual production entry point (Dockerfile CMD = node dev/run-standalone.mjs -> server-ws.mjs/server.js -> next/dist/server/lib/start-server.js -> router-server.js -> app-route.js's generated handler -> AppRouteRouteModule.handle/do), not just to chatAdmission.ts. Either confirm with a reproduction whether the client gets a 500 or the process crashes, or demote the 4705 claim from 'confirmed' back to 'open' and lean the fix's justification on the still-unidentified orphaned-promise/detached-listener theory instead."
+		},
+		{
+			"id": 2,
+			"severity": "MEDIUM",
+			"title": "The 'no path left that can crash the process' completeness claim is not re-validated against the framework-interception fact from Finding 1",
+			"location": "design.md: 'Proposed fix' item 3 ('Every call site that owns a semaphore-timeout rejection today already awaits it inside a guarded try'); Risk section bullet 2",
+			"detail": "Once Finding 1 shows that a rejection reaching chatAdmission.ts is caught by Next's own app-route framework (not the process), the design's model of 'safe = framework catches it, unsafe = reaches uncaughtException' was never validated against actual framework behavior. This flips the design's confidence ordering: the 'confirmed' 4705 path may actually be framework-safe, while the dismissed 'merely hypothetical' detached-listener/background-task class (anything running outside a request's responseGenerator/handleResponse call stack, e.g. ctx.waitUntil, a bare setTimeout, or an event listener) is the one NOT covered by the framework catch Finding 1 identifies, and is therefore the more credible crash candidate.",
+			"fix": "Re-run the three-candidate 'Why the incident still crashed' audit explicitly classifying each candidate as inside-request-stack (framework converts to 500, not a crash) vs outside-request-stack (bypasses the framework catch, genuine crash candidate). Only candidates in the second category justify the current urgency framing."
+		},
+		{
+			"id": 3,
+			"severity": "NIT",
+			"title": "'Response to design review' describes Finding 1 as fully addressed without re-verifying its premise against framework behavior",
+			"location": "design.md: 'Response to design review' Finding 1 entry",
+			"detail": "The document already added Open Question 1a in response to a prior review round covering this exact gap, then concedes 1a is unresolved while still asserting the recommendation is unaffected — an unsupported leap given Finding 1 of this review.",
+			"fix": "Either close 1a with a reproduction before finalizing, or soften the 'Response to design review' Finding 1 entry to state the crash-vs-500 status of the 4705 path remains unresolved rather than describing it unqualified as 'a new fourth concrete leak candidate.'"
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-codelane-fix/design-review.md"
+}

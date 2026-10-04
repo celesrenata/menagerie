@@ -103,8 +103,12 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			;(params as any).thinking = { type: "enabled" }
 		}
 
+		// Forward the task's abort signal so a stream timeout closes the socket; OmniRoute is
+		// assumed to cancel the upstream request on client disconnect (design V7).
+		const signal = requestOptions?.signal ?? metadata?.abortSignal
+
 		try {
-			return this.client.chat.completions.create(params, requestOptions)
+			return this.client.chat.completions.create(params, signal ? { ...requestOptions, signal } : requestOptions)
 		} catch (error) {
 			throw handleOpenAIError(error, this.providerName)
 		}

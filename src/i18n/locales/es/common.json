@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Error al importar el historial de Roo Code: {{error}}"
+		"rooHistoryImport": "Error al importar el historial de Roo Code: {{error}}",
+		"presenter_failed": "La ejecución de la herramienta falló inesperadamente: {{message}}. Se envió al modelo un resultado de error para las llamadas a herramientas sin respuesta.",
+		"parallel_worker_failed": "El trabajador paralelo se detuvo: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "No hay contenido de terminal seleccionado",

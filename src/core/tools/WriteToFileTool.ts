@@ -47,6 +47,18 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
+		// The type says string, but model-supplied args can be any JSON value.
+		if (typeof newContent !== "string") {
+			task.consecutiveMistakeCount++
+			task.recordToolError("write_to_file")
+			task.didToolFailInCurrentTurn = true
+			pushToolResult(
+				formatResponse.toolError("write_to_file content must be a string containing the full file text"),
+			)
+			await task.diffViewProvider.reset()
+			return
+		}
+
 		const accessAllowed = task.rooIgnoreController?.validateAccess(relPath)
 
 		if (!accessAllowed) {
@@ -86,7 +98,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 
 		const fullPath = relPath ? path.resolve(task.cwd, relPath) : ""
-		const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(fullPath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: fileExists ? "editedExistingFile" : "newFileCreated",
@@ -231,7 +243,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 
 		const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath!) || false
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: fileExists ? "editedExistingFile" : "newFileCreated",

@@ -5,6 +5,7 @@ import * as os from "os"
 
 import * as yaml from "yaml"
 import stripBom from "strip-bom"
+import isEqual from "fast-deep-equal"
 
 import { type ModeConfig, type PromptComponent, customModesSettingsSchema, modeConfigSchema } from "@roo-code/types"
 
@@ -393,7 +394,11 @@ export class CustomModesManager {
 				.map((mode) => ({ ...mode, source: "global" as const })),
 		]
 
-		await this.context.globalState.update("customModes", mergedModes)
+		// State reads are on the tool-execution path. Avoid waiting for a remote
+		// memento write when the mode files have not changed since the last read.
+		if (!isEqual(this.context.globalState.get<ModeConfig[]>("customModes"), mergedModes)) {
+			await this.context.globalState.update("customModes", mergedModes)
+		}
 
 		this.cachedModes = mergedModes
 		this.cachedAt = now

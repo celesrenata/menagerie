@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "Số lượng tệp tối đa để lập chỉ mục cho tính năng tìm kiếm tệp @. Giá trị cao hơn cung cấp kết quả tìm kiếm tốt hơn trong các dự án lớn nhưng có thể sử dụng nhiều bộ nhớ hơn. Mặc định: 10.000.",
 	"settings.useAgentRules.description": "Bật tải tệp AGENTS.md cho các quy tắc dành riêng cho tác nhân (xem https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "Thời gian chờ phản hồi API (giây, mặc định: 600, phạm vi: 1–3600). Nên dùng giá trị cao hơn cho các nhà cung cấp cục bộ. Nhà cung cấp không được hỗ trợ: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "Hủy và thử lại phản hồi API dạng streaming khi không có dữ liệu nào đến trong số giây này (mặc định: 300, phạm vi: 0–3600, 0 để tắt). Thời gian chờ token đầu tiên được điều khiển bởi thời gian chờ phản hồi API.",
 	"settings.newTaskRequireTodos.description": "Yêu cầu tham số todos khi tạo nhiệm vụ mới với công cụ new_task",
 	"settings.codeIndex.embeddingBatchSize.description": "Kích thước lô cho các hoạt động nhúng trong quá trình lập chỉ mục mã. Điều chỉnh điều này dựa trên giới hạn của nhà cung cấp API của bạn. Mặc định là 60.",
 	"settings.debug.description": "Bật chế độ gỡ lỗi để hiển thị các nút bổ sung để xem lịch sử hội thoại API và thông điệp giao diện người dùng dưới dạng JSON được định dạng trong các tệp tạm thời.",

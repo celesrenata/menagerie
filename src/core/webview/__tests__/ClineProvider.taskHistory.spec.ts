@@ -1,7 +1,7 @@
 // pnpm --filter roo-cline test core/webview/__tests__/ClineProvider.taskHistory.spec.ts
 
 import * as vscode from "vscode"
-import type { HistoryItem, ExtensionMessage } from "@roo-code/types"
+import type { HistoryItem, ExtensionMessage, ProviderSettings } from "@roo-code/types"
 import { providerIdentifiers, RooCodeEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -9,6 +9,7 @@ import { ContextProxy } from "../../config/ContextProxy"
 import { Task } from "../../task/Task"
 import { ProfileValidator } from "../../../shared/ProfileValidator"
 import { ClineProvider } from "../ClineProvider"
+import { OMNIROUTE_TIER_HEADER, omniRouteRequestHeaders } from "../../../api/providers/omniroute"
 
 // Mock setup
 vi.mock("p-wait-for", () => ({
@@ -797,6 +798,124 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(state.taskHistory.some((item: HistoryItem) => item.workspace === "/path/to/workspace1")).toBe(true)
 			expect(state.taskHistory.some((item: HistoryItem) => item.workspace === "/path/to/workspace2")).toBe(true)
 			expect(state.taskHistory.some((item: HistoryItem) => item.workspace === "/different/workspace")).toBe(true)
+		})
+	})
+
+	describe("OmniRoute tier on handoff profiles", () => {
+		const omniRouteProfile = {
+			apiProvider: providerIdentifiers.openai,
+			openAiIsOmniRoute: true,
+			openAiModelId: "hybrid/reader",
+		}
+
+		// Minimal parent double: getTaskHandoffContext only reads these members. The double
+		// assertion is needed because Task has no public constructor-free shape for tests.
+		const makeParent = (apiConfiguration: ProviderSettings, mode = "code") =>
+			({
+				taskId: "parent",
+				workspacePath: "/test/workspace",
+				apiConfiguration,
+				getTaskApiConfigName: async () => "parent-config",
+				getTaskMode: async () => mode,
+			}) as unknown as Task
+
+		const stubSavedProfile = (profile: ProviderSettings | undefined) => {
+			vi.spyOn(provider.providerSettingsManager, "getModeConfigId").mockResolvedValue(
+				profile ? "saved-id" : undefined,
+			)
+			vi.spyOn(provider.providerSettingsManager, "getProfile").mockResolvedValue({
+				...profile,
+				id: "saved-id",
+				name: "saved-profile",
+			})
+		}
+
+		const capturedConfiguration = (): ProviderSettings => {
+			const options = vi.mocked(Task).mock.calls.at(-1)?.[0]
+			const configuration = options?.handoffExecutionContext?.apiConfiguration
+			expect(configuration).toBeDefined()
+			return configuration!
+		}
+
+		const runWorker = async (parent: Task, mode: string, preferSavedModeProfile: boolean) => {
+			const handoffExecutionContext = await provider.getTaskHandoffContext(parent, mode, preferSavedModeProfile)
+			await provider.createTask("w", undefined, parent, {
+				handoffExecutionContext,
+				parallelWorker: preferSavedModeProfile,
+				startTask: false,
+			})
+			return capturedConfiguration()
+		}
+
+		beforeEach(() => {
+			vi.spyOn(ProfileValidator, "isProfileAllowed").mockReturnValue(true)
+		})
+
+		it("sends the live global tier on a parallel worker using a saved OmniRoute profile", async () => {
+			await provider.contextProxy.setValue("omniRouteTier", 1)
+			stubSavedProfile(omniRouteProfile)
+
+			const configuration = await runWorker(
+				makeParent({ apiProvider: providerIdentifiers.anthropic }),
+				"code",
+				true,
+			)
+
+			expect(configuration.omniRouteTier).toBe(1)
+			expect(omniRouteRequestHeaders(configuration)).toEqual({ [OMNIROUTE_TIER_HEADER]: "1" })
+		})
+
+		it("sends no header when the global tier is unset, even with a stale profile snapshot", async () => {
+			stubSavedProfile({ ...omniRouteProfile, omniRouteTier: 4 })
+
+			const configuration = await runWorker(
+				makeParent({ apiProvider: providerIdentifiers.anthropic }),
+				"code",
+				true,
+			)
+
+			expect(configuration).not.toHaveProperty("omniRouteTier")
+			expect(omniRouteRequestHeaders(configuration)).toEqual({})
+		})
+
+		it.each([
+			{ apiProvider: providerIdentifiers.openrouter, openRouterModelId: "some/model" },
+			{ apiProvider: providerIdentifiers.openai, openAiIsOmniRoute: false, omniRouteTier: 3 },
+		])("never sends the header for a non-OmniRoute saved profile (%o)", async (profile) => {
+			await provider.contextProxy.setValue("omniRouteTier", 1)
+			stubSavedProfile(profile)
+
+			const configuration = await runWorker(
+				makeParent({ apiProvider: providerIdentifiers.anthropic }),
+				"code",
+				true,
+			)
+
+			expect(configuration).not.toHaveProperty("omniRouteTier")
+			expect(omniRouteRequestHeaders(configuration)).toEqual({})
+		})
+
+		it("sends the live tier on a new_task child switching to a mode with a saved OmniRoute profile", async () => {
+			await provider.contextProxy.setValue("omniRouteTier", 2)
+			stubSavedProfile(omniRouteProfile)
+
+			const configuration = await runWorker(
+				makeParent({ apiProvider: providerIdentifiers.anthropic }, "architect"),
+				"code",
+				false,
+			)
+
+			expect(omniRouteRequestHeaders(configuration)).toEqual({ [OMNIROUTE_TIER_HEADER]: "2" })
+		})
+
+		it("applies the live tier when the child falls back to the parent configuration", async () => {
+			await provider.contextProxy.setValue("omniRouteTier", 3)
+			stubSavedProfile(undefined)
+
+			const configuration = await runWorker(makeParent({ ...omniRouteProfile, omniRouteTier: 5 }), "code", true)
+
+			expect(configuration.omniRouteTier).toBe(3)
+			expect(omniRouteRequestHeaders(configuration)).toEqual({ [OMNIROUTE_TIER_HEADER]: "3" })
 		})
 	})
 

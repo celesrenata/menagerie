@@ -11,6 +11,82 @@ export const OpenAiModelsMessageType = openAiModelsMessageTypeSchema.enum
 
 export type OpenAiModelsMessageType = z.infer<typeof openAiModelsMessageTypeSchema>
 
+/**
+ * OmniRoute catalog entry as published by the OmniRoute tokenized VS Code models
+ * route (`enrichModelForVscode`). Unknown/extra fields are stripped rather than
+ * rejected so a newer OmniRoute build does not break the client. The per-model
+ * `url` (which OmniRoute always appends a `#models.ai.azure.com` fragment to) is
+ * carried verbatim; menagerie must not strip or re-append the fragment.
+ * See docs/architecture/omniroute-integration-design.md §1.2/§3.
+ */
+export const omniRouteCatalogEntrySchema = z.object({
+	id: z.string(),
+	name: z.string().optional(),
+	url: z.string().optional(),
+	family: z.string().optional(),
+	toolCalling: z.boolean().optional(),
+	vision: z.boolean().optional(),
+	maxInputTokens: z.number().optional(),
+	maxOutputTokens: z.number().optional(),
+	supportedReasoningEfforts: z.array(z.string()).optional(),
+	defaultReasoningEffort: z.string().optional(),
+	configurationSchema: z.unknown().optional(),
+})
+
+export type OmniRouteCatalogEntry = z.infer<typeof omniRouteCatalogEntrySchema>
+
+/**
+ * OmniRoute combo entry as published by the tokenized VS Code combos route
+ * (`GET <tokenizedBase>/combos`). A combo's selectable chat id lives in its
+ * `name` field as a full `tier/role` route (e.g. `hybrid/code`, `local/long`) —
+ * this is a DIFFERENT id namespace from the alias ids published by
+ * `/models?prefix=alias` (bare roles like `code`). The chat/completions endpoint
+ * requires the full combo id; a bare alias is rejected with "Unable to determine
+ * provider for model '<alias>'". Only `name` is needed to populate a selectable
+ * catalog entry; unknown/extra fields (strategy, models, capabilities, ...) are
+ * stripped. The schema transforms the combo into an {@link OmniRouteCatalogEntry}
+ * whose `id` is the full combo id, so storing `entry.id` verbatim yields a valid
+ * chat model id. See docs/architecture/omniroute-integration-design.md §1.2/§2.2.
+ */
+export const omniRouteComboEntrySchema = z
+	.object({
+		name: z.string(),
+	})
+	.transform(
+		(combo): OmniRouteCatalogEntry => ({
+			id: combo.name,
+			name: combo.name,
+		}),
+	)
+
+export type OmniRouteComboEntry = z.infer<typeof omniRouteComboEntrySchema>
+
+export const omniRouteConnectionStatuses = ["unknown", "connecting", "connected", "error"] as const
+
+export const omniRouteConnectionStatusSchema = z.enum(omniRouteConnectionStatuses)
+
+export type OmniRouteConnectionStatus = z.infer<typeof omniRouteConnectionStatusSchema>
+
+/**
+ * Response payload for the `omniRouteCatalog` message: the typed catalog entries
+ * plus a connection status and an optional server error message on failure.
+ */
+export const omniRouteCatalogResponseSchema = z.object({
+	status: omniRouteConnectionStatusSchema,
+	entries: z.array(omniRouteCatalogEntrySchema),
+	error: z.string().optional(),
+})
+
+export type OmniRouteCatalogResponse = z.infer<typeof omniRouteCatalogResponseSchema>
+
+export const omniRouteCatalogMessageTypes = ["requestOmniRouteCatalog", "omniRouteCatalog"] as const
+
+export const omniRouteCatalogMessageTypeSchema = z.enum(omniRouteCatalogMessageTypes)
+
+export const OmniRouteCatalogMessageType = omniRouteCatalogMessageTypeSchema.enum
+
+export type OmniRouteCatalogMessageType = z.infer<typeof omniRouteCatalogMessageTypeSchema>
+
 export type OpenAiNativeModelId = keyof typeof openAiNativeModels
 
 export const OPENAI_API_PROTOCOL = "openai"

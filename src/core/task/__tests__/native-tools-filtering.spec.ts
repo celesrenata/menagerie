@@ -1,7 +1,15 @@
-import type { ModeConfig } from "@roo-code/types"
+import { DEFAULT_MODES, type ModeConfig } from "@roo-code/types"
 
 describe("Native Tools Filtering by Mode", () => {
 	describe("attemptApiRequest native tool filtering", () => {
+		it("allows the built-in orchestrator to read plans before delegating", async () => {
+			const orchestrator = DEFAULT_MODES.find((mode) => mode.slug === "orchestrator")
+			expect(orchestrator).toBeDefined()
+			const { isToolAllowedForMode } = await import("../../tools/validateToolUse")
+			expect(isToolAllowedForMode("read_file", "orchestrator", [...DEFAULT_MODES])).toBe(true)
+			expect(isToolAllowedForMode("write_to_file", "orchestrator", [...DEFAULT_MODES])).toBe(false)
+		})
+
 		it("should filter native tools based on mode restrictions", async () => {
 			// This test verifies that native tools are filtered by mode restrictions
 			// before being sent to the API.
@@ -115,7 +123,11 @@ describe("Native Tools Filtering by Mode", () => {
 
 			// Always-available tools should work even with no groups
 			ALWAYS_AVAILABLE_TOOLS.forEach((tool) => {
-				expect(isToolAllowedForMode(tool as any, "restrictive", [restrictiveMode])).toBe(true)
+				expect(
+					isToolAllowedForMode(tool, "restrictive", [restrictiveMode], undefined, undefined, {
+						parallelTasks: true,
+					}),
+				).toBe(true)
 			})
 		})
 	})

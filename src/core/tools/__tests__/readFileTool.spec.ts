@@ -13,9 +13,14 @@
  */
 
 import path from "path"
+import type { Stats } from "fs"
 
 import { isBinaryFile } from "isbinaryfile"
 
+import type { ReadFileToolParams } from "@roo-code/types"
+
+import type { Task } from "../../task/Task"
+import type { ToolUse } from "../../../shared/tools"
 import { readFileTool, ReadFileTool } from "../ReadFileTool"
 import { formatResponse } from "../../prompts/responses"
 import {
@@ -172,6 +177,13 @@ function createMockTask(options: MockTaskOptions = {}) {
 	}
 }
 
+type MockTask = ReturnType<typeof createMockTask>
+
+// The mock task only implements the surface ReadFileTool touches. The double
+// assertion is unavoidable here: the real Task has ~100 members we don't mock,
+// so a direct `as Task` is rejected and there is no structural subtype to use.
+const asTask = (mockTask: MockTask): Task => mockTask as unknown as Task
+
 function createMockCallbacks() {
 	return {
 		pushToolResult: vi.fn(),
@@ -187,7 +199,7 @@ describe("ReadFileTool", () => {
 		vi.clearAllMocks()
 
 		// Default mock implementations
-		mockedFsStat.mockResolvedValue({ isDirectory: () => false } as any)
+		mockedFsStat.mockResolvedValue({ isDirectory: () => false } as Stats)
 		mockedIsBinaryFile.mockResolvedValue(false)
 		mockedFsReadFile.mockResolvedValue(Buffer.from("test content"))
 		mockedReadWithSlice.mockReturnValue({
@@ -204,7 +216,7 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ path: "" } as any, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "" } as ReadFileToolParams, asTask(mockTask), callbacks)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(1)
 			expect(mockTask.recordToolError).toHaveBeenCalledWith("read_file")
@@ -216,28 +228,27 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({} as any, mockTask as any, callbacks)
+			await readFileTool.execute({} as ReadFileToolParams, asTask(mockTask), callbacks)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(1)
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Error:"))
 		})
 
-		it("should return error when offset is 0 or negative", async () => {
+		it("should treat zero offset and limit as omitted native arguments", async () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ path: "test.txt", offset: 0 }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.txt", offset: 0, limit: 0 }, asTask(mockTask), callbacks)
 
-			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
-				expect.stringContaining("offset must be a 1-indexed line number"),
-			)
+			expect(mockedReadWithSlice).toHaveBeenCalledWith(expect.any(String), 0, 2000)
+			expect(callbacks.pushToolResult).not.toHaveBeenCalledWith(expect.stringContaining("Error:"))
 		})
 
 		it("should return error when offset is negative", async () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ path: "test.txt", offset: -5 }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.txt", offset: -5 }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
 				expect.stringContaining("offset must be a 1-indexed line number"),
@@ -254,7 +265,7 @@ describe("ReadFileTool", () => {
 					mode: "indentation",
 					indentation: { anchor_line: 0 },
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -273,7 +284,7 @@ describe("ReadFileTool", () => {
 					mode: "indentation",
 					indentation: { anchor_line: -10 },
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -288,7 +299,7 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask({ rooIgnoreAllowed: false })
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ path: "secret.env" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "secret.env" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("rooignore_error", "secret.env")
 			expect(formatResponse.rooIgnoreError).toHaveBeenCalledWith("secret.env")
@@ -301,9 +312,9 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			mockedFsStat.mockResolvedValue({ isDirectory: () => true } as any)
+			mockedFsStat.mockResolvedValue({ isDirectory: () => true } as Stats)
 
-			await readFileTool.execute({ path: "src/utils" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "src/utils" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith(
 				"error",
@@ -336,7 +347,7 @@ describe("ReadFileTool", () => {
 				notice: "Image processed successfully",
 			})
 
-			await readFileTool.execute({ path: "image.png" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "image.png" }, asTask(mockTask), callbacks)
 
 			expect(mockedValidateImageForProcessing).toHaveBeenCalled()
 			expect(mockedProcessImageFile).toHaveBeenCalled()
@@ -353,7 +364,7 @@ describe("ReadFileTool", () => {
 				notice: "Model does not support image processing",
 			})
 
-			await readFileTool.execute({ path: "image.png" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "image.png" }, asTask(mockTask), callbacks)
 
 			expect(mockedValidateImageForProcessing).toHaveBeenCalled()
 			expect(mockedProcessImageFile).not.toHaveBeenCalled()
@@ -372,7 +383,7 @@ describe("ReadFileTool", () => {
 				notice: "Image file size (10 MB) exceeds the maximum allowed size (1 MB)",
 			})
 
-			await readFileTool.execute({ path: "large-image.png" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "large-image.png" }, asTask(mockTask), callbacks)
 
 			expect(mockedProcessImageFile).not.toHaveBeenCalled()
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
@@ -390,7 +401,7 @@ describe("ReadFileTool", () => {
 				notice: "Skipping image: would exceed total memory limit",
 			})
 
-			await readFileTool.execute({ path: "another-image.png" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "another-image.png" }, asTask(mockTask), callbacks)
 
 			expect(mockedProcessImageFile).not.toHaveBeenCalled()
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("would exceed total memory"))
@@ -406,7 +417,7 @@ describe("ReadFileTool", () => {
 			})
 			mockedProcessImageFile.mockRejectedValue(new Error("Failed to read image"))
 
-			await readFileTool.execute({ path: "corrupt.png" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "corrupt.png" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error reading image file"))
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Error"))
@@ -425,7 +436,7 @@ describe("ReadFileTool", () => {
 
 			mockedExtractTextFromFile.mockResolvedValue("PDF content here")
 
-			await readFileTool.execute({ path: "document.pdf" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "document.pdf" }, asTask(mockTask), callbacks)
 
 			expect(mockedExtractTextFromFile).toHaveBeenCalled()
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("PDF content here"))
@@ -437,7 +448,7 @@ describe("ReadFileTool", () => {
 
 			mockedExtractTextFromFile.mockResolvedValue("DOCX content here")
 
-			await readFileTool.execute({ path: "document.docx" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "document.docx" }, asTask(mockTask), callbacks)
 
 			expect(mockedExtractTextFromFile).toHaveBeenCalled()
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("DOCX content here"))
@@ -450,7 +461,7 @@ describe("ReadFileTool", () => {
 			// Return empty array to indicate .exe is not supported
 			vi.mocked(getSupportedBinaryFormats).mockReturnValue([".pdf", ".docx"])
 
-			await readFileTool.execute({ path: "program.exe" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "program.exe" }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Binary file"))
 		})
@@ -461,7 +472,7 @@ describe("ReadFileTool", () => {
 
 			mockedExtractTextFromFile.mockRejectedValue(new Error("Extraction failed"))
 
-			await readFileTool.execute({ path: "corrupt.pdf" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "corrupt.pdf" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error extracting text"))
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
@@ -487,7 +498,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 3]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockedReadWithSlice).toHaveBeenCalled()
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("line 1"))
@@ -508,7 +519,7 @@ describe("ReadFileTool", () => {
 
 			await readFileTool.execute(
 				{ path: "test.ts", mode: "slice", offset: 2, limit: 2 },
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -535,7 +546,7 @@ describe("ReadFileTool", () => {
 					mode: "indentation",
 					indentation: { anchor_line: 3 },
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -560,7 +571,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 100]],
 			})
 
-			await readFileTool.execute({ path: "large.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "large.ts" }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("truncated"))
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("To read more"))
@@ -579,7 +590,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [],
 			})
 
-			await readFileTool.execute({ path: "empty.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "empty.ts" }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("empty"))
 		})
@@ -592,7 +603,7 @@ describe("ReadFileTool", () => {
 
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.ask).toHaveBeenCalledWith("tool", expect.any(String), false)
 			expect(mockTask.didRejectTool).toBe(false)
@@ -604,7 +615,7 @@ describe("ReadFileTool", () => {
 
 			mockTask.ask.mockResolvedValue({ response: "noButtonClicked", text: undefined, images: undefined })
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.didRejectTool).toBe(true)
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Denied by user"))
@@ -628,7 +639,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("user_feedback", "Please be careful with this file", undefined)
 			expect(formatResponse.toolApprovedWithFeedback).toHaveBeenCalledWith("Please be careful with this file")
@@ -644,7 +655,7 @@ describe("ReadFileTool", () => {
 				images: undefined,
 			})
 
-			await readFileTool.execute({ path: "secrets.env" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "secrets.env" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("user_feedback", "This file contains secrets", undefined)
 			expect(formatResponse.toolDeniedWithFeedback).toHaveBeenCalledWith("This file contains secrets")
@@ -665,7 +676,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "src/app.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "src/app.ts" }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("File: src/app.ts"))
 		})
@@ -683,7 +694,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.fileContextTracker.trackFileContext).toHaveBeenCalledWith("test.ts", "read_tool")
 		})
@@ -696,7 +707,7 @@ describe("ReadFileTool", () => {
 
 			mockedFsReadFile.mockRejectedValue(new Error("ENOENT: no such file or directory"))
 
-			await readFileTool.execute({ path: "nonexistent.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "nonexistent.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error reading file"))
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
@@ -708,7 +719,7 @@ describe("ReadFileTool", () => {
 
 			mockedFsStat.mockRejectedValue(new Error("Permission denied"))
 
-			await readFileTool.execute({ path: "protected.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "protected.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error reading file"))
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
@@ -743,7 +754,11 @@ describe("ReadFileTool", () => {
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
 			mockedFsReadFile.mockResolvedValue(Buffer.from("legacy content"))
 
-			await readFileTool.execute({ files: [{ path: "legacy.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "legacy.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			// The legacy path emits "File: <path>" entries — proof the backward-compat branch ran.
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("File: legacy.ts"))
@@ -753,7 +768,10 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ files: [] } as any, mockTask as any, callbacks)
+			// Intentionally invalid legacy params (empty files array) to exercise the
+			// error path; `{ files: [] }` has no structural overlap with the typed union
+			// (it omits the required `_legacyFormat` discriminant), so route through unknown.
+			await readFileTool.execute({ files: [] } as unknown as ReadFileToolParams, asTask(mockTask), callbacks)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(1)
 			expect(mockTask.recordToolError).toHaveBeenCalledWith("read_file")
@@ -786,8 +804,8 @@ describe("ReadFileTool", () => {
 				})
 
 			await readFileTool.execute(
-				{ files: [{ path: "file1.ts" }, { path: "file2.ts" }] } as any,
-				mockTask as any,
+				{ files: [{ path: "file1.ts" }, { path: "file2.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -795,11 +813,136 @@ describe("ReadFileTool", () => {
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("file2 content"))
 		})
 
+		it("should read an array of independent paths with one approval round trip", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
+			mockedFsReadFile
+				.mockResolvedValueOnce(Buffer.from("first file"))
+				.mockResolvedValueOnce(Buffer.from("second file"))
+
+			await readFileTool.execute({ path: ["first.ts", "second.ts"] }, asTask(mockTask), callbacks)
+
+			expect(mockTask.ask).toHaveBeenCalledTimes(1)
+			expect(mockTask.ask.mock.calls[0][1]).toContain("first.ts")
+			expect(mockTask.ask.mock.calls[0][1]).toContain("second.ts")
+			expect(callbacks.pushToolResult).toHaveBeenCalledTimes(1)
+			expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("File: first.ts")
+			expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("File: second.ts")
+		})
+
+		it("should read batched paths concurrently and preserve their input order", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+			let activeReads = 0
+			let peakReads = 0
+			mockedFsReadFile.mockImplementation(async (filePath) => {
+				activeReads++
+				peakReads = Math.max(peakReads, activeReads)
+				await new Promise((resolve) => setTimeout(resolve, String(filePath).endsWith("first.ts") ? 10 : 0))
+				activeReads--
+				return Buffer.from(String(filePath))
+			})
+
+			await readFileTool.execute({ path: ["first.ts", "second.ts"] }, asTask(mockTask), callbacks)
+
+			expect(peakReads).toBe(2)
+			const output = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(output.indexOf("File: first.ts")).toBeLessThan(output.indexOf("File: second.ts"))
+		})
+
+		it("should return only the requested slice for an array-valued native path", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+			// readFile with a utf8 encoding resolves to a string; the mock's base
+			// signature resolves to Buffer, so widen to its full awaited return type.
+			mockedFsReadFile.mockResolvedValue(
+				Array.from({ length: 120 }, (_, i) => `line ${i + 1}`).join("\n") as Awaited<
+					ReturnType<typeof mockedFsReadFile>
+				>,
+			)
+			mockedReadWithSlice.mockImplementation((content, offset, limit) => {
+				const start = offset ?? 0
+				const count = limit ?? 2000
+				const lines = content.split("\n")
+				const selected = lines.slice(start, start + count)
+				return {
+					content: selected.map((line, i) => `${start + i + 1} | ${line}`).join("\n"),
+					returnedLines: selected.length,
+					totalLines: lines.length,
+					wasTruncated: start + count < lines.length,
+					includedRanges: [[start + 1, start + selected.length]],
+				}
+			})
+
+			await readFileTool.execute(
+				{ path: ["large.ts"], mode: "slice", offset: 61, limit: 3 },
+				asTask(mockTask),
+				callbacks,
+			)
+
+			expect(mockedReadWithSlice).toHaveBeenCalledWith(expect.any(String), 60, 3)
+			const output = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(output).toContain("61 | line 61")
+			expect(output).toContain("63 | line 63")
+			expect(output).not.toContain("60 | line 60")
+			expect(output).not.toContain("64 | line 64")
+		})
+
+		it("should preserve read options on a JSON-encoded path array", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+			mockedFsReadFile.mockResolvedValue("test content" as Awaited<ReturnType<typeof mockedFsReadFile>>)
+
+			await readFileTool.execute(
+				{
+					path: JSON.stringify(["first.ts", "second.ts"]),
+					mode: "slice",
+					offset: 10,
+					limit: 5,
+				} as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
+
+			expect(mockTask.ask).toHaveBeenCalledTimes(1)
+			expect(mockedReadWithSlice).toHaveBeenCalledTimes(2)
+			expect(mockedReadWithSlice).toHaveBeenNthCalledWith(1, expect.any(String), 9, 5)
+			expect(mockedReadWithSlice).toHaveBeenNthCalledWith(2, expect.any(String), 9, 5)
+		})
+
+		it("should recover a JSON-encoded path array from a local model in one approval round trip", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
+			mockedFsReadFile
+				.mockResolvedValueOnce(Buffer.from("first file"))
+				.mockResolvedValueOnce(Buffer.from("second file"))
+
+			await readFileTool.execute(
+				{ path: JSON.stringify(["first.ts", "second.ts"]) } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
+
+			expect(mockTask.ask).toHaveBeenCalledTimes(1)
+			expect(mockTask.ask.mock.calls[0][1]).toContain("first.ts")
+			expect(mockTask.ask.mock.calls[0][1]).toContain("second.ts")
+			expect(callbacks.pushToolResult).toHaveBeenCalledTimes(1)
+			expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("File: first.ts")
+			expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("File: second.ts")
+		})
+
 		it("should block rooignore-protected files in legacy format", async () => {
 			const mockTask = createMockTask({ rooIgnoreAllowed: false })
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ files: [{ path: "secret.env" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "secret.env" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(mockTask.say).toHaveBeenCalledWith("rooignore_error", "secret.env")
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("blocked by the .rooignore"))
@@ -813,7 +956,11 @@ describe("ReadFileTool", () => {
 
 			mockTask.ask.mockResolvedValue({ response: "noButtonClicked", text: undefined, images: undefined })
 
-			await readFileTool.execute({ files: [{ path: "protected.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "protected.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(mockTask.didRejectTool).toBe(true)
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Denied by user"))
@@ -824,9 +971,13 @@ describe("ReadFileTool", () => {
 			const callbacks = createMockCallbacks()
 
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
-			mockedFsStat.mockResolvedValue({ isDirectory: () => true } as any)
+			mockedFsStat.mockResolvedValue({ isDirectory: () => true } as Stats)
 
-			await readFileTool.execute({ files: [{ path: "src/utils" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "src/utils" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("it is a directory"))
 			// Consistent with the native path: a failed read fails the tool turn.
@@ -839,11 +990,13 @@ describe("ReadFileTool", () => {
 
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
 			// fs.readFile with "utf8" encoding returns a string, not a Buffer
-			mockedFsReadFile.mockResolvedValue("line1\nline2\nline3\nline4\nline5" as any)
+			mockedFsReadFile.mockResolvedValue(
+				"line1\nline2\nline3\nline4\nline5" as Awaited<ReturnType<typeof mockedFsReadFile>>,
+			)
 
 			await readFileTool.execute(
-				{ files: [{ path: "test.ts", lineRanges: [{ start: 2, end: 4 }] }] } as any,
-				mockTask as any,
+				{ files: [{ path: "test.ts", lineRanges: [{ start: 2, end: 4 }] }] } as ReadFileToolParams,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -870,7 +1023,11 @@ describe("ReadFileTool", () => {
 				notice: "Image processed successfully",
 			})
 
-			await readFileTool.execute({ files: [{ path: "image.png" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "image.png" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
 				expect.stringContaining("Image file - content processed"),
@@ -890,7 +1047,11 @@ describe("ReadFileTool", () => {
 				notice: "Image too large",
 			})
 
-			await readFileTool.execute({ files: [{ path: "large.png" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "large.png" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Image too large"))
 		})
@@ -903,7 +1064,11 @@ describe("ReadFileTool", () => {
 			mockedIsBinaryFile.mockResolvedValue(true)
 			mockedIsSupportedImageFormat.mockReturnValue(false)
 
-			await readFileTool.execute({ files: [{ path: "program.exe" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "program.exe" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Cannot read binary file"))
 		})
@@ -915,7 +1080,11 @@ describe("ReadFileTool", () => {
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
 			mockedFsReadFile.mockRejectedValue(new Error("ENOENT"))
 
-			await readFileTool.execute({ files: [{ path: "missing.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "missing.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error reading file"))
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("ENOENT"))
@@ -934,7 +1103,11 @@ describe("ReadFileTool", () => {
 			})
 			mockedFsReadFile.mockResolvedValue(Buffer.from("content"))
 
-			await readFileTool.execute({ files: [{ path: "test.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "test.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(mockTask.say).toHaveBeenCalledWith("user_feedback", "Read carefully", undefined)
 		})
@@ -949,7 +1122,11 @@ describe("ReadFileTool", () => {
 				images: undefined,
 			})
 
-			await readFileTool.execute({ files: [{ path: "secret.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "secret.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(mockTask.say).toHaveBeenCalledWith("user_feedback", "Not allowed", undefined)
 		})
@@ -968,7 +1145,11 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 100]],
 			})
 
-			await readFileTool.execute({ files: [{ path: "large.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "large.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("File truncated"))
 		})
@@ -980,7 +1161,11 @@ describe("ReadFileTool", () => {
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
 			mockedFsReadFile.mockResolvedValue(Buffer.from("content"))
 
-			await readFileTool.execute({ files: [{ path: "tracked.ts" }] } as any, mockTask as any, callbacks)
+			await readFileTool.execute(
+				{ files: [{ path: "tracked.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
 
 			expect(mockTask.fileContextTracker.trackFileContext).toHaveBeenCalledWith("tracked.ts", "read_tool")
 		})
@@ -996,7 +1181,7 @@ describe("ReadFileTool", () => {
 				partial: true,
 			}
 
-			await readFileTool.handlePartial(mockTask as any, block as any)
+			await readFileTool.handlePartial(asTask(mockTask), block as ToolUse<"read_file">)
 
 			expect(mockTask.ask).toHaveBeenCalledWith("tool", expect.stringContaining("readFile"), true)
 		})
@@ -1010,7 +1195,7 @@ describe("ReadFileTool", () => {
 				partial: false,
 			}
 
-			await readFileTool.handlePartial(mockTask as any, block as any)
+			await readFileTool.handlePartial(asTask(mockTask), block as ToolUse<"read_file">)
 
 			expect(mockTask.ask).toHaveBeenCalledWith("tool", expect.stringContaining("legacy.ts"), false)
 		})
@@ -1024,7 +1209,7 @@ describe("ReadFileTool", () => {
 				partial: true,
 			}
 
-			await readFileTool.handlePartial(mockTask as any, block as any)
+			await readFileTool.handlePartial(asTask(mockTask), block as ToolUse<"read_file">)
 
 			expect(mockTask.ask).toHaveBeenCalled()
 		})
@@ -1038,7 +1223,7 @@ describe("ReadFileTool", () => {
 				partial: true,
 			}
 
-			await readFileTool.handlePartial(mockTask as any, block as any)
+			await readFileTool.handlePartial(asTask(mockTask), block as ToolUse<"read_file">)
 
 			expect(mockTask.ask).toHaveBeenCalled()
 		})
@@ -1053,7 +1238,7 @@ describe("ReadFileTool", () => {
 			}
 
 			// Should not throw
-			await readFileTool.handlePartial(mockTask as any, block as any)
+			await readFileTool.handlePartial(asTask(mockTask), block as ToolUse<"read_file">)
 
 			expect(mockTask.ask).toHaveBeenCalled()
 		})
@@ -1082,8 +1267,8 @@ describe("ReadFileTool", () => {
 					path: "test.ts",
 					mode: "indentation",
 					offset: 5,
-				} as any,
-				mockTask as any,
+				} as ReadFileToolParams,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1093,7 +1278,7 @@ describe("ReadFileTool", () => {
 			)
 		})
 
-		it("should default anchorLine to 1 when neither anchor_line nor offset in indentation mode", async () => {
+		it("should use a slice when indentation mode has no useful anchor", async () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
@@ -1110,15 +1295,15 @@ describe("ReadFileTool", () => {
 				{
 					path: "test.ts",
 					mode: "indentation",
-				} as any,
-				mockTask as any,
+					offset: 0,
+					limit: 0,
+				} as ReadFileToolParams,
+				asTask(mockTask),
 				callbacks,
 			)
 
-			expect(mockedReadWithIndentation).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({ anchorLine: 1 }),
-			)
+			expect(mockedReadWithIndentation).not.toHaveBeenCalled()
+			expect(mockedReadWithSlice).toHaveBeenCalledWith(expect.any(String), 0, 2000)
 		})
 
 		it("should show truncation notice in indentation mode", async () => {
@@ -1140,7 +1325,7 @@ describe("ReadFileTool", () => {
 					mode: "indentation",
 					indentation: { anchor_line: 1 },
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1167,7 +1352,7 @@ describe("ReadFileTool", () => {
 					mode: "indentation",
 					indentation: { anchor_line: 5 },
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1200,7 +1385,7 @@ describe("ReadFileTool", () => {
 					},
 					limit: 500,
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1238,7 +1423,7 @@ describe("ReadFileTool", () => {
 
 			await readFileTool.execute(
 				{ path: "test.ts", mode: "slice", offset: 4, limit: 1 },
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1259,7 +1444,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			// Default offset=1 -> 0-based = 0
 			expect(mockedReadWithSlice).toHaveBeenCalledWith(expect.any(String), 0, expect.any(Number))
@@ -1278,7 +1463,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			// Should use DEFAULT_LINE_LIMIT (which is typically 2000)
 			expect(mockedReadWithSlice).toHaveBeenCalledWith(expect.any(String), expect.any(Number), expect.any(Number))
@@ -1297,7 +1482,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[5, 104]],
 			})
 
-			await readFileTool.execute({ path: "test.ts", offset: 5, limit: 100 }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts", offset: 5, limit: 100 }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Showing lines 5-104"))
 		})
@@ -1327,7 +1512,7 @@ describe("ReadFileTool", () => {
 					mode: "indentation",
 					indentation: { anchor_line: 42 },
 				},
-				mockTask as any,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1350,7 +1535,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts", offset: 10, limit: 50 }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts", offset: 10, limit: 50 }, asTask(mockTask), callbacks)
 
 			const askCall = mockTask.ask.mock.calls[0]
 			const message = JSON.parse(askCall[1])
@@ -1371,7 +1556,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			const askCall = mockTask.ask.mock.calls[0]
 			const message = JSON.parse(askCall[1])
@@ -1398,8 +1583,8 @@ describe("ReadFileTool", () => {
 					path: "test.ts",
 					mode: "indentation",
 					offset: 7,
-				} as any,
-				mockTask as any,
+				} as ReadFileToolParams,
+				asTask(mockTask),
 				callbacks,
 			)
 
@@ -1427,7 +1612,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			// Should still work - uses default limits
 			expect(callbacks.pushToolResult).toHaveBeenCalled()
@@ -1451,7 +1636,7 @@ describe("ReadFileTool", () => {
 				includedRanges: [[1, 1]],
 			})
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(callbacks.pushToolResult).toHaveBeenCalled()
 		})
@@ -1464,7 +1649,7 @@ describe("ReadFileTool", () => {
 
 			mockedFsStat.mockRejectedValue("string error")
 
-			await readFileTool.execute({ path: "test.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "test.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Error"))
@@ -1474,7 +1659,7 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask({ rooIgnoreAllowed: false })
 			const callbacks = createMockCallbacks()
 
-			await readFileTool.execute({ path: "blocked.ts" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "blocked.ts" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
 		})
@@ -1483,9 +1668,9 @@ describe("ReadFileTool", () => {
 			const mockTask = createMockTask()
 			const callbacks = createMockCallbacks()
 
-			mockedFsStat.mockResolvedValue({ isDirectory: () => true } as any)
+			mockedFsStat.mockResolvedValue({ isDirectory: () => true } as Stats)
 
-			await readFileTool.execute({ path: "src/" }, mockTask as any, callbacks)
+			await readFileTool.execute({ path: "src/" }, asTask(mockTask), callbacks)
 
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
 		})

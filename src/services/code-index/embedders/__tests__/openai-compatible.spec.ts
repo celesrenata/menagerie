@@ -1,7 +1,12 @@
 import type { MockedClass, MockedFunction } from "vitest"
 import { OpenAI } from "openai"
 import { OpenAICompatibleEmbedder } from "../openai-compatible"
-import { MAX_ITEM_TOKENS, INITIAL_RETRY_DELAY_MS } from "../../constants"
+import {
+	MAX_ITEM_TOKENS,
+	INITIAL_RETRY_DELAY_MS,
+	MAX_EMBEDDING_REQUEST_ITEMS,
+	MAX_EMBEDDING_REQUEST_PADDED_TOKENS,
+} from "../../constants"
 import { clearAllMocks, restoreGlobals } from "../../../../test-utils/reset"
 
 // Mock the OpenAI SDK
@@ -101,6 +106,7 @@ describe("OpenAICompatibleEmbedder", () => {
 			expect(MockedOpenAI).toHaveBeenCalledWith({
 				baseURL: testBaseUrl,
 				apiKey: testApiKey,
+				maxRetries: 0,
 			})
 			expect(embedder).toBeDefined()
 		})
@@ -111,6 +117,7 @@ describe("OpenAICompatibleEmbedder", () => {
 			expect(MockedOpenAI).toHaveBeenCalledWith({
 				baseURL: testBaseUrl,
 				apiKey: testApiKey,
+				maxRetries: 0,
 			})
 			expect(embedder).toBeDefined()
 		})
@@ -1083,6 +1090,124 @@ describe("OpenAICompatibleEmbedder", () => {
 
 			expect(result.valid).toBe(false)
 			expect(result.error).toBe("embeddings:validation.configurationError")
+		})
+	})
+
+	describe("request caps and split-on-failure", () => {
+		// Each text starts with its original index so embeddings can be traced back to inputs.
+		const vectorFor = (text: string) => [Number(text.slice(0, text.indexOf(":")))]
+		const respondWithIndices = async ({ input }: { input: string[] }) => ({
+			data: input.map((text) => ({ embedding: vectorFor(text) })),
+			usage: { prompt_tokens: input.length, total_tokens: input.length },
+		})
+		const httpError = (status: number, message: string) => Object.assign(new Error(message), { status })
+		const sentInputs = (): string[][] =>
+			mockEmbeddingsCreate.mock.calls.map(([request]: [{ input: string[] }]) => request.input)
+
+		beforeEach(() => {
+			embedder = new OpenAICompatibleEmbedder(testBaseUrl, testApiKey, testModelId)
+		})
+
+		it("sends a 700-item file as requests of at most 32 items within the padded budget, in order", async () => {
+			// 10..490 estimated tokens per item, unsorted.
+			const texts = Array.from({ length: 700 }, (_, index) =>
+				`${index}:`.padEnd(40 + ((index * 37) % 50) * 39, "x"),
+			)
+			mockEmbeddingsCreate.mockImplementation(respondWithIndices)
+
+			const result = await embedder.createEmbeddings(texts)
+
+			const requests = sentInputs()
+			expect(requests.flat()).toHaveLength(700)
+			for (const input of requests) {
+				expect(input.length).toBeLessThanOrEqual(MAX_EMBEDDING_REQUEST_ITEMS)
+				const longest = Math.max(...input.map((text) => Math.ceil(text.length / 4)))
+				expect(input.length * longest).toBeLessThanOrEqual(MAX_EMBEDDING_REQUEST_PADDED_TOKENS)
+			}
+			expect(result.embeddings).toEqual(texts.map((_, index) => [index]))
+			expect(result.usage).toEqual({ promptTokens: 700, totalTokens: 700 })
+		})
+
+		it("caps short items at 32 per request", async () => {
+			const texts = Array.from({ length: 700 }, (_, index) => `${index}:short`)
+			mockEmbeddingsCreate.mockImplementation(respondWithIndices)
+
+			const result = await embedder.createEmbeddings(texts)
+
+			expect(sentInputs().map((input) => input.length)).toEqual([
+				...Array(21).fill(MAX_EMBEDDING_REQUEST_ITEMS),
+				700 - 21 * MAX_EMBEDDING_REQUEST_ITEMS,
+			])
+			expect(result.embeddings).toEqual(texts.map((_, index) => [index]))
+		})
+
+		it("splits a request in half on a 5xx instead of resending it", async () => {
+			const texts = Array.from({ length: 8 }, (_, index) => `${index}:item`)
+			mockEmbeddingsCreate
+				.mockRejectedValueOnce(httpError(500, "out of memory"))
+				.mockImplementation(respondWithIndices)
+
+			const result = await embedder.createEmbeddings(texts)
+
+			expect(sentInputs().map((input) => input.length)).toEqual([8, 4, 4])
+			expect(result.embeddings).toEqual(texts.map((_, index) => [index]))
+		})
+
+		it("splits on connection errors and keeps splitting until requests succeed", async () => {
+			const texts = Array.from({ length: 8 }, (_, index) => `${index}:item`)
+			const connectionError = Object.assign(new Error("Connection error."), {
+				cause: Object.assign(new Error("socket"), { code: "ECONNRESET" }),
+			})
+			mockEmbeddingsCreate.mockImplementation(async (request: { input: string[] }) => {
+				if (request.input.length > 2) throw connectionError
+				return respondWithIndices(request)
+			})
+
+			const result = await embedder.createEmbeddings(texts)
+
+			expect(sentInputs().map((input) => input.length)).toEqual([8, 4, 2, 2, 4, 2, 2])
+			expect(result.embeddings).toEqual(texts.map((_, index) => [index]))
+		})
+
+		it("stops at the first unrecoverable single-item failure with bounded requests", async () => {
+			const texts = Array.from({ length: 32 }, (_, index) => `${index}:item`)
+			mockEmbeddingsCreate.mockRejectedValue(httpError(503, "Service Unavailable"))
+
+			await expect(embedder.createEmbeddings(texts)).rejects.toThrow(
+				"Failed to create embeddings after 3 attempts: HTTP 503 - Service Unavailable",
+			)
+			// 32 -> 16 -> 8 -> 4 -> 2 -> 1, then the first leaf failure is thrown.
+			expect(sentInputs().map((input) => input.length)).toEqual([32, 16, 8, 4, 2, 1])
+		})
+
+		it("does not split on 4xx errors", async () => {
+			const texts = Array.from({ length: 8 }, (_, index) => `${index}:item`)
+			mockEmbeddingsCreate.mockRejectedValue(httpError(400, "Bad request"))
+
+			await expect(embedder.createEmbeddings(texts)).rejects.toThrow("HTTP 400 - Bad request")
+			expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
+		})
+
+		it("splits full-URL (fetch) requests on a 5xx response", async () => {
+			const fullUrlEmbedder = new OpenAICompatibleEmbedder(
+				"https://example.com/openai/deployments/m/embeddings?api-version=1",
+				testApiKey,
+				testModelId,
+			)
+			const texts = Array.from({ length: 4 }, (_, index) => `${index}:item`)
+			const fetchMock = global.fetch as MockedFunction<typeof fetch>
+			fetchMock.mockImplementation(async (_url, init) => {
+				const { input } = JSON.parse(String(init?.body)) as { input: string[] }
+				if (input.length > 2) {
+					return new Response("boom", { status: 502 })
+				}
+				return new Response(JSON.stringify(await respondWithIndices({ input })), { status: 200 })
+			})
+
+			const result = await fullUrlEmbedder.createEmbeddings(texts)
+
+			expect(fetchMock).toHaveBeenCalledTimes(3)
+			expect(result.embeddings).toEqual(texts.map((_, index) => [index]))
 		})
 	})
 })

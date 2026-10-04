@@ -1,0 +1,42 @@
+{
+	"verdict": "CHANGES_REQUESTED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "HIGH",
+			"title": "Stale baseline: a sleep-mode rewrite landed in vllm-switch.py, vllm.nix, vllm_idle.py and test_vllm_switch.py at 03:39 (and added test_vllm_idle.py). reader_idle_generation, READER_UNITS, arm_reader_idle_stop, _maybe_stop and the vllm-reader-idle timer are gone. Residency is now 0. The lease is released on sleep. The units no longer conflict. select_model now does sleep_unit then the warm path. Sudo rules are at lines 262-269 and there are 16 tests",
+			"fix": "Rebase Decisions 3-6 onto the sleep-mode switcher. Replace the residency/generation bullets and test x. Add the five files to the Implementation rules' in-place list. Fix the line references and test count."
+		},
+		{
+			"id": 2,
+			"severity": "HIGH",
+			"title": "The fast-409 / never-start guarantee breaks with sleeping units: ComfyUI can hold the flock while the units are active-asleep. The fast path skips select_model, the warm path returns before the bypass check (which sits only before start), and the monitor polls every 30 s in state none, so requests block up to 60 s on the middleware lease",
+			"fix": "Put the bypass check at the start of select_model (before sleep-others and the warm path) and keep the one before start. Poll the monitor every 2 s in all states. Add a test where state is none, phase is running and the unit is active-asleep: both models return False, nothing is proxied and nothing is started."
+		},
+		{
+			"id": 3,
+			"severity": "HIGH",
+			"title": "The drain stops every vLLM unit and the held stray check stops sleeping units on every tick. This discards sleep mode (a cold start per Comfy job) and conflicts with user messages 8 and 11",
+			"fix": "Define gpu_released(unit) as inactive/failed, or /arcane/state reporting sleeping and not lease_held (fail closed). Drain calls sleep_unit first and falls back to stop_and_drain. held requires all units gpu_released, and the stray row uses the same predicate. After the hold, the coder returns through a warm wake. Update tests o, s, s2 and z, and add 'sleeping units left alone'. If keeping stop-only, state it explicitly and report it."
+		},
+		{
+			"id": 4,
+			"severity": "MEDIUM",
+			"title": "The bounded-drain argument no longer holds: drain waits out switching with no deadline, but the new select_model can sit in the sleep_unit retry loop (30 s, 120 s urlopen) or in warm-path wait_ready (540 s), and neither has an abort point",
+			"fix": "Add a comfy_aborted() check at the top of each sleep_unit retry iteration and each wait_ready iteration, and one after the sleep-others loop. State the worst-case bound. Add a test that a preempt during sleep_unit aborts within one iteration."
+		},
+		{
+			"id": 5,
+			"severity": "NIT",
+			"title": "The release text says the coder cold-starts after a hold",
+			"fix": "Update the wording to a warm wake once Finding 3 is resolved"
+		},
+		{
+			"id": 6,
+			"severity": "NIT",
+			"title": "Host RAM budget is unmeasured (pinned sleeping weights + 32 GiB KV offload + reader + ComfyUI)",
+			"fix": "Add a manual post-deploy check of free -g and per-unit MemoryCurrent during a held render"
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/esnixi-comfy-preempt/design-review.md"
+}

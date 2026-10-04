@@ -23,9 +23,14 @@ async function runPowerShell(script: string): Promise<ProcessResult> {
 	])
 }
 
-export function runProcess(executable: string, args: string[], timeoutMs = 30_000): Promise<ProcessResult> {
+export function runProcess(
+	executable: string,
+	args: string[],
+	timeoutMs = 30_000,
+	env?: NodeJS.ProcessEnv,
+): Promise<ProcessResult> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(executable, args, { shell: false, stdio: ["ignore", "pipe", "pipe"] })
+		const child = spawn(executable, args, { shell: false, stdio: ["ignore", "pipe", "pipe"], ...(env && { env }) })
 		let stdout = ""
 		let stderr = ""
 		const timer = setTimeout(() => {
@@ -49,6 +54,16 @@ export function runProcess(executable: string, args: string[], timeoutMs = 30_00
 	})
 }
 
+function runTarXz(args: string[]): Promise<ProcessResult> {
+	// macOS ships a libarchive tar with built-in xz support. GNU tar on NixOS
+	// invokes xz from PATH, which VS Code's extension host may omit.
+	if (process.platform === "darwin") return runProcess("/usr/bin/tar", args)
+	const nixProfileDirs = ["/run/current-system/sw/bin", "/nix/var/nix/profiles/default/bin"]
+	if (process.env.USER) nixProfileDirs.push(`/etc/profiles/per-user/${process.env.USER}/bin`)
+	const env = { ...process.env, PATH: [...nixProfileDirs, process.env.PATH].filter(Boolean).join(path.delimiter) }
+	return runProcess("tar", args, 30_000, env)
+}
+
 export async function extractTarGzArchive(archivePath: string, destination: string): Promise<void> {
 	const args = ["-xzf", archivePath, "-C", destination, "--no-same-owner"]
 	if (process.platform === "linux") {
@@ -62,7 +77,7 @@ export async function extractTarXzArchive(archivePath: string, destination: stri
 	if (process.platform === "linux") {
 		args.push("--no-overwrite-dir")
 	}
-	await runProcess("tar", args)
+	await runTarXz(args)
 }
 
 export async function extractZipArchive(archivePath: string, destination: string): Promise<void> {
@@ -114,7 +129,7 @@ export async function extractSingleFileTarXzArchive(
 	expectedFile: string,
 	archiveName: string,
 ): Promise<void> {
-	const listing = await runProcess("tar", ["-tvJf", archivePath])
+	const listing = await runTarXz(["-tvJf", archivePath])
 	const entries = listing.stdout
 		.split(/\r?\n/)
 		.map((entry) => entry.trim())
@@ -138,5 +153,5 @@ export async function extractSingleFileTarXzArchive(
 		args.push("--no-overwrite-dir")
 	}
 	args.push(entryName)
-	await runProcess("tar", args)
+	await runTarXz(args)
 }

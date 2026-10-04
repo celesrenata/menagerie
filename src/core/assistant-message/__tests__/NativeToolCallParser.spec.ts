@@ -1,4 +1,6 @@
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../NativeToolCallParser"
+import { parallelTasksSchema } from "../../tools/ParallelTasksTool"
+import { parseMarkdownChecklist } from "../../tools/UpdateTodoListTool"
 
 describe("NativeToolCallParser", () => {
 	describe("parseToolCall", () => {
@@ -20,6 +22,21 @@ describe("NativeToolCallParser", () => {
 					expect(result.nativeArgs).toBeDefined()
 					const nativeArgs = result.nativeArgs as { path: string }
 					expect(nativeArgs.path).toBe("src/core/task/Task.ts")
+				}
+			})
+
+			it("normalizes a JSON-encoded path array returned by a local model", () => {
+				const paths = ["analysis/ai_reporter.py", "database/models.py"]
+				const result = NativeToolCallParser.parseToolCall({
+					id: "toolu_stringified_batch",
+					name: "read_file",
+					arguments: JSON.stringify({ path: JSON.stringify(paths) }),
+				})
+
+				expect(result?.type).toBe("tool_use")
+				if (result?.type === "tool_use") {
+					expect(result.nativeArgs).toMatchObject({ path: paths })
+					expect(result.params.path).toBe(JSON.stringify(paths))
 				}
 			})
 
@@ -352,6 +369,76 @@ describe("NativeToolCallParser", () => {
 			expect(NativeToolCallParser.finalizeRawChunks(scope)).toEqual([])
 		})
 
+		it("preserves batch arguments streamed before the tool call id", () => {
+			const scope = NativeToolCallParser.createScope()
+			const tasks = [
+				{ name: "first", mode: "code", message: "Implement first scope", todos: null },
+				{ name: "second", mode: "architect", message: "Review second scope", todos: null },
+			]
+			const args = JSON.stringify({ tasks })
+			expect(
+				NativeToolCallParser.processRawChunk({ index: 0, name: "parallel_tasks", arguments: args }, scope),
+			).toEqual([])
+			const events = NativeToolCallParser.processRawChunk({ index: 0, id: "batch_1" }, scope)
+			expect(events).toEqual([
+				{ type: "tool_call_start", id: "batch_1", name: "parallel_tasks" },
+				{ type: "tool_call_delta", id: "batch_1", delta: args },
+			])
+			NativeToolCallParser.startStreamingToolCall("batch_1", "parallel_tasks", scope)
+			for (const event of events) {
+				if (event.type === "tool_call_delta")
+					NativeToolCallParser.processStreamingChunk(event.id, event.delta, scope)
+			}
+			const result = NativeToolCallParser.finalizeStreamingToolCall("batch_1", scope)
+			expect(result?.type).toBe("tool_use")
+			if (result?.type === "tool_use") expect(result.nativeArgs).toEqual({ tasks })
+		})
+
+		it("decodes a parallel_tasks tasks array sent as a JSON-encoded string", () => {
+			const scope = NativeToolCallParser.createScope()
+			const tasks = [
+				{ name: "first", mode: "project-research", message: "Digest the spec", todos: null },
+				{ name: "second", mode: "code", message: "Implement scope", todos: "[ ] build" },
+			]
+			NativeToolCallParser.startStreamingToolCall("batch_str", "parallel_tasks", scope)
+			NativeToolCallParser.processStreamingChunk(
+				"batch_str",
+				JSON.stringify({ tasks: JSON.stringify(tasks) }),
+				scope,
+			)
+			const result = NativeToolCallParser.finalizeStreamingToolCall("batch_str", scope)
+			expect(result?.type).toBe("tool_use")
+			if (result?.type === "tool_use") {
+				expect(result.nativeArgs).toEqual({ tasks })
+				expect(parallelTasksSchema.parse(result.nativeArgs).tasks).toHaveLength(2)
+			}
+		})
+
+		it("decodes a stringified one-task parallel_tasks array that passes the schema", () => {
+			const scope = NativeToolCallParser.createScope()
+			const tasks = [{ name: "only", mode: "code", message: "Implement scope", todos: null }]
+			NativeToolCallParser.startStreamingToolCall("batch_one", "parallel_tasks", scope)
+			NativeToolCallParser.processStreamingChunk(
+				"batch_one",
+				JSON.stringify({ tasks: JSON.stringify(tasks) }),
+				scope,
+			)
+			const result = NativeToolCallParser.finalizeStreamingToolCall("batch_one", scope)
+			expect(result?.type).toBe("tool_use")
+			if (result?.type === "tool_use") {
+				expect(result.nativeArgs).toEqual({ tasks })
+				expect(parallelTasksSchema.safeParse(result.nativeArgs).success).toBe(true)
+			}
+		})
+
+		it("leaves parallel_tasks without nativeArgs when the tasks string is not valid JSON", () => {
+			const scope = NativeToolCallParser.createScope()
+			NativeToolCallParser.startStreamingToolCall("batch_bad", "parallel_tasks", scope)
+			NativeToolCallParser.processStreamingChunk("batch_bad", JSON.stringify({ tasks: "[{not json" }), scope)
+			const result = NativeToolCallParser.finalizeStreamingToolCall("batch_bad", scope)
+			if (result?.type === "tool_use") expect(result.nativeArgs).toBeUndefined()
+		})
+
 		it("retains peer calls until each call in a scope is finalized", () => {
 			const scope = NativeToolCallParser.createScope()
 			NativeToolCallParser.startStreamingToolCall("call_first", "read_file", scope)
@@ -480,6 +567,21 @@ describe("NativeToolCallParser", () => {
 				expect(result?.nativeArgs).toBeDefined()
 				const nativeArgs = result?.nativeArgs as { path: string }
 				expect(nativeArgs.path).toBe("src/test.ts")
+			})
+
+			it("normalizes a JSON-encoded path array in streaming arguments", () => {
+				const id = "toolu_streaming_stringified_batch"
+				const scope = NativeToolCallParser.createScope()
+				NativeToolCallParser.startStreamingToolCall(id, "read_file", scope)
+				const paths = ["analysis/ai_reporter.py", "database/models.py"]
+
+				const result = NativeToolCallParser.processStreamingChunk(
+					id,
+					JSON.stringify({ path: JSON.stringify(paths) }),
+					scope,
+				)
+
+				expect(result?.nativeArgs).toMatchObject({ path: paths })
 			})
 		})
 	})
@@ -765,6 +867,116 @@ describe("NativeToolCallParser", () => {
 			expect(allEnds[0].id).toBe("call_dup")
 
 			NativeToolCallParser.clearRawChunkState(scope)
+		})
+	})
+
+	describe("argument coercion", () => {
+		// W1 incident shape: write_to_file.content sent as a parsed package.json object.
+		const objectContent = { name: "web", private: true, scripts: { dev: "vite" } }
+		// W3 incident shape: update_todo_list.todos sent as an array of objects.
+		const objectTodos = [
+			{ content: "Scaffold web app", status: "completed" },
+			{ content: "Wire API client", status: "in_progress" },
+			{ content: "Add tests", status: "pending" },
+		]
+
+		const writeArgs = (result: ReturnType<typeof NativeToolCallParser.parseToolCall>) =>
+			result?.type === "tool_use" ? (result.nativeArgs as { path?: string; content?: unknown }) : undefined
+		const todoArgs = (result: ReturnType<typeof NativeToolCallParser.parseToolCall>) =>
+			result?.type === "tool_use" ? (result.nativeArgs as { todos?: unknown }) : undefined
+
+		it.each([
+			["object", objectContent],
+			["array", [1, "two", { three: 3 }]],
+		])("serializes %s write_to_file content to pretty JSON plus a newline", (_label, content) => {
+			const result = NativeToolCallParser.parseToolCall({
+				id: "call_write",
+				name: "write_to_file" as const,
+				arguments: JSON.stringify({ path: "web/package.json", content }),
+			})
+
+			expect(writeArgs(result)?.content).toBe(JSON.stringify(content, null, 2) + "\n")
+		})
+
+		it("leaves string write_to_file content unchanged", () => {
+			const result = NativeToolCallParser.parseToolCall({
+				id: "call_write",
+				name: "write_to_file" as const,
+				arguments: JSON.stringify({ path: "a.txt", content: "hello\n" }),
+			})
+
+			expect(writeArgs(result)?.content).toBe("hello\n")
+			expect(result?.type === "tool_use" ? result.params.content : undefined).toBe("hello\n")
+		})
+
+		it("keeps nativeArgs.content and params.content identical for object content (final)", () => {
+			const result = NativeToolCallParser.parseToolCall({
+				id: "call_write",
+				name: "write_to_file" as const,
+				arguments: JSON.stringify({ path: "web/package.json", content: objectContent }),
+			})
+
+			expect(result?.type).toBe("tool_use")
+			if (result?.type === "tool_use") {
+				expect(result.params.content).toBe(JSON.stringify(objectContent, null, 2) + "\n")
+				expect(writeArgs(result)?.content).toBe(result.params.content)
+			}
+		})
+
+		it("keeps nativeArgs.content and params.content identical for object content (streaming partial)", () => {
+			const scope = NativeToolCallParser.createScope()
+			NativeToolCallParser.startStreamingToolCall("call_stream_write", "write_to_file", scope)
+			const partial = NativeToolCallParser.processStreamingChunk(
+				"call_stream_write",
+				JSON.stringify({ path: "web/package.json", content: objectContent }),
+				scope,
+			)
+
+			expect(partial?.partial).toBe(true)
+			expect(partial?.params.content).toBe(JSON.stringify(objectContent, null, 2) + "\n")
+			expect((partial?.nativeArgs as { content?: unknown } | undefined)?.content).toBe(partial?.params.content)
+
+			const final = NativeToolCallParser.finalizeStreamingToolCall("call_stream_write", scope)
+			expect(final?.type).toBe("tool_use")
+			if (final?.type === "tool_use") {
+				expect(final.params.content).toBe(JSON.stringify(objectContent, null, 2) + "\n")
+				expect((final.nativeArgs as { content?: unknown }).content).toBe(final.params.content)
+			}
+		})
+
+		it("serializes array-of-object todos to a JSON string the checklist parser reads", () => {
+			const result = NativeToolCallParser.parseToolCall({
+				id: "call_todos",
+				name: "update_todo_list" as const,
+				arguments: JSON.stringify({ todos: objectTodos }),
+			})
+
+			const todos = todoArgs(result)?.todos
+			expect(todos).toBe(JSON.stringify(objectTodos))
+			expect(result?.type === "tool_use" ? result.params.todos : undefined).toBe(todos)
+			expect(typeof todos).toBe("string")
+			const items = parseMarkdownChecklist(String(todos))
+			expect(items.map(({ content, status }) => ({ content, status }))).toEqual(objectTodos)
+		})
+
+		it("joins string-array todos with newlines (final and streaming partial)", () => {
+			const result = NativeToolCallParser.parseToolCall({
+				id: "call_todos",
+				name: "update_todo_list" as const,
+				arguments: JSON.stringify({ todos: ["[ ] a", "[x] b"] }),
+			})
+			expect(todoArgs(result)?.todos).toBe("[ ] a\n[x] b")
+
+			const scope = NativeToolCallParser.createScope()
+			NativeToolCallParser.startStreamingToolCall("call_stream_todos", "update_todo_list", scope)
+			const partial = NativeToolCallParser.processStreamingChunk(
+				"call_stream_todos",
+				JSON.stringify({ todos: ["[ ] a", "[x] b"] }),
+				scope,
+			)
+			expect((partial?.nativeArgs as { todos?: unknown } | undefined)?.todos).toBe("[ ] a\n[x] b")
+			expect(partial?.params.todos).toBe("[ ] a\n[x] b")
+			NativeToolCallParser.clearAllStreamingToolCalls(scope)
 		})
 	})
 })

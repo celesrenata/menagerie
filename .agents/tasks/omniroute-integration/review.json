@@ -1,0 +1,24 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "info",
+			"confidence": "confirmed",
+			"label": "Baseline divergence from spec/design",
+			"detail": "The committed diff is taken against esnixi main, where overlays/vllm.nix is vLLM 0.27.1 with a single patch and esnixi/vllm.nix serves a different coder (Qwen3.6-35B-A3B-NVFP4, no --kv-cache-dtype nvfp4, pkgs.vllm, no switcher/sudo scaffolding). The spec/design/verification were authored against the esnixi-snapshot/ tree (Qwen3.8-27B, 0.31-era, six patches). This commit both reconstructs the snapshot config AND adds the reader fabric. The pinned-rev build is GREEN so the result is coherent; non-blocking. Operator should confirm main is genuinely behind the snapshot (not a conflicting fork) before switch, since the deployed coder model/args change as a side effect."
+		},
+		{
+			"severity": "info",
+			"confidence": "confirmed",
+			"label": "Bundled ai.nix behavior changes beyond fallback retirement",
+			"detail": "modules/profiles/ai.nix flips services.ollama.enable false->true and converts vllm-5090 into a vllm-vision-5090 Qwen2.5-VL service (new model, loopback :8011, VLLM_IDLE_SECONDS=300, idle middleware). These are real runtime changes not scoped by design §2 (which only retires the OCI fallback). They build and are internally consistent; non-blocking. Operator should verify enabling Ollama on esnixi and adding a vision service are intended on this host."
+		},
+		{
+			"severity": "info",
+			"confidence": "confirmed",
+			"label": "Lock stale-inode and runtime perms are operator-gated",
+			"detail": "The 0660 root:vllm lock scheme is correct and the design's add-uid-1000-to-vllm-group step is a verified no-op (vision container runs as host root, uid 1000 is the human celes and not a lock opener). But arcane-gpu-lock.service only installs the lock when absent, so a pre-existing 0600 celes:celes inode on the tmpfs will not be rewritten by the switch. The operator queue handles this (rm + restart + ls -l + journalctl PermissionError check); the nixos-rebuild build gate cannot prove runtime file permissions. Must pass the post-switch check before starting the reader."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-integration/review.md"
+}

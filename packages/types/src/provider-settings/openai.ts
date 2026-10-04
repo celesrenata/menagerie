@@ -91,5 +91,24 @@ export const openAiProviderDefinition = createProviderDefinition({
 		openAiHostHeader: z.string().optional(), // Keep temporarily for backward compatibility during migration.
 		openAiHeaders: z.record(z.string(), z.string()).optional(),
 		openAiExtraBody: openAiExtraBodySchema,
+		// OmniRoute opt-in: when true this OpenAI-compatible profile is treated as an OmniRoute
+		// connection (see docs/architecture/omniroute-integration-design.md §1.1). No hostname
+		// literal or URL parsing is involved; the flag is the sole discriminator.
+		openAiIsOmniRoute: z.boolean().optional(),
+		// User-defined convenience mapping of a friendly route name -> an OmniRoute catalog model id.
+		// Purely a menagerie-side alias; selecting a custom route just sets openAiModelId (§2.2).
+		openAiOmniRouteCustomRoutes: z.array(z.object({ name: z.string(), modelId: z.string() })).optional(),
+		// Default OmniRoute catalog id for reader-role parallel workers when they set no explicit route.
+		// Unset => readers fall back to the parent openAiModelId (§5.3).
+		openAiOmniRouteReaderRouteId: z.string().optional(),
+		// Default OmniRoute catalog id for reasoner-role parallel workers when they set no explicit route.
+		// Unset => reasoners fall back to the parent openAiModelId (§5.3).
+		openAiOmniRouteReasonerRouteId: z.string().optional(),
+		// Per-request OmniRoute cost-tier ceiling (1-5) threaded onto the chat request as the
+		// `X-OmniRoute-Tier` header (FEAT-005). The source of truth is the global `omniRouteTier`
+		// setting (bound beside the YOLO control); ClineProvider.getState() copies it onto the
+		// active OmniRoute profile so the request path can read it from ApiHandlerOptions. Unset
+		// => no header, OmniRoute keeps its default.
+		omniRouteTier: z.number().int().min(1).max(5).optional(),
 	},
 })

@@ -1,0 +1,36 @@
+{
+	"built": true,
+	"tag": "registry.celestium.life/library/omniroute:3.8.52-failfixes-feat002-005-20261001",
+	"digest": "sha256:cb0750ca7ad168ba6672a84543a9c90cc615738996e15f46ce87fd9cbc4a51d8",
+	"repo_digest": "registry.celestium.life/library/omniroute@sha256:cb0750ca7ad168ba6672a84543a9c90cc615738996e15f46ce87fd9cbc4a51d8",
+	"local_image_id": "sha256:d0f374df4bb8051d5d530879d90f47f46f8bacf700df802b35ea06344afb8c07",
+	"source_commit": "8d9d5f7a811f87099ac200cedd5fbbc01e7832c6",
+	"source_branch": "feat/hybrid-reader-combo",
+	"feat_commits": {
+		"FEAT-002": "db3586f9e system-first memory injection for self-hosted strict Qwen/GLM providers",
+		"FEAT-004": "f48cdb12a empty-output 502 diagnostic (provider + memory-injection state)",
+		"FEAT-005": "8d9d5f7a8 per-request X-OmniRoute-Tier cost-tier ceiling"
+	},
+	"target": "runner-cli",
+	"platform": "linux/amd64",
+	"build_host": "esnixi (celes@192.168.42.254), native x86_64",
+	"build_args": {
+		"OMNIROUTE_BUILD_MEMORY_MB": 12288,
+		"OMNIROUTE_BUILD_WORKERS": 4
+	},
+	"image_size_bytes": 3563204107,
+	"rollback_tag": "registry.celestium.life/library/omniroute:3.8.50-native-ovms-spacing-20260929",
+	"embedded_clis_verified": ["droid", "openclaw", "codex", "claude", "git", "node"],
+	"content_parity_vs_live": "CONFIRMED. Diffed new runner-cli image against live 3.8.50-native-ovms-spacing: identical CLI set (droid/openclaw/codex/claude/git/node), neither has chromium/playwright-browsers/ovms-binary, both have onnxruntime-node napi-v6 native. new /app/node_modules 751M vs live 653M (FEAT additions). No goodies were dropped; 'native-ovms' in the live tag is a release label, not extra baked binaries.",
+	"rollout": {
+		"attempted": true,
+		"result": "FAILED - rolled back",
+		"symptom": "503 (empty Service endpoints) + CrashLoopBackOff. New pod on gremlin-1 failed liveness probe /livez (5s timeout) during startup; kubelet killed it (exit 0 'Completed'), repeated. startupProbe budget 36x5s=180s was consumed by slow startup; once startup passed, event-loop saturation kept /livez timing out.",
+		"root_cause": "Runtime startup saturation, NOT image contents and NOT the FEAT code. Startup blocks on CredentialHealth testing 12 connections, several timing out 8-16s - notably vllm reader @192.168.42.254:2701 (the esnixi 5090 reader the parent is separately fixing in vllm.nix), plus OpenRouter sync + auto/subscription timeouts. event-loop lag logged (211ms, /healthz '200 is not healthy; busy != ready'). The dead reader upstream pushes startup past the liveness window.",
+		"image_verified_correct": "Pod imageID was sha256:cb0750ca... (the pushed runner-cli). The event's '1173952961 bytes' is compressed-layer download size, not uncompressed image size - not a mismatch.",
+		"rolled_back_to": "registry.celestium.life/library/omniroute:3.8.50-native-ovms-spacing-20260929",
+		"rollback_verified": "Pod omniroute-68dd55c4f7-99w82 1/1 Running 0 restarts; Service endpoint 10.42.0.231:20128 restored; 503 cleared.",
+		"next_step": "Do NOT re-deploy 3.8.52 until the dead vllm reader @192.168.42.254:2701 is healthy (parent's separate vllm.nix fix) OR the startup credential-health check is made non-blocking / liveness timing is relaxed. The image itself is good."
+	},
+	"notes": "Built natively on esnixi (amd64) after the Mac's QEMU-emulated amd64 build silently stalled/OOM'd in the Next.js webpack pass. Source transferred via `git archive 8d9d5f7a8` (tracked files only, byte-exact to committed tip; clean tree). Target is runner-cli to match what the live 3.8.50 image actually runs (verified: live image ships droid/openclaw/codex/claude/git) \u2014 NOT runner-base as the original brief stated; shipping runner-base would have silently dropped the embedded CLI sidecars. The two build-args raise only the build worker's V8 heap ceiling and worker count (default 6144MB OOM'd on this codebase's Next 16 webpack pass); they do not alter image contents. Pushed from esnixi (logged into registry.celestium.life). Lone Docker build warning SecretsUsedInArgOrEnv for ENV REQUIRE_API_KEY is pre-existing in the Dockerfile and matches the live image posture (non-secret flag)."
+}

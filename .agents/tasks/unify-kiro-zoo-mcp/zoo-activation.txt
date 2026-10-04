@@ -1,0 +1,43 @@
+$DRY_RUN_CMD mkdir -p "$HOME/Library/Application Support/Code/User/globalStorage/zoocodeorganization.zoo-code/settings"
+settings="$HOME/Library/Application Support/Code/User/globalStorage/zoocodeorganization.zoo-code/settings/mcp_settings.json"
+
+# First deploy (missing or still a store symlink): drop the generated file verbatim.
+if [[ ! -f "$settings" ]] || [[ -L "$settings" ]]; then
+  $DRY_RUN_CMD rm -f "$settings"
+  $DRY_RUN_CMD cp /nix/store/lh5lq3gjjg22rn8sjpygwga1mmhxbzyd-kiro-mcp.json "$settings"
+  $DRY_RUN_CMD chmod 644 "$settings"
+else
+  # Subsequent rebuilds: merge. Flake wins on wiring; existing file keeps
+  # its per-server runtime flags and any user-only servers.
+  tmp="$(mktemp "/tmp/mcp-merge.XXXXXX")"
+  /nix/store/9h51kaz0zibf2fihxp3fnccdf50rlcvh-jq-1.8.2-bin/bin/jq -s '
+    (.[0].mcpServers) as $flake
+    | (.[1].mcpServers // {}) as $live
+    | . as $both
+    | {
+        mcpServers: (
+          # Start from every server name in either source.
+          (($flake | keys) + ($live | keys) | unique)
+          | map(. as $name | {
+              key: $name,
+              value: (
+                ($flake[$name]) as $f
+                | ($live[$name]) as $l
+                | if $f == null then $l            # user-only server: keep as-is
+                  elif $l == null then $f           # new flake server: take flake wiring
+                  else                              # in both: flake wiring + preserved user flags
+                    $f
+                    + (if $l.disabled != null then { disabled: $l.disabled } else {} end)
+                        + (if $l.autoApprove != null then { autoApprove: $l.autoApprove } else {} end)
+                        + (if $l.disabledTools != null then { disabledTools: $l.disabledTools } else {} end)
+                        + (if $l.alwaysAllow != null then { alwaysAllow: $l.alwaysAllow } else {} end)
+                  end
+              )
+            })
+          | from_entries
+        )
+      }
+  ' /nix/store/lh5lq3gjjg22rn8sjpygwga1mmhxbzyd-kiro-mcp.json "$settings" > "$tmp"
+  $DRY_RUN_CMD mv "$tmp" "$settings"
+  $DRY_RUN_CMD chmod 644 "$settings"
+fi

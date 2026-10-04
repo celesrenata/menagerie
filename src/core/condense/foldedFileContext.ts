@@ -99,6 +99,11 @@ export async function generateFoldedFileContext(
 		const filePath = filePaths[i]
 		// Resolve to absolute path for tree-sitter
 		const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath)
+		const relativePath = path.relative(cwd, absolutePath)
+		if (relativePath === ".." || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+			result.filesSkipped++
+			continue
+		}
 
 		try {
 			// Get the folded definitions using tree-sitter

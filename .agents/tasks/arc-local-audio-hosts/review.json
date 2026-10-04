@@ -1,0 +1,9 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"(non-blocking, possible) No cloud-metadata denylist on allowlisted hosts: consider rejecting metadata.google.internal / 169.254.169.254 entries in parseLocalAudioHosts, matching the rerank path.",
+		"(non-blocking, confirmed) Default-port entries (host:80 for http, host:443 for https) never match because URL.host drops default ports; normalize default ports or document that they should be omitted.",
+		"(non-blocking, confirmed) speechCombo credentialsOptional path (lookup throws or returns null for an allowlisted node) has no test; add one combo-target test."
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/arc-local-audio-hosts/review.md"
+}

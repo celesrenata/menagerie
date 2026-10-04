@@ -48,19 +48,25 @@ vi.mock("@/components/ui", () => ({
 			{children}
 		</button>
 	),
-	Select: ({ children, value, onValueChange, ...props }: any) => (
-		<div role="combobox" data-value={value} {...props}>
-			{/* Hidden trigger lets tests drive profile selection deterministically:
-			    set data-next-value on the button, then click it. */}
-			<button
-				type="button"
-				aria-hidden="true"
-				data-testid="threshold-profile-change"
-				onClick={(e: any) => onValueChange?.(e.currentTarget.getAttribute("data-next-value"))}
-			/>
-			{children}
-		</div>
-	),
+	Select: ({ children, value, onValueChange, ...props }: any) => {
+		// Derive a per-Select change-trigger testid from the Select's own data-testid so
+		// multiple Selects on one screen can be driven independently. The threshold Select
+		// has no data-testid on itself (its trigger does), so it keeps the legacy name.
+		const changeTestId = props["data-testid"] ? `${props["data-testid"]}-change` : "threshold-profile-change"
+		return (
+			<div role="combobox" data-value={value} {...props}>
+				{/* Hidden trigger lets tests drive profile selection deterministically:
+				    set data-next-value on the button, then click it. */}
+				<button
+					type="button"
+					aria-hidden="true"
+					data-testid={changeTestId}
+					onClick={(e: any) => onValueChange?.(e.currentTarget.getAttribute("data-next-value"))}
+				/>
+				{children}
+			</div>
+		)
+	},
 	SelectTrigger: ({ children, ...props }: any) => <div {...props}>{children}</div>,
 	SelectValue: ({ children, ...props }: any) => <div {...props}>{children}</div>,
 	SelectContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
@@ -342,9 +348,9 @@ describe("ContextManagementSettings", () => {
 		const slider = screen.getByTestId("condense-threshold-slider")
 		expect(slider).toBeInTheDocument()
 
-		// Should render the profile select dropdown
+		// Should render the threshold profile select plus the condensing API config select
 		const selects = screen.getAllByRole("combobox")
-		expect(selects).toHaveLength(1)
+		expect(selects).toHaveLength(2)
 	})
 
 	describe("Auto Condense Context functionality", () => {
@@ -377,8 +383,8 @@ describe("ContextManagementSettings", () => {
 
 			// Threshold settings should be visible
 			expect(screen.getByTestId("condense-threshold-slider")).toBeInTheDocument()
-			// One combobox for profile selection
-			expect(screen.getAllByRole("combobox")).toHaveLength(1)
+			// Threshold-profile combobox plus the always-rendered condensing API config combobox
+			expect(screen.getAllByRole("combobox")).toHaveLength(2)
 		})
 
 		it("updates auto condense context percent", () => {
@@ -408,7 +414,7 @@ describe("ContextManagementSettings", () => {
 			render(<ContextManagementSettings {...props} />)
 
 			// Select a non-default profile so the slider edits profileThresholds.
-			const profileTrigger = screen.getByTestId("threshold-profile-change")
+			const profileTrigger = screen.getByTestId("threshold-profile-select-change")
 			profileTrigger.setAttribute("data-next-value", "config-1")
 			fireEvent.click(profileTrigger)
 
@@ -506,6 +512,55 @@ describe("ContextManagementSettings", () => {
 			expect(screen.getByText("settings:contextManagement.openTabs.label")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.workspaceFiles.label")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.rooignore.label")).toBeInTheDocument()
+		})
+	})
+
+	describe("Condensing API configuration picker", () => {
+		const condensingProps = {
+			...defaultProps,
+			// autoCondenseContext false so the only combobox is the condensing picker,
+			// letting us drive the shared mock Select trigger deterministically.
+			autoCondenseContext: false,
+			listApiConfigMeta: [
+				{ id: "reader-1", name: "Reader One" },
+				{ id: "reader-2", name: "Reader Two" },
+			],
+		}
+
+		it("renders the condensing API config select", () => {
+			render(<ContextManagementSettings {...condensingProps} />)
+			expect(screen.getByTestId("condensing-api-config-select")).toBeInTheDocument()
+			// Only the condensing picker renders when autoCondenseContext is false.
+			expect(screen.getAllByRole("combobox")).toHaveLength(1)
+		})
+
+		it("calls setCachedStateField with the chosen profile id when a profile is selected", () => {
+			const mockSetCachedStateField = vitest.fn()
+			render(<ContextManagementSettings {...condensingProps} setCachedStateField={mockSetCachedStateField} />)
+
+			const trigger = screen.getByTestId("threshold-profile-change")
+			trigger.setAttribute("data-next-value", "reader-2")
+			fireEvent.click(trigger)
+
+			expect(mockSetCachedStateField).toHaveBeenCalledWith("condensingApiConfigId", "reader-2")
+			expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "updateSettings" }))
+		})
+
+		it("maps the '-' option to an empty string (clear to use current configuration)", () => {
+			const mockSetCachedStateField = vitest.fn()
+			render(
+				<ContextManagementSettings
+					{...condensingProps}
+					condensingApiConfigId="reader-1"
+					setCachedStateField={mockSetCachedStateField}
+				/>,
+			)
+
+			const trigger = screen.getByTestId("threshold-profile-change")
+			trigger.setAttribute("data-next-value", "-")
+			fireEvent.click(trigger)
+
+			expect(mockSetCachedStateField).toHaveBeenCalledWith("condensingApiConfigId", "")
 		})
 	})
 

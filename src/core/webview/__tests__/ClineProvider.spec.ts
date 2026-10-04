@@ -235,6 +235,7 @@ vi.mock("../../../utils/export", () => ({
 
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
 	openAiCodexOAuthManager: {
+		isAuthenticated: vi.fn().mockResolvedValue(false),
 		getAccessToken: vi.fn(),
 		getAccountId: vi.fn(),
 	},
@@ -307,6 +308,8 @@ vi.mock("../../../api/providers/fetchers/lmstudio", () => ({
 vi.mock("../../../services/zoo-code-auth", () => ({
 	getZooCodeBaseUrl: vi.fn(() => "https://www.zoocode.dev"),
 	getCachedZooCodeToken: vi.fn(),
+	getCachedZooCodeUserInfo: vi.fn(() => ({})),
+	isZooCodeAuthenticated: vi.fn(() => new Promise<boolean>(() => {})),
 	handleAuthCallback: vi.fn(),
 	setZooCodeUserInfo: vi.fn(),
 	disconnectZooCode: vi.fn(),
@@ -771,6 +774,27 @@ describe("ClineProvider", () => {
 		await provider.postMessageToWebview(message)
 
 		expect(mockPostMessage).toHaveBeenCalledWith(message)
+	})
+
+	test("slow renderer acknowledgements do not stall task messages and preserve dispatch order", async () => {
+		provider["view"] = mockWebviewView
+		mockPostMessage.mockReturnValue(new Promise<boolean>(() => {}))
+		const first: ExtensionMessage = { type: "action", action: "chatButtonClicked" }
+		const second: ExtensionMessage = { type: "action", action: "focusInput" }
+		await provider.postMessageToWebview(first)
+		await provider.postMessageToWebview(second)
+		expect(mockPostMessage.mock.calls.map(([message]: [ExtensionMessage]) => message)).toEqual([first, second])
+	})
+
+	test("state projection uses cached Zoo auth and does not wait for optional OAuth checks", async () => {
+		const { getCachedZooCodeToken, isZooCodeAuthenticated } = await import("../../../services/zoo-code-auth")
+		const { openAiCodexOAuthManager } = await import("../../../integrations/openai-codex/oauth")
+		vi.mocked(getCachedZooCodeToken).mockReturnValueOnce("cached-ui-token")
+		vi.mocked(openAiCodexOAuthManager.isAuthenticated).mockReturnValueOnce(new Promise<boolean>(() => {}))
+		const state = await provider.getStateToPostToWebview()
+		expect(state.zooCodeIsAuthenticated).toBe(true)
+		expect(state.openAiCodexIsAuthenticated).toBe(false)
+		expect(isZooCodeAuthenticated).not.toHaveBeenCalled()
 	})
 
 	test("postMessageToWebview does not throw when webview is disposed", async () => {
@@ -1491,6 +1515,93 @@ describe("ClineProvider", () => {
 		expect(postedState.apiConfiguration).toMatchObject(expectedConfiguration)
 	})
 
+	test("round-trips the OmniRoute provider fields (on, with reader/reasoner ids) to the webview", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		const configuration: ProviderSettings = {
+			apiProvider: providerIdentifiers.openai,
+			openAiBaseUrl: "https://omniroute.example",
+			openAiModelId: "qwen3-27b",
+			openAiIsOmniRoute: true,
+			openAiOmniRouteReaderRouteId: "fast-id",
+			openAiOmniRouteReasonerRouteId: "big-id",
+			openAiOmniRouteCustomRoutes: [{ name: "audit", modelId: "qwen3-27b-fast" }],
+		}
+		await provider.contextProxy.setProviderSettings(configuration)
+
+		expect((await provider.getState()).apiConfiguration).toMatchObject(configuration)
+		expect((await provider.getStateToPostToWebview()).apiConfiguration).toMatchObject(configuration)
+	})
+
+	test("round-trips a set omniRouteTier and injects it onto the active OmniRoute profile (FEAT-005)", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setProviderSettings({
+			apiProvider: providerIdentifiers.openai,
+			openAiModelId: "hybrid/code",
+			openAiIsOmniRoute: true,
+		})
+		await provider.contextProxy.setValue("omniRouteTier", 3)
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+
+		// The webview round-trips the global tier value.
+		expect(state.omniRouteTier).toBe(3)
+		expect(postedState.omniRouteTier).toBe(3)
+		// And it is copied onto the active OmniRoute profile so the request path can read it.
+		expect(state.apiConfiguration.omniRouteTier).toBe(3)
+	})
+
+	test("leaves omniRouteTier unset when it is not configured (FEAT-005)", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setProviderSettings({
+			apiProvider: providerIdentifiers.openai,
+			openAiModelId: "hybrid/code",
+			openAiIsOmniRoute: true,
+		})
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+
+		expect(state.omniRouteTier).toBeUndefined()
+		expect(postedState.omniRouteTier).toBeUndefined()
+		expect(state.apiConfiguration.omniRouteTier).toBeUndefined()
+	})
+
+	test("does not inject omniRouteTier onto a non-OmniRoute profile (FEAT-005)", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setProviderSettings({
+			apiProvider: providerIdentifiers.openai,
+			openAiModelId: "gpt-4",
+			openAiIsOmniRoute: false,
+		})
+		await provider.contextProxy.setValue("omniRouteTier", 4)
+
+		const state = await provider.getState()
+
+		// The global setting still round-trips, but it must not leak onto a non-OmniRoute profile.
+		expect(state.omniRouteTier).toBe(4)
+		expect(state.apiConfiguration.omniRouteTier).toBeUndefined()
+	})
+
+	test("round-trips the OmniRoute-off case (flag false, reader/reasoner ids unset) to the webview", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		const configuration: ProviderSettings = {
+			apiProvider: providerIdentifiers.openai,
+			openAiModelId: "custom-model",
+			openAiIsOmniRoute: false,
+		}
+		await provider.contextProxy.setProviderSettings(configuration)
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+		expect(state.apiConfiguration.openAiIsOmniRoute).toBe(false)
+		expect(state.apiConfiguration.openAiOmniRouteReaderRouteId).toBeUndefined()
+		expect(state.apiConfiguration.openAiOmniRouteReasonerRouteId).toBeUndefined()
+		expect(postedState.apiConfiguration.openAiIsOmniRoute).toBe(false)
+		expect(postedState.apiConfiguration.openAiOmniRouteReaderRouteId).toBeUndefined()
+		expect(postedState.apiConfiguration.openAiOmniRouteReasonerRouteId).toBeUndefined()
+	})
+
 	test.each([true, false, undefined])(
 		"returns saved OpenAI-compatible reasoning settings to the webview when enabled is %s",
 		async (enableReasoningEffort) => {
@@ -1580,6 +1691,27 @@ describe("ClineProvider", () => {
 		expect(state.allowedWriteFiles).toEqual([])
 	})
 
+	test("getState and getStateToPostToWebview round-trip a saved condensingApiConfigId", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setValue("condensingApiConfigId", "reader-profile-id")
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+
+		expect(state.condensingApiConfigId).toBe("reader-profile-id")
+		expect(postedState.condensingApiConfigId).toBe("reader-profile-id")
+	})
+
+	test("getState and getStateToPostToWebview leave condensingApiConfigId undefined when unset", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+
+		expect(state.condensingApiConfigId).toBeUndefined()
+		expect(postedState.condensingApiConfigId).toBeUndefined()
+	})
+
 	test("getStateToPostToWebview returns the saved destructive command guard setting", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		await provider.contextProxy.setValue("destructiveCommandGuardEnabled", true)
@@ -1595,6 +1727,19 @@ describe("ClineProvider", () => {
 		const state = await provider.getStateToPostToWebview()
 
 		expect(state.destructiveCommandGuardEnabled).toBe(false)
+	})
+
+	test("round-trips YOLO and attention notifications, defaulting both off", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		let state = await provider.getStateToPostToWebview()
+		expect(state.yoloModeEnabled).toBe(false)
+		expect(state.attentionNotificationsEnabled).toBe(false)
+
+		await provider.contextProxy.setValue("yoloModeEnabled", true)
+		await provider.contextProxy.setValue("attentionNotificationsEnabled", true)
+		state = await provider.getStateToPostToWebview()
+		expect(state.yoloModeEnabled).toBe(true)
+		expect(state.attentionNotificationsEnabled).toBe(true)
 	})
 
 	test("language is set to VSCode language", async () => {

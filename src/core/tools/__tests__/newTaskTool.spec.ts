@@ -572,7 +572,7 @@ describe("newTaskTool", () => {
 })
 
 describe("newTaskTool delegation flow", () => {
-	it("delegates to provider and does not call legacy startSubtask", async () => {
+	it("inherits the selected parent tier and does not call legacy startSubtask", async () => {
 		// Arrange: stub provider delegation
 		const providerSpy = {
 			getState: vi.fn().mockResolvedValue({

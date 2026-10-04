@@ -1,0 +1,7 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"capture_region display param is a no-op: the tool schema and function signature accept display, but captureRegion voids it and relies on global -R coordinates. Documented and deliberate (non-blocking); consider dropping or rewording the schema field in a future pass to avoid misleading callers."
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/tpc-multi-display/review.md"
+}

@@ -6,6 +6,7 @@ import type { FilePreparationDependencies } from "./file-preparation-dependencie
 import { MAX_FILE_SIZE_BYTES, QDRANT_CODE_BLOCK_NAMESPACE } from "../constants"
 import { generateNormalizedAbsolutePath, generateRelativeFilePath } from "../shared/get-relative-path"
 import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
+import { planEmbeddingRequests } from "../shared/embedding-batches"
 
 /** Prepares one file for batching without writing points or mutating the hash cache. */
 export class FilePreparation {
@@ -77,8 +78,16 @@ export class FilePreparation {
 			return []
 		}
 
+		// Embed a file's blocks in capped requests (same limits the embedders apply per HTTP request) so one large
+		// file never becomes one huge request, whichever embedder is configured. Results keep block order.
 		const texts = blocks.map((block) => block.content)
-		const { embeddings } = await dependencies.embedder.createEmbeddings(texts)
+		const embeddings: number[][] = new Array(texts.length)
+		for (const requestIndices of planEmbeddingRequests(texts)) {
+			const response = await dependencies.embedder.createEmbeddings(requestIndices.map((index) => texts[index]))
+			requestIndices.forEach((originalIndex, position) => {
+				embeddings[originalIndex] = response.embeddings[position]
+			})
+		}
 
 		return blocks.map((block, index) => {
 			const normalizedAbsolutePath = generateNormalizedAbsolutePath(block.file_path, dependencies.workspacePath)

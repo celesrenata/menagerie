@@ -26,6 +26,9 @@ export class AutoApprovalHandler {
 			data: string,
 		) => Promise<{ response: ClineAskResponse; text?: string; images?: string[] }>,
 	): Promise<AutoApprovalResult> {
+		if (state?.yoloModeEnabled === true) {
+			return { shouldProceed: true, requiresApproval: false }
+		}
 		// Check request count limit
 		const requestResult = await this.checkRequestLimit(state, messages, askForApproval)
 		if (!requestResult.shouldProceed || requestResult.requiresApproval) {

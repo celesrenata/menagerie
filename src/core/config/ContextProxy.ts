@@ -523,11 +523,16 @@ export class ContextProxy {
 			}
 		}
 
+		// `omniRouteTier` is a global setting that shares its name with a provider-schema key
+		// (FEAT-005). A profile write must never clear or overwrite the user's global tier.
+		const { omniRouteTier: _omniRouteTier, ...profileValues } = values
+
 		await this.setValues({
 			...PROVIDER_SETTINGS_KEYS.filter((key) => !isSecretStateKey(key))
+				.filter((key) => key !== "omniRouteTier")
 				.filter((key) => !!this.stateCache[key])
 				.reduce((acc, key) => ({ ...acc, [key]: undefined }), {} as ProviderSettings),
-			...values,
+			...profileValues,
 		})
 	}
 

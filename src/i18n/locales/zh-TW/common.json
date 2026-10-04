@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "匯入 Roo Code 歷史記錄失敗：{{error}}"
+		"rooHistoryImport": "匯入 Roo Code 歷史記錄失敗：{{error}}",
+		"presenter_failed": "工具執行意外失敗：{{message}}。已向模型傳送未回應工具呼叫的錯誤結果。",
+		"parallel_worker_failed": "平行工作程序已停止：{{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "沒有選擇終端機內容",

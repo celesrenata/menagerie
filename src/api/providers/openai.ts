@@ -11,6 +11,7 @@ import {
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
 	OPENAI_AZURE_AI_INFERENCE_PATH,
 	parseOpenAiExtraBody,
+	providerIdentifiers,
 } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -23,6 +24,7 @@ import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
 import { DEFAULT_HEADERS, NOT_PROVIDED } from "./constants"
+import { isOmniRoute, omniRouteRequestHeaders } from "./omniroute"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata, CompletePromptOptions } from "../index"
 import { handleOpenAIError } from "./utils/error-handler"
@@ -50,6 +52,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		const headers = {
 			...DEFAULT_HEADERS,
 			...(this.options.openAiHeaders || {}),
+			// FEAT-005: attach X-OmniRoute-Tier only for an OmniRoute profile with a set cost tier;
+			// omniRouteRequestHeaders returns {} otherwise, so non-OmniRoute profiles and unset tiers
+			// send no header. This handler only ever serves the openai provider, so apiProvider is openai.
+			...omniRouteRequestHeaders({ ...this.options, apiProvider: providerIdentifiers.openai }),
 		}
 
 		if (isAzureAiInference) {
@@ -176,14 +182,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 
 			// Add max_tokens if needed
-			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
 
 			let stream
 			try {
 				stream = await this.client.chat.completions.create(
 					requestOptions,
-					isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+					this.requestOptions(isAzureAiInference, metadata?.abortSignal),
 				)
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
@@ -244,14 +250,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 
 			// Add max_tokens if needed
-			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
 
 			let response
 			try {
 				response = await this.client.chat.completions.create(
 					requestOptions,
-					this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+					this.requestOptions(this._isAzureAiInference(modelUrl), metadata?.abortSignal),
 				)
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
@@ -293,7 +299,16 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	override getModel() {
 		const id = this.options.openAiModelId ?? ""
-		const info: ModelInfo = this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
+		const baseInfo: ModelInfo = this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
+		// OmniRoute routes reach reasoning backends (e.g. GLM-5.3 on ds4) that keep the
+		// prior turn's reasoning in their live KV cache. Sending it back verbatim keeps
+		// the prompt prefix byte-stable; dropping it makes the server re-render an empty
+		// <think></think> and re-prefill from scratch. An explicit false still wins.
+		const info: ModelInfo =
+			isOmniRoute({ ...this.options, apiProvider: providerIdentifiers.openai }) &&
+			baseInfo.preserveReasoning === undefined
+				? { ...baseInfo, preserveReasoning: true }
+				: baseInfo
 		const params = getModelParams({
 			format: "openai",
 			modelId: id,
@@ -382,14 +397,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// O3 family models do not support the deprecated max_tokens parameter
 			// but they do support max_completion_tokens (the modern OpenAI parameter)
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
-			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
 
 			let stream
 			try {
 				stream = await this.client.chat.completions.create(
 					requestOptions,
-					methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+					this.requestOptions(methodIsAzureAiInference, metadata?.abortSignal),
 				)
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
@@ -417,14 +432,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// O3 family models do not support the deprecated max_tokens parameter
 			// but they do support max_completion_tokens (the modern OpenAI parameter)
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
-			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
 
 			let response
 			try {
 				response = await this.client.chat.completions.create(
 					requestOptions,
-					methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+					this.requestOptions(methodIsAzureAiInference, metadata?.abortSignal),
 				)
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
@@ -538,6 +553,18 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	/**
+	 * Per-request SDK options. Forwarding the task's abort signal lets a stream timeout
+	 * close the socket; OmniRoute is assumed to cancel the upstream request on client
+	 * disconnect (design V7).
+	 */
+	private requestOptions(isAzureAiInference: boolean, signal?: AbortSignal): OpenAI.RequestOptions {
+		return {
+			...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+			...(signal ? { signal } : {}),
+		}
+	}
+
+	/**
 	 * Adds max_completion_tokens to the request body if needed based on provider configuration
 	 * Note: max_tokens is deprecated in favor of max_completion_tokens as per OpenAI documentation
 	 * O3 family models handle max_tokens separately in handleO3FamilyMessage
@@ -547,7 +574,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			| OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming
 			| OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
 		modelInfo: ModelInfo,
+		maxOutputTokens?: number,
 	): void {
+		if (maxOutputTokens !== undefined) {
+			requestOptions.max_completion_tokens = maxOutputTokens
+			return
+		}
 		// Only add max_completion_tokens if includeMaxTokens is true
 		if (this.options.includeMaxTokens === true) {
 			// Use user-configured modelMaxTokens if available, otherwise fall back to model's default maxTokens

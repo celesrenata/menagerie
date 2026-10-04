@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Roo Code geçmişi içe aktarılamadı: {{error}}"
+		"rooHistoryImport": "Roo Code geçmişi içe aktarılamadı: {{error}}",
+		"presenter_failed": "Araç yürütmesi beklenmedik şekilde başarısız oldu: {{message}}. Yanıtlanmamış araç çağrıları için modele bir hata sonucu gönderildi.",
+		"parallel_worker_failed": "Paralel çalışan durduruldu: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Seçili terminal içeriği yok",

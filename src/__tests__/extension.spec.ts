@@ -32,6 +32,7 @@ vi.mock("vscode", () => ({
 	},
 	commands: {
 		executeCommand: vi.fn(),
+		registerCommand: vi.fn(),
 	},
 	env: {
 		language: "en",
@@ -229,6 +230,7 @@ describe("extension.ts", () => {
 
 		mockContext = {
 			extensionPath: "/test/path",
+			globalStorageUri: { fsPath: "/test/storage" },
 			globalState: {
 				get: vi.fn().mockReturnValue(undefined),
 				update: vi.fn(),

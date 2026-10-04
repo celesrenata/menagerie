@@ -1,0 +1,18 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"label": "Diagnosis reversal vs. plan",
+			"blocking": false,
+			"confidence": "confirmed",
+			"detail": "The plan's 'CONFIRMED connection pinning' diagnosis for Fix 1 was overturned at implementation time; the committed baseline and verification document why (did not reproduce under measurement at concurrency 1 and 6; customHeaders Connection:close is schema-rejected HTTP 400 and is a no-op hop-by-hop header). The load-spread acceptance criterion is met by the post-change 7-minute evidence (all 4 replicas carry load, max/min < 2x), so this is a documentation/judgment note, not a blocker."
+		},
+		{
+			"label": "Residual latency tail persists (driver-level, out of scope)",
+			"blocking": false,
+			"confidence": "confirmed",
+			"detail": "0.08% of requests (3/3792) hit the 60s client ceiling due to the un-fixed Intel Arc i915 fence-expiration stall; all still return 200 via OmniRoute requestRetry:3. Elimination requires the reboot Phase B (GuC tuning or i915-sriov-dkms bump), which is correctly scoped out of this task."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/arc-embeddings-load-wedge/review.md"
+}

@@ -29,6 +29,7 @@ import {
 	GitCommitVertical,
 	GraduationCap,
 	ScrollText,
+	Waypoints,
 } from "lucide-react"
 
 import {
@@ -69,6 +70,7 @@ import { SectionHeader } from "./SectionHeader"
 import ApiConfigManager from "./ApiConfigManager"
 import ApiOptions from "./ApiOptions"
 import { AutoApproveSettings } from "./AutoApproveSettings"
+import { OmniRouteSettings } from "./OmniRouteSettings"
 import { CheckpointSettings } from "./CheckpointSettings"
 import { NotificationSettings } from "./NotificationSettings"
 import { ContextManagementSettings } from "./ContextManagementSettings"
@@ -100,6 +102,7 @@ export interface SettingsViewRef {
 }
 
 export const sectionNames = [
+	"omniroute",
 	"providers",
 	"autoApprove",
 	"slashCommands",
@@ -173,6 +176,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		allowedWriteFiles,
 		autoCondenseContext,
 		autoCondenseContextPercent,
+		condensingApiConfigId,
 		enableCheckpoints,
 		checkpointTimeout,
 		experiments,
@@ -180,6 +184,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		maxWorkspaceFiles,
 		mcpEnabled,
 		soundEnabled,
+		attentionNotificationsEnabled,
 		ttsEnabled,
 		ttsSpeed,
 		soundVolume,
@@ -404,7 +409,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					allowedMaxCost: allowedMaxCost ?? null,
 					autoCondenseContext,
 					autoCondenseContextPercent,
+					condensingApiConfigId: condensingApiConfigId ?? "",
 					soundEnabled: soundEnabled ?? true,
+					attentionNotificationsEnabled: attentionNotificationsEnabled ?? false,
 					soundVolume: soundVolume ?? 0.5,
 					ttsEnabled,
 					ttsSpeed,
@@ -539,6 +546,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const sections: { id: SectionName; icon: LucideIcon }[] = useMemo(
 		() => [
 			{ id: "providers", icon: Plug },
+			{ id: "omniroute", icon: Waypoints },
 			{ id: "modes", icon: UsersRound },
 			{ id: "skills", icon: GraduationCap },
 			{ id: "slashCommands", icon: SquareSlash },
@@ -808,6 +816,20 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							</div>
 						)}
 
+						{/* OmniRoute Section */}
+						{renderTab === "omniroute" && (
+							<div>
+								<SectionHeader>{t("settings:sections.omniroute")}</SectionHeader>
+
+								<Section>
+									<OmniRouteSettings
+										apiConfiguration={apiConfiguration}
+										setApiConfigurationField={setApiConfigurationField}
+									/>
+								</Section>
+							</div>
+						)}
+
 						{/* Auto-Approve Section */}
 						{renderTab === "autoApprove" && (
 							<AutoApproveSettings
@@ -857,6 +879,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								ttsEnabled={ttsEnabled}
 								ttsSpeed={ttsSpeed}
 								soundEnabled={soundEnabled}
+								attentionNotificationsEnabled={attentionNotificationsEnabled}
 								soundVolume={soundVolume}
 								setCachedStateField={setCachedStateField}
 							/>
@@ -867,6 +890,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							<ContextManagementSettings
 								autoCondenseContext={autoCondenseContext}
 								autoCondenseContextPercent={autoCondenseContextPercent}
+								condensingApiConfigId={condensingApiConfigId}
 								listApiConfigMeta={listApiConfigMeta ?? []}
 								maxOpenTabsContext={maxOpenTabsContext}
 								maxWorkspaceFiles={maxWorkspaceFiles ?? 200}

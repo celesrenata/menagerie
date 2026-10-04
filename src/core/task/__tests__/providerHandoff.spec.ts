@@ -65,4 +65,17 @@ describe("provider handoff decisions", () => {
 		expect(selected.apiConfigName).toBeUndefined()
 		expect(selected.apiConfiguration).toEqual(parentConfiguration)
 	})
+
+	it("uses the saved Code profile for a parallel worker even when its parent is in Code mode", () => {
+		const selected = selectHandoffExecutionContext(
+			parent,
+			"code",
+			"code",
+			false,
+			{ name: "code-profile", apiConfiguration: savedConfiguration },
+			true,
+		)
+		expect(selected.apiConfigName).toBe("code-profile")
+		expect(selected.apiConfiguration).toEqual(savedConfiguration)
+	})
 })

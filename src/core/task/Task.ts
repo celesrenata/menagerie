@@ -4,6 +4,7 @@ import os from "os"
 import crypto from "crypto"
 import { v7 as uuidv7 } from "uuid"
 import EventEmitter from "events"
+import { Mutex } from "async-mutex"
 
 import { AskIgnoredError } from "./AskIgnoredError"
 import { RateLimitClock, createRateLimitClock } from "./RateLimitClock"
@@ -62,9 +63,11 @@ import { CloudService } from "@roo-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
+import { withOmniRouteTier } from "../../api/providers/omniroute"
 import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { OutputTokenLimitError } from "../../api/providers/utils/output-token-limit-error"
+import { getApiRequestTimeout, getApiStreamIdleTimeout } from "../../api/providers/utils/timeout-config"
 
 // shared
 import { findLastIndex } from "../../shared/array"
@@ -140,6 +143,8 @@ import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { prepareApiConversationMessage } from "./apiConversationHistory"
 import { shouldAddUserMessageToHistory } from "./messageCounting"
 import { type TaskExecutionContext } from "./providerHandoff"
+import { ParallelTaskArgumentRecovery } from "./ParallelTaskArgumentRecovery"
+import { awaitWithStreamTimeout, StreamIdleTimeoutError } from "./streamIdleTimeout"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -184,6 +189,8 @@ function queuedResponseForAsk(type: ClineAsk, text?: string): QueuedAskResolutio
 
 const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
+// A parallel worker's 9th consecutive failed request (1 original + 8 retries) fails it.
+const PARALLEL_WORKER_MAX_API_RETRIES = 8
 
 export interface TaskOptions extends CreateTaskOptions {
 	provider: ClineProvider
@@ -208,6 +215,8 @@ export interface TaskOptions extends CreateTaskOptions {
 	diffFuzzyThreshold?: number
 	/** Explicit task-local execution context for a delegated child. */
 	handoffExecutionContext?: TaskExecutionContext
+	parallelWorker?: boolean
+	parallelParentTaskId?: string
 }
 
 type AssistantMessagePersistenceResult = boolean
@@ -217,7 +226,31 @@ type AssistantMessagePersistenceCancellation = {
 	resolve: () => void
 }
 
+/** Zoo wraps composer text in <user_message> before it reaches the task loop. */
+export function hasForceParallelCommand(content: Anthropic.Messages.ContentBlockParam[]): boolean {
+	return content.some(
+		(block) => block.type === "text" && /(?:^\s*|<user_message>\s*)\/force-parallel(?:\s|$)/i.test(block.text),
+	)
+}
+
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
+	readonly parallelWorker: boolean
+	readonly parallelParentTaskId?: string
+	/** Set when a parallel worker terminates itself; read by waitForParallelTask. */
+	parallelWorkerFailure?: string
+	/** Consecutive failed API attempts for a parallel worker; reset when a request streams assistant content to completion. */
+	private parallelWorkerApiFailures = 0
+	private readonly lifetimeController = new AbortController()
+	get lifetimeSignal(): AbortSignal {
+		return this.lifetimeController.signal
+	}
+	public getDisabledTools(disabled?: string[]): string[] | undefined {
+		return this.parallelWorker ? [...(disabled ?? []), "new_task", "parallel_tasks"] : disabled
+	}
+	public parallelToolBatch = false
+	readonly parallelTaskArgumentRecovery = new ParallelTaskArgumentRecovery()
+	private forceParallelOnNextRequest = false
+	private readonly toolUiMutex = new Mutex()
 	readonly taskId: string
 	readonly rootTaskId?: string
 	readonly parentTaskId?: string
@@ -322,6 +355,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private taskApiConfigReady: Promise<void>
 
 	providerRef: WeakRef<ClineProvider>
+	/**
+	 * Cached handler built for `condensingApiConfigId`. Holds ONLY a built handler,
+	 * never `this.api`; the own-model fallback always returns the live `this.api`.
+	 */
+	private condensingApiHandler?: ApiHandler
+	/** Config id the cached `condensingApiHandler` was built from (change detection). */
+	private condensingApiHandlerConfigId?: string
 	private readonly globalStoragePath: string
 	abort: boolean = false
 	currentRequestAbortController?: AbortController
@@ -463,7 +503,62 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				return
 			}
 			console.error(`[Task#presentAssistantMessage] task ${this.taskId}.${this.instanceId} failed:`, error)
+			this.recoverFromPresenterFailure(error)
 		})
+	}
+
+	/**
+	 * Backstop for a presenter throw outside tool dispatch: answer every unanswered
+	 * tool call from the current index onward with an error result and settle the
+	 * turn, so the `userMessageContentReady` wait cannot hang. Never touches
+	 * `presentAssistantMessageLocked`; a locked presenter is still running and will
+	 * settle the turn itself.
+	 */
+	private recoverFromPresenterFailure(error: unknown): void {
+		if (this.abort || this.abandoned) {
+			return
+		}
+		if (this.presentAssistantMessageLocked) {
+			console.warn(
+				`[Task#recoverFromPresenterFailure] task ${this.taskId}.${this.instanceId}: presenter still locked; skipping recovery`,
+			)
+			return
+		}
+
+		const message = error instanceof Error ? error.message : String(error)
+
+		for (const block of this.assistantMessageContent.slice(this.currentStreamingContentIndex)) {
+			if ((block.type !== "tool_use" && block.type !== "mcp_tool_use") || !block.id) {
+				continue
+			}
+			const toolUseId = sanitizeToolUseId(block.id)
+			const answered = this.userMessageContent.some(
+				(content) => content.type === "tool_result" && content.tool_use_id === toolUseId,
+			)
+			if (!answered) {
+				this.pushToolResultToUserContent({
+					type: "tool_result",
+					tool_use_id: toolUseId,
+					is_error: true,
+					content: formatResponse.toolError(
+						`Tool execution failed unexpectedly: ${message}. Fix the arguments and retry.`,
+					),
+				})
+			}
+		}
+
+		this.currentStreamingContentIndex = this.assistantMessageContent.length
+		this.presentAssistantMessageHasPendingUpdates = false
+		if (this.didCompleteReadingStream) {
+			this.userMessageContentReady = true
+		}
+
+		void this.say("error", t("common:errors.presenter_failed", { message })).catch((sayError) =>
+			console.error(
+				`[Task#recoverFromPresenterFailure] task ${this.taskId}.${this.instanceId}: failed to report error:`,
+				sayError,
+			),
+		)
 	}
 
 	/**
@@ -547,8 +642,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		rateLimitClock,
 		diffFuzzyThreshold,
 		handoffExecutionContext,
+		parallelWorker = false,
+		parallelParentTaskId,
 	}: TaskOptions) {
 		super()
+		this.parallelWorker = parallelWorker
+		this.parallelParentTaskId = parallelParentTaskId
 		this.resetAssistantMessagePersistence()
 
 		if (startTask && !task && !images && !historyItem) {
@@ -1437,282 +1536,306 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		progressStatus?: ToolProgressStatus,
 		isProtected?: boolean,
 	): Promise<{ response: ClineAskResponse; text?: string; images?: string[]; queuedMessageId?: string }> {
-		// If this Cline instance was aborted by the provider, then the only
-		// thing keeping us alive is a promise still running in the background,
-		// in which case we don't want to send its result to the webview as it
-		// is attached to a new instance of Cline now. So we can safely ignore
-		// the result of any active promises, and this class will be
-		// deallocated. (Although we set Cline = undefined in provider, that
-		// simply removes the reference to this instance, but the instance is
-		// still alive until this promise resolves or rejects.)
-		if (this.abort) {
-			throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
-		}
+		const release = this.parallelToolBatch ? await this.toolUiMutex.acquire() : undefined
+		try {
+			if (this.parallelToolBatch && this.didRejectTool && type === "tool") return { response: "noButtonClicked" }
+			// If this Cline instance was aborted by the provider, then the only
+			// thing keeping us alive is a promise still running in the background,
+			// in which case we don't want to send its result to the webview as it
+			// is attached to a new instance of Cline now. So we can safely ignore
+			// the result of any active promises, and this class will be
+			// deallocated. (Although we set Cline = undefined in provider, that
+			// simply removes the reference to this instance, but the instance is
+			// still alive until this promise resolves or rejects.)
+			if (this.abort) {
+				throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
+			}
 
-		let askTs: number
+			let askTs: number
 
-		// Resolve auto-approval before adding the message so the state snapshot
-		// sent to the webview already carries isAnswered:true when the ask will
-		// be immediately resolved. This eliminates the race between the state
-		// update (which shows approval buttons) and the former separate
-		// clearApprovalButtons message (which could arrive before buttons were
-		// rendered, leaving them stuck on-screen).
-		const provider = this.providerRef.deref()
-		const state = provider ? await provider.getState() : undefined
-		const queuedMessage =
-			partial === true || type === "command_output" ? undefined : this.messageQueueService.claimNextMessage()
-		const queuedAskResolution = queuedMessage ? queuedResponseForAsk(type, text) : undefined
-		// `this.cwd`, not `provider.cwd`:
-		// The path inside `text` was made relative to this task's workspace,
-		// which for a resumed or child task need not be the one the provider
-		// currently reports.
-		const approval = queuedAskResolution
-			? ({ decision: "ask" } as const)
-			: await checkAutoApproval({ state, cwd: this.cwd, ask: type, text, isProtected })
-		const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
-		const autoApprovalDecision = isAutoAnswered ? approval.decision : undefined
+			// Resolve auto-approval before adding the message so the state snapshot
+			// sent to the webview already carries isAnswered:true when the ask will
+			// be immediately resolved. This eliminates the race between the state
+			// update (which shows approval buttons) and the former separate
+			// clearApprovalButtons message (which could arrive before buttons were
+			// rendered, leaving them stuck on-screen).
+			const provider = this.providerRef.deref()
+			const state = provider ? await provider.getState() : undefined
+			const queuedMessage =
+				partial === true || type === "command_output" ? undefined : this.messageQueueService.claimNextMessage()
+			const queuedAskResolution = queuedMessage ? queuedResponseForAsk(type, text) : undefined
+			// `this.cwd`, not `provider.cwd`:
+			// The path inside `text` was made relative to this task's workspace,
+			// which for a resumed or child task need not be the one the provider
+			// currently reports.
+			const approval = queuedAskResolution
+				? ({ decision: "ask" } as const)
+				: await checkAutoApproval({ state, cwd: this.cwd, ask: type, text, isProtected })
+			const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
+			const autoApprovalDecision = isAutoAnswered ? approval.decision : undefined
 
-		if (partial !== undefined) {
-			const lastMessage = this.clineMessages.at(-1)
+			if (partial !== undefined) {
+				const lastMessage = this.clineMessages.at(-1)
 
-			const isUpdatingPreviousPartial =
-				lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
+				const isUpdatingPreviousPartial =
+					lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
 
-			if (partial) {
-				if (isUpdatingPreviousPartial) {
-					// Existing partial message, so update it.
-					lastMessage.text = text
-					lastMessage.partial = partial
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
-					// TODO: Be more efficient about saving and posting only new
-					// data or one whole message at a time so ignore partial for
-					// saves, and only post parts of partial message instead of
-					// whole array in new listener.
-					// Fire-and-forget: the webview post is internally guarded, but
-					// the `RooCodeEventName.Message` emit can synchronously throw
-					// if any consumer-attached listener does, which would surface
-					// here as an unhandled rejection. Log it instead.
-					this.updateClineMessage(lastMessage).catch((error) => {
-						console.error("[Task#ask] updateClineMessage failed:", error)
-					})
-					// console.log("Task#ask: current ask promise was ignored (#1)")
-					throw new AskIgnoredError("updating existing partial")
+				if (partial) {
+					if (isUpdatingPreviousPartial) {
+						// Existing partial message, so update it.
+						lastMessage.text = text
+						lastMessage.partial = partial
+						lastMessage.progressStatus = progressStatus
+						lastMessage.isProtected = isProtected
+						// TODO: Be more efficient about saving and posting only new
+						// data or one whole message at a time so ignore partial for
+						// saves, and only post parts of partial message instead of
+						// whole array in new listener.
+						// Fire-and-forget: the webview post is internally guarded, but
+						// the `RooCodeEventName.Message` emit can synchronously throw
+						// if any consumer-attached listener does, which would surface
+						// here as an unhandled rejection. Log it instead.
+						this.updateClineMessage(lastMessage).catch((error) => {
+							console.error("[Task#ask] updateClineMessage failed:", error)
+						})
+						// console.log("Task#ask: current ask promise was ignored (#1)")
+						throw new AskIgnoredError("updating existing partial")
+					} else {
+						// This is a new partial message, so add it with partial
+						// state.
+						askTs = Date.now()
+						this.lastMessageTs = askTs
+						await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, partial, isProtected })
+						// console.log("Task#ask: current ask promise was ignored (#2)")
+						throw new AskIgnoredError("new partial")
+					}
 				} else {
-					// This is a new partial message, so add it with partial
-					// state.
-					askTs = Date.now()
-					this.lastMessageTs = askTs
-					await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, partial, isProtected })
-					// console.log("Task#ask: current ask promise was ignored (#2)")
-					throw new AskIgnoredError("new partial")
+					if (isUpdatingPreviousPartial) {
+						// This is the complete version of a previously partial
+						// message, so replace the partial with the complete version.
+						this.askResponse = undefined
+						this.askResponseText = undefined
+						this.askResponseImages = undefined
+
+						// Bug for the history books:
+						// In the webview we use the ts as the chatrow key for the
+						// virtuoso list. Since we would update this ts right at the
+						// end of streaming, it would cause the view to flicker. The
+						// key prop has to be stable otherwise react has trouble
+						// reconciling items between renders, causing unmounting and
+						// remounting of components (flickering).
+						// The lesson here is if you see flickering when rendering
+						// lists, it's likely because the key prop is not stable.
+						// So in this case we must make sure that the message ts is
+						// never altered after first setting it.
+						askTs = lastMessage.ts
+						this.lastMessageTs = askTs
+						lastMessage.text = text
+						lastMessage.partial = false
+						lastMessage.progressStatus = progressStatus
+						lastMessage.isProtected = isProtected
+						if (isAutoAnswered) {
+							lastMessage.isAnswered = true
+							lastMessage.autoApprovalDecision = autoApprovalDecision
+						}
+						await this.saveClineMessages()
+						// Fire-and-forget: see updateClineMessage call above for the
+						// rationale on the .catch arm.
+						this.updateClineMessage(lastMessage).catch((error) => {
+							console.error("[Task#ask] updateClineMessage failed:", error)
+						})
+					} else {
+						// This is a new and complete message, so add it like normal.
+						this.askResponse = undefined
+						this.askResponseText = undefined
+						this.askResponseImages = undefined
+						askTs = Date.now()
+						this.lastMessageTs = askTs
+						await this.addToClineMessages({
+							ts: askTs,
+							type: "ask",
+							ask: type,
+							text,
+							isProtected,
+							isAnswered: isAutoAnswered || undefined,
+							autoApprovalDecision,
+						})
+					}
 				}
 			} else {
-				if (isUpdatingPreviousPartial) {
-					// This is the complete version of a previously partial
-					// message, so replace the partial with the complete version.
-					this.askResponse = undefined
-					this.askResponseText = undefined
-					this.askResponseImages = undefined
-
-					// Bug for the history books:
-					// In the webview we use the ts as the chatrow key for the
-					// virtuoso list. Since we would update this ts right at the
-					// end of streaming, it would cause the view to flicker. The
-					// key prop has to be stable otherwise react has trouble
-					// reconciling items between renders, causing unmounting and
-					// remounting of components (flickering).
-					// The lesson here is if you see flickering when rendering
-					// lists, it's likely because the key prop is not stable.
-					// So in this case we must make sure that the message ts is
-					// never altered after first setting it.
-					askTs = lastMessage.ts
-					this.lastMessageTs = askTs
-					lastMessage.text = text
-					lastMessage.partial = false
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
-					if (isAutoAnswered) {
-						lastMessage.isAnswered = true
-						lastMessage.autoApprovalDecision = autoApprovalDecision
-					}
-					await this.saveClineMessages()
-					// Fire-and-forget: see updateClineMessage call above for the
-					// rationale on the .catch arm.
-					this.updateClineMessage(lastMessage).catch((error) => {
-						console.error("[Task#ask] updateClineMessage failed:", error)
-					})
-				} else {
-					// This is a new and complete message, so add it like normal.
-					this.askResponse = undefined
-					this.askResponseText = undefined
-					this.askResponseImages = undefined
-					askTs = Date.now()
-					this.lastMessageTs = askTs
-					await this.addToClineMessages({
-						ts: askTs,
-						type: "ask",
-						ask: type,
-						text,
-						isProtected,
-						isAnswered: isAutoAnswered || undefined,
-						autoApprovalDecision,
-					})
-				}
+				// This is a new non-partial message, so add it like normal.
+				this.askResponse = undefined
+				this.askResponseText = undefined
+				this.askResponseImages = undefined
+				askTs = Date.now()
+				this.lastMessageTs = askTs
+				await this.addToClineMessages({
+					ts: askTs,
+					type: "ask",
+					ask: type,
+					text,
+					isProtected,
+					isAnswered: isAutoAnswered || undefined,
+					autoApprovalDecision,
+				})
 			}
-		} else {
-			// This is a new non-partial message, so add it like normal.
+
+			const timeouts: NodeJS.Timeout[] = []
+
+			if (approval.decision === "approve") {
+				this.approveAsk()
+			} else if (approval.decision === "deny") {
+				this.denyAsk()
+			} else if (approval.decision === "timeout") {
+				// Store the auto-approval timeout so it can be cancelled if user interacts
+				this.autoApprovalTimeoutRef = setTimeout(() => {
+					const { askResponse, text, images } = approval.fn()
+					this.handleWebviewAskResponse(askResponse, text, images)
+					this.autoApprovalTimeoutRef = undefined
+				}, approval.timeout)
+				timeouts.push(this.autoApprovalTimeoutRef)
+			}
+
+			// The state is mutable if the message is complete and the task will
+			// block (via the `pWaitFor`).
+			const isBlocking = !(this.askResponse !== undefined || this.lastMessageTs !== askTs)
+			const isMessageQueued = !this.messageQueueService.isEmpty()
+			// Keep queued user messages intact during command_output asks. Those asks
+			// are terminal flow-control, not conversational turns.
+			const shouldDrainQueuedMessageForAsk = type !== "command_output"
+			const isStatusMutable = !partial && isBlocking && !isMessageQueued && approval.decision === "ask"
+
+			let queuedMessageId: string | undefined
+			if (isStatusMutable) {
+				const statusMutationTimeout = 2_000
+
+				if (isInteractiveAsk(type)) {
+					timeouts.push(
+						setTimeout(() => {
+							const message = this.findMessageByTimestamp(askTs)
+
+							if (message) {
+								this.interactiveAsk = message
+								this.emit(RooCodeEventName.TaskInteractive, this.taskId)
+								if (provider?.contextProxy.getValue("attentionNotificationsEnabled") === true) {
+									const title = provider.taskHistoryStore
+										.get(this.taskId)
+										?.task?.split("\n")[0]
+										.slice(0, 72)
+									provider.revealChat()
+									void vscode.window
+										.showWarningMessage(`Zoo needs input${title ? `: ${title}` : ""}`, "Open chat")
+										.then(
+											(choice) => {
+												if (choice === "Open chat") provider.revealChat()
+											},
+											(error: unknown) =>
+												console.error("[Task#ask] attention notification failed:", error),
+										)
+								}
+								/* v8 ignore next 3 -- fires inside 2s timer after ask() resolves; not reachable in unit tests */
+								void provider?.postMessageToWebview({ type: "interactionRequired" }).catch((error) => {
+									console.error("[Task#ask] postMessageToWebview interactionRequired failed:", error)
+								})
+							}
+						}, statusMutationTimeout),
+					)
+				} else if (isResumableAsk(type)) {
+					timeouts.push(
+						setTimeout(() => {
+							const message = this.findMessageByTimestamp(askTs)
+
+							if (message) {
+								this.resumableAsk = message
+								this.emit(RooCodeEventName.TaskResumable, this.taskId)
+							}
+						}, statusMutationTimeout),
+					)
+				} else if (isIdleAsk(type)) {
+					timeouts.push(
+						setTimeout(() => {
+							const message = this.findMessageByTimestamp(askTs)
+
+							if (message) {
+								this.idleAsk = message
+								this.emit(RooCodeEventName.TaskIdle, this.taskId)
+							}
+						}, statusMutationTimeout),
+					)
+				}
+			} else if (isMessageQueued && shouldDrainQueuedMessageForAsk && queuedMessage && queuedAskResolution) {
+				queuedMessageId = this.handleQueuedAskResponse(queuedMessage, queuedAskResolution)
+			}
+
+			// Wait for askResponse to be set
+			await pWaitFor(
+				() => {
+					if (this.abort || this.askResponse !== undefined || this.lastMessageTs !== askTs) {
+						return true
+					}
+
+					// If a queued message arrives while we're blocked on an ask (e.g. a follow-up
+					// suggestion click that was incorrectly queued due to UI state), consume it
+					// immediately so the task doesn't hang.
+					if (shouldDrainQueuedMessageForAsk && !this.messageQueueService.isEmpty()) {
+						const message = this.messageQueueService.claimNextMessage()
+						const resolution = message ? queuedResponseForAsk(type, text) : undefined
+						if (message && resolution) {
+							queuedMessageId = this.handleQueuedAskResponse(message, resolution)
+						}
+					}
+
+					return false
+				},
+				{ interval: 100 },
+			)
+
+			/* v8 ignore next 3 -- abort-while-waiting path; covered by e2e standalone-resume test */
+			if (this.abort) {
+				if (queuedMessageId) {
+					this.messageQueueService.releaseMessage(queuedMessageId)
+				}
+				throw new Error(`[ZooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
+			}
+
+			if (this.lastMessageTs !== askTs) {
+				// Could happen if we send multiple asks in a row i.e. with
+				// command_output. It's important that when we know an ask could
+				// fail, it is handled gracefully.
+				if (queuedMessageId) {
+					this.messageQueueService.releaseMessage(queuedMessageId)
+				}
+				throw new AskIgnoredError("superseded")
+			}
+
+			const result = {
+				response: this.askResponse!,
+				text: this.askResponseText,
+				images: this.askResponseImages,
+				queuedMessageId,
+			}
 			this.askResponse = undefined
 			this.askResponseText = undefined
 			this.askResponseImages = undefined
-			askTs = Date.now()
-			this.lastMessageTs = askTs
-			await this.addToClineMessages({
-				ts: askTs,
-				type: "ask",
-				ask: type,
-				text,
-				isProtected,
-				isAnswered: isAutoAnswered || undefined,
-				autoApprovalDecision,
-			})
-		}
 
-		const timeouts: NodeJS.Timeout[] = []
+			// Cancel the timeouts if they are still running.
+			timeouts.forEach((timeout) => clearTimeout(timeout))
 
-		if (approval.decision === "approve") {
-			this.approveAsk()
-		} else if (approval.decision === "deny") {
-			this.denyAsk()
-		} else if (approval.decision === "timeout") {
-			// Store the auto-approval timeout so it can be cancelled if user interacts
-			this.autoApprovalTimeoutRef = setTimeout(() => {
-				const { askResponse, text, images } = approval.fn()
-				this.handleWebviewAskResponse(askResponse, text, images)
-				this.autoApprovalTimeoutRef = undefined
-			}, approval.timeout)
-			timeouts.push(this.autoApprovalTimeoutRef)
-		}
-
-		// The state is mutable if the message is complete and the task will
-		// block (via the `pWaitFor`).
-		const isBlocking = !(this.askResponse !== undefined || this.lastMessageTs !== askTs)
-		const isMessageQueued = !this.messageQueueService.isEmpty()
-		// Keep queued user messages intact during command_output asks. Those asks
-		// are terminal flow-control, not conversational turns.
-		const shouldDrainQueuedMessageForAsk = type !== "command_output"
-		const isStatusMutable = !partial && isBlocking && !isMessageQueued && approval.decision === "ask"
-
-		let queuedMessageId: string | undefined
-		if (isStatusMutable) {
-			const statusMutationTimeout = 2_000
-
-			if (isInteractiveAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.interactiveAsk = message
-							this.emit(RooCodeEventName.TaskInteractive, this.taskId)
-							/* v8 ignore next 3 -- fires inside 2s timer after ask() resolves; not reachable in unit tests */
-							void provider?.postMessageToWebview({ type: "interactionRequired" }).catch((error) => {
-								console.error("[Task#ask] postMessageToWebview interactionRequired failed:", error)
-							})
-						}
-					}, statusMutationTimeout),
-				)
-			} else if (isResumableAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.resumableAsk = message
-							this.emit(RooCodeEventName.TaskResumable, this.taskId)
-						}
-					}, statusMutationTimeout),
-				)
-			} else if (isIdleAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.idleAsk = message
-							this.emit(RooCodeEventName.TaskIdle, this.taskId)
-						}
-					}, statusMutationTimeout),
-				)
+			// Switch back to an active state.
+			if (this.idleAsk || this.resumableAsk || this.interactiveAsk) {
+				this.idleAsk = undefined
+				this.resumableAsk = undefined
+				this.interactiveAsk = undefined
+				this.emit(RooCodeEventName.TaskActive, this.taskId)
 			}
-		} else if (isMessageQueued && shouldDrainQueuedMessageForAsk && queuedMessage && queuedAskResolution) {
-			queuedMessageId = this.handleQueuedAskResponse(queuedMessage, queuedAskResolution)
+
+			this.emit(RooCodeEventName.TaskAskResponded)
+			if (this.parallelToolBatch && type === "tool" && result.response !== "yesButtonClicked")
+				this.didRejectTool = true
+			return result
+		} finally {
+			release?.()
 		}
-
-		// Wait for askResponse to be set
-		await pWaitFor(
-			() => {
-				if (this.abort || this.askResponse !== undefined || this.lastMessageTs !== askTs) {
-					return true
-				}
-
-				// If a queued message arrives while we're blocked on an ask (e.g. a follow-up
-				// suggestion click that was incorrectly queued due to UI state), consume it
-				// immediately so the task doesn't hang.
-				if (shouldDrainQueuedMessageForAsk && !this.messageQueueService.isEmpty()) {
-					const message = this.messageQueueService.claimNextMessage()
-					const resolution = message ? queuedResponseForAsk(type, text) : undefined
-					if (message && resolution) {
-						queuedMessageId = this.handleQueuedAskResponse(message, resolution)
-					}
-				}
-
-				return false
-			},
-			{ interval: 100 },
-		)
-
-		/* v8 ignore next 3 -- abort-while-waiting path; covered by e2e standalone-resume test */
-		if (this.abort) {
-			if (queuedMessageId) {
-				this.messageQueueService.releaseMessage(queuedMessageId)
-			}
-			throw new Error(`[ZooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
-		}
-
-		if (this.lastMessageTs !== askTs) {
-			// Could happen if we send multiple asks in a row i.e. with
-			// command_output. It's important that when we know an ask could
-			// fail, it is handled gracefully.
-			if (queuedMessageId) {
-				this.messageQueueService.releaseMessage(queuedMessageId)
-			}
-			throw new AskIgnoredError("superseded")
-		}
-
-		const result = {
-			response: this.askResponse!,
-			text: this.askResponseText,
-			images: this.askResponseImages,
-			queuedMessageId,
-		}
-		this.askResponse = undefined
-		this.askResponseText = undefined
-		this.askResponseImages = undefined
-
-		// Cancel the timeouts if they are still running.
-		timeouts.forEach((timeout) => clearTimeout(timeout))
-
-		// Switch back to an active state.
-		if (this.idleAsk || this.resumableAsk || this.interactiveAsk) {
-			this.idleAsk = undefined
-			this.resumableAsk = undefined
-			this.interactiveAsk = undefined
-			this.emit(RooCodeEventName.TaskActive, this.taskId)
-		}
-
-		this.emit(RooCodeEventName.TaskAskResponded)
-		return result
 	}
 
 	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
@@ -1799,6 +1922,74 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Update the configuration and rebuild the API handler
 		this.apiConfiguration = newApiConfiguration
 		this.api = buildApiHandler(this.apiConfiguration)
+	}
+
+	/**
+	 * Resolves the API handler to use for context condensing/summarization.
+	 *
+	 * When `condensingApiConfigId` is unset, empty, references a profile missing from
+	 * `listApiConfigMeta`, resolves to a profile without an `apiProvider`, the provider
+	 * ref is dead, or resolution throws, this returns the live `this.api` — byte-identical
+	 * to today's behavior. Otherwise it returns a handler built from the chosen profile.
+	 *
+	 * Caching rule (single): only the BUILT handler is cached, keyed by config id. On an
+	 * unchanged id the prior decision is reused (cached built handler, or live `this.api`
+	 * for the own-model case) without re-running `getProfile`/`buildApiHandler`; a changed
+	 * id triggers re-resolution. `this.api` is never cached, so an `updateApiConfiguration`
+	 * mid-task is always reflected on the own-model path.
+	 */
+	private async getCondensingApiHandler(): Promise<ApiHandler> {
+		const provider = this.providerRef.deref()
+
+		if (!provider) {
+			return this.api
+		}
+
+		const state = await provider.getState()
+		const condensingApiConfigId = state.condensingApiConfigId
+		const listApiConfigMeta = state.listApiConfigMeta ?? []
+
+		// Reuse the prior decision when the configured id has not changed.
+		if (condensingApiConfigId === this.condensingApiHandlerConfigId) {
+			return this.condensingApiHandler ?? this.api
+		}
+
+		// The configured id changed; re-resolve and record the new id so the next
+		// call can detect a subsequent change.
+		this.condensingApiHandlerConfigId = condensingApiConfigId
+
+		// Unset/empty, or an id that no longer exists in the known profiles -> own model.
+		// The membership check is mandatory: getProfile throws when the id is missing.
+		if (!condensingApiConfigId || !listApiConfigMeta.find(({ id }) => id === condensingApiConfigId)) {
+			this.condensingApiHandler = undefined
+			return this.api
+		}
+
+		try {
+			const { name: _name, ...providerSettings } = await provider.providerSettingsManager.getProfile({
+				id: condensingApiConfigId,
+			})
+
+			// A profile without an apiProvider means "use the task's own model".
+			if (!providerSettings.apiProvider) {
+				this.condensingApiHandler = undefined
+				return this.api
+			}
+
+			// Saved profiles never carry the OmniRoute tier; apply the live global (FEAT-005).
+			this.condensingApiHandler = buildApiHandler(withOmniRouteTier(providerSettings, state.omniRouteTier))
+			return this.condensingApiHandler
+		} catch (error) {
+			// A malformed profile degrades to today's behavior rather than breaking
+			// condensing. Logged per-call (condensing is infrequent).
+			provider.log(
+				`[Task#getCondensingApiHandler] Failed to resolve condensing profile '${condensingApiConfigId}', falling back to current model: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+			this.condensingApiHandler = undefined
+			return this.api
+		}
 	}
 
 	public async submitUserMessage(
@@ -1910,7 +2101,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				customModes: state?.customModes,
 				experiments: state?.experiments,
 				apiConfiguration,
-				disabledTools: state?.disabledTools,
+				disabledTools: this.getDisabledTools(state?.disabledTools),
 				modelInfo: requestModelInfo,
 				includeAllToolsWithRestrictions: false,
 			})
@@ -1945,6 +2136,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			return
 		}
 
+		const condensingApiHandler = await this.getCondensingApiHandler()
+
 		const {
 			messages,
 			summary,
@@ -1955,7 +2148,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			condenseId,
 		} = await summarizeConversation({
 			messages: this.apiConversationHistory,
-			apiHandler: this.api,
+			apiHandler: condensingApiHandler,
 			systemPrompt,
 			taskId: this.taskId,
 			isAutomaticTrigger: false,
@@ -2020,114 +2213,119 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		contextCondense?: ContextCondense,
 		contextTruncation?: ContextTruncation,
 	): Promise<undefined> {
-		if (this.abort) {
-			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
-		}
+		const release = this.parallelToolBatch ? await this.toolUiMutex.acquire() : undefined
+		try {
+			if (this.abort) {
+				throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
+			}
 
-		if (partial !== undefined) {
-			const lastMessage = this.clineMessages.at(-1)
+			if (partial !== undefined) {
+				const lastMessage = this.clineMessages.at(-1)
 
-			const isUpdatingPreviousPartial =
-				lastMessage && lastMessage.partial && lastMessage.type === "say" && lastMessage.say === type
+				const isUpdatingPreviousPartial =
+					lastMessage && lastMessage.partial && lastMessage.type === "say" && lastMessage.say === type
 
-			if (partial) {
-				if (isUpdatingPreviousPartial) {
-					// Existing partial message, so update it.
-					lastMessage.text = text
-					lastMessage.images = images
-					lastMessage.partial = partial
-					lastMessage.progressStatus = progressStatus
-					// Fire-and-forget: webview post is internally guarded, but the
-					// `RooCodeEventName.Message` emit can synchronously throw via a
-					// consumer-attached listener. Surface that as a log, not an
-					// unhandled rejection.
-					this.updateClineMessage(lastMessage).catch((error) => {
-						console.error("[Task#say] updateClineMessage failed:", error)
-					})
-				} else {
-					// This is a new partial message, so add it with partial state.
-					const sayTs = Date.now()
+				if (partial) {
+					if (isUpdatingPreviousPartial) {
+						// Existing partial message, so update it.
+						lastMessage.text = text
+						lastMessage.images = images
+						lastMessage.partial = partial
+						lastMessage.progressStatus = progressStatus
+						// Fire-and-forget: webview post is internally guarded, but the
+						// `RooCodeEventName.Message` emit can synchronously throw via a
+						// consumer-attached listener. Surface that as a log, not an
+						// unhandled rejection.
+						this.updateClineMessage(lastMessage).catch((error) => {
+							console.error("[Task#say] updateClineMessage failed:", error)
+						})
+					} else {
+						// This is a new partial message, so add it with partial state.
+						const sayTs = Date.now()
 
-					if (!options.isNonInteractive) {
-						this.lastMessageTs = sayTs
+						if (!options.isNonInteractive) {
+							this.lastMessageTs = sayTs
+						}
+
+						await this.addToClineMessages({
+							ts: sayTs,
+							type: "say",
+							say: type,
+							text,
+							images,
+							partial,
+							contextCondense,
+							contextTruncation,
+						})
 					}
+				} else {
+					// New now have a complete version of a previously partial message.
+					// This is the complete version of a previously partial
+					// message, so replace the partial with the complete version.
+					if (isUpdatingPreviousPartial) {
+						if (!options.isNonInteractive) {
+							this.lastMessageTs = lastMessage.ts
+						}
 
-					await this.addToClineMessages({
-						ts: sayTs,
-						type: "say",
-						say: type,
-						text,
-						images,
-						partial,
-						contextCondense,
-						contextTruncation,
-					})
+						lastMessage.text = text
+						lastMessage.images = images
+						lastMessage.partial = false
+						lastMessage.progressStatus = progressStatus
+
+						// Instead of streaming partialMessage events, we do a save
+						// and post like normal to persist to disk.
+						await this.saveClineMessages()
+
+						// More performant than an entire `postStateToWebview`.
+						// Fire-and-forget: see updateClineMessage call above for the
+						// rationale on the .catch arm.
+						this.updateClineMessage(lastMessage).catch((error) => {
+							console.error("[Task#say] updateClineMessage failed:", error)
+						})
+					} else {
+						// This is a new and complete message, so add it like normal.
+						const sayTs = Date.now()
+
+						if (!options.isNonInteractive) {
+							this.lastMessageTs = sayTs
+						}
+
+						await this.addToClineMessages({
+							ts: sayTs,
+							type: "say",
+							say: type,
+							text,
+							images,
+							contextCondense,
+							contextTruncation,
+						})
+					}
 				}
 			} else {
-				// New now have a complete version of a previously partial message.
-				// This is the complete version of a previously partial
-				// message, so replace the partial with the complete version.
-				if (isUpdatingPreviousPartial) {
-					if (!options.isNonInteractive) {
-						this.lastMessageTs = lastMessage.ts
-					}
+				// This is a new non-partial message, so add it like normal.
+				const sayTs = Date.now()
 
-					lastMessage.text = text
-					lastMessage.images = images
-					lastMessage.partial = false
-					lastMessage.progressStatus = progressStatus
-
-					// Instead of streaming partialMessage events, we do a save
-					// and post like normal to persist to disk.
-					await this.saveClineMessages()
-
-					// More performant than an entire `postStateToWebview`.
-					// Fire-and-forget: see updateClineMessage call above for the
-					// rationale on the .catch arm.
-					this.updateClineMessage(lastMessage).catch((error) => {
-						console.error("[Task#say] updateClineMessage failed:", error)
-					})
-				} else {
-					// This is a new and complete message, so add it like normal.
-					const sayTs = Date.now()
-
-					if (!options.isNonInteractive) {
-						this.lastMessageTs = sayTs
-					}
-
-					await this.addToClineMessages({
-						ts: sayTs,
-						type: "say",
-						say: type,
-						text,
-						images,
-						contextCondense,
-						contextTruncation,
-					})
+				// A "non-interactive" message is a message is one that the user
+				// does not need to respond to. We don't want these message types
+				// to trigger an update to `lastMessageTs` since they can be created
+				// asynchronously and could interrupt a pending ask.
+				if (!options.isNonInteractive) {
+					this.lastMessageTs = sayTs
 				}
-			}
-		} else {
-			// This is a new non-partial message, so add it like normal.
-			const sayTs = Date.now()
 
-			// A "non-interactive" message is a message is one that the user
-			// does not need to respond to. We don't want these message types
-			// to trigger an update to `lastMessageTs` since they can be created
-			// asynchronously and could interrupt a pending ask.
-			if (!options.isNonInteractive) {
-				this.lastMessageTs = sayTs
+				await this.addToClineMessages({
+					ts: sayTs,
+					type: "say",
+					say: type,
+					text,
+					images,
+					checkpoint,
+					contextCondense,
+					contextTruncation,
+				})
 			}
-
-			await this.addToClineMessages({
-				ts: sayTs,
-				type: "say",
-				say: type,
-				text,
-				images,
-				checkpoint,
-				contextCondense,
-				contextTruncation,
-			})
+		} finally {
+			release?.()
 		}
 	}
 
@@ -2679,6 +2877,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	public abortTask(isAbandoned = false): Promise<void> {
+		this.lifetimeController.abort()
 		if (isAbandoned) {
 			this.abandoned = true
 		}
@@ -2687,6 +2886,48 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.cancelAssistantMessagePersistence()
 		this.abortPromise ??= this.abortTaskOnce()
 		return this.abortPromise
+	}
+
+	/**
+	 * Terminates a parallel worker without asking anyone: nobody can answer a worker's ask.
+	 * Idempotent; the first reason wins. The failure is recorded before any await so
+	 * waitForParallelTask sees it when abortTask() aborts lifetimeSignal.
+	 */
+	public async failParallelWorker(reason: string): Promise<void> {
+		if (!this.parallelWorker) {
+			throw new Error("failParallelWorker called on a non-worker task")
+		}
+
+		this.parallelWorkerFailure ??= reason
+		// Keeps a worker self-abort from being labelled or handled as a user cancel.
+		this.abortReason ??= "streaming_failed"
+
+		await this.say("error", t("common:errors.parallel_worker_failed", { reason })).catch((error) => {
+			console.error(`[Task#failParallelWorker] say failed for ${this.taskId}.${this.instanceId}:`, error)
+		})
+		await this.abortTask()
+	}
+
+	/**
+	 * Counts a failed API attempt against a parallel worker's retry cap. Returns true when
+	 * the cap is exhausted and the worker has been failed. Cancellations are not API failures.
+	 */
+	private async failWorkerIfRetriesExhausted(error: unknown): Promise<boolean> {
+		if (!this.parallelWorker || this.abort) return false
+
+		this.parallelWorkerApiFailures++
+		if (this.parallelWorkerApiFailures <= PARALLEL_WORKER_MAX_API_RETRIES) {
+			return false
+		}
+
+		const message =
+			error instanceof Error
+				? error.message
+				: typeof error === "object" && error !== null && "message" in error
+					? String(error.message)
+					: String(error)
+		await this.failParallelWorker(`API request failed after ${PARALLEL_WORKER_MAX_API_RETRIES} retries: ${message}`)
+		return true
 	}
 
 	private async abortTaskOnce(): Promise<void> {
@@ -2747,6 +2988,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	private async disposeOnce(): Promise<void> {
+		this.lifetimeController.abort()
 		console.log(`[Task#dispose] disposing task ${this.taskId}.${this.instanceId}`)
 		this.cancelAssistantMessagePersistence()
 
@@ -2992,6 +3234,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		while (stack.length > 0) {
 			const currentItem = stack.pop()!
 			const currentUserContent = currentItem.userContent
+			if (hasForceParallelCommand(currentUserContent)) {
+				this.forceParallelOnNextRequest = true
+			}
 			const currentIncludeFileDetails = currentItem.includeFileDetails
 
 			if (this.abort) {
@@ -3014,6 +3259,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						getModelId(this.apiConfiguration),
 					),
 				)
+
+				// Nobody can answer a parallel worker's ask; fail it instead of blocking the batch.
+				if (this.parallelWorker) {
+					await this.failParallelWorker(`Stopped after ${this.consecutiveMistakeLimit} consecutive mistakes`)
+					return true
+				}
 
 				const { response, text, images } = await this.ask(
 					"mistake_limit_reached",
@@ -3257,6 +3508,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.cachedStreamingModel = this.api.getModel()
 				const streamModelInfo = this.cachedStreamingModel.info
 				const cachedModelId = this.cachedStreamingModel.id
+				const streamIdleTimeoutMs = getApiStreamIdleTimeout()
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
@@ -3273,37 +3525,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				try {
 					const iterator = stream[Symbol.asyncIterator]()
 
-					// Helper to race iterator.next() with abort signal
-					const nextChunkWithAbort = async () => {
-						const nextPromise = iterator.next()
+					// Race iterator.next() with the current request's abort signal and, after the
+					// first chunk, the idle timeout. The first next() runs attemptApiRequest, which
+					// bounds the first-chunk wait itself and may back off, so it gets no timer here.
+					const nextChunk = (timeoutMs: number) =>
+						awaitWithStreamTimeout(iterator.next(), {
+							signal: this.currentRequestAbortController?.signal,
+							timeoutMs,
+							phase: "between_chunks",
+						})
 
-						// If we have an abort controller, race it with the next chunk
-						if (this.currentRequestAbortController) {
-							const abortPromise = new Promise<never>((_, reject) => {
-								const signal = this.currentRequestAbortController!.signal
-								if (signal.aborted) {
-									reject(new Error("Request cancelled by user"))
-								} else {
-									signal.addEventListener(
-										"abort",
-										() => {
-											reject(new Error("Request cancelled by user"))
-										},
-										{ once: true },
-									)
-								}
-							})
-							return await Promise.race([nextPromise, abortPromise])
-						}
-
-						// No abort controller, just return the next chunk normally
-						return await nextPromise
-					}
-
-					let item = await nextChunkWithAbort()
+					let item = await nextChunk(0)
 					while (!item.done) {
 						const chunk = item.value
-						item = await nextChunkWithAbort()
+						item = await nextChunk(streamIdleTimeoutMs)
 						if (!chunk) {
 							// Sometimes chunk is undefined, no idea that can cause
 							// it, but this workaround seems to fix it.
@@ -3465,14 +3700,22 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								assistantMessage += chunk.text
 
 								// Native tool calling: text chunks are plain text.
-								// Create or update a text content block directly
+								// Keep the presentation block local to its position in the stream.
+								// `assistantMessage` is the cumulative text used for API history;
+								// reusing it after a tool call would show the entire preceding
+								// paragraph again for each trailing text chunk (often just "\n").
 								const lastBlock = this.assistantMessageContent[this.assistantMessageContent.length - 1]
 								if (lastBlock?.type === "text" && lastBlock.partial) {
-									lastBlock.content = assistantMessage
+									lastBlock.content += chunk.text
 								} else {
+									// A whitespace-only tail after tool calls is formatting, not a
+									// separate assistant message in the chat.
+									if (!chunk.text.trim()) {
+										break
+									}
 									this.assistantMessageContent.push({
 										type: "text",
-										content: assistantMessage,
+										content: chunk.text,
 										partial: true,
 									})
 									this.userMessageContentReady = false
@@ -3490,8 +3733,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								// Only need to gracefully abort if this instance
 								// isn't abandoned (sometimes OpenRouter stream
 								// hangs, in which case this would affect future
-								// instances of Cline).
-								await abortStream("user_cancelled")
+								// instances of Cline). A parallel worker that failed
+								// itself mid-stream set abortReason first.
+								await abortStream(this.abortReason ?? "user_cancelled")
 							}
 
 							break // Aborts the stream.
@@ -3700,12 +3944,22 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						console.error("Background usage collection failed:", error)
 					})
 				} catch (error) {
+					if (error instanceof StreamIdleTimeoutError) {
+						// Close the stalled socket and the provider generator, then let the
+						// generic mid-stream path retry. Tools already executed this turn may
+						// run again on retry; accepted, same as other mid-stream failures.
+						this.currentRequestAbortController?.abort(error)
+						void stream.return(undefined).catch(() => {})
+					}
+
 					// Abandoned happens when extension is no longer waiting for the
 					// Cline instance to finish aborting (error is thrown here when
 					// any function in the for loop throws due to this.abort).
 					if (!this.abandoned) {
-						// Determine cancellation reason
-						const cancelReason: ClineApiReqCancelReason = this.abort ? "user_cancelled" : "streaming_failed"
+						// Determine cancellation reason (a parallel worker self-abort sets abortReason first)
+						const cancelReason: ClineApiReqCancelReason = this.abort
+							? (this.abortReason ?? "user_cancelled")
+							: "streaming_failed"
 
 						const rawErrorMessage = error.message ?? JSON.stringify(serializeError(error), null, 2)
 						const streamingFailedMessage = this.abort
@@ -3722,6 +3976,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						} else if (error instanceof OutputTokenLimitError) {
 							// Truncation repeats on an identical request, so never auto-retry it
 							// (even with auto-approval); let the user decide once.
+							if (this.parallelWorker) {
+								await this.failParallelWorker(
+									"Model output token limit reached; the identical request would truncate again",
+								)
+								break
+							}
+
 							const { response } = await this.ask("api_req_failed", rawErrorMessage)
 
 							if (response !== "yesButtonClicked") {
@@ -3742,9 +4003,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								`[Task#${this.taskId}.${this.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
 							)
 
-							// Apply exponential backoff similar to first-chunk errors when auto-resubmit is enabled
+							if (await this.failWorkerIfRetriesExhausted(error)) {
+								break
+							}
+
+							// Apply exponential backoff similar to first-chunk errors when auto-resubmit is enabled.
+							// Parallel workers always back off: nothing else paces their retries.
 							const stateForBackoff = await this.providerRef.deref()?.getState()
-							if (stateForBackoff?.autoApprovalEnabled) {
+							if (stateForBackoff?.autoApprovalEnabled || this.parallelWorker) {
 								await this.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
 
 								// Check if task was aborted during the backoff
@@ -3908,6 +4174,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				if (hasTextContent || hasToolUses) {
 					// Reset counter when we get a successful response with content
 					this.consecutiveNoAssistantMessagesCount = 0
+					this.parallelWorkerApiFailures = 0
 					// Display grounding sources to the user if they exist
 					if (pendingGroundingSources.length > 0) {
 						const citationLinks = pendingGroundingSources.map((source, i) => `[${i + 1}](${source.url})`)
@@ -4048,7 +4315,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// NOTE: This MUST happen AFTER saving the assistant message to API history.
 				// When new_task is in the batch, it triggers delegation which calls flushPendingToolResultsToHistory().
 				// If the assistant message isn't saved yet, tool_results would appear before tool_use blocks.
-				if (partialBlocks.length > 0) {
+				if (
+					partialBlocks.length > 0 ||
+					this.currentStreamingContentIndex < this.assistantMessageContent.length
+				) {
 					// If there is content to update then it will complete and
 					// update `this.userMessageContentReady` to true, which we
 					// `pWaitFor` before making the next request.
@@ -4072,6 +4342,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// if (this.currentStreamingContentIndex >= completeBlocks.length) {
 					// 	this.userMessageContentReady = true
 					// }
+
+					// Stream-end guard: every block has been presented and no presenter
+					// run is in flight, so nothing else would flip the ready flag.
+					if (
+						!this.presentAssistantMessageLocked &&
+						this.currentStreamingContentIndex >= this.assistantMessageContent.length
+					) {
+						this.userMessageContentReady = true
+					}
 
 					await pWaitFor(() => this.userMessageContentReady || this.abort || this.abandoned)
 
@@ -4135,6 +4414,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						await this.say("error", "MODEL_NO_ASSISTANT_MESSAGES")
 					}
 
+					// An exhausted worker stops here, before the pop below, so the saved
+					// history keeps this iteration's user message for a later explicit resume.
+					if (
+						await this.failWorkerIfRetriesExhausted(new Error("The model returned no assistant messages"))
+					) {
+						return true
+					}
+
 					// IMPORTANT: We already added the user message to
 					// apiConversationHistory at line 1876. Since the assistant failed to respond,
 					// we need to remove that message before retrying to avoid having two consecutive
@@ -4154,9 +4441,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 					}
 
-					// Check if we should auto-retry or prompt the user
-					// Reuse the state variable from above
-					if (state?.autoApprovalEnabled) {
+					// Check if we should auto-retry or prompt the user.
+					// Reuse the state variable from above. Nobody can answer a worker's ask.
+					if (state?.autoApprovalEnabled || this.parallelWorker) {
 						// Auto-retry with backoff - don't persist failure message when retrying
 						await this.backoffAndAnnounce(
 							currentItem.retryAttempt ?? 0,
@@ -4338,7 +4625,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				undefined, // todoList
 				this.api.getModel().id,
 				provider.getSkillsManager(),
-				requestState?.disabledTools,
+				this.getDisabledTools(requestState?.disabledTools),
 				modelInfo,
 			)
 		})()
@@ -4462,7 +4749,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				customModes: state?.customModes,
 				experiments: state?.experiments,
 				apiConfiguration,
-				disabledTools: state?.disabledTools,
+				disabledTools: this.getDisabledTools(state?.disabledTools),
 				modelInfo,
 				includeAllToolsWithRestrictions: false,
 			})
@@ -4491,13 +4778,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Generate environment details to include in the condensed summary
 			const environmentDetails = await getEnvironmentDetails(this, true)
 
+			const condensingApiHandler = await this.getCondensingApiHandler()
+
 			// Force aggressive truncation by keeping only 75% of the conversation history
 			const truncateResult = await manageContext({
 				messages: this.apiConversationHistory,
 				totalTokens: contextTokens || 0,
 				maxTokens,
 				contextWindow,
-				apiHandler: this.api,
+				apiHandler: condensingApiHandler,
 				autoCondenseContext: true,
 				autoCondenseContextPercent: FORCED_CONTEXT_REDUCTION_PERCENT,
 				systemPrompt: await this.getSystemPrompt(state, modelInfo),
@@ -4711,7 +5000,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						customModes: state?.customModes,
 						experiments: state?.experiments,
 						apiConfiguration,
-						disabledTools: state?.disabledTools,
+						disabledTools: this.getDisabledTools(state?.disabledTools),
 						modelInfo: requestModelInfo,
 						includeAllToolsWithRestrictions: false,
 					})
@@ -4750,13 +5039,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					? await this.getFilesReadByRooSafely("attemptApiRequest")
 					: undefined
 
+			const condensingApiHandler = await this.getCondensingApiHandler()
+
 			try {
 				const truncateResult = await manageContext({
 					messages: this.apiConversationHistory,
 					totalTokens: contextTokens,
 					maxTokens,
 					contextWindow,
-					apiHandler: this.api,
+					apiHandler: condensingApiHandler,
 					autoCondenseContext,
 					autoCondenseContextPercent,
 					systemPrompt,
@@ -4833,6 +5124,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// enabling accurate rewind operations while still sending condensed history to the API.
 		const effectiveHistory = getEffectiveApiHistory(this.apiConversationHistory)
 		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
+		// Already-sent history goes out verbatim, including every earlier
+		// <environment_details> block. Rewriting it per request (e.g. dropping
+		// superseded snapshots) changes the previous prompt's bytes, which defeats
+		// server-side prefix/KV reuse; on linear-attention models such as GLM-5.3
+		// (ds4) any divergence forces a full re-prefill. Historical snapshots are
+		// compacted only at condense time (see summarizeConversation).
 		// For API only: merge consecutive user messages (excludes summary messages per
 		// mergeConsecutiveApiMessages implementation) without mutating stored history.
 		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
@@ -4885,7 +5182,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				customModes: state?.customModes,
 				experiments: state?.experiments,
 				apiConfiguration,
-				disabledTools: state?.disabledTools,
+				disabledTools: this.getDisabledTools(state?.disabledTools),
 				modelInfo,
 				includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			})
@@ -4894,10 +5191,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		const shouldIncludeTools = allTools.length > 0
+		const parallelTasksAvailable = allTools.some(
+			(tool) =>
+				tool.type === "function" &&
+				tool.function.name === "parallel_tasks" &&
+				(!allowedFunctionNames || allowedFunctionNames.includes("parallel_tasks")),
+		)
+		// Some compatible model endpoints ignore the required tasks array and emit {}.
+		// Give that same batch one bounded retry with its tool explicitly selected.
+		const malformedBatchRetry = this.parallelTaskArgumentRecovery.consume(parallelTasksAvailable)
+		const forceParallelTasks = parallelTasksAvailable && (this.forceParallelOnNextRequest || malformedBatchRetry)
+		this.forceParallelOnNextRequest = false
 
-		// Create an AbortController to allow cancelling the request mid-stream
-		this.currentRequestAbortController = new AbortController()
-		const abortSignal = this.currentRequestAbortController.signal
+		// Create an AbortController to allow cancelling the request mid-stream. Keep a local
+		// reference so a first-chunk timeout aborts this request even if the field was cleared.
+		const requestAbortController = new AbortController()
+		this.currentRequestAbortController = requestAbortController
+		const abortSignal = requestAbortController.signal
 
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
@@ -4908,8 +5218,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			...(shouldIncludeTools
 				? {
 						tools: allTools,
-						tool_choice: "auto",
-						parallelToolCalls: true,
+						tool_choice: forceParallelTasks
+							? { type: "function" as const, function: { name: "parallel_tasks" } }
+							: "auto",
+						parallelToolCalls: !forceParallelTasks,
 						// When mode restricts tools, provide allowedFunctionNames so providers
 						// like Gemini can see all tools in history but only call allowed ones
 						...(allowedFunctionNames ? { allowedFunctionNames } : {}),
@@ -4941,26 +5253,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Awaiting first chunk to see if it will throw an error.
 			this.isWaitingForFirstChunk = true
 
-			// Race between the first chunk and the abort signal
+			// Race the first chunk with the abort signal and the API request timeout. The
+			// SDK's own timeout stops at response headers, so a stalled body needs this bound.
 			const firstChunkPromise = iterator.next()
-			const abortPromise = new Promise<never>((_, reject) => {
-				if (abortSignal.aborted) {
-					reject(new Error("Request cancelled by user"))
-				} else {
-					abortSignal.addEventListener(
-						"abort",
-						() => {
-							reject(new Error("Request cancelled by user"))
-						},
-						{ once: true },
-					)
-				}
+			const firstChunk = await awaitWithStreamTimeout(firstChunkPromise, {
+				signal: abortSignal,
+				timeoutMs: getApiRequestTimeout(),
+				phase: "first_chunk",
 			})
-
-			const firstChunk = await Promise.race([firstChunkPromise, abortPromise])
 			yield firstChunk.value
 			this.isWaitingForFirstChunk = false
 		} catch (error) {
+			if (error instanceof StreamIdleTimeoutError) {
+				// Close the stalled request and provider generator, then fall through to the
+				// normal first-chunk retry handling below.
+				requestAbortController.abort(error)
+				void iterator.return?.(undefined)?.catch(() => {})
+			}
+
 			this.isWaitingForFirstChunk = false
 			const isContextWindowExceededError = checkContextWindowExceededError(error)
 
@@ -4981,8 +5291,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				return
 			}
 
+			// The worker retry cap counts on the Task because retryAttempt resets between the
+			// first-chunk and mid-stream retry layers. failParallelWorker has aborted the task,
+			// so this propagates to recursivelyMakeClineRequests' abort path.
+			if (await this.failWorkerIfRetriesExhausted(error)) {
+				throw new Error(
+					`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted after worker retry cap`,
+				)
+			}
+
 			// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
-			if (autoApprovalEnabled) {
+			// Parallel workers always auto-retry: nobody can answer api_req_failed.
+			if (autoApprovalEnabled || this.parallelWorker) {
 				// Apply shared exponential backoff and countdown UX
 				await this.backoffAndAnnounce(retryAttempt, error)
 

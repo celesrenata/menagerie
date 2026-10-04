@@ -1,0 +1,65 @@
+{
+	"task": "OmniRoute failure-fix (A-E) + per-request cost-tier dropdown",
+	"reviewedAt": "2026-10-02T23:15:00-07:00",
+	"verdict": "APPROVED",
+	"reviewDoc": "2026-10-02-231500-review.md",
+	"repos": {
+		"OmniRoute": { "branch": "feat/hybrid-reader-combo", "base": "release/v3.8.52", "pushed": false },
+		"menagerie": { "branch": "feat/omniroute-tier-dropdown-feat005", "base": "main", "pushed": false },
+		"esnixi": { "branch": "feat/nvfp4-reader-fabric", "host": "celes@192.168.42.254", "pushed": false }
+	},
+	"failures": {
+		"B_context_off_by_one": {
+			"status": "VERIFIED",
+			"feat": "FEAT-001",
+			"evidence": "Live GET /api/model-capability-overrides and GET /v1/models both read back vllm/qwen3.8-27b-nvfp4 = context_length 131072 / max_input_tokens 98304 and -balanced = 131072 / 65536. omniroute-routing.py commit 17d4bcd adds the balanced layouts entry; 944a304 adds the bearer header required for --apply. esnixi vllm.nix/vllm-switch.py untouched after pre-existing reader-fabric commit 101c5c9 (git diff --name-only 101c5c9..a44788d shows neither)."
+		},
+		"C_system_message_displacement": {
+			"status": "VERIFIED",
+			"feat": "FEAT-002",
+			"evidence": "injection.ts commit db3586f9e adds vllm, ollama-local, ollama, llama-cpp, llamacpp to BUILTIN_PROVIDERS_SYSTEM_MUST_BE_FIRST. Tests parameterize all five providers: assert messages[0] system message starts with merged memory text and zero system-role messages at index > 0; regression guard confirms openai keeps #3890 mid-array splice. npx vitest run injection.test.ts -> 29/29 pass; npm run typecheck:core clean. Operator redeploy / OMNIROUTE_STRICT_SYSTEM_PROVIDERS env mitigation documented, not agent-applied."
+		},
+		"D_stale_tier5_id": {
+			"status": "VERIFIED",
+			"feat": "FEAT-003",
+			"evidence": "omniroute-mode.py commit a44788d changes tier-5 ('openai/gpt-5.6',35) -> ('openai/gpt-5.6-terra',35). Live: openai/gpt-5.6-terra present in /v1/models; /api/combos has 0 bare openai/gpt-5.6 references and 22 -terra (plus -sol 13, -luna 12). The bare gpt-5.6 remains only as an unresolvable catalog alias in /v1/models, which is the Failure D signature; no combo routes to it."
+		},
+		"A_empty_502_observability": {
+			"status": "VERIFIED",
+			"feat": "FEAT-004",
+			"evidence": "diagnostics.ts commit f48cdb12a adds mem=true|false|? (3-state) to the [MALFORMED-200] line; memorySkillsInjection.ts returns typed memoryInjected that flips only on real memory-text merge (not tool injection); chatCore.ts passes it. Diagnosis evidence-grounded: empty-502 NOT attributed to injection (all 33 retained empty-502 logs had MEM=False; real 502s are ECONNREFUSED/transition races). The two 502s during probes classified as 'fetch failed' and switcher 'terminated', not empty-output and not System-first. Hypothesis left re-openable via new field. diagnostics + memory-skills node tests pass."
+		},
+		"E_parallel_spreading": {
+			"status": "VERIFIED",
+			"feat": "FEAT-004",
+			"evidence": "Runtime call logs: two concurrent hybrid/code requests spread to ds4-glm53@stabulous-m5max + qwen3.8-27b-nvfp4@esnixi-5090 (both 200). reader request -> qwen3.5-reader:9b@gremlin-4070ti (9B reader, not qwen-27b, confirms messages 1-2). code request -> ds4-glm53 GLM, never MLX llama-cpp/mlx-qwen3.8-27b-4bit (confirms 'mlx route is wrong'). No System-first 500 recurred. m5max maxConcurrent change GATED: 2-concurrent probe inflated latency 6-12x (>160s vs ~13-27s), so left at 1; GET /api/providers confirms 1, no mutation. esnixi-5090/gremlin IQ3 untouched."
+		}
+	},
+	"feat005_tier_dropdown": {
+		"status": "VERIFIED",
+		"omniroute_resolver": "resolveRequestTier parses integer 1-5 (else undefined), threaded through resolveRequestAutoControls/resolveAutoStrategy into AutoComboConfig.tierCeiling. engine.ts maps 1-5 onto existing free/cheap/premium bands via shared classifyTier/PROVIDER_TIER (no hardcoded model lists); ceiling preserved through empty-pool self-healing fallback. requestTier.test.ts proves parse validation, tier-3 excludes premium-only, tier-1 free-only, absent ceiling full pool. 75 services tests pass incl 6 new; typecheck:core clean.",
+		"menagerie_roundtrip": "omniRouteTier global setting (shared omniRouteTierSchema z.number().int().min(1).max(5)); in ExtensionState + OpenAI provider schema. ClineProvider.getState() returns it (undefined=server default), injects onto active profile only when isOmniRoute, strips otherwise; getStateToPostToWebview() destructures+returns. omniRouteRequestHeaders() emits X-OmniRoute-Tier only for OmniRoute profile with valid 1-5; OpenAiHandler merges into defaultHeaders.",
+		"ui": "OmniRouteTierDropdown renders $..$$$$$ (+Default) beside AutoApproveDropdown in ChatTextArea, visible only for OmniRoute profiles, immediate-save via updateSettings (correct for chat-toolbar control; AGENTS.md cachedState rule is SettingsView-specific).",
+		"agents_md_compliance": "Webview suite 1886 pass; 4 src specs 405 pass (header set/unset/non-OmniRoute/out-of-range, round-trip set/unset/non-OmniRoute strip, dropdown binding/save/clear/visibility). eslint --prune-suppressions --max-warnings=0 on every edited src file exits 0 (no count increase). No .changeset/CHANGELOG edits in either repo."
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"confidence": "confirmed",
+			"label": "Dirty working tree (eslint-suppressions.json)",
+			"detail": "The --prune-suppressions run reformatted src/eslint-suppressions.json (whitespace/line-ending only, 1711/1711 line parity, no count change) and the reformat is uncommitted in the menagerie working tree. Non-blocking; revert so the tree is clean before a later commit picks it up."
+		},
+		{
+			"severity": "info",
+			"confidence": "confirmed",
+			"label": "Bundled combo-id catalog fix on FEAT-005 branch",
+			"detail": "src/api/providers/omniroute.ts (/combos instead of /models) and ProviderSettingsManager.cleanModelId OmniRoute guard are an unrelated fix on the same branch. Documented (combo-fix-verification.md) and tested, but outside the five-failure scope."
+		},
+		{
+			"severity": "info",
+			"confidence": "confirmed",
+			"label": "src/package.json version bump bundled in FEAT-005 commit",
+			"detail": "3.84.3 -> 3.84.4 rides the FEAT-005 commit. AGENTS.md forbids CHANGELOG/changeset (none present) but not package.json; a version bump is release-prep and ideally separated. Non-blocking."
+		}
+	]
+}

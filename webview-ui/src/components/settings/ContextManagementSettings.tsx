@@ -28,6 +28,7 @@ import { SearchableSetting } from "./SearchableSetting"
 type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	autoCondenseContext: boolean
 	autoCondenseContextPercent: number
+	condensingApiConfigId?: string
 	listApiConfigMeta: any[]
 	maxOpenTabsContext: number
 	maxWorkspaceFiles: number
@@ -48,6 +49,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	setCachedStateField: SetCachedStateField<
 		| "autoCondenseContext"
 		| "autoCondenseContextPercent"
+		| "condensingApiConfigId"
 		| "maxOpenTabsContext"
 		| "maxWorkspaceFiles"
 		| "showRooIgnoredFiles"
@@ -68,6 +70,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 export const ContextManagementSettings = ({
 	autoCondenseContext,
 	autoCondenseContextPercent,
+	condensingApiConfigId,
 	listApiConfigMeta,
 	maxOpenTabsContext,
 	maxWorkspaceFiles,
@@ -584,6 +587,42 @@ export const ContextManagementSettings = ({
 						</div>
 					</div>
 				)}
+
+				{/* Condensing API Configuration */}
+				<div>
+					<label className="block font-medium mb-1">
+						{t("settings:contextManagement.condensingApiConfiguration.label")}
+					</label>
+					<Select
+						value={condensingApiConfigId || "-"}
+						onValueChange={(value) =>
+							setCachedStateField("condensingApiConfigId", value === "-" ? "" : value)
+						}>
+						<SelectTrigger data-testid="condensing-api-config-select" className="w-full">
+							<SelectValue
+								placeholder={t(
+									"settings:contextManagement.condensingApiConfiguration.useCurrentConfig",
+								)}
+							/>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="-">
+								{t("settings:contextManagement.condensingApiConfiguration.useCurrentConfig")}
+							</SelectItem>
+							{(listApiConfigMeta || []).map((config: { id: string; name?: string }) => (
+								<SelectItem
+									key={config.id}
+									value={config.id}
+									data-testid={`${config.id}-condensing-option`}>
+									{config.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
+						{t("settings:contextManagement.condensingApiConfiguration.description")}
+					</div>
+				</div>
 			</Section>
 		</div>
 	)

@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "@ dosya arama özelliği için dizinlenecek maksimum dosya sayısı. Daha yüksek değerler büyük projelerde daha iyi arama sonuçları sağlar ancak daha fazla bellek kullanabilir. Varsayılan: 10.000.",
 	"settings.useAgentRules.description": "Aracıya özgü kurallar için AGENTS.md dosyalarının yüklenmesini etkinleştirin (bkz. https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "API yanıt zaman aşımı (saniye, varsayılan: 600, aralık: 1–3600). Yerel sağlayıcılar için daha yüksek değerler önerilir. Desteklenmeyen sağlayıcılar: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "Bu kadar saniye boyunca veri gelmediğinde akış halindeki API yanıtını iptal et ve yeniden dene (varsayılan: 300, aralık: 0–3600, 0 devre dışı bırakır). İlk token için bekleme süresi API yanıt zaman aşımı ile belirlenir.",
 	"settings.newTaskRequireTodos.description": "new_task aracıyla yeni görevler oluştururken todos parametresini gerekli kıl",
 	"settings.codeIndex.embeddingBatchSize.description": "Kod indeksleme sırasında gömme işlemleri için toplu iş boyutu. Bunu API sağlayıcınızın sınırlarına göre ayarlayın. Varsayılan 60'tır.",
 	"settings.debug.description": "API konuşma geçmişini ve kullanıcı arayüzü mesajlarını geçici dosyalarda biçimlendirilmiş JSON olarak görüntülemek için ek düğmeler göstermek üzere hata ayıklama modunu etkinleştir.",

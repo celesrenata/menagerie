@@ -356,7 +356,21 @@
 		"triggerLabel_zero": "0 auto-approve",
 		"triggerLabel_one": "1 auto-approved",
 		"triggerLabel_other": "{{count}} auto-approved",
-		"triggerLabelAll": "BRRR"
+		"triggerLabelAll": "BRRR",
+		"yolo": "YOLO",
+		"yoloDescription": "Run unattended with Destructive Command Guard. Reads and edits, including protected and outside-workspace files, are auto-approved. Guarded commands are rejected with feedback so Zoo can try another approach. Request and cost pauses are removed."
+	},
+	"forceParallel": {
+		"label": "Parallel",
+		"ariaLabel": "Force Parallel",
+		"description": "Make Zoo's next turn dispatch 2–4 independent tasks together"
+	},
+	"omniRouteTier": {
+		"title": "Cost tier",
+		"description": "Request routing up to this cost tier on OmniRoute. Higher tiers allow pricier models.",
+		"tooltip": "OmniRoute cost tier for this request",
+		"triggerLabelDefault": "Tier",
+		"optionDefault": "Default (server decides)"
 	},
 	"announcement": {
 		"title": "Zoo Code {{version}} Released",

@@ -28,7 +28,8 @@ export interface IndentationParams {
 /**
  * Parameters for the read_file tool (new format).
  *
- * NOTE: This is the canonical, single-file-per-call shape.
+ * Single-file compatibility shape. The native tool schema uses BatchReadFileParams
+ * with an array-valued path even when there is only one file.
  */
 export interface ReadFileParams {
 	/** Path to the file, relative to workspace */
@@ -40,6 +41,17 @@ export interface ReadFileParams {
 	/** Maximum number of lines to read (default: 2000) */
 	limit?: number
 	/** Indentation-mode configuration (only used when mode === "indentation") */
+	indentation?: IndentationParams
+}
+
+/** Parameters for one call that reads several independent files. */
+export interface BatchReadFileParams {
+	/** Up to eight workspace-relative paths to read together. */
+	path: string[]
+	/** Shared read options applied to every path in this batch. */
+	mode?: ReadFileMode
+	offset?: number
+	limit?: number
 	indentation?: IndentationParams
 }
 
@@ -83,7 +95,7 @@ export interface LegacyReadFileParams {
  * Union type for read_file tool parameters.
  * Supports both new single-file format and legacy multi-file format.
  */
-export type ReadFileToolParams = ReadFileParams | LegacyReadFileParams
+export type ReadFileToolParams = ReadFileParams | BatchReadFileParams | LegacyReadFileParams
 
 /**
  * Type guard to check if params are in legacy format.
@@ -97,6 +109,10 @@ export function isLegacyReadFileParams(params: ReadFileToolParams): params is Le
 	const hasLegacyFlag = "_legacyFormat" in params && params._legacyFormat === true
 	const hasFilesArray = "files" in params && Array.isArray((params as unknown as Record<string, unknown>).files)
 	return hasLegacyFlag || hasFilesArray
+}
+
+export function isBatchReadFileParams(params: ReadFileToolParams): params is BatchReadFileParams {
+	return "path" in params && Array.isArray(params.path)
 }
 
 export interface Coordinate {

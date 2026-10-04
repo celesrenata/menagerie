@@ -78,6 +78,7 @@ export function getRulesSection(
 	cwd: string,
 	settings: SystemPromptSettings | undefined,
 	policy: EffectiveToolPolicy,
+	parallelToolExecution = false,
 ): string {
 	const chainOp = getCommandChainOperator()
 	const chainNote = getCommandChainNote()
@@ -86,6 +87,7 @@ export function getRulesSection(
 	const hasAskFollowupQuestion = policy.tools.has("ask_followup_question")
 	const hasListFiles = policy.tools.has("list_files")
 	const hasReadFile = policy.tools.has("read_file")
+	const hasParallelTasks = policy.tools.has("parallel_tasks")
 	const hasAttemptCompletion = policy.tools.has("attempt_completion")
 	const hasEditTool = ["apply_diff", "write_to_file", "edit", "search_replace", "edit_file", "apply_patch"].some(
 		(tool) => policy.tools.has(tool),
@@ -160,7 +162,23 @@ export function getRulesSection(
 
 	if (hasReadFile) {
 		rules.push(
-			"The user may provide a file's contents directly in their message, in which case you shouldn't use the read_file tool to get the file contents again since you already have it.",
+			"The read_file tool requires path to be an array, even for one file. When multiple file paths are already known, read all independent files in one read_file call by putting every path in that array (up to eight); do not read them one at a time across separate turns. Only make another call for paths discovered from earlier results. The user may provide a file's contents directly in their message, in which case you shouldn't use the read_file tool to get the file contents again since you already have it.",
+		)
+	}
+
+	if (hasParallelTasks) {
+		rules.push(
+			"When two or more parts of a task can be completed independently, start them together with one parallel_tasks call before doing the first part yourself. Split independent research, file gathering, design sections, or implementation areas into 2–4 bounded workers, then integrate their results. With three independent Code scopes and relevant specs, contracts, docs, or existing tests, add a fourth project-reader worker to audit a small, specific set of acceptance criteria or interfaces while implementation proceeds. Keep that reader read-only and within its 32k context. Do not invent a filler task if there is no useful independent reading. This applies inside a delegated child task too: a parent waiting on one new_task does not make that child's independent work sequential. Use new_task only for one dependent step whose result is needed before the next step can begin. A single chat makes one model request at a time, so serial new_task handoffs leave other available models idle.",
+		)
+	}
+
+	if (parallelToolExecution) {
+		rules.push(
+			"Continue as soon as tool results arrive; do not wait for another user response unless a tool explicitly requires approval or you need missing information. Issue independent read-only tool calls together in one assistant response, up to 8 calls per batch; for read_file, pass all known independent paths in its required path array. When using parallel_tasks, each worker's mode selects its saved provider/model profile: assign bounded file gathering to a fast reader mode, long synthesis to a research mode, and implementation to Code. Use different suitable modes for independent subtasks when available; do not route all workers through the same long-task mode by default. Start independent workers in one parallel_tasks call. Wait only when a later operation depends on an earlier result; keep edits, commands, and MCP operations in their required order.",
+		)
+	} else {
+		rules.push(
+			"Continue as soon as tool results arrive; do not wait for another user response unless a tool explicitly requires approval or you need missing information.",
 		)
 	}
 
@@ -185,10 +203,6 @@ export function getRulesSection(
 			"MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.",
 		)
 	}
-
-	rules.push(
-		"It is critical you wait for the user's response after each tool use, in order to confirm the success of the tool use. For example, if asked to make a todo app, you would create a file, wait for the user's response it was created successfully, then create another file if needed, wait for the user's response it was created successfully, etc.",
-	)
 
 	return `====
 

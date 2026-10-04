@@ -1,0 +1,24 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "inf residency accepted",
+			"detail": "_env_seconds accepts VLLM_SWITCH_RESIDENCY_SECONDS=inf, which pins the active unit until the reader idle stop. Optionally clamp it or reject math.isinf."
+		},
+		{
+			"severity": "informational",
+			"confidence": "confirmed",
+			"label": "Staged files are intent-to-add",
+			"detail": "setup.md's 'A' files show as ' A' (intent-to-add); git diff --cached is empty. Unrelated dirty set unchanged; keep the path-limited commit."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "Not committed or deployed",
+			"detail": "Plan items 5 (path-limited commit) and 6 (nixos-rebuild switch + journal observation) are still outstanding."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/vllm-switcher-hysteresis/review.md"
+}

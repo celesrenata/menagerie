@@ -1,0 +1,10 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"Non-blocking (likely): combo proactive fallback compression in open-sse/services/combo/executeTargetAttempt.ts:275 calls applyCompression without config/cache context, so a ds4 target reached as fallback (i > 0) with zeroLatencyOptimizationsEnabled still gets Lite tool-result truncation. Check the hybrid/planner combo config or pass prefixCacheSensitive there.",
+		"Non-blocking (confirmed): the memory freeze is in-process. An OmniRoute restart or redeploy re-retrieves memories on the next turn and may reorder the 'Memory context:' text, costing one full ds4 re-prefill per active conversation.",
+		"Non-blocking (confirmed): prefixCacheSensitive gates only Lite compressToolResults. Other rewriting engines (caveman/standard/aggressive/non-Lite stacked steps) are unaffected. Document this next to isPrefixCacheSensitive.",
+		"Non-blocking (possible): when the session key falls back to the hash of a short, generic first user message, unrelated conversations share one frozen memory entry, and each hit refreshes the 6 h idle TTL."
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/glm53-prefix-stability/omniroute-review.md"
+}

@@ -97,6 +97,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		alwaysAllowModeSwitch,
 		customModes,
 		soundEnabled,
+		attentionNotificationsEnabled,
 		soundVolume,
 		messageQueue = [],
 		showWorktreesInHomeScreen,
@@ -251,7 +252,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const secondLastMessage = useMemo(() => messages.at(-2), [messages])
 
 	const volume = typeof soundVolume === "number" ? soundVolume : 0.5
-	const [playNotification] = useSound(`${audioBaseUri}/notification.wav`, { volume, soundEnabled, interrupt: true })
+	const [playNotification] = useSound(`${audioBaseUri}/notification.wav`, {
+		volume: attentionNotificationsEnabled ? 1 : volume,
+		soundEnabled: attentionNotificationsEnabled || soundEnabled,
+		interrupt: true,
+	})
 	const [playCelebration] = useSound(`${audioBaseUri}/celebration.wav`, { volume, soundEnabled, interrupt: true })
 	const [playProgressLoop] = useSound(`${audioBaseUri}/progress_loop.wav`, { volume, soundEnabled, interrupt: true })
 
@@ -259,7 +264,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const playSound = useCallback(
 		(audioType: AudioType) => {
-			if (!soundEnabled) {
+			if (!soundEnabled && !(attentionNotificationsEnabled && audioType === "notification")) {
 				return
 			}
 
@@ -284,7 +289,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					console.warn(`Unknown audio type: ${audioType}`)
 			}
 		},
-		[soundEnabled, playNotification, playCelebration, playProgressLoop],
+		[soundEnabled, attentionNotificationsEnabled, playNotification, playCelebration, playProgressLoop],
 	)
 
 	function playTts(text: string) {
@@ -430,6 +435,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							// - Its messages contain a completion_result (either ask or say)
 							const isCompletedSubtask =
 								currentTaskItem?.parentTaskId &&
+								currentTaskItem.status === "completed" &&
 								messages.some(
 									(msg) => msg.ask === "completion_result" || msg.say === "completion_result",
 								)
@@ -501,7 +507,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	// Update button text when messages change (e.g., completion_result is added) for subtasks in resume_task state
 	useEffect(() => {
-		if (clineAsk === "resume_task" && currentTaskItem?.parentTaskId) {
+		if (clineAsk === "resume_task" && currentTaskItem?.parentTaskId && currentTaskItem.status === "completed") {
 			const hasCompletionResult = messages.some(
 				(msg) => msg.ask === "completion_result" || msg.say === "completion_result",
 			)
@@ -510,7 +516,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				setSecondaryButtonText(undefined)
 			}
 		}
-	}, [clineAsk, currentTaskItem?.parentTaskId, messages, t])
+	}, [clineAsk, currentTaskItem?.parentTaskId, currentTaskItem?.status, messages, t])
 
 	useEffect(() => {
 		if (messages.length === 0) {
@@ -614,7 +620,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [])
 
-	const handleChatReset = useCallback(() => {
+	const handleChatReset = useCallback((preserveDraft = false) => {
 		// Clear any pending auto-approval timeout
 		if (autoApproveTimeoutRef.current) {
 			clearTimeout(autoApproveTimeoutRef.current)
@@ -624,9 +630,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		userRespondedRef.current = false
 
 		// Only reset message-specific state, preserving mode.
-		setInputValue("")
+		if (!preserveDraft) setInputValue("")
 		setSendingDisabled(true)
-		setSelectedImages([])
+		if (!preserveDraft) setSelectedImages([])
 		setClineAsk(undefined)
 		setEnableButtons(false)
 		// Do not reset mode here as it should persist.
@@ -640,7 +646,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	 * @param images - Array of image data URLs to send with the message
 	 */
 	const handleSendMessage = useCallback(
-		(text: string, images: string[]) => {
+		(text: string, images: string[], preserveDraft = false) => {
 			text = text.trim()
 
 			if (text || images.length > 0) {
@@ -660,13 +666,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					sendingDisabled ||
 					isStreaming ||
 					messageQueue.length > 0 ||
-					clineAskRef.current === "command_output"
+					clineAskRef.current === "command_output" ||
+					(preserveDraft && ["tool", "command", "use_mcp_server"].includes(clineAskRef.current ?? ""))
 				) {
 					try {
 						console.log("queueMessage", text, images)
 						vscode.postMessage({ type: "queueMessage", text, images })
-						setInputValue("")
-						setSelectedImages([])
+						if (!preserveDraft) {
+							setInputValue("")
+							setSelectedImages([])
+						}
 					} catch (error) {
 						console.error(
 							`Failed to queue message: ${error instanceof Error ? error.message : String(error)}`,
@@ -712,7 +721,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
 				}
 
-				handleChatReset()
+				handleChatReset(preserveDraft)
 			}
 		},
 		[
@@ -813,6 +822,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					// start a new task instead of resuming since the subtask is done
 					const isCompletedSubtaskForClick =
 						currentTaskItem?.parentTaskId &&
+						currentTaskItem.status === "completed" &&
 						messagesRef.current.some(
 							(msg) => msg.ask === "completion_result" || msg.say === "completion_result",
 						)
@@ -849,7 +859,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			clearApprovalButtons()
 		},
-		[clineAsk, startNewTask, currentTaskItem?.parentTaskId, clearApprovalButtons],
+		[clineAsk, startNewTask, currentTaskItem?.parentTaskId, currentTaskItem?.status, clearApprovalButtons],
 	)
 
 	const handleSecondaryButtonClick = useCallback(
@@ -1879,6 +1889,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
 				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				onForceParallel={() => handleSendMessage("/force-parallel", [], true)}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {

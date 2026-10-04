@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "為 @ 檔案搜尋功能建立索引時要索引的最大檔案數。較大的值在大型專案中提供更好的搜尋結果，但可能佔用更多記憶體。預設值：10,000。",
 	"settings.useAgentRules.description": "為特定於代理的規則啟用 AGENTS.md 檔案的載入（請參閱 https://agent-rules.org/）",
 	"settings.apiRequestTimeout.description": "API 回應逾時（秒，預設值：600，範圍：1–3600）。建議本地提供商使用更高的值。不適用的提供商：Amazon Bedrock、Google Gemini(directly or through the Vertex AI platform)、Mistral、Moonshot、Ollama、Poe、VS Code LM API。",
+	"settings.apiStreamIdleTimeout.description": "當串流 API 回應在此秒數內未收到任何資料時，中止並重試（預設值：300，範圍：0–3600，0 表示停用）。等待第一個 token 的時間由 API 回應逾時控制。",
 	"settings.newTaskRequireTodos.description": "使用 new_task 工具建立新工作時需要 todos 參數",
 	"settings.codeIndex.embeddingBatchSize.description": "程式碼索引期間嵌入操作的批次大小。根據 API 提供商的限制調整此設定。預設值為 60。",
 	"settings.debug.description": "啟用偵錯模式以顯示額外按鈕，用於在暫存檔案中以格式化 JSON 檢視 API 對話歷史紀錄和使用者介面訊息。",

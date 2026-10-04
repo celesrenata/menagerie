@@ -1,0 +1,10 @@
+{
+	"deployed": true,
+	"tag": "3.8.53-combos-fix-20261002",
+	"digest": "sha256:8839946159b014e2cd26d308b18eb3ad30e7347bb2ad425b5b4fd4996ad54fd5",
+	"podStatus": "1/1 Running, 0 restarts",
+	"pod": "omniroute-f67669fd4-9fb2l",
+	"manifestCommit": "9426c0b",
+	"buildHost": "esnixi (192.168.42.254), native build, --target runner-cli",
+	"buildNote": "Default OMNIROUTE_BUILD_MEMORY_MB=6144 OOM'd the Next.js production build (JS heap out of memory, SIGABRT). Retried with --build-arg OMNIROUTE_BUILD_MEMORY_MB=16384, which succeeded."
+}

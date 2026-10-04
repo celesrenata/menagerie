@@ -1,0 +1,24 @@
+{
+	"all_passed": "deploy-pass; live-chat-verification-pending-inference-key",
+	"deploy_live": true,
+	"live_image": "registry.celestium.life/library/omniroute:3.8.52-failfixes-feat002-005-20261001",
+	"live_image_digest": "sha256:cb0750ca7ad168ba6672a84543a9c90cc615738996e15f46ce87fd9cbc4a51d8",
+	"digest_match_build": true,
+	"live_pod": "omniroute-774d5b74d4-2t9vz — ready=true, restarts=0, started=true; held stable ~5min (07:11:40-07:16:30 UTC), external /healthz 200 on all 13 samples",
+	"startup_probe": "present and effective: startupProbe GET /healthz failureThreshold=36 x periodSeconds=5 (~180s cold-start budget) absorbed the slow cold start. Transient startup/liveness/readiness timeouts occurred during warm-up but SIGTERM count=0 (container never killed), so no restart loop. The earlier 3.8.50-era flap is resolved.",
+	"git_live_parity": "reconciled: committed manifest 405efdf (~/sources/kube/omniroute/omniroute.yaml line 61) declares 3.8.52-failfixes-feat002-005-20261001 and the file is clean; live now runs exactly that image. The temporary kubectl-set-image rollback to 3.8.50 is superseded. startupProbe is in both the committed manifest and live.",
+	"feat002": "image LIVE carrying the FEAT-002 system-first memory-injection fix (unit-verified 29/29 at build; db3586f9e). Live-chat verification PENDING a valid inference key: both the old sk-1e7cfaf... and the zoo key return 401 on /v1/chat. 0 'System message must be at the beginning' 500s in the fresh pod logs. NOT a deploy failure.",
+	"feat005": "image LIVE carrying the FEAT-005 X-OmniRoute-Tier cost-tier ceiling (8d9d5f7a8). Live-chat (header tier-2/tier-3 vs no-header default) verification PENDING a valid inference key.",
+	"feat004": "image LIVE carrying the FEAT-004 empty-502 mem= diagnostic (f48cdb12a). not-triggered: no empty-502 occurred in the window to observe the mem= line live.",
+	"feat001_003": "pending-live-read: capability-overrides (coder 131072/98304, balanced 131072/65536) and tier-5=gpt-5.6-terra to be re-read via management API against the now-live 3.8.52. The /api/combos read path was flaky at check time (parent owns that follow-up).",
+	"log_check": "clean on the new pod: SIGTERM count=0, restarts=0, 0 System-first 500s. Startup probe timeouts during cold start did not escalate to a kill.",
+	"zoo_lanes": "hybrid/code and hybrid/planner present on gateway combos; hybrid/reader ABSENT. Restoring hybrid/reader (+ pool/tierN/reader) is owned by the parent session; not done in this step.",
+	"env_note": "OMNIROUTE_STRICT_SYSTEM_PROVIDERS is NOT set in the live env (redundant now the image carries the fix, as expected).",
+	"resolved_out_of_scope": "esnixi RTX 5090 vLLM 8s /v1/models timeout was the reader EngineCore crash (flashinfer mm_fp4 cute-dsl SM120); fixed live via --linear-backend cutlass + operator nixos-rebuild switch; vllm-reader now serves qwen3.5-9b-nvfp4-reader.",
+	"follow_ups": {
+		"inference_key": "USER must supply/mint a valid inference key before live FEAT-002/005 chat verification can run (both known keys 401 on /v1/chat).",
+		"hybrid_reader_restore": "Parent session owns restoring hybrid/reader + pool/tierN/reader via management API.",
+		"feat001_003_live_read": "re-read capability-overrides/tier-5 against live 3.8.52 once the combos read path is stable."
+	},
+	"rollback_cmd_documented_not_executed": "kubectl set image deploy/omniroute -n omniroute omniroute=registry.celestium.life/library/omniroute:3.8.50-native-ovms-spacing-20260929"
+}

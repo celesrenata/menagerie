@@ -1,0 +1,350 @@
+{
+	"mcpServers": {
+		"aws-diagram-mcp": {
+			"args": [
+				"--from",
+				"/Users/celes/Documents/Cline/MCP/github.com_awslabs_mcp_tree_main_src_aws-diagram-mcp-server/src/aws-diagram-mcp-server",
+				"awslabs.aws-diagram-mcp-server"
+			],
+			"command": "/nix/store/vxhya8li5fm7ky01b5mv396vf5wlz9dh-uv-0.12.17/bin/uvx",
+			"env": {
+				"FASTMCP_LOG_LEVEL": "ERROR"
+			},
+			"disabled": true,
+			"disabledTools": ["generate_diagram", "get_diagram_examples", "list_icons"]
+		},
+		"aws-documentation": {
+			"args": ["awslabs.aws-documentation-mcp-server@latest"],
+			"command": "/nix/store/vxhya8li5fm7ky01b5mv396vf5wlz9dh-uv-0.12.17/bin/uvx",
+			"env": {
+				"AWS_DOCUMENTATION_PARTITION": "aws",
+				"FASTMCP_LOG_LEVEL": "ERROR"
+			},
+			"disabled": true,
+			"disabledTools": ["read_documentation", "read_sections", "search_documentation", "recommend"]
+		},
+		"aws-iac-mcp": {
+			"args": ["awslabs.aws-iac-mcp-server@latest"],
+			"command": "/nix/store/vxhya8li5fm7ky01b5mv396vf5wlz9dh-uv-0.12.17/bin/uvx",
+			"env": {
+				"FASTMCP_LOG_LEVEL": "ERROR"
+			},
+			"disabled": true,
+			"disabledTools": [
+				"validate_cloudformation_template",
+				"check_cloudformation_template_compliance",
+				"troubleshoot_cloudformation_deployment",
+				"get_cloudformation_pre_deploy_validation_instructions",
+				"search_cdk_documentation",
+				"search_cloudformation_documentation",
+				"search_cdk_samples_and_constructs",
+				"cdk_best_practices",
+				"read_iac_documentation_page"
+			]
+		},
+		"browser-tools-mcp": {
+			"args": ["-y", "@agentdeskai/browser-tools-mcp@latest"],
+			"command": "/nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/npx",
+			"disabled": true
+		},
+		"chart-mcp": {
+			"args": [
+				"/Users/celes/Documents/Cline/MCP/github.com_antvis_mcp-server-chart/node_modules/@antv/mcp-server-chart/build/index.js"
+			],
+			"command": "node",
+			"disabled": true,
+			"disabledTools": [
+				"generate_area_chart",
+				"generate_bar_chart",
+				"generate_boxplot_chart",
+				"generate_column_chart",
+				"generate_district_map",
+				"generate_dual_axes_chart",
+				"generate_fishbone_diagram",
+				"generate_flow_diagram",
+				"generate_funnel_chart",
+				"generate_histogram_chart",
+				"generate_line_chart",
+				"generate_liquid_chart",
+				"generate_mind_map",
+				"generate_network_graph",
+				"generate_organization_chart",
+				"generate_path_map",
+				"generate_pie_chart",
+				"generate_pin_map",
+				"generate_radar_chart",
+				"generate_sankey_chart",
+				"generate_scatter_chart",
+				"generate_treemap_chart",
+				"generate_venn_chart",
+				"generate_violin_chart",
+				"generate_waterfall_chart",
+				"generate_word_cloud_chart",
+				"generate_spreadsheet"
+			]
+		},
+		"chat-codex": {
+			"args": [
+				"-c",
+				"export AI_CHAT_KEY=$(cat /run/secrets/openai_api_key); exec /run/current-system/sw/bin/npx -y @pyroprompts/any-chat-completions-mcp"
+			],
+			"command": "/run/current-system/sw/bin/bash",
+			"env": {
+				"AI_CHAT_BASE_URL": "https://api.openai.com/v1",
+				"AI_CHAT_MODEL": "gpt-5.5",
+				"AI_CHAT_NAME": "GPT-5.5",
+				"AI_CHAT_TIMEOUT": "300000"
+			},
+			"autoApprove": ["chat-with-gpt-5.2-codex", "chat-with-gpt-5.5"],
+			"disabled": false
+		},
+		"chat-coding": {
+			"args": [
+				"-c",
+				"exec /nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/npx -y @pyroprompts/any-chat-completions-mcp"
+			],
+			"command": "/nix/store/5xfk6xkjqfn4cfn47ckm383g81lsfhca-bash-interactive-5.3p15/bin/bash",
+			"env": {
+				"AI_CHAT_BASE_URL": "http://127.0.0.1:20128/v1",
+				"AI_CHAT_KEY": "omniroute-local",
+				"AI_CHAT_MODEL": "auto/best-coding",
+				"AI_CHAT_NAME": "Coding",
+				"AI_CHAT_TIMEOUT": "300000"
+			}
+		},
+		"chat-fast": {
+			"args": [
+				"-c",
+				"exec /nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/npx -y @pyroprompts/any-chat-completions-mcp"
+			],
+			"command": "/nix/store/5xfk6xkjqfn4cfn47ckm383g81lsfhca-bash-interactive-5.3p15/bin/bash",
+			"env": {
+				"AI_CHAT_BASE_URL": "http://127.0.0.1:20128/v1",
+				"AI_CHAT_KEY": "omniroute-local",
+				"AI_CHAT_MODEL": "auto/fast",
+				"AI_CHAT_NAME": "Fast",
+				"AI_CHAT_TIMEOUT": "300000"
+			}
+		},
+		"chat-gpt52": {
+			"args": [
+				"-c",
+				"export AI_CHAT_KEY=$(cat /run/secrets/openai_api_key); exec /run/current-system/sw/bin/npx -y @pyroprompts/any-chat-completions-mcp"
+			],
+			"command": "/run/current-system/sw/bin/bash",
+			"env": {
+				"AI_CHAT_BASE_URL": "https://api.openai.com/v1",
+				"AI_CHAT_MODEL": "gpt-5.2",
+				"AI_CHAT_NAME": "GPT-5.2",
+				"AI_CHAT_TIMEOUT": "300000"
+			},
+			"autoApprove": ["chat-with-gpt-5.2"],
+			"disabled": true
+		},
+		"chat-reasoning": {
+			"args": [
+				"-c",
+				"exec /nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/npx -y @pyroprompts/any-chat-completions-mcp"
+			],
+			"command": "/nix/store/5xfk6xkjqfn4cfn47ckm383g81lsfhca-bash-interactive-5.3p15/bin/bash",
+			"env": {
+				"AI_CHAT_BASE_URL": "http://127.0.0.1:20128/v1",
+				"AI_CHAT_KEY": "omniroute-local",
+				"AI_CHAT_MODEL": "auto/best-reasoning",
+				"AI_CHAT_NAME": "Reasoning",
+				"AI_CHAT_TIMEOUT": "300000"
+			}
+		},
+		"comfyui-mcp": {
+			"args": [
+				"run",
+				"--directory",
+				"/Users/celes/Documents/Cline/MCP/github.com_joenorton_comfyui-mcp-server",
+				"python",
+				"server.py"
+			],
+			"command": "/nix/store/vxhya8li5fm7ky01b5mv396vf5wlz9dh-uv-0.12.17/bin/uv",
+			"env": {
+				"COMFYUI_URL": "http://localhost:8188"
+			},
+			"disabled": true
+		},
+		"context7": {
+			"args": [],
+			"command": "/nix/store/hix7ab519cxmgnkh5rhcknm5lnkjv8pf-context7-mcp-4.1.1/bin/context7-mcp",
+			"disabled": false
+		},
+		"dalle-mcp": {
+			"args": [
+				"-c",
+				"export OPENAI_API_KEY=$(cat /run/secrets/openai_api_key); export SAVE_DIR=/Users/celes/sources/celesrenata/exo; exec node /Users/celes/Documents/Cline/MCP/github.com_Garoth_dalle-mcp/build/index.js"
+			],
+			"command": "/nix/store/5xfk6xkjqfn4cfn47ckm383g81lsfhca-bash-interactive-5.3p15/bin/bash",
+			"disabled": true
+		},
+		"fetch": {
+			"args": [],
+			"command": "/nix/store/v8qp2hpwsjcmk1dfkvcw8sybyh1n6ff2-mcp-server-fetch-2026.8.31/bin/mcp-server-fetch",
+			"disabled": true
+		},
+		"filesystem": {
+			"args": ["/Users/celes/sources/celesrenata/exo"],
+			"command": "/nix/store/7l5invjwf2lw00zap7bn5rw3zi0mnalk-mcp-server-filesystem-2026.8.18/bin/mcp-server-filesystem",
+			"disabled": true
+		},
+		"git": {
+			"args": ["--repository", "/Users/celes/sources/celesrenata/exo"],
+			"command": "/nix/store/6iv8agx7j0xz8pmgkmzjwpa4pa3z53fv-mcp-server-git-2026.8.31/bin/mcp-server-git",
+			"disabled": true,
+			"autoApprove": ["git_diff_unstaged", "git_add", "git_commit"]
+		},
+		"iterm-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_pashpashpash_iterm-mcp/build/index.js"],
+			"command": "node",
+			"disabled": true
+		},
+		"kubernetes-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_Flux159_mcp-server-kubernetes/dist/index.js"],
+			"command": "node",
+			"disabled": true
+		},
+		"local-model": {
+			"args": ["/Users/celes/ai/mcp/local-model-mcp/index.js"],
+			"command": "/nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/node",
+			"env": {
+				"EMBED_MODEL": "bge-m3",
+				"LOCAL_MODEL_PROXY_URL": "http://127.0.0.1:7777",
+				"OLLAMA_URL": "http://127.0.0.1:11434"
+			},
+			"disabled": true,
+			"autoApprove": ["local_model_chat", "local_model_stop", "local_model_status"]
+		},
+		"lsp-mcp-nix": {
+			"args": ["-y", "@theupsider/lsp-mcp"],
+			"command": "/nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/npx",
+			"env": {
+				"LSP_MCP_LOG_LEVEL": "info",
+				"LSP_SERVERS_NIX": "nix run nixpkgs#nil --"
+			},
+			"disabled": true
+		},
+		"magic-mcp": {
+			"args": [
+				"-c",
+				"export API_KEY=$(cat /run/secrets/magic_mcp_api_key); export TWENTY_FIRST_API_KEY=$API_KEY; exec /nix/store/7pn7zw2sciv3fih9l4xpyvx0q8hlrr0w-nodejs-24.20.0/bin/npx -y @21st-dev/magic@latest"
+			],
+			"command": "/nix/store/5xfk6xkjqfn4cfn47ckm383g81lsfhca-bash-interactive-5.3p15/bin/bash",
+			"disabled": true
+		},
+		"markdownify-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_zcaceres_markdownify-mcp/dist/index.js"],
+			"command": "node",
+			"disabled": true
+		},
+		"memory": {
+			"args": [],
+			"command": "/nix/store/rs1knfnkvs51k2ij1942nm68az54l12v-mcp-server-memory-2026.8.18/bin/mcp-server-memory",
+			"disabled": true
+		},
+		"nixos": {
+			"args": [],
+			"command": "/nix/store/kybqpb79k1cs4zsb4xmrnydlcb5nq23g-mcp-nixos-3.0.1/bin/mcp-nixos",
+			"disabled": true
+		},
+		"obsidian-mcp": {
+			"args": [
+				"/Users/celes/Documents/Cline/MCP/github.com_smithery-ai_mcp-obsidian/node_modules/mcp-obsidian/dist/index.js",
+				"/Users/celes/Documents/Cline/MCP/github.com_smithery-ai_mcp-obsidian/demo-vault"
+			],
+			"command": "node",
+			"disabled": true
+		},
+		"ollama-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_NightTrek_Ollama-mcp/build/index.js"],
+			"command": "node",
+			"env": {
+				"OLLAMA_HOST": "http://127.0.0.1:11434"
+			},
+			"disabled": true
+		},
+		"omniroute-observability": {
+			"command": "python3",
+			"args": [
+				"/Users/celes/Documents/Codex/2026-09-26/review-omniroute-routing-over-the-last/work/mcp-stdio-bridge.py",
+				"node",
+				"/Users/celes/ai/omniroute/node_modules/omniroute/bin/omniroute.mjs",
+				"--mcp"
+			],
+			"env": {
+				"OMNIROUTE_BASE_URL": "https://omniroute.celestium.life",
+				"OMNIROUTE_MCP_ENFORCE_SCOPES": "true",
+				"OMNIROUTE_MCP_SCOPES": "read:health,read:combos,read:quota,read:usage,read:models",
+				"MCP_TOOL_ALLOW": "omniroute_get_health,omniroute_list_combos,omniroute_get_combo_metrics,omniroute_check_quota,omniroute_cost_report,omniroute_list_models_catalog,omniroute_simulate_route,omniroute_get_provider_metrics,omniroute_best_combo_for_task,omniroute_explain_route,omniroute_get_session_snapshot,omniroute_pick_fastest_model"
+			},
+			"alwaysAllow": ["omniroute_get_health"]
+		},
+		"playwright-mcp": {
+			"args": [
+				"/Users/celes/Documents/Cline/MCP/github.com_executeautomation_mcp-playwright/node_modules/@executeautomation/playwright-mcp-server/dist/index.js"
+			],
+			"command": "node",
+			"disabled": false,
+			"autoApprove": [
+				"playwright_get_visible_text",
+				"playwright_get_visible_html",
+				"playwright_screenshot",
+				"playwright_click",
+				"playwright_screenshot",
+				"playwright_get_visible_text",
+				"playwright_evaluate",
+				"playwright_evaluate",
+				"playwright_evaluate",
+				"playwright_close"
+			],
+			"alwaysAllow": [
+				"playwright_navigate",
+				"playwright_screenshot",
+				"playwright_console_logs",
+				"playwright_evaluate"
+			]
+		},
+		"postman": {
+			"args": [
+				"-c",
+				"export POSTMAN_API_KEY=$(cat /run/secrets/postman_api_key); exec node /Users/celes/Documents/Cline/MCP/github.com_postmanlabs_postman-mcp-server/dist/src/index.js"
+			],
+			"command": "/nix/store/5xfk6xkjqfn4cfn47ckm383g81lsfhca-bash-interactive-5.3p15/bin/bash",
+			"disabled": true
+		},
+		"sequential-thinking": {
+			"args": [],
+			"command": "/nix/store/9i763ac4pyvl2pywinfs2kwlnfyspjkg-mcp-server-sequential-thinking-2026.8.18/bin/mcp-server-sequential-thinking",
+			"disabled": false,
+			"autoApprove": ["sequentialthinking"]
+		},
+		"sleep-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_Garoth_sleep-mcp/build/index.js"],
+			"command": "node",
+			"disabled": true,
+			"autoApprove": ["sleep"]
+		},
+		"total-pc-control": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_jasondsmith72_total-pc-control/build/index.js"],
+			"command": "node"
+		},
+		"webresearch-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_pashpashpash_mcp-webresearch/dist/index.js"],
+			"command": "node",
+			"disabled": false,
+			"autoApprove": ["visit_page"]
+		},
+		"wolframalpha-mcp": {
+			"args": ["/Users/celes/Documents/Cline/MCP/github.com_Garoth_wolframalpha-llm-mcp/build/index.js"],
+			"command": "node",
+			"env": {
+				"WOLFRAM_LLM_APP_ID": "E7KXGAKA52"
+			},
+			"disabled": true
+		}
+	}
+}

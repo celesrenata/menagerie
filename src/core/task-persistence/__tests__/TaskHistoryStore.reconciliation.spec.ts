@@ -220,7 +220,7 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		expect(repaired?.completionResultSummary).toBe("Task completed (recovered after interruption)")
 	})
 
-	it("repairs a delegated parent with an active orphaned child", async () => {
+	it("interrupts an orphaned active child while preserving its parent's return path", async () => {
 		const child = makeItem({
 			id: "child-4",
 			status: "active",
@@ -250,11 +250,11 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		})
 		expect(repairedParent).toMatchObject({
 			id: "parent-4",
-			status: "active",
+			status: "delegated",
+			awaitingChildId: "child-4",
+			delegatedToId: "child-4",
 			childIds: ["child-4"],
 		})
-		expect(repairedParent?.awaitingChildId).toBeUndefined()
-		expect(repairedParent?.delegatedToId).toBeUndefined()
 
 		const tasksDir = path.join(tmpDir, "tasks")
 		const persistedChild = JSON.parse(
@@ -270,9 +270,12 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 			rootTaskId: "parent-4",
 			childIds: ["grandchild-4"],
 		})
-		expect(persistedParent).toMatchObject({ id: "parent-4", status: "active" })
-		expect(persistedParent.awaitingChildId).toBeUndefined()
-		expect(persistedParent.delegatedToId).toBeUndefined()
+		expect(persistedParent).toMatchObject({
+			id: "parent-4",
+			status: "delegated",
+			awaitingChildId: "child-4",
+			delegatedToId: "child-4",
+		})
 	})
 
 	it("repairs a delegated child with an omitted status as implicit active", async () => {
@@ -292,9 +295,12 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		await store.initialize()
 
 		expect(store.get(child.id)).toMatchObject({ id: child.id, status: "interrupted" })
-		expect(store.get(parent.id)).toMatchObject({ id: parent.id, status: "active" })
-		expect(store.get(parent.id)?.awaitingChildId).toBeUndefined()
-		expect(store.get(parent.id)?.delegatedToId).toBeUndefined()
+		expect(store.get(parent.id)).toMatchObject({
+			id: parent.id,
+			status: "delegated",
+			awaitingChildId: child.id,
+			delegatedToId: child.id,
+		})
 
 		const persistedChild = JSON.parse(
 			await fs.readFile(path.join(tmpDir, "tasks", child.id, GlobalFileNames.historyItem), "utf8"),
@@ -335,7 +341,7 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		await expect(fs.access(intentPath)).rejects.toThrow()
 	})
 
-	it("replays an intent after a failure before the child write", async () => {
+	it("retries the child-only startup repair after a failed write", async () => {
 		const child = makeItem({
 			id: "child-fault-before-child",
 			status: "active",
@@ -359,7 +365,7 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		const replayedStore = registerStore(new TaskHistoryStore(tmpDir))
 		await replayedStore.initialize()
 		expect(replayedStore.get(child.id)?.status).toBe("interrupted")
-		expect(replayedStore.get(parent.id)?.status).toBe("active")
+		expect(replayedStore.get(parent.id)?.status).toBe("delegated")
 		const persistedChild = JSON.parse(
 			await fs.readFile(path.join(tmpDir, "tasks", child.id, GlobalFileNames.historyItem), "utf8"),
 		) as HistoryItem
@@ -367,12 +373,10 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 			await fs.readFile(path.join(tmpDir, "tasks", parent.id, GlobalFileNames.historyItem), "utf8"),
 		) as HistoryItem
 		expect(persistedChild).toMatchObject({ id: child.id, status: "interrupted" })
-		expect(persistedParent).toMatchObject({ id: parent.id, status: "active" })
-		expect(persistedParent.awaitingChildId).toBeUndefined()
-		expect(persistedParent.delegatedToId).toBeUndefined()
+		expect(persistedParent).toMatchObject({ id: parent.id, status: "delegated", awaitingChildId: child.id })
 	})
 
-	it("replays an intent after a failure before the parent write", async () => {
+	it("does not need a parent write when interrupting an orphaned child", async () => {
 		const child = makeItem({
 			id: "child-fault-before-parent",
 			status: "active",
@@ -396,7 +400,7 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		const replayedStore = registerStore(new TaskHistoryStore(tmpDir))
 		await replayedStore.initialize()
 		expect(replayedStore.get(child.id)?.status).toBe("interrupted")
-		expect(replayedStore.get(parent.id)?.status).toBe("active")
+		expect(replayedStore.get(parent.id)?.status).toBe("delegated")
 		const persistedChild = JSON.parse(
 			await fs.readFile(path.join(tmpDir, "tasks", child.id, GlobalFileNames.historyItem), "utf8"),
 		) as HistoryItem
@@ -404,12 +408,10 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 			await fs.readFile(path.join(tmpDir, "tasks", parent.id, GlobalFileNames.historyItem), "utf8"),
 		) as HistoryItem
 		expect(persistedChild).toMatchObject({ id: child.id, status: "interrupted" })
-		expect(persistedParent).toMatchObject({ id: parent.id, status: "active" })
-		expect(persistedParent.awaitingChildId).toBeUndefined()
-		expect(persistedParent.delegatedToId).toBeUndefined()
+		expect(persistedParent).toMatchObject({ id: parent.id, status: "delegated", awaitingChildId: child.id })
 	})
 
-	it("retains an intent when the callback fails after both writes", async () => {
+	it("retains the repaired child and parent link when the write-through callback fails", async () => {
 		const child = makeItem({ id: "child-fault-cleanup", status: "active", parentTaskId: "parent-fault-cleanup" })
 		const parent = makeItem({
 			id: "parent-fault-cleanup",
@@ -424,13 +426,13 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		)
 		await expect(store.initialize()).resolves.toBeUndefined()
 		const intentPath = path.join(tmpDir, "tasks", GlobalFileNames.delegationRepairIntent)
-		expect(await fs.readFile(intentPath, "utf8")).toContain(child.id)
+		await expect(fs.access(intentPath)).rejects.toThrow()
 		store.dispose()
 		safeWriteJsonMock.mockImplementation(writeJson)
 		const replayedStore = registerStore(new TaskHistoryStore(tmpDir))
 		await replayedStore.initialize()
 		expect(replayedStore.get(child.id)?.status).toBe("interrupted")
-		expect(replayedStore.get(parent.id)?.status).toBe("active")
+		expect(replayedStore.get(parent.id)?.status).toBe("delegated")
 		const persistedChild = JSON.parse(
 			await fs.readFile(path.join(tmpDir, "tasks", child.id, GlobalFileNames.historyItem), "utf8"),
 		) as HistoryItem
@@ -438,9 +440,7 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 			await fs.readFile(path.join(tmpDir, "tasks", parent.id, GlobalFileNames.historyItem), "utf8"),
 		) as HistoryItem
 		expect(persistedChild).toMatchObject({ id: child.id, status: "interrupted" })
-		expect(persistedParent).toMatchObject({ id: parent.id, status: "active" })
-		expect(persistedParent.awaitingChildId).toBeUndefined()
-		expect(persistedParent.delegatedToId).toBeUndefined()
+		expect(persistedParent).toMatchObject({ id: parent.id, status: "delegated", awaitingChildId: child.id })
 		await expect(fs.access(intentPath)).rejects.toThrow()
 	})
 
@@ -750,7 +750,7 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		const afterSecondChild = { ...store2.get(child.id) }
 		store2.dispose()
 
-		expect(afterFirstParent).toMatchObject({ status: "active" })
+		expect(afterFirstParent).toMatchObject({ status: "delegated", awaitingChildId: child.id })
 		expect(afterSecondParent).toEqual(afterFirstParent)
 		expect(afterFirstChild).toMatchObject({ status: "interrupted" })
 		expect(afterSecondChild).toEqual(afterFirstChild)

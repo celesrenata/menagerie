@@ -1,0 +1,41 @@
+{
+	"verdict": "CHANGES_REQUESTED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "MEDIUM",
+			"title": "Auto-condense summarizer stream inside attemptApiRequest is unbounded and can still hang a worker",
+			"location": "A3/A5; Task.ts ~4909/~4648 manageContext -> condense/index.ts ~382 for-await",
+			"fix": "Default (a): bound summarizeConversation's stream with awaitWithStreamTimeout (first_chunk: getApiRequestTimeout, between_chunks: getApiStreamIdleTimeout), pass a local AbortController signal as abortSignal and abort it on timeout; the existing catch falls back to truncation. Add condense/index.ts to Files changed, an A5 row, and a fake-timer condense test. Alternative (b): document as unbounded in A5 and backlog, and remove the 'close every indefinite wait' claim."
+		},
+		{
+			"id": 2,
+			"severity": "NIT",
+			"title": "failWorkerIfRetriesExhausted counts cancellations as API failures",
+			"location": "A4 retry cap",
+			"fix": "First line: if (!this.parallelWorker || this.abort) return false. Add a test that an aborted worker at counter 8 gets no parallelWorkerFailure."
+		},
+		{
+			"id": 3,
+			"severity": "NIT",
+			"title": "OmniRoute upstream cancellation on client disconnect is unverified",
+			"location": "A3 Provider signal wiring; Assumptions",
+			"fix": "Add V7 with a live check that aborting from Zoo drops the 5090 reader's active-slot count."
+		},
+		{
+			"id": 4,
+			"severity": "NIT",
+			"title": "Between-chunk timeout after tools have already executed retries the turn (possible duplicate side effects) without being stated",
+			"location": "A3 On timeout; Error handling summary (A)",
+			"fix": "Document as accepted, matching today's mid-stream-failure semantics; no code change."
+		},
+		{
+			"id": 5,
+			"severity": "NIT",
+			"title": "didToolFailInCurrentTurn unspecified for B2 row 1 and the B1 nudge",
+			"location": "B1, B2",
+			"fix": "B2 row 1 sets didToolFailInCurrentTurn = true (matching sibling error branches); the B1 nudge does not. Assert it in the 'just prose' test."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/zoo-worker-resilience/design-review.md"
+}

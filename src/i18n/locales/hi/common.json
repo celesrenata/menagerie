@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Roo Code इतिहास आयात करने में विफल: {{error}}"
+		"rooHistoryImport": "Roo Code इतिहास आयात करने में विफल: {{error}}",
+		"presenter_failed": "टूल निष्पादन अप्रत्याशित रूप से विफल हुआ: {{message}}। बिना उत्तर वाले टूल कॉल के लिए मॉडल को एक त्रुटि परिणाम भेजा गया।",
+		"parallel_worker_failed": "समानांतर वर्कर रुक गया: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "कोई टर्मिनल सामग्री चयनित नहीं",

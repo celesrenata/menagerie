@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "@ 파일 검색 기능을 위해 인덱싱할 최대 파일 수입니다. 더 큰 값은 대형 프로젝트에서 더 나은 검색 결과를 제공하지만 더 많은 메모리를 사용할 수 있습니다. 기본값: 10,000.",
 	"settings.useAgentRules.description": "에이전트별 규칙에 대한 AGENTS.md 파일 로드를 활성화합니다 (참조: https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "API 응답 대기 시간(초, 기본값: 600, 범위: 1~3600). 로컬 공급자에는 더 높은 값을 권장합니다. 지원되지 않는 공급자: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "이 시간(초) 동안 데이터가 도착하지 않으면 스트리밍 API 응답을 중단하고 재시도합니다(기본값: 300, 범위: 0~3600, 0은 비활성화). 첫 번째 토큰 대기 시간은 API 응답 대기 시간으로 제어됩니다.",
 	"settings.newTaskRequireTodos.description": "new_task 도구로 새 작업을 생성할 때 todos 매개변수 필요",
 	"settings.codeIndex.embeddingBatchSize.description": "코드 인덱싱 중 임베딩 작업의 배치 크기입니다. API 공급자의 제한에 따라 이를 조정하세요. 기본값은 60입니다.",
 	"settings.debug.description": "디버그 모드를 활성화하여 API 대화 기록과 UI 메시지를 임시 파일에 포맷된 JSON으로 보기 위한 추가 버튼을 표시합니다.",

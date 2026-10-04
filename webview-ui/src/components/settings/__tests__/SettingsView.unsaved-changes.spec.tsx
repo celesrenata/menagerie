@@ -249,6 +249,7 @@ vi.mock("../SettingsSearch", () => ({
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import ApiOptions from "../ApiOptions"
+import { ContextManagementSettings } from "../ContextManagementSettings"
 
 describe("SettingsView - Unsaved Changes Detection", () => {
 	let queryClient: QueryClient
@@ -760,5 +761,51 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 		await waitFor(() => expect(screen.getByTestId("cached-nanogpt-key")).toHaveValue("saved-key"))
 		expect(onDone).toHaveBeenCalledOnce()
 		expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "upsertApiConfiguration" }))
+	})
+
+	it("buffers condensingApiConfigId in cachedState and reverts to the live value on discard", async () => {
+		const onDone = vi.fn()
+		;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
+			...defaultExtensionState,
+			// Live/extension value is the "use current configuration" default.
+			condensingApiConfigId: "",
+			listApiConfigMeta: [{ id: "reader-1", name: "Reader One" }],
+		})
+
+		// Expose the condensing picker's cachedState binding: render the current value and
+		// a trigger that drives setCachedStateField, so the test can prove buffer-until-save.
+		vi.mocked(ContextManagementSettings).mockImplementation(
+			({ condensingApiConfigId, setCachedStateField }: any) => (
+				<div>
+					<span data-testid="condensing-value">{condensingApiConfigId ?? ""}</span>
+					<button
+						data-testid="pick-condensing"
+						onClick={() => setCachedStateField("condensingApiConfigId", "reader-1")}>
+						Pick
+					</button>
+				</div>
+			),
+		)
+
+		renderWithExtensionState(<SettingsView onDone={onDone} targetSection="contextManagement" />, { queryClient })
+
+		// Select a profile: this only mutates cachedState, never posts a message.
+		fireEvent.click(await screen.findByTestId("pick-condensing"))
+		expect(screen.getByTestId("condensing-value")).toHaveTextContent("reader-1")
+		expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "updateSettings" }))
+
+		// Done -> discard the buffered edit.
+		fireEvent.click(screen.getByText("settings:common.done"))
+		fireEvent.click(await screen.findByText("settings:unsavedChangesDialog.discardButton"))
+
+		// The control re-initializes from the live value, not the discarded cached edit.
+		await waitFor(() => expect(screen.getByTestId("condensing-value")).toHaveTextContent(""))
+		expect(onDone).toHaveBeenCalledOnce()
+		expect(postMessage).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ condensingApiConfigId: "reader-1" }),
+			}),
+		)
 	})
 })

@@ -445,9 +445,8 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 			},
 		)
 
-		await expect(presentAssistantMessage(mockTask)).rejects.toThrow(
-			"Failed to persist queued approval feedback queued-failed-denial",
-		)
+		// The dispatch catch turns the throw into one error tool_result so the turn settles.
+		await presentAssistantMessage(mockTask)
 
 		expect(mockTask.persistQueuedFeedbackAndAcknowledge).toHaveBeenCalledWith(
 			"queued-failed-denial",
@@ -455,7 +454,12 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 			undefined,
 		)
 		expect(continueTool).not.toHaveBeenCalled()
-		expect(mockTask.userMessageContent).toEqual([])
+		expect(mockTask.userMessageContent).toHaveLength(1)
+		expect(mockTask.userMessageContent[0]).toMatchObject({
+			type: "tool_result",
+			tool_use_id: "call_new_task_failed_denial_persistence",
+			content: expect.stringContaining("Failed to persist queued approval feedback queued-failed-denial"),
+		})
 	})
 
 	it("merges queued image-only approval feedback without duplicating its chat row", async () => {
@@ -539,13 +543,17 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 			},
 		)
 
-		await expect(presentAssistantMessage(mockTask)).rejects.toThrow(
-			"Failed to persist queued approval feedback queued-failed-approval",
-		)
+		// The dispatch catch turns the throw into one error tool_result so the turn settles.
+		await presentAssistantMessage(mockTask)
 
 		expect(executeApprovedTool).not.toHaveBeenCalled()
 		expect(mockTask.say).not.toHaveBeenCalledWith("user_feedback", expect.anything(), expect.anything())
-		expect(mockTask.userMessageContent).toEqual([])
+		expect(mockTask.userMessageContent).toHaveLength(1)
+		expect(mockTask.userMessageContent[0]).toMatchObject({
+			type: "tool_result",
+			tool_use_id: "call_new_task_failed_approval_persistence",
+			content: expect.stringContaining("Failed to persist queued approval feedback queued-failed-approval"),
+		})
 	})
 
 	it("handles an ordinary empty denial without recording a feedback row", async () => {

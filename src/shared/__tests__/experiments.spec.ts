@@ -22,6 +22,7 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				parallelTasks: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(false)
 		})
@@ -33,6 +34,7 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				parallelTasks: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(true)
 		})
@@ -44,6 +46,7 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				parallelTasks: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(false)
 		})
@@ -54,7 +57,6 @@ describe("experiments", () => {
 			expect(EXPERIMENT_IDS.PARALLEL_TOOL_EXECUTION).toBe("parallelToolExecution")
 			expect(experimentConfigsMap.PARALLEL_TOOL_EXECUTION).toMatchObject({
 				enabled: false,
-				showInSettings: false,
 			})
 		})
 

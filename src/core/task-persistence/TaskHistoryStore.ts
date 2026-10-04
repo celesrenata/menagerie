@@ -1,7 +1,6 @@
 import * as fs from "fs/promises"
 import * as fsSync from "fs"
 import * as path from "path"
-import crypto from "crypto"
 
 import deepEqual from "fast-deep-equal"
 import type { HistoryItem } from "@roo-code/types"
@@ -400,7 +399,7 @@ export class TaskHistoryStore {
 	 * - Parent `delegated` with no `awaitingChildId` → parent → `active` (invalid state)
 	 * - Parent `delegated`, child not found → parent → `active` (orphaned delegation)
 	 * - Parent `delegated`, child `completed` → parent → `active` (interrupted handoff)
-	 * - Parent `delegated`, child `active` → child → `interrupted`, parent → `active`
+	 * - Parent `delegated`, child `active` → child → `interrupted`, parent stays `delegated`
 	 *
 	 * A parent awaiting an `interrupted` or `delegated` child is left as-is — the child is
 	 * resumable. An `active` child is treated as orphaned during startup recovery because
@@ -466,13 +465,13 @@ export class TaskHistoryStore {
 						)
 						repairsInThisPass++
 					} else if ((child.status ?? "active") === "active" && persistedActiveIds.has(child.id)) {
-						// An active child persisted across startup cannot have a live task session
-						// behind it. Mark it interrupted before releasing the parent's delegation
-						// link so the normal resume/re-delegate flow can take over. This is an
-						// administrative recovery, not a runtime delegation transition.
-						await this.repairActiveDelegation(item, child)
+						// The old extension host can no longer be running this child. Only the
+						// child's status needs repair: its parent must keep awaiting it so an
+						// eventual attempt_completion can return its result to that parent.
+						// This is one atomic task-file write, so no two-record intent is needed.
+						await this.upsertCore({ ...child, status: "interrupted" }, { skipTransitionCheck: true })
 						console.warn(
-							`[TaskHistoryStore] Reconciled orphaned active child: child ${child.id} → interrupted, task ${item.id} → active`,
+							`[TaskHistoryStore] Reconciled orphaned active child: child ${child.id} → interrupted, task ${item.id} remains delegated`,
 						)
 						repairsInThisPass++
 					} else if (child.status === "completed") {
@@ -573,60 +572,6 @@ export class TaskHistoryStore {
 		})
 	}
 
-	/**
-	 * Start and complete a guarded active-child repair while already holding the
-	 * store lock. The intent is durable before either task file is touched.
-	 */
-	private async repairActiveDelegation(parent: HistoryItem, child: HistoryItem): Promise<void> {
-		const intent: DelegationRepairIntent = {
-			version: 1,
-			operationId: crypto.randomUUID(),
-			parentTaskId: parent.id,
-			childTaskId: child.id,
-			expected: {
-				parent: {
-					status: "delegated",
-					awaitingChildId: child.id,
-					delegatedToId: parent.delegatedToId,
-				},
-				child: {
-					status: "active",
-					parentTaskId: child.parentTaskId,
-					rootTaskId: child.rootTaskId,
-				},
-			},
-			target: { childStatus: "interrupted", parentStatus: "active" },
-		}
-
-		await this.writeDelegationRepairIntent(intent)
-		await this.applyDelegationRepairIntent(intent, child, parent)
-	}
-
-	private async applyDelegationRepairIntent(
-		intent: DelegationRepairIntent,
-		child: HistoryItem,
-		parent: HistoryItem,
-	): Promise<void> {
-		const repairedChild = { ...child, status: intent.target.childStatus }
-		const repairedParent = {
-			...parent,
-			status: intent.target.parentStatus,
-			awaitingChildId: undefined,
-			delegatedToId: undefined,
-		}
-
-		await this.writeTaskFile(repairedChild)
-		await this.writeTaskFile(repairedParent)
-
-		this.cache.set(repairedChild.id, repairedChild)
-		this.cache.set(repairedParent.id, repairedParent)
-
-		if (this.onWrite) {
-			await this.onWrite(this.getAll())
-		}
-		await this.removeDelegationRepairIntent()
-	}
-
 	private matchesDelegationRepairParentPreconditions(intent: DelegationRepairIntent, parent: HistoryItem): boolean {
 		return (
 			parent.status === intent.expected.parent.status &&
@@ -699,10 +644,6 @@ export class TaskHistoryStore {
 			targetRecord.childStatus === "interrupted" &&
 			targetRecord.parentStatus === "active"
 		)
-	}
-
-	private async writeDelegationRepairIntent(intent: DelegationRepairIntent): Promise<void> {
-		await safeWriteJson(await this.getDelegationRepairIntentPath(), intent)
 	}
 
 	private async removeDelegationRepairIntent(): Promise<void> {

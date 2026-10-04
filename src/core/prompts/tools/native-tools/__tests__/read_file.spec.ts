@@ -7,14 +7,35 @@ type FunctionTool = OpenAI.Chat.ChatCompletionTool & { type: "function" }
 // Helper to get function definition from tool
 const getFunctionDef = (tool: OpenAI.Chat.ChatCompletionTool) => (tool as FunctionTool).function
 
+const getSchemaProperty = (tool: OpenAI.Chat.ChatCompletionTool, name: string): Record<string, unknown> => {
+	const parameters = getFunctionDef(tool).parameters
+	if (!parameters || typeof parameters !== "object") throw new Error("Expected tool parameters schema")
+	const properties = parameters["properties"]
+	if (!properties || typeof properties !== "object") throw new Error("Expected tool properties schema")
+	const property = (properties as Record<string, unknown>)[name]
+	if (!property || typeof property !== "object") throw new Error(`Expected schema for ${name}`)
+	return property as Record<string, unknown>
+}
+
 describe("createReadFileTool", () => {
-	describe("single-file-per-call documentation", () => {
-		it("should indicate single-file-per-call and suggest parallel tool calls", () => {
+	describe("batched file reads", () => {
+		it("should document one-call reads for independent files", () => {
 			const tool = createReadFileTool()
 			const description = getFunctionDef(tool).description
 
-			expect(description).toContain("exactly one file per call")
-			expect(description).toContain("multiple parallel read_file calls")
+			expect(description).toContain("path MUST be an array")
+			expect(description).toContain("every already-known independent file path in the same array")
+			expect(description).toContain("Example (batch)")
+		})
+
+		it("should require an array of one to eight paths", () => {
+			const pathSchema = getSchemaProperty(createReadFileTool(), "path")
+			expect(pathSchema).toMatchObject({
+				type: "array",
+				items: { type: "string" },
+			})
+			expect(pathSchema).not.toHaveProperty("anyOf")
+			expect(getFunctionDef(createReadFileTool()).description).toContain("path MUST be an array")
 		})
 	})
 
@@ -28,26 +49,22 @@ describe("createReadFileTool", () => {
 
 		it("should always include indentation parameter in schema", () => {
 			const tool = createReadFileTool()
-			const schema = getFunctionDef(tool).parameters as any
 
-			expect(schema.properties).toHaveProperty("indentation")
+			expect(getSchemaProperty(tool, "indentation")).toBeDefined()
 		})
 
 		it("should include mode parameter in schema", () => {
 			const tool = createReadFileTool()
-			const schema = getFunctionDef(tool).parameters as any
+			const modeSchema = getSchemaProperty(tool, "mode")
 
-			expect(schema.properties).toHaveProperty("mode")
-			expect(schema.properties.mode.enum).toContain("slice")
-			expect(schema.properties.mode.enum).toContain("indentation")
+			expect(modeSchema).toMatchObject({ enum: expect.arrayContaining(["slice", "indentation"]) })
 		})
 
 		it("should include offset and limit parameters in schema", () => {
 			const tool = createReadFileTool()
-			const schema = getFunctionDef(tool).parameters as any
 
-			expect(schema.properties).toHaveProperty("offset")
-			expect(schema.properties).toHaveProperty("limit")
+			expect(getSchemaProperty(tool, "offset")).toBeDefined()
+			expect(getSchemaProperty(tool, "limit")).toBeDefined()
 		})
 	})
 
@@ -114,9 +131,9 @@ describe("createReadFileTool", () => {
 
 		it("should require path parameter", () => {
 			const tool = createReadFileTool()
-			const schema = getFunctionDef(tool).parameters as any
+			const parameters = getFunctionDef(tool).parameters
 
-			expect(schema.required).toContain("path")
+			expect(parameters).toHaveProperty("required", expect.arrayContaining(["path"]))
 		})
 	})
 })

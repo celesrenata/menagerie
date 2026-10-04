@@ -2,6 +2,15 @@ import stringify from "safe-stable-stringify"
 import { ToolUse } from "../../shared/tools"
 import { t } from "../../i18n"
 
+export type ToolRepetitionCheckResult =
+	| { allowExecution: true; nudge?: undefined; askUser?: undefined }
+	| { allowExecution: false; nudge: { toolName: string; repeatCount: number }; askUser?: undefined }
+	| {
+			allowExecution: false
+			nudge?: undefined
+			askUser: { messageKey: "mistake_limit_reached"; messageDetail: string }
+	  }
+
 /**
  * Class for detecting consecutive identical tool calls
  * to prevent the AI from getting stuck in a loop.
@@ -26,13 +35,7 @@ export class ToolRepetitionDetector {
 	 * @param currentToolCallBlock ToolUse object representing the current tool call
 	 * @returns Object indicating if execution is allowed and a message to show if not
 	 */
-	public check(currentToolCallBlock: ToolUse): {
-		allowExecution: boolean
-		askUser?: {
-			messageKey: string
-			messageDetail: string
-		}
-	} {
+	public check(currentToolCallBlock: ToolUse): ToolRepetitionCheckResult {
 		// Serialize the block to a canonical JSON string for comparison
 		const currentToolCallJson = this.serializeToolUse(currentToolCallBlock)
 
@@ -44,11 +47,11 @@ export class ToolRepetitionDetector {
 			this.previousToolCallJson = currentToolCallJson
 		}
 
-		// Check if limit is reached (0 means unlimited)
-		if (
-			this.consecutiveIdenticalToolCallLimit > 0 &&
-			this.consecutiveIdenticalToolCallCount >= this.consecutiveIdenticalToolCallLimit
-		) {
+		const limit = this.consecutiveIdenticalToolCallLimit
+		const count = this.consecutiveIdenticalToolCallCount
+
+		// Escalate at twice the limit (0 means unlimited)
+		if (limit > 0 && count >= 2 * limit) {
 			// Reset counters to allow recovery if user guides the AI past this point
 			this.consecutiveIdenticalToolCallCount = 0
 			this.previousToolCallJson = null
@@ -60,6 +63,14 @@ export class ToolRepetitionDetector {
 					messageKey: "mistake_limit_reached",
 					messageDetail: t("tools:toolRepetitionLimitReached", { toolName: currentToolCallBlock.name }),
 				},
+			}
+		}
+
+		// At the limit, skip the call and nudge the model; keep counting toward escalation
+		if (limit > 0 && count >= limit) {
+			return {
+				allowExecution: false,
+				nudge: { toolName: currentToolCallBlock.name, repeatCount: count },
 			}
 		}
 

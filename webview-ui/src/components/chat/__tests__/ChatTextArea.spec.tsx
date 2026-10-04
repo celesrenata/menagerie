@@ -90,6 +90,13 @@ describe("ChatTextArea", () => {
 		})
 	})
 
+	it("offers a one-shot parallel action beside auto-approval", () => {
+		const onForceParallel = vi.fn()
+		render(<ChatTextArea {...defaultProps} onForceParallel={onForceParallel} />)
+		fireEvent.click(screen.getByTestId("force-parallel-button"))
+		expect(onForceParallel).toHaveBeenCalledTimes(1)
+	})
+
 	describe("handleEnhancePrompt", () => {
 		it("should send message with correct configuration when clicked", () => {
 			const apiConfiguration = {

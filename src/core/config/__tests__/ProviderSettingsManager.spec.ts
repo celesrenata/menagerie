@@ -102,6 +102,7 @@ describe("ProviderSettingsManager", () => {
 						todoListEnabledMigrated: true,
 						claudeCodeLegacySettingsMigrated: true,
 						routerProviderMigrated: true,
+						omniRouteTierHeaderMigrated: true,
 					},
 				}),
 			)
@@ -341,6 +342,50 @@ describe("ProviderSettingsManager", () => {
 			expect(storedConfig.apiConfigs["router-profile"]).toEqual({ id: "router-id" })
 		})
 
+		it("migrates an X-OmniRoute-Tier header to the OmniRoute flag and strips the header", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: {
+						default: {
+							id: "default",
+							apiProvider: providerIdentifiers.openai,
+							openAiHeaders: { "X-OmniRoute-Tier": "5", "X-Test": "keep" },
+						},
+						noHeader: {
+							apiProvider: providerIdentifiers.openai,
+							openAiHeaders: { "X-Test": "keep" },
+						},
+						nonOpenAi: {
+							apiProvider: providerIdentifiers.anthropic,
+						},
+					},
+					migrations: {
+						rateLimitSecondsMigrated: true,
+						openAiHeadersMigrated: true,
+						consecutiveMistakeLimitMigrated: true,
+						todoListEnabledMigrated: true,
+						claudeCodeLegacySettingsMigrated: true,
+						routerProviderMigrated: true,
+						omniRouteTierHeaderMigrated: false,
+					},
+				}),
+			)
+
+			await providerSettingsManager.initialize()
+
+			const calls = mockSecrets.store.mock.calls
+			const storedConfig = JSON.parse(calls[calls.length - 1][1])
+			// The tier-headed profile gains the flag and loses only the tier header; no address invented.
+			expect(storedConfig.apiConfigs.default.openAiIsOmniRoute).toBe(true)
+			expect(storedConfig.apiConfigs.default.openAiHeaders).toEqual({ "X-Test": "keep" })
+			expect(storedConfig.apiConfigs.default.openAiBaseUrl).toBeUndefined()
+			// Profiles without the tier header are untouched.
+			expect(storedConfig.apiConfigs.noHeader.openAiIsOmniRoute).toBeUndefined()
+			expect(storedConfig.apiConfigs.nonOpenAi.openAiIsOmniRoute).toBeUndefined()
+			expect(storedConfig.migrations.omniRouteTierHeaderMigrated).toBe(true)
+		})
+
 		it("should throw error if secrets storage fails", async () => {
 			mockSecrets.get.mockRejectedValue(new Error("Storage failed"))
 
@@ -409,6 +454,40 @@ describe("ProviderSettingsManager", () => {
 				"Failed to list configs: Error: Failed to read provider profiles from secrets: Error: Read failed",
 			)
 		})
+
+		it("preserves the full route id for OmniRoute profiles and shortens others", async () => {
+			// Regression: cleanModelId stripped the prefix off every "provider/model"
+			// id, turning an OmniRoute route like "hybrid/code" into a bare "code"
+			// that the OmniRoute proxy rejects ("Unable to determine provider for
+			// model 'code'"). OmniRoute profiles must keep the whole route id; only
+			// conventional provider/model ids are shortened for display.
+			const config: ProviderProfiles = {
+				currentApiConfigName: "omni",
+				apiConfigs: {
+					omni: {
+						id: "omni-id",
+						apiProvider: providerIdentifiers.openai,
+						openAiModelId: "hybrid/code",
+						openAiIsOmniRoute: true,
+					},
+					anthropic: {
+						id: "anthropic-id",
+						apiProvider: providerIdentifiers.anthropic,
+						apiModelId: "anthropic/claude-sonnet-4-6",
+					},
+				},
+				modeApiConfigs: {},
+				migrations: { rateLimitSecondsMigrated: false },
+			}
+
+			mockSecrets.get.mockResolvedValue(JSON.stringify(config))
+
+			const configs = await providerSettingsManager.listConfig()
+			const omni = configs.find((c) => c.name === "omni")
+			const anthropic = configs.find((c) => c.name === "anthropic")
+			expect(omni?.modelId).toBe("hybrid/code")
+			expect(anthropic?.modelId).toBe("claude-sonnet-4-6")
+		})
 	})
 
 	describe("SaveConfig", () => {
@@ -457,6 +536,27 @@ describe("ProviderSettingsManager", () => {
 
 			expect(mockSecrets.store.mock.calls[0][0]).toEqual("roo_cline_config_api_config")
 			expect(storedConfig).toEqual(expectedConfig)
+		})
+
+		it("does not persist a frozen omniRouteTier snapshot on an OmniRoute profile", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({ currentApiConfigName: "default", apiConfigs: { default: {} }, modeApiConfigs: {} }),
+			)
+
+			const id = await providerSettingsManager.saveConfig("omni", {
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+				openAiModelId: "hybrid/reader",
+				omniRouteTier: 3,
+			})
+
+			const storedProfiles = JSON.parse(mockSecrets.store.mock.calls.at(-1)![1])
+			expect(storedProfiles.apiConfigs.omni).toEqual({
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+				openAiModelId: "hybrid/reader",
+				id,
+			})
 		})
 
 		it.each([OpenAiCodexServiceTier.Default, OpenAiCodexServiceTier.Priority] as const)(

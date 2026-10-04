@@ -159,7 +159,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		}
 
 		const newContent = change.newContent || ""
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		// Initialize diff view for new file
 		task.diffViewProvider.editType = "create"
@@ -249,7 +249,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			return
 		}
 
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: "appliedDiff",
@@ -309,7 +309,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 
 		const originalContent = change.originalContent || ""
 		const newContent = change.newContent || ""
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		// Initialize diff view
 		task.diffViewProvider.editType = "modify"
@@ -395,7 +395,10 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			}
 
 			// Check if destination path is outside workspace
-			const isMoveOutsideWorkspace = isPathOutsideWorkspace(moveAbsolutePath)
+			const isMoveOutsideWorkspace = isPathOutsideWorkspace(
+				moveAbsolutePath,
+				task.parallelWorker ? task.cwd : undefined,
+			)
 			if (isMoveOutsideWorkspace) {
 				task.consecutiveMistakeCount++
 				task.recordToolError("apply_patch")
@@ -468,7 +471,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			tool: "appliedDiff",
 			path: displayPath || path.basename(task.cwd) || "workspace",
 			diff: patchPreview || "Parsing patch...",
-			isOutsideWorkspace: isPathOutsideWorkspace(absolutePath),
+			isOutsideWorkspace: isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined),
 		}
 
 		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})

@@ -11,8 +11,40 @@ import { findLast } from "../../shared/array"
 import { supportPrompt } from "../../shared/support-prompt"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { generateFoldedFileContext } from "./foldedFileContext"
+import { compactHistoricalEnvironmentDetails } from "../task/compactEnvironmentDetails"
+import { awaitWithStreamTimeout, StreamIdleTimeoutError, type StreamWaitPhase } from "../task/streamIdleTimeout"
+import { getApiRequestTimeout, getApiStreamIdleTimeout } from "../../api/providers/utils/timeout-config"
 
 export type { FoldedFileContextResult, FoldedFileContextOptions } from "./foldedFileContext"
+
+const MAX_SUMMARY_TOOL_RESULT_CHARS = 12_000
+const MAX_SUMMARY_FILE_CONTEXT_CHARS = 10_000
+
+/** Old folded reminders are regenerated from the current files after condensing. */
+export function removeRedundantSummaryContext(messages: ApiMessage[]): ApiMessage[] {
+	return messages.map((message) => {
+		if (!message.isSummary || typeof message.content === "string") return message
+		return {
+			...message,
+			content: message.content.filter(
+				(block) =>
+					block.type !== "text" ||
+					(!block.text.startsWith("<environment_details>") &&
+						!(block.text.startsWith("<system-reminder>") && block.text.includes("## File Context:"))),
+			),
+		}
+	})
+}
+
+function boundSummaryToolResult(content: string): string {
+	if (content.length <= MAX_SUMMARY_TOOL_RESULT_CHARS) return content
+	const half = MAX_SUMMARY_TOOL_RESULT_CHARS / 2
+	return (
+		content.slice(0, half) +
+		`\n[Omitted ${content.length - MAX_SUMMARY_TOOL_RESULT_CHARS} characters from this saved tool result; re-read the source if needed.]\n` +
+		content.slice(-half)
+	)
+}
 
 /**
  * Converts a tool_use block to a text representation.
@@ -41,7 +73,7 @@ export function toolUseToText(block: Anthropic.Messages.ToolUseBlockParam): stri
 export function toolResultToText(block: Anthropic.Messages.ToolResultBlockParam): string {
 	const errorSuffix = block.is_error ? " (Error)" : ""
 	if (typeof block.content === "string") {
-		return `[Tool Result${errorSuffix}]\n${block.content}`
+		return `[Tool Result${errorSuffix}]\n${boundSummaryToolResult(block.content)}`
 	} else if (Array.isArray(block.content)) {
 		const contentText = block.content
 			.map((contentBlock) => {
@@ -55,7 +87,7 @@ export function toolResultToText(block: Anthropic.Messages.ToolResultBlockParam)
 				return `[${(contentBlock as { type: string }).type}]`
 			})
 			.join("\n")
-		return `[Tool Result${errorSuffix}]\n${contentText}`
+		return `[Tool Result${errorSuffix}]\n${boundSummaryToolResult(contentText)}`
 	}
 	return `[Tool Result${errorSuffix}]`
 }
@@ -305,7 +337,9 @@ export async function summarizeConversation(options: SummarizeConversationOption
 
 	// Inject synthetic tool_results for orphan tool_calls to prevent API rejections
 	// (e.g., when user triggers condense after receiving attempt_completion but before responding)
-	const messagesWithToolResults = injectSyntheticToolResults(messagesToSummarize)
+	const messagesWithToolResults = injectSyntheticToolResults(
+		removeRedundantSummaryContext(compactHistoricalEnvironmentDetails(messagesToSummarize, false)),
+	)
 
 	// Transform tool_use and tool_result blocks to text representations.
 	// This is necessary because some providers (like Bedrock via LiteLLM) require the `tools` parameter
@@ -331,10 +365,58 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	let cost = 0
 	let outputTokens = 0
 
-	try {
-		const stream = apiHandler.createMessage(promptToUse, requestMessages, metadata)
+	// The summarizer runs before any request timer of the caller, so it needs its own
+	// first-chunk and idle bounds. Its controller also follows the caller's signal.
+	const condenseController = new AbortController()
+	const outerSignal = metadata?.abortSignal
+	const forwardAbort = () => condenseController.abort(outerSignal?.reason)
 
-		for await (const chunk of stream) {
+	try {
+		if (outerSignal?.aborted) {
+			forwardAbort()
+		} else {
+			outerSignal?.addEventListener("abort", forwardAbort, { once: true })
+		}
+
+		// Historical tool blocks are already plain text above. Offering executable
+		// tools here can make the summarizer generate a tool call that this loop
+		// never consumes, leaving context management waiting for an empty summary.
+		// Keep the original metadata for the next-request token accounting below.
+		const summaryMetadata = metadata
+			? {
+					...metadata,
+					maxOutputTokens: 6144,
+					tools: undefined,
+					tool_choice: undefined,
+					parallelToolCalls: undefined,
+					allowedFunctionNames: undefined,
+					suppressPreviousResponseId: true,
+					abortSignal: condenseController.signal,
+				}
+			: undefined
+		const it = apiHandler.createMessage(promptToUse, requestMessages, summaryMetadata)[Symbol.asyncIterator]()
+		let phase: StreamWaitPhase = "first_chunk"
+
+		for (;;) {
+			const timeoutMs = phase === "first_chunk" ? getApiRequestTimeout() : getApiStreamIdleTimeout()
+			const r = await awaitWithStreamTimeout(it.next(), {
+				signal: condenseController.signal,
+				timeoutMs,
+				phase,
+			}).catch((e: unknown) => {
+				if (e instanceof StreamIdleTimeoutError) {
+					// Close the stalled summarizer request; the catch below reports the
+					// failure and manageContext falls back to truncation.
+					condenseController.abort(e)
+					void it.return?.(undefined)?.catch(() => {})
+				}
+				throw e
+			})
+			if (r.done) {
+				break
+			}
+			phase = "between_chunks"
+			const chunk = r.value
 			if (chunk.type === "text") {
 				summary += chunk.text
 			} else if (chunk.type === "usage") {
@@ -383,6 +465,8 @@ export async function summarizeConversation(options: SummarizeConversationOption
 			error: t("common:errors.condense_api_failed", { message: errorMessage }),
 			errorDetails,
 		}
+	} finally {
+		outerSignal?.removeEventListener("abort", forwardAbort)
 	}
 
 	summary = summary.trim()
@@ -421,6 +505,7 @@ ${commandBlocks}
 			const foldedResult = await generateFoldedFileContext(filesReadByRoo, {
 				cwd,
 				rooIgnoreController,
+				maxCharacters: MAX_SUMMARY_FILE_CONTEXT_CHARS,
 			})
 			if (foldedResult.sections.length > 0) {
 				for (const section of foldedResult.sections) {

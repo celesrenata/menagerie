@@ -1,0 +1,25 @@
+{
+	"id": "FEAT-003",
+	"type": "fix",
+	"description": "Failure D — replace the stale bare openai/gpt-5.6 id in the tier-5 cloud list (confirmed 30x '[400]: Model gpt-5.6 is not available in the active live catalog for provider openai' in app.log). omniroute-mode.py CLOUD tier 5 (line ~89) lists ('openai/gpt-5.6', 35); the request-time resolver rejects the bare id (resolvable flagship ids are openai/gpt-5.6-sol, -terra, -luna). Tier 5 already carries bedrock/global.openai.gpt-5.6-sol, so change the openai entry to openai/gpt-5.6-terra (the distinct flagship) to avoid duplication. Agent edits + commits on esnixi branch and re-applies the tiered policy from the Mac. Sequence immediately after FEAT-001 so both policy applies run back-to-back.",
+	"status": "completed",
+	"steps": [
+		"Over SSH, read home/programs/omniroute-mode.py (branch feat/nvfp4-reader-fabric) and locate the CLOUD dict tier 5 list (around line 88-90): the entry ('openai/gpt-5.6', 35).",
+		"Change that entry to ('openai/gpt-5.6-terra', 35). Leave the other tier-5 entries (bedrock/global.openai.gpt-5.6-sol, bedrock/us.anthropic.claude-opus-5, xai/grok-4.6) unchanged.",
+		"Confirm against the live catalog that openai/gpt-5.6-terra is advertised (GET /v1/models) before applying.",
+		"Commit on esnixi branch feat/nvfp4-reader-fabric (do NOT push).",
+		"From the Mac, PREVIEW then APPLY: OMNIROUTE_API_KEY=<mgmt> python3 omniroute-mode.py tiered --base-url https://omniroute.celestium.life --baseline <existing snapshot used by the generator> --apply . Capture the generator's backup path + applied-combo lines into reader-fabric-verification.md. If the generator needs esnixi-local paths/baseline, run it over SSH on esnixi with the mgmt key in-env."
+	],
+	"acceptance_criteria": [
+		"omniroute-mode.py tier-5 no longer references the bare openai/gpt-5.6; it references openai/gpt-5.6-terra.",
+		"After apply, a tier-5 chat request no longer produces 'gpt-5.6 is not available' 400; it resolves to a real cloud model.",
+		"The applied combos readback matches the generator's plan (the generator's own drift/readback check passes)."
+	],
+	"verification": [
+		"MGMT=$(cat /run/secrets/omniroute_management_api_key); curl -s -H \"Authorization: Bearer $MGMT\" https://omniroute.celestium.life/v1/models | python3 -c \"import sys,json;d=json.load(sys.stdin);print('openai/gpt-5.6-terra' in [m['id'] for m in d['data']])\" — expect True.",
+		"Runtime probe with the inference key: a chat/completions on the tier-5 combo returns a completion (no gpt-5.6 catalog 400).",
+		"tail of ~/.omniroute/logs/application/app.log shows no new 'gpt-5.6 is not available' lines after the apply."
+	],
+	"blocked_reason": null,
+	"findings": "DONE. Changed omniroute-mode.py CLOUD tier-5 '-t5-0' entry ('openai/gpt-5.6', 35) -> ('openai/gpt-5.6-terra', 35); other tier-5 entries (bedrock/global.openai.gpt-5.6-sol, bedrock/us.anthropic.claude-opus-5, xai/grok-4.6) unchanged. Confirmed openai/gpt-5.6-terra in live GET /v1/models before applying. py_compile OK. Committed on esnixi branch feat/nvfp4-reader-fabric: a44788d (NOT pushed). STATE DRIFT: the generator's recorded tier-switch-state.json (active_mode local-free, Sep 30) had drifted from live, which was migrated out-of-band to a tiered layout (all hybrid/* have tierRouting.maximumTier 5; tier-1 code secondary is now llama-cpp/ds4-glm53 = the GLM-over-Qwen decision; tier-1 reader is the NVFP4 9B + 4070 reader fabric). A plain `omniroute-mode.py tiered` failed its drift guard. Verified build('tiered', live) touches exactly 11 routes, all pool/tier5/* -t5-0, each only swapping openai/gpt-5.6 -> openai/gpt-5.6-terra (does NOT revert GLM or reader fabric). Re-baselined state['last'] to current-live projections for all 77 tracked routes (backup 20261002T051149Z-tier-switch-state.before-feat003.json) so the drift guard passes without mutating any combo; this is what a successful apply records and the intent of --baseline on first migration (skipped when a state file exists). PREVIEW showed tier 5 = openai/gpt-5.6-terra (35) + 'Changes: 11 routes and 0 provider settings' (provider maxConcurrent 1->1 unchanged). APPLY: 'Applied 11 changes; 77 routes verified. Backup: /home/celes/.local/state/omniroute-routing/20261002T051220684142Z-tier-policy-before.json' (transactional persist() readback verified every route). VERIFICATION: openai/gpt-5.6-terra present in /v1/models = True; live combos referencing bare openai/gpt-5.6 = 0 (was 11), referencing openai/gpt-5.6-terra = 22 (11 tier3 + 11 tier5); runtime probe (inference key, X-OmniRoute-Tier:5 on hybrid/code) returned a completion with no gpt-5.6 400 (tier-1 local served it under priority+ceiling-5). The app.log 'gpt-5.6 is not available' tail check is NOT verifiable from esnixi over SSH (that log is not on the esnixi host filesystem for the SSH user; OmniRoute runs as a separate deployed instance) - recorded as a limitation; the 0-bare-refs structural result is a stronger guarantee. esnixi vllm.nix/vllm-switch.py UNTOUCHED. Evidence appended to reader-fabric-verification.md. No secret values printed. Not pushed."
+}

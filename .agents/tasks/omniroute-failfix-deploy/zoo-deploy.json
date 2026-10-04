@@ -1,0 +1,16 @@
+{
+	"deployed": true,
+	"branch_used": "feat/omniroute-tier-dropdown-feat005",
+	"head_commit": "fa00ee99c0ce94cae36421177f36de666671d223",
+	"version": "3.84.4",
+	"vsix_built": true,
+	"darwin_rebuilt": false,
+	"install_method": "code --install-extension (VS Code CLI, --force)",
+	"notes": "User (via parent session) confirmed: build from feat/omniroute-tier-dropdown-feat005 (fa00ee99c, 3.84.4) and install directly, replacing stale zoocodeorganization.zoo-code@3.84.4. OmniRoute gate waived: its verify.json all_passed was not literally true, but the only blocker was live-chat verification pending a valid inference key (both keys 401), which is unrelated to this UI feature; user explicitly said proceed. Branch analysis: feat005 is a strict fast-forward superset of feat/parallel-tasks-import (git merge-base confirmed; 0 commits in parallel-import absent from feat005), so NO merge was needed — building directly already includes all combo-id/cleanModelId/FEAT-003/FEAT-004 work plus FEAT-005 tier dropdown (8a4189500). No version bump needed (branch already at 3.84.4 vs main 3.84.3). Built via 'pnpm vsix' (turbo -> vsce package --no-dependencies) to bin/zoo-code-3.84.4.vsix (33 MB, Oct 2 01:14), overwriting the stale Oct 1 15:01 build. STALE-build proof: installed extension.js was Oct 1 15:10 with 0 'X-OmniRoute-Tier' hits (feature genuinely absent, predates the 22:52 tier-dropdown commit — NOT a window-reload issue). Verified fresh vsix contains the feature (bundled extension.js has X-OmniRoute-Tier; webview index.js has omniRouteTier/OmniRouteTierDropdown). Installed via 'code --install-extension --force'; install reported success. Post-install verification: installed extension.js now Oct 2 01:15 with 1 X-OmniRoute-Tier hit, installed webview index.js with 4 omniRouteTier hits. Chose standard code CLI install over darwin-rebuild per parent-session direction to use the repo's standard build+install process; the flake/darwin-rebuild (zooCodeInstall activation) path was therefore NOT exercised in this step. ACTION REQUIRED BY USER: reload the VS Code window (Developer: Reload Window) for the newly installed extension build to load — the per-request cost-tier dropdown ($..$$$$$ for Tier 1-5) will then appear next to YOLO mode.",
+	"verification": {
+		"stale_build_tier_hits": 0,
+		"fresh_installed_host_tier_hits": 1,
+		"fresh_installed_webview_tier_hits": 4,
+		"installed_extension_js_mtime": "2026-10-02 01:15"
+	}
+}

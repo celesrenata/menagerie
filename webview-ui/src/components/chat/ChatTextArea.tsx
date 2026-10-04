@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
-import { VolumeX, Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
+import { VolumeX, Image, WandSparkles, SendHorizontal, X, ListEnd, Square, GitFork } from "lucide-react"
 
 import type { ExtensionMessage } from "@roo-code/types"
 
@@ -28,6 +28,7 @@ import Thumbnails from "../common/Thumbnails"
 import { ModeSelector } from "./ModeSelector"
 import { ApiConfigSelector } from "./ApiConfigSelector"
 import { AutoApproveDropdown } from "./AutoApproveDropdown"
+import { OmniRouteTierDropdown } from "./OmniRouteTierDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./constants"
 import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
@@ -44,6 +45,7 @@ interface ChatTextAreaProps {
 	selectedImages: string[]
 	setSelectedImages: React.Dispatch<React.SetStateAction<string[]>>
 	onSend: () => void
+	onForceParallel?: () => void
 	onSelectImages: () => void
 	shouldDisableImages: boolean
 	onHeightChange?: (height: number) => void
@@ -69,6 +71,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			selectedImages,
 			setSelectedImages,
 			onSend,
+			onForceParallel,
 			onSelectImages,
 			shouldDisableImages,
 			onHeightChange,
@@ -1320,6 +1323,20 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							onToggleLockApiConfig={handleToggleLockApiConfig}
 						/>
 						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
+						<OmniRouteTierDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
+						{!isEditMode && onForceParallel && (
+							<StandardTooltip content={t("chat:forceParallel.description")}>
+								<button
+									type="button"
+									onClick={onForceParallel}
+									data-testid="force-parallel-button"
+									aria-label={t("chat:forceParallel.ariaLabel")}
+									className="inline-flex items-center gap-1.5 whitespace-nowrap rounded px-1.5 py-1 text-xs text-vscode-foreground hover:bg-vscode-list-hoverBackground focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder">
+									<GitFork className="size-3 flex-shrink-0" />
+									<span>{t("chat:forceParallel.label")}</span>
+								</button>
+							</StandardTooltip>
+						)}
 					</div>
 					<div className={cn("flex flex-shrink-0 items-center gap-0.5 h-5 leading-none pr-2")}>
 						{isTtsPlaying && (

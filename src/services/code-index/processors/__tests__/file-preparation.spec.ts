@@ -3,7 +3,12 @@ import path from "path"
 import { FileType, Uri } from "vscode"
 import { v5 as uuidv5 } from "uuid"
 import type { CodeBlock, ICodeParser, IEmbedder } from "../../interfaces"
-import { MAX_FILE_SIZE_BYTES, QDRANT_CODE_BLOCK_NAMESPACE } from "../../constants"
+import {
+	MAX_EMBEDDING_REQUEST_ITEMS,
+	MAX_EMBEDDING_REQUEST_PADDED_TOKENS,
+	MAX_FILE_SIZE_BYTES,
+	QDRANT_CODE_BLOCK_NAMESPACE,
+} from "../../constants"
 import { FilePreparation } from "../file-preparation"
 import type { FilePreparationDependencies } from "../file-preparation-dependencies"
 
@@ -178,12 +183,10 @@ describe.each(["posix", "win32"] as const)("FilePreparation (%s paths)", (platfo
 			{ ...block, file_path: "src/../src/file.ts" },
 			{ ...block, start_line: 8, end_line: 10, content: "second" },
 		])
-		dependencies.embedder.createEmbeddings.mockResolvedValue({
-			embeddings: [
-				[0.1, 0.2],
-				[0.3, 0.4],
-			],
-		})
+		// Requests may be reordered by length, so the embedding is keyed by input text.
+		dependencies.embedder.createEmbeddings.mockImplementation(async (texts: string[]) => ({
+			embeddings: texts.map((text) => (text === "second" ? [0.3, 0.4] : [0.1, 0.2])),
+		}))
 		expect(await new FilePreparation(dependencies).prepareFile(filePath)).toEqual({
 			path: filePath,
 			status: "processed_for_batching",
@@ -204,7 +207,9 @@ describe.each(["posix", "win32"] as const)("FilePreparation (%s paths)", (platfo
 		expect(dependencies.fileSystem.stat).toHaveBeenCalledWith(Uri.file(filePath))
 		expect(dependencies.fileSystem.readFile).toHaveBeenCalledWith(Uri.file(filePath))
 		expect(dependencies.parser.parseFile).toHaveBeenCalledWith(filePath, { content, fileHash: hash })
-		expect(dependencies.embedder.createEmbeddings).toHaveBeenCalledWith([content, "second"])
+		// One request, sorted shortest first to limit padding; points above are still in block order.
+		expect(dependencies.embedder.createEmbeddings).toHaveBeenCalledTimes(1)
+		expect(dependencies.embedder.createEmbeddings).toHaveBeenCalledWith(["second", content])
 	})
 
 	it("calls service methods with their original receivers", async () => {
@@ -315,6 +320,36 @@ describe.each(["posix", "win32"] as const)("FilePreparation (%s paths)", (platfo
 		},
 	)
 
+	it("embeds a 700-block file in capped requests and keeps block order", async () => {
+		const dependencies = setup()
+		// Varied lengths (40..1960 chars, i.e. 10..490 estimated tokens) so both caps come into play.
+		const blocks = Array.from({ length: 700 }, (_, index) => ({
+			...block,
+			start_line: index + 1,
+			end_line: index + 1,
+			content: `${index}:`.padEnd(40 + ((index * 37) % 50) * 39, "x"),
+		}))
+		dependencies.parser.parseFile.mockResolvedValue(blocks)
+		const vectorFor = (text: string) => [Number(text.slice(0, text.indexOf(":")))]
+		dependencies.embedder.createEmbeddings.mockImplementation(async (texts: string[]) => ({
+			embeddings: texts.map(vectorFor),
+		}))
+
+		const result = await new FilePreparation(dependencies).prepareFile(filePath)
+
+		const requests = dependencies.embedder.createEmbeddings.mock.calls.map(([texts]) => texts)
+		expect(requests.length).toBeGreaterThan(700 / MAX_EMBEDDING_REQUEST_ITEMS)
+		expect(requests.flat()).toHaveLength(700)
+		for (const texts of requests) {
+			expect(texts.length).toBeLessThanOrEqual(MAX_EMBEDDING_REQUEST_ITEMS)
+			const longest = Math.max(...texts.map((text) => Math.ceil(text.length / 4)))
+			expect(texts.length * longest).toBeLessThanOrEqual(MAX_EMBEDDING_REQUEST_PADDED_TOKENS)
+		}
+		expect(result.pointsToUpsert?.map((point) => point.vector)).toEqual(blocks.map((_, index) => [index]))
+		expect(result.pointsToUpsert?.map((point) => point.payload.startLine)).toEqual(
+			blocks.map((_, index) => index + 1),
+		)
+	})
 	it("does not wrap non-Error rejections", async () => {
 		const dependencies = setup()
 		dependencies.fileSystem.readFile.mockRejectedValue("read failed")

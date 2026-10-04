@@ -134,6 +134,57 @@ describe("OpenAiHandler", () => {
 			})
 		})
 
+		it("attaches X-OmniRoute-Tier for an OmniRoute profile with a set tier (FEAT-005)", () => {
+			vi.mocked(OpenAI).mockClear()
+			new OpenAiHandler(
+				makeApiHandlerOptions({
+					openAiApiKey: "test-api-key",
+					openAiModelId: "hybrid/code",
+					openAiBaseUrl: "https://omniroute.example/api/v1/vscode/token",
+					openAiIsOmniRoute: true,
+					omniRouteTier: 3,
+				}),
+			)
+			expect(vi.mocked(OpenAI)).toHaveBeenCalledWith(
+				expect.objectContaining({
+					defaultHeaders: expect.objectContaining({ "X-OmniRoute-Tier": "3" }),
+				}),
+			)
+		})
+
+		it("omits X-OmniRoute-Tier when the tier is unset (FEAT-005)", () => {
+			vi.mocked(OpenAI).mockClear()
+			new OpenAiHandler(
+				makeApiHandlerOptions({
+					openAiApiKey: "test-api-key",
+					openAiModelId: "hybrid/code",
+					openAiBaseUrl: "https://omniroute.example/api/v1/vscode/token",
+					openAiIsOmniRoute: true,
+				}),
+			)
+			const headers = vi.mocked(OpenAI).mock.calls.at(-1)?.[0]?.defaultHeaders as
+				| Record<string, string>
+				| undefined
+			expect(headers?.["X-OmniRoute-Tier"]).toBeUndefined()
+		})
+
+		it("omits X-OmniRoute-Tier for a non-OmniRoute OpenAI profile even with a tier set (FEAT-005)", () => {
+			vi.mocked(OpenAI).mockClear()
+			new OpenAiHandler(
+				makeApiHandlerOptions({
+					openAiApiKey: "test-api-key",
+					openAiModelId: "gpt-4",
+					openAiBaseUrl: "https://api.openai.com/v1",
+					openAiIsOmniRoute: false,
+					omniRouteTier: 3,
+				}),
+			)
+			const headers = vi.mocked(OpenAI).mock.calls.at(-1)?.[0]?.defaultHeaders as
+				| Record<string, string>
+				| undefined
+			expect(headers?.["X-OmniRoute-Tier"]).toBeUndefined()
+		})
+
 		it.each([
 			["https://resource.openai.azure.com", "https://resource.openai.azure.com/openai"],
 			["https://resource.openai.azure.com/", "https://resource.openai.azure.com/openai"],
@@ -313,6 +364,36 @@ describe("OpenAiHandler", () => {
 				expect.objectContaining({ metadata: { completion_window: "balanced" } }),
 				{},
 			)
+		})
+
+		// Regression guard for the OmniRoute "bare `code`" bug: an OmniRoute profile
+		// stores a full `tier/role` combo id (e.g. `hybrid/code`) in `openAiModelId`.
+		// The request path must send that full combo id verbatim as the chat `model`
+		// field — never a bare role (`code`), which OmniRoute rejects with
+		// "Unable to determine provider for model 'code'". The handler already passes
+		// `openAiModelId` straight through; this test prevents a future change from
+		// reintroducing a prefix strip on the request path.
+		it("sends the full OmniRoute combo id as the chat model field (streaming)", async () => {
+			const omniRouteHandler = new OpenAiHandler({
+				...mockOptions,
+				openAiModelId: "hybrid/code",
+			})
+
+			await collectStream(omniRouteHandler.createMessage(systemPrompt, messages))
+
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "hybrid/code" }), {})
+		})
+
+		it("sends the full OmniRoute combo id as the chat model field (non-streaming)", async () => {
+			const omniRouteHandler = new OpenAiHandler({
+				...mockOptions,
+				openAiModelId: "hybrid/code",
+				openAiStreamingEnabled: false,
+			})
+
+			await collectStream(omniRouteHandler.createMessage(systemPrompt, messages))
+
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "hybrid/code" }), {})
 		})
 
 		it("streams reasoning chunks from delta.reasoning_content", async () => {
@@ -648,6 +729,14 @@ describe("OpenAiHandler", () => {
 			expect(mockCreate).toHaveBeenCalled()
 			const callArgs = mockCreate.mock.calls[0][0]
 			expect(callArgs.max_completion_tokens).toBeUndefined()
+		})
+
+		it("should honor a request-specific output cap for internal summaries", async () => {
+			const handler = new OpenAiHandler({ ...mockOptions, includeMaxTokens: false })
+			await collectStream(
+				handler.createMessage(systemPrompt, messages, { taskId: "summary", maxOutputTokens: 8192 }),
+			)
+			expect(mockCreate.mock.calls[0][0].max_completion_tokens).toBe(8192)
 		})
 
 		it("should not include max_tokens when includeMaxTokens is undefined", async () => {
@@ -1081,6 +1170,30 @@ describe("OpenAiHandler", () => {
 			expect(model.id).toBe("")
 			expect(model.info).toBeDefined()
 		})
+
+		it("defaults preserveReasoning to true for OmniRoute profiles so prior reasoning is sent back", () => {
+			const omniRoute = new OpenAiHandler({ ...mockOptions, openAiIsOmniRoute: true })
+			expect(omniRoute.getModel().info.preserveReasoning).toBe(true)
+			// The shared defaults object is never mutated by the OmniRoute overlay.
+			expect(openAiModelInfoSaneDefaults.preserveReasoning).toBeUndefined()
+		})
+
+		it("keeps an explicit preserveReasoning=false on an OmniRoute profile", () => {
+			const omniRoute = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: true,
+				openAiCustomModelInfo: { ...openAiModelInfoSaneDefaults, preserveReasoning: false },
+			})
+			expect(omniRoute.getModel().info.preserveReasoning).toBe(false)
+		})
+
+		it.each([false, undefined])(
+			"leaves preserveReasoning unset for non-OmniRoute profiles (openAiIsOmniRoute=%s)",
+			(openAiIsOmniRoute) => {
+				const plain = new OpenAiHandler({ ...mockOptions, openAiIsOmniRoute })
+				expect(plain.getModel().info.preserveReasoning).toBeUndefined()
+			},
+		)
 	})
 
 	describe("Azure AI Inference Service", () => {
@@ -1734,6 +1847,82 @@ describe("OpenAiHandler", () => {
 			const lastCall = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]
 			expect(lastCall[0]).toHaveProperty("stream_options")
 			expect(lastCall[0].stream_options).toEqual({ include_usage: true })
+		})
+	})
+
+	describe("abort signal forwarding", () => {
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+		const azureAiInferenceUrl = "https://test.services.ai.azure.com"
+
+		const runWithSignal = async (options: ApiHandlerOptions, signal?: AbortSignal) => {
+			const signalHandler = new OpenAiHandler(options)
+			await collectStream(
+				signalHandler.createMessage("system", messages, {
+					taskId: "task-1",
+					...(signal ? { abortSignal: signal } : {}),
+				}),
+			)
+			return mockCreate.mock.calls[0][1]
+		}
+
+		it("forwards metadata.abortSignal for streaming requests", async () => {
+			const { signal } = new AbortController()
+
+			expect(await runWithSignal(mockOptions, signal)).toEqual({ signal })
+		})
+
+		it("forwards metadata.abortSignal for non-streaming requests", async () => {
+			const { signal } = new AbortController()
+
+			expect(await runWithSignal({ ...mockOptions, openAiStreamingEnabled: false }, signal)).toEqual({ signal })
+		})
+
+		it("combines the Azure AI Inference path with the signal (streaming and non-streaming)", async () => {
+			const { signal } = new AbortController()
+
+			expect(await runWithSignal({ ...mockOptions, openAiBaseUrl: azureAiInferenceUrl }, signal)).toEqual({
+				path: "/models/chat/completions",
+				signal,
+			})
+
+			mockCreate.mockClear()
+			expect(
+				await runWithSignal(
+					{ ...mockOptions, openAiBaseUrl: azureAiInferenceUrl, openAiStreamingEnabled: false },
+					signal,
+				),
+			).toEqual({ path: "/models/chat/completions", signal })
+		})
+
+		it("forwards the signal for O3 family requests (streaming and non-streaming)", async () => {
+			const { signal } = new AbortController()
+
+			expect(await runWithSignal({ ...mockOptions, openAiModelId: "o3-mini" }, signal)).toEqual(
+				expect.objectContaining({ signal }),
+			)
+
+			mockCreate.mockClear()
+			expect(
+				await runWithSignal(
+					{ ...mockOptions, openAiModelId: "o3-mini", openAiStreamingEnabled: false },
+					signal,
+				),
+			).toEqual(expect.objectContaining({ signal }))
+		})
+
+		it("keeps request options unchanged without an abortSignal", async () => {
+			expect(await runWithSignal(mockOptions)).toEqual({})
+
+			mockCreate.mockClear()
+			expect(await runWithSignal({ ...mockOptions, openAiBaseUrl: azureAiInferenceUrl })).toEqual({
+				path: "/models/chat/completions",
+			})
+		})
+
+		it("leaves completePrompt request options unchanged", async () => {
+			await new OpenAiHandler(mockOptions).completePrompt("Test prompt")
+
+			expect(mockCreate.mock.calls[0][1]).toEqual({})
 		})
 	})
 })

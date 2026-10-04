@@ -35,7 +35,7 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 			task.consecutiveMistakeCount = 0
 
 			const absolutePath = path.resolve(task.cwd, relDirPath)
-			const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+			const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 			const [files, didHitLimit] = await listFiles(absolutePath, recursive || false, 200)
 			const { showRooIgnoredFiles = false } = (await task.providerRef.deref()?.getState()) ?? {}
@@ -74,7 +74,7 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 		const recursive = recursiveRaw?.toLowerCase() === "true"
 
 		const absolutePath = relDirPath ? path.resolve(task.cwd, relDirPath) : task.cwd
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: !recursive ? "listFilesTopLevel" : "listFilesRecursive",

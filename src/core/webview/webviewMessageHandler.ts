@@ -27,6 +27,7 @@ import {
 	LmStudioModelsMessageType,
 	OllamaModelsMessageType,
 	OpenAiModelsMessageType,
+	OmniRouteCatalogMessageType,
 	RouterModelsMessageType,
 	VsCodeLmModelsMessageType,
 	isTelemetryOptedIn,
@@ -78,6 +79,7 @@ import { playTts, setTtsEnabled, setTtsSpeed, stopTts } from "../../utils/tts"
 import { searchCommits } from "../../utils/git"
 import { exportSettings, importSettingsWithFeedback } from "../config/importExport"
 import { getOpenAiModels } from "../../api/providers/openai"
+import { fetchOmniRouteCatalog } from "../../api/providers/omniroute"
 import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { openMention } from "../mentions"
 import { resolveImageMentions } from "../mentions/resolveImageMentions"
@@ -698,7 +700,9 @@ export const webviewMessageHandler = async (
 					resolved.text,
 					resolved.images,
 					undefined,
-					{ taskId: message.taskId },
+					{
+						taskId: message.taskId,
+					},
 					message.taskConfiguration,
 				)
 				// Task created successfully - notify the UI to reset
@@ -727,6 +731,21 @@ export const webviewMessageHandler = async (
 
 		case "updateSettings":
 			if (message.updatedSettings) {
+				if (message.updatedSettings.yoloModeEnabled === true) {
+					try {
+						const { ensureDcgInstalled } = await import("../../services/destructive-command-guard")
+						const binaryPath = await ensureDcgInstalled(provider.context.globalStorageUri.fsPath)
+						if (!binaryPath) throw new Error(t("common:errors.destructiveCommandGuard.unavailable"))
+						message.updatedSettings.attentionNotificationsEnabled = true
+					} catch (error) {
+						message.updatedSettings.yoloModeEnabled = false
+						vscode.window.showErrorMessage(
+							t("common:errors.destructiveCommandGuard.enableFailed", {
+								error: error instanceof Error ? error.message : String(error),
+							}),
+						)
+					}
+				}
 				if (message.updatedSettings.destructiveCommandGuardEnabled === true) {
 					try {
 						const { ensureDcgInstalled } = await import("../../services/destructive-command-guard")
@@ -1479,6 +1498,19 @@ export const webviewMessageHandler = async (
 			}
 
 			break
+		case OmniRouteCatalogMessageType.requestOmniRouteCatalog: {
+			// Read the (possibly unsaved) server root + key from the message so an unsaved edit
+			// can be tested, matching the OpenAI/LiteLLM fetch pattern (design §3).
+			const omniRouteCatalog = await fetchOmniRouteCatalog(
+				message?.values?.serverUrl as string | undefined,
+				message?.values?.apiKey as string | undefined,
+			)
+			await provider.postMessageToWebview({
+				type: OmniRouteCatalogMessageType.omniRouteCatalog,
+				omniRouteCatalog,
+			})
+			break
+		}
 		case VsCodeLmModelsMessageType.requestVsCodeLmModels:
 			const vsCodeLmModels = await getVsCodeLmModels()
 			// TODO: Cache like we do for OpenRouter, etc?
@@ -2092,6 +2124,7 @@ export const webviewMessageHandler = async (
 						listApiConfigMeta = [],
 						enhancementApiConfigId,
 						includeTaskHistoryInEnhance,
+						omniRouteTier,
 					} = state
 
 					const currentCline = provider.getCurrentTask()
@@ -2103,6 +2136,7 @@ export const webviewMessageHandler = async (
 						listApiConfigMeta,
 						enhancementApiConfigId,
 						includeTaskHistoryInEnhance,
+						omniRouteTier,
 						currentClineMessages: currentCline?.clineMessages,
 						providerSettingsManager: provider.providerSettingsManager,
 					})

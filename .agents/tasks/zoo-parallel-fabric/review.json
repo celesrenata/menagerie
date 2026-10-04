@@ -1,0 +1,15 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "NIT",
+			"file": ".agents/tasks/zoo-parallel-fabric",
+			"detail": "The branch carries the prior omniroute-integration task's commits (FEAT-003/004/005 OmniRoute tier-dropdown work: webview-ui/src/components/chat/OmniRouteTierDropdown.tsx, src/api/providers/omniroute.ts, packages/types omniRouteTier schema) ahead of the three zoo-parallel-fabric commits. Out of scope for this review; the three workstreams are cleanly isolated in commits 49c9075bb/91344f811/397c98cc4 (git diff fa00ee99c..HEAD). No action needed beyond awareness that git diff main..HEAD is broader than these three features."
+		},
+		{
+			"severity": "NIT",
+			"file": "src/core/task/__tests__/Task.condensing-threading.spec.ts",
+			"detail": "Threading tests cover condenseContext()->summarizeConversation and handleContextWindowExceededError()->manageContext (set+unset), but the third condensing site attemptApiRequest()->manageContext has no direct threading assertion. It is wired with the identical `await this.getCondensingApiHandler()` -> `apiHandler:` pattern and is covered by tsc + the shared resolver, so this is not blocking; a third threading case would complete the symmetry."
+		}
+	]
+}

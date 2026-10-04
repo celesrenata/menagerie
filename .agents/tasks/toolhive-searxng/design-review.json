@@ -1,0 +1,30 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "NIT",
+			"title": "\"roughly ten imported launchd user agents\" undercounts and omits a real agent",
+			"where": "Overview, Decision 1",
+			"problem": "The flake imports more launchd-agent-bearing modules than the ten enumerated (deepseek-v4-server.nix declares 7 agents, open-webui-tools.nix declares 2, basert/launch-agent.nix declares life.celestium.basert) and the list omits the imported omniroute-wireguard.nix. The design hedges with 'roughly' and the two cited shape-precedents (omniroute.nix, mlx-server.nix) are correct, so soundness is unaffected.",
+			"fix": "Change to 'a dozen-plus launchd user agents across the imported modules/darwin/*.nix' and drop the exact count, or label the list as representative, not exhaustive."
+		},
+		{
+			"id": 2,
+			"severity": "NIT",
+			"title": "agent Label naming scheme is dominant but not universal",
+			"where": "Decision 1 / Implementation surface item 3",
+			"problem": "com.celes.* is used by most agents, but basert uses life.celestium.basert. The proposed com.celes.toolhive-mcp matches the dominant scheme and is fine.",
+			"fix": "No change required; keep com.celes.toolhive-mcp (already chosen)."
+		},
+		{
+			"id": 3,
+			"severity": "NIT",
+			"title": "thv client register omission must actually be carried into the ported start script",
+			"where": "Decision 5",
+			"problem": "The reference toolhive.nix lines 83-84 do call thv client register kiro / vscode. The decision to omit them is correct for this flake, but the implementer must delete those two lines when adapting the start script since they exist in the source.",
+			"fix": "The ported start script must contain ONLY: PATH setup, defensive mkdir -p ai/logs, docker info wait loop, run_if_needed(), guarded secret reads (none for searxng), one run_if_needed searxng-enhanced with the exact reference flags, and exit 0. No thv client register lines."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/toolhive-searxng/design-review.md"
+}

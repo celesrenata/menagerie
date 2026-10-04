@@ -1,0 +1,18 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"label": "mktemp template renamed",
+			"severity": "informational",
+			"blocking": false,
+			"detail": "The scratch-file template changed from /tmp/kiro-mcp.XXXXXX to the shared /tmp/mcp-merge.XXXXXX. No behavioral effect; mktemp still guarantees uniqueness. No action required."
+		},
+		{
+			"label": "Stale chat-codex/chat-gpt52 remain",
+			"severity": "informational",
+			"blocking": false,
+			"detail": "The merge keeps user-only servers, so the retired chat-codex/chat-gpt52 entries persist in both live files. This is by design per the task text, which forbids deleting them; removing them is a separate user-approved change."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/unify-kiro-zoo-mcp/review.md"
+}

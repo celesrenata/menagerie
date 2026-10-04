@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Nie udało się zaimportować historii Roo Code: {{error}}"
+		"rooHistoryImport": "Nie udało się zaimportować historii Roo Code: {{error}}",
+		"presenter_failed": "Wykonanie narzędzia nieoczekiwanie się nie powiodło: {{message}}. Do modelu wysłano wynik błędu dla nieobsłużonych wywołań narzędzi.",
+		"parallel_worker_failed": "Równoległy worker został zatrzymany: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Nie wybrano zawartości terminala",

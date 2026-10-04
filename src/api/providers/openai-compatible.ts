@@ -171,7 +171,7 @@ export abstract class OpenAICompatibleHandler extends BaseProvider implements Si
 			system: systemPrompt,
 			messages: aiSdkMessages,
 			temperature: model.temperature ?? this.config.temperature ?? 0,
-			maxOutputTokens: this.getMaxOutputTokens(),
+			maxOutputTokens: metadata?.maxOutputTokens ?? this.getMaxOutputTokens(),
 			tools: aiSdkTools,
 			toolChoice: this.mapToolChoice(metadata?.tool_choice),
 		}

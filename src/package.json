@@ -3,7 +3,7 @@
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
 	"publisher": "ZooCodeOrganization",
-	"version": "3.84.0",
+	"version": "3.84.4",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
 		"color": "#617A91",
@@ -66,6 +66,11 @@
 					"type": "webview",
 					"id": "zoo-code.SidebarProvider",
 					"name": "%views.sidebar.name%"
+				},
+				{
+					"id": "zoo-code.taskBoard",
+					"name": "Task Board",
+					"visibility": "hidden"
 				}
 			]
 		},
@@ -169,6 +174,14 @@
 				"command": "zoo-code.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
+			},
+			{
+				"command": "zoo-code.showTaskBoard",
+				"title": "Zoo: Show Task Board"
+			},
+			{
+				"command": "zoo-code.exportTaskBoard",
+				"title": "Zoo: Export Task Board JSON"
 			}
 		],
 		"menus": {
@@ -384,6 +397,13 @@
 					"minimum": 1,
 					"maximum": 3600,
 					"description": "%settings.apiRequestTimeout.description%"
+				},
+				"zoo-code.apiStreamIdleTimeout": {
+					"type": "integer",
+					"default": 300,
+					"minimum": 0,
+					"maximum": 3600,
+					"description": "%settings.apiStreamIdleTimeout.description%"
 				},
 				"zoo-code.newTaskRequireTodos": {
 					"type": "boolean",

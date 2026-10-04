@@ -1,0 +1,10 @@
+{
+	"verdict": "APPROVED",
+	"summary": "The Model Usage Over Time chart now groups client-side through a pure module (modelUsageSeries.ts): top-N by range-total tokens (default 8; 5/8/12/All), with the rest summed per row into a sentinel __other__ series. connection-test, model-sync, health probes, embeddings and zero/non-finite totals are excluded from both the visible series and Other. There is no alias table. Colors are hash-stable (FNV-1a with probing), and the legend is compact and truncated, with a full-name title. The choice persists under pref:analytics:modelUsageTopN. /api/usage/analytics is unchanged and recharts stays lazy. The 4 i18n keys are in en.json, backfilled to all 67 locales (vi translated), and no suppressions were added. The reviewer re-ran 13/13 node tests, 4/4 Vitest component tests and a clean eslint pass. The /dashboard/cache 500 was tested with a cookie-only session (minted in the pod, then revoked) and did not reproduce, so it is documented with a hypothesis and capture steps. No secrets are in the diff and nothing was pushed. None of the findings block.",
+	"findings": [
+		"Non-blocking: legend labels have only title, not the aria-label Decision 7 planned. Truncation is CSS-only, so screen readers still get the full name.",
+		"Non-blocking (possible): the card header row (title plus 4-button group) has no flex-wrap and may crowd in narrow layouts. Not checked visually.",
+		"Informational: 65 locales serve the English fallback via __MISSING__ markers for the 4 new keys (the documented sync-ui process).",
+		"Informational: the /dashboard/cache 500 was not reproduced with a cookie session. It is documented in cache-500-findings.md with a transient-rollout/deploy-skew hypothesis and capture steps. The missing Traefik default-redirectscheme middleware is a separate infra issue."
+	]
+}
