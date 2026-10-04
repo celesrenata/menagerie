@@ -49,6 +49,10 @@ async function main() {
 		define: {
 			"process.env.PKG_RELEASE_CHANNEL": JSON.stringify(process.env.PKG_RELEASE_CHANNEL || "stable"),
 			"process.env.POSTHOG_API_KEY": JSON.stringify(process.env.POSTHOG_API_KEY || ""),
+			// VS Code's Node extension host throws when dependencies probe the
+			// navigator global that Node 22 introduced. This bundle runs in Node.
+			"navigator": "undefined",
+			"globalThis.navigator": "undefined",
 		},
 	}
 

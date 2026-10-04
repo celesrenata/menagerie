@@ -1,0 +1,26 @@
+{
+	"id": "FEAT-002",
+	"type": "feat",
+	"description": "Workstream B-ii: relax the addSharedDocumentReader auto-reader trigger so a reader worker fires in more fan-out shapes, spreading work across GPUs. Current trigger (ParallelTaskReader.ts:51) requires exactly 3 workers, all mode=code, with >=2 sharing a doc. Broaden to: fire when there are >=2 workers and at least one references a shared doc; allow mixed (non-code) worker modes; and ALWAYS guard specs.length < 4 so the appended reader never pushes past the parallelTasksSchema.max(4) cap (which would throw). KEEP the sound parts: auto-reader stays read-only, excerpt-only, explicitly forbidden from calling read_file (message :88-96); SHARED_DOCUMENT regex (:5) and AUTO_READER_NAME (:11) unchanged. Independent of FEAT-001 and FEAT-003.",
+	"status": "completed",
+	"steps": [
+		"In src/core/task/ParallelTaskReader.ts relax the early-return at :51: replace `specs.length !== 3 || specs.some(mode !== 'code')` with a guard that returns early only when !readerAvailable, specs.length < 2, or specs.length >= 4 (so the appended reader cannot exceed 4). Allow mixed modes. Relax the shared-doc selection from `count < 2` to accept a doc referenced by at least one worker (count >= 1) while keeping the sort-by-count so the most-shared doc still wins. Keep realpath/escape/size guards and the excerpt + no-read_file message intact.",
+		"Update the hardcoded 'Three sibling Code workers' preamble in the generated message to be worker-count/mode agnostic (e.g. 'N sibling workers'), using specs.map(name).",
+		"Extend src/core/task/__tests__/ParallelTaskReader.spec.ts: (a) 2 code workers sharing a doc -> reader added (length 3); (b) mixed-mode shape (code + project-research) sharing a doc -> reader added; (c) >=2 workers where only one references the doc -> fires; (d) 4-cap edge: 4 workers present -> NO reader appended, length stays 4 (assert never exceeds 4); (e) existing read-only / no-read_file / escape-path / long-doc sampling cases still pass. Generalize the workers() helper for variable counts/modes.",
+		"Confirm src/core/tools/ParallelTasksTool.ts still enforces the cap after the reader append (the specs.length < 4 guard in step 1 is the enforcer, since parallelTasksSchema.parse ran on requestedTasks before the append). Add a cap-edge assertion to src/core/tools/__tests__/ParallelTasksTool.spec.ts (5 workers rejected already present; add/confirm the reader-append path respects the 4-cap). Only change ParallelTasksTool.ts if verification reveals an actual cap gap."
+	],
+	"acceptance_criteria": [
+		"Running `pnpm --dir src exec vitest run src/core/task/__tests__/ParallelTaskReader.spec.ts src/core/tools/__tests__/ParallelTasksTool.spec.ts` passes all new and existing cases.",
+		"A reader is added for 2-worker and mixed-mode shapes that share a doc.",
+		"The appended reader never pushes worker count above 4 (asserted by the 4-cap edge test).",
+		"Auto-reader remains read-only, excerpt-only, and still forbids read_file in its message.",
+		"src/eslint-suppressions.json counts for any edited src/ file did not increase."
+	],
+	"verification": [
+		"pnpm --dir src exec vitest run src/core/task/__tests__/ParallelTaskReader.spec.ts src/core/tools/__tests__/ParallelTasksTool.spec.ts",
+		"pnpm --dir src exec tsc --noEmit",
+		"For each edited src/ file: pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 <relative-file> (count not increased)"
+	],
+	"blocked_reason": null,
+	"findings": "Done. ParallelTaskReader.ts: early-return now fires unless (!readerAvailable || specs.length < 2 || specs.length >= 4) — mixed modes allowed, no more exactly-3/all-code requirement; the specs.length >= 4 branch is the sole 4-cap enforcer (append would otherwise exceed parallelTasksSchema.max(4)). Shared-doc selection relaxed from count < 2 to count < 1 (doc referenced by >=1 worker qualifies); sort-by-count retained so the most-shared doc still wins. Generated message preamble is now count/mode-agnostic: '${specs.length} sibling workers (...)'. All sound parts kept intact: realpath/escape/size guards, excerpt sampling, read-only + no-read_file instruction, SHARED_DOCUMENT regex and AUTO_READER_NAME unchanged. ParallelTasksTool.ts NOT modified — no cap gap: parallelTasksSchema.parse runs on requestedTasks (capped at 4) BEFORE addSharedDocumentReader appends, and the reader's specs.length >= 4 guard prevents any push to 5. Tests: generalized workers(document, modes[]) helper; added 2-worker, mixed-mode (code+project-research), single-referencer, and 4-cap-no-append cases to ParallelTaskReader.spec.ts; replaced the old slice(0,2) no-fire assertion with a slice(0,1) single-worker no-fire case; added a cap-edge assertion to ParallelTasksTool.spec.ts. Verification: both suites pass (15 tests), tsc --noEmit clean, eslint --prune-suppressions --max-warnings=0 clean on all three edited src files (no suppressions added; src/eslint-suppressions.json has no entries for these files and was left untouched)."
+}

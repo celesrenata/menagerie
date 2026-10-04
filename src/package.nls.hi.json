@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "@ फ़ाइल खोज सुविधा के लिए अनुक्रमित करने के लिए फ़ाइलों की अधिकतम संख्या। उच्च मान बड़ी परियोजनाओं में बेहतर खोज परिणाम प्रदान करते हैं लेकिन अधिक मेमोरी का उपयोग कर सकते हैं। डिफ़ॉल्ट: 10,000।",
 	"settings.useAgentRules.description": "एजेंट-विशिष्ट नियमों के लिए AGENTS.md फ़ाइलों को लोड करना सक्षम करें (देखें https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "API प्रतिक्रिया टाइमआउट (सेकंड, डिफ़ॉल्ट: 600, रेंज: 1–3600)। स्थानीय प्रदाताओं के लिए उच्च मान अनुशंसित हैं। असमर्थित प्रदाता: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API।",
+	"settings.apiStreamIdleTimeout.description": "जब इतने सेकंड तक कोई डेटा नहीं आता है तो स्ट्रीमिंग API प्रतिक्रिया को रद्द करें और पुनः प्रयास करें (डिफ़ॉल्ट: 300, रेंज: 0–3600, 0 अक्षम करता है)। पहले टोकन की प्रतीक्षा API प्रतिक्रिया टाइमआउट द्वारा नियंत्रित होती है।",
 	"settings.newTaskRequireTodos.description": "new_task टूल के साथ नए कार्य बनाते समय टूडू पैरामीटर की आवश्यकता होती है",
 	"settings.codeIndex.embeddingBatchSize.description": "कोड इंडेक्सिंग के दौरान एम्बेडिंग ऑपरेशन के लिए बैच साइज़। इसे अपने API प्रदाता की सीमाओं के अनुसार समायोजित करें। डिफ़ॉल्ट 60 है।",
 	"settings.debug.description": "API conversation history और UI messages को temporary files में prettified JSON के रूप में देखने के लिए अतिरिक्त बटन दिखाने के लिए debug mode सक्षम करें।",

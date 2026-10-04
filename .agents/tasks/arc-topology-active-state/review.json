@@ -1,0 +1,27 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "Connection-backed node never lights",
+			"detail": "withProviderNodeEntries skips an embeddings/audio node when its node id is already a (connection-keyed) topology entry, without adding the prefix as an alias on that entry. Prefix-keyed lifecycle events then never match. Latent today because the Arc nodes have no connections. Fix: add the prefix to the existing entry's aliases instead of skipping, and update the byId test.",
+			"file": "src/app/(dashboard)/home/topologyUtils.ts"
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "Audio finish after post-processing",
+			"detail": "Speech and transcription routes call live.finish({status:200}) after clearRecoveredProviderState/calculateModalCost/attachOmniRouteMetaToResponse, outside the try. A throw there leaves an unmatched request.started, and useLiveRequests has no TTL, so the node pulses until reload. Finish right after the handler returns, or use try/finally.",
+			"file": "src/app/api/v1/audio/speech/route.ts, src/app/api/v1/audio/transcriptions/route.ts"
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "Speech combos stay dark",
+			"detail": "executeSpeechCombo returns before beginLiveRequest, so TTS through a combo never lights arc-kokoro. This is in the plan's scope exclusions. Track it as a follow-up.",
+			"file": "src/app/api/v1/audio/speech/route.ts"
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/arc-topology-active-state/review.md"
+}

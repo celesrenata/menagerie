@@ -1,0 +1,10 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"embeddingBatchSize not honored by the watcher cap (likely, non-blocking): FilePreparation always plans with the 32-item default; consider min(32, embeddingBatchSize) so a user-lowered batch size also shrinks watcher requests.",
+		"More requests for cloud OpenAI-compatible providers (confirmed, non-blocking): Gemini/Mistral/Vercel/hosted endpoints moved from <=100K-token packing to 32-item requests, raising request count and 429 exposure; consider a per-embedder override if it shows up.",
+		"Partial success discarded on a split leaf failure (confirmed, non-blocking): any unrecoverable leaf throws the whole createEmbeddings call, discarding succeeded halves; matches prior all-or-nothing behavior.",
+		"Telemetry fan-out on split (confirmed, minor): each failed node in the split tree emits CODE_INDEX_ERROR (up to 6 per dead-server request); consider tagging split depth."
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/ovms-embeddings-oom-fix/fix1-review.md"
+}

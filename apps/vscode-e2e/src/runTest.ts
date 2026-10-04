@@ -94,6 +94,7 @@ async function main() {
 	const extensionTestsPath = path.resolve(__dirname, "./suite/index")
 
 	let testWorkspace: string | undefined
+	let userDataDirectory: string | undefined
 	let scenarioWorkspace: Awaited<ReturnType<typeof createScenarioWorkspace>> | undefined
 
 	try {
@@ -101,6 +102,8 @@ async function main() {
 		// all of their paths under the dedicated scenario root below.
 		if (!isRestartPersistenceTest) {
 			testWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-workspace-"))
+			// Keep IPC socket paths short and isolate settings between ordinary runs.
+			userDataDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "zoo-test-profile-"))
 		}
 
 		if (useMock) {
@@ -212,7 +215,7 @@ async function main() {
 			await runTests({
 				extensionDevelopmentPath,
 				extensionTestsPath,
-				launchArgs: [testWorkspace],
+				launchArgs: [testWorkspace, "--user-data-dir", userDataDirectory!],
 				extensionTestsEnv,
 				version: vscodeVersion,
 			})
@@ -221,6 +224,9 @@ async function main() {
 		console.error("Failed to run tests", error)
 		process.exitCode = 1
 	} finally {
+		if (userDataDirectory) {
+			await fs.rm(userDataDirectory, { recursive: true, force: true })
+		}
 		if (testWorkspace) {
 			await fs.rm(testWorkspace, { recursive: true, force: true })
 		}

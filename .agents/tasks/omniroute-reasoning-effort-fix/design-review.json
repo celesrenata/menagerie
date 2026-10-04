@@ -1,0 +1,20 @@
+{
+	"verdict": "CHANGES_REQUESTED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "MEDIUM",
+			"title": "The 'Confirmed non-regression' analysis for authType:\"optional\" stops at getCredentialRequirement() and misses getProviderCategory(), which flips ollama-local's resilience/circuit-breaker profile from apikey to oauth",
+			"location": "Section 3, Step 1, 'Confirmed non-regression of URL/header building' and 'Accepted side effect' paragraphs",
+			"fix": "Set authType: \"apikey\" instead of \"optional\" on the new registry entry (preserves today's resilience bucket while still matching the credential story), or explicitly analyze and get sign-off on moving every ollama-local connection from the apikey PROVIDER_PROFILES bucket (15 failures/30min window/10min cooldown) to the oauth bucket (10 failures/15min window/5min cooldown) consumed by providerCooldownTracker.ts, rateLimitManager.ts, errorClassifier.ts, and accountFallback.ts — directly relevant since the bug report's own symptom is a connection going unhealthy after a 500."
+		},
+		{
+			"id": 2,
+			"severity": "MEDIUM",
+			"title": "Step 4's overrideLookup wiring adds an uncached synchronous SQLite read to the hot forwarding path and misdescribes it as 'the same cost class' as an existing cached pattern",
+			"location": "Section 3, Step 4, 'An operator override ... always wins' paragraph",
+			"fix": "Cache getReasoningEffortsOverride the same way getParamFilterConfig is cached (in-memory map invalidated on write), or scope the override lookup to only fire when a static vocabulary is already declared (gate behind declaredRanked.length > 0). Correct or drop the claim that this matches the @/lib/db/paramFilters precedent — that precedent reads from an in-memory cache (loadParamFilterConfigs/filterCache), not a per-call DB query, and no other current caller of getReasoningEffortsOverride/getModelCapabilityOverride omits the bulk/snapshot parameter in a per-request path."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-reasoning-effort-fix/design-review.md"
+}

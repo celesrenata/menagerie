@@ -1,0 +1,24 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"label": "Per-item cap is not batch bound",
+			"confidence": "confirmed",
+			"blocking": false,
+			"detail": "--max_length bounds each item, not the padded batch; a 700 x 8192 padded batch can still exceed 8Gi. FIX 1 (Zoo batching) and FIX 2 (OmniRoute split) remain the real OOM guard."
+		},
+		{
+			"label": "Request below loaded usage",
+			"confidence": "likely",
+			"blocking": false,
+			"detail": "2Gi request is under the measured 2.4-3.4 GiB post-rollout cgroup usage, so pods rank first for kubelet eviction under node pressure. Consider 3Gi per the report, or record why 2Gi is wanted."
+		},
+		{
+			"label": "Comment overstates Zoo's item cap",
+			"confidence": "possible",
+			"blocking": false,
+			"detail": "Manifest comment says Zoo caps items at 8191 tokens, but Zoo uses a chars/4 estimate; dense content could exceed 8192 real tokens and 400 the whole batch. Reword to 'estimated tokens' and pursue the upstream OVMS truncation fix."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/ovms-embeddings-oom-fix/fix3-review.md"
+}

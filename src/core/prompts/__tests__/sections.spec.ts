@@ -372,6 +372,21 @@ describe("getRulesSection", () => {
 	it("includes the read_file rule when read_file is present", () => {
 		const result = getRulesSection(cwd, settings, policyFor(["read"]))
 		expect(result).toContain("The user may provide a file's contents directly")
+		expect(result).toContain("The read_file tool requires path to be an array, even for one file")
+		expect(result).toContain("read all independent files in one read_file call")
+	})
+
+	it("routes parallel workers by their task scope and saved mode profiles", () => {
+		const result = getRulesSection(cwd, settings, policyFor(["modes"], { experiments: { parallelTasks: true } }), true)
+		expect(result).toContain("each worker's mode selects its saved provider/model profile")
+		expect(result).toContain("assign bounded file gathering to a fast reader mode")
+		expect(result).toContain("do not route all workers through the same long-task mode by default")
+		expect(result).toContain("This applies inside a delegated child task too")
+	})
+
+	it("does not suggest parallel tasks when the tool is unavailable", () => {
+		const result = getRulesSection(cwd, settings, policyFor(["read"]), true)
+		expect(result).not.toContain("This applies inside a delegated child task too")
 	})
 
 	it("keeps a stable RULES baseline", () => {

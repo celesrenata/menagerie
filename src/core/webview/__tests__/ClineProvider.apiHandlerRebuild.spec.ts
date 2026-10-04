@@ -694,6 +694,45 @@ describe("ClineProvider - API Handler Rebuild Guard", () => {
 			expect((mockTask as any).apiConfiguration.apiModelId).toBe("claude-3-5-sonnet-20241022")
 		})
 
+		test("applies the live global OmniRoute tier when switching onto a saved OmniRoute profile", async () => {
+			const mockTask = new Task({ ...defaultTaskOptions })
+			await provider.addClineToStack(mockTask)
+			await provider.contextProxy.setValue("omniRouteTier", 2)
+			vi.spyOn(provider.providerSettingsManager, "activateProfile").mockResolvedValue({
+				name: "omni-config",
+				id: "omni-id",
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+				openAiModelId: "hybrid/code",
+			})
+
+			await provider.activateProviderProfile({ name: "omni-config" })
+
+			expect(mockTask.updateApiConfiguration).toHaveBeenCalledWith(
+				expect.objectContaining({ openAiModelId: "hybrid/code", omniRouteTier: 2 }),
+			)
+			// The profile switch must not clobber the global tier.
+			expect(provider.contextProxy.getValue("omniRouteTier")).toBe(2)
+		})
+
+		test("never applies the OmniRoute tier when switching onto a non-OmniRoute profile", async () => {
+			const mockTask = new Task({ ...defaultTaskOptions })
+			await provider.addClineToStack(mockTask)
+			await provider.contextProxy.setValue("omniRouteTier", 2)
+			vi.spyOn(provider.providerSettingsManager, "activateProfile").mockResolvedValue({
+				name: "anthropic-config",
+				id: "anthropic-id",
+				apiProvider: providerIdentifiers.anthropic,
+				apiModelId: "claude-3-5-sonnet-20241022",
+			})
+
+			await provider.activateProviderProfile({ name: "anthropic-config" })
+
+			expect(mockTask.updateApiConfiguration).toHaveBeenCalledWith(
+				expect.not.objectContaining({ omniRouteTier: expect.anything() }),
+			)
+		})
+
 		test("calls updateApiConfiguration when model changes and syncs task.apiConfiguration", async () => {
 			const mockTask = new Task({
 				...defaultTaskOptions,

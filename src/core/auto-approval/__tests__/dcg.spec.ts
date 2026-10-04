@@ -73,3 +73,51 @@ describe("Destructive Command Guard auto-approval precedence", () => {
 		})
 	})
 })
+
+describe("YOLO auto-approval overlay", () => {
+	const state = {
+		autoApprovalEnabled: false,
+		yoloModeEnabled: true,
+		alwaysAllowReadOnly: false,
+		alwaysAllowWrite: false,
+		alwaysAllowExecute: false,
+		destructiveCommandGuardEnabled: false,
+		mcpServers: [],
+	}
+
+	it("approves project reads and writes across workspace boundaries and DCG-cleared commands", async () => {
+		for (const [ask, text] of [
+			["tool", JSON.stringify({ tool: "readFile", path: "src/main.ts" })],
+			["tool", JSON.stringify({ tool: "readFile", path: "../sibling/plan.md", isOutsideWorkspace: true })],
+			["tool", JSON.stringify({ tool: "newFileCreated", path: "src/main.ts" })],
+			["tool", JSON.stringify({ tool: "newFileCreated", path: "../sibling/config.nix", isOutsideWorkspace: true })],
+			["command", "echo safe"],
+		] as const) {
+			expect(await checkAutoApproval({ state, ask, text })).toEqual({ decision: "approve" })
+		}
+		expect(
+			await checkAutoApproval({
+				state,
+				ask: "tool",
+				text: JSON.stringify({ tool: "newFileCreated", path: "AGENTS.md", isProtected: true }),
+				isProtected: true,
+			}),
+		).toEqual({ decision: "approve" })
+	})
+
+	it("denies guarded commands without stopping for approval", async () => {
+		expect(await checkAutoApproval({ state, ask: "command", text: "rm -rf .", isProtected: true })).toEqual({
+			decision: "deny",
+		})
+	})
+
+	it("leaves previous BRRR approval settings intact after switching off", async () => {
+		expect(
+			await checkAutoApproval({
+				state: { ...state, yoloModeEnabled: false },
+				ask: "tool",
+				text: JSON.stringify({ tool: "readFile", path: "src/main.ts" }),
+			}),
+		).toEqual({ decision: "ask" })
+	})
+})

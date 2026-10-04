@@ -1,0 +1,20 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"id": 1,
+			"label": "Live failed event drops partial tokens",
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"detail": "handleEmbedding calls live.finish({ status, error }) on failure, so the dashboard shows 0 tokens for a split request that partially succeeded, while call_logs records the partial prompt tokens. If dashboard totals should match call_logs, add the partial tokens to the failure result and pass them into live.finish."
+		},
+		{
+			"id": 2,
+			"label": "Restart gate met only for the verify window",
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"detail": "No restarts or Ready transitions happened during the 10:18:01-10:20:10Z verify window, and there were 0 OOMKilled. Pod 3 (10:21:36Z) and pod 2 (10:24:34Z) were liveness-killed afterwards, at the same rate as the idle i915 fence-stall restarts, which the orchestrator scoped out. Track that cause separately in ovms-embeddings-crashloop.md, and judge FIX 3 by OOMKilled count."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/ovms-embeddings-oom-fix/fix2-review.md"
+}

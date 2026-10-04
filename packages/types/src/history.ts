@@ -7,14 +7,18 @@ import { todoItemSchema } from "./todo.js"
  */
 
 export const pendingTaskActionSchema = z.discriminatedUnion("kind", [
-	z.object({
-		kind: z.literal("create_subtask"),
-		actionId: z.string(),
-		approvalText: z.string(),
-		mode: z.string(),
-		message: z.string(),
-		todos: z.array(todoItemSchema),
-	}),
+	z
+		.object({
+			kind: z.literal("create_subtask"),
+			actionId: z.string(),
+			approvalText: z.string(),
+			mode: z.string(),
+			message: z.string(),
+			todos: z.array(todoItemSchema),
+		})
+		// Tolerate a legacy `omnirouteRouting` field on persisted pending actions without rejecting
+		// (the client-side tier subsystem was removed; see omniroute-integration-design.md §7).
+		.passthrough(),
 	z.object({
 		kind: z.literal("finish_subtask"),
 		actionId: z.string(),

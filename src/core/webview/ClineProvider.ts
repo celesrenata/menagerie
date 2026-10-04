@@ -1,3 +1,5 @@
+import { CachedUiValue } from "./CachedUiValue"
+import { WebviewMessageQueue } from "./WebviewMessageQueue"
 import os from "os"
 import * as path from "path"
 import fs from "fs/promises"
@@ -60,6 +62,8 @@ import {
 import { RateLimitClock, createRateLimitClock } from "../task/RateLimitClock"
 import { TaskRegistry } from "../task/TaskRegistry"
 import { TaskScheduler } from "../task/TaskScheduler"
+import type { ParallelTaskSpec } from "../tools/ParallelTasksTool"
+import { parseMarkdownChecklist } from "../tools/UpdateTodoListTool"
 import {
 	getEffectiveTaskApiConfiguration,
 	selectHandoffExecutionContext,
@@ -107,6 +111,7 @@ import { t } from "../../i18n"
 
 import { buildApiHandler } from "../../api"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/providers/fetchers/lmstudio"
+import { withOmniRouteTier } from "../../api/providers/omniroute"
 
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
@@ -220,6 +225,35 @@ export class ClineProvider
 	private taskEventListeners: WeakMap<Task, Array<() => void>> = new WeakMap()
 	private currentWorkspacePath: string | undefined
 	private _disposed = false
+	private readonly messageQueue = new WebviewMessageQueue((message) => {
+		if (this._disposed) return
+		try {
+			// postMessage acknowledges transport, not UI processing. Enqueue in order but
+			// never make task persistence or auto-approved tools wait for a hidden renderer.
+			void Promise.resolve(this.view?.webview.postMessage(message)).catch(() => {})
+		} catch {
+			// The view may have been disposed between scheduling and dispatch.
+		}
+	})
+	private readonly optionalAuthState = new CachedUiValue<
+		Pick<ExtensionState, "openAiCodexIsAuthenticated" | "kimiCodeIsAuthenticated">
+	>(
+		{ openAiCodexIsAuthenticated: false, kimiCodeIsAuthenticated: false },
+		async () => {
+			const [codex, kimi] = await Promise.all([
+				import("../../integrations/openai-codex/oauth"),
+				import("../../integrations/kimi-code/oauth"),
+			])
+			const [openAiCodexIsAuthenticated, kimiCodeIsAuthenticated] = await Promise.all([
+				codex.openAiCodexOAuthManager.isAuthenticated().catch(() => false),
+				kimi.kimiCodeOAuthManager.isAuthenticated().catch(() => false),
+			])
+			return { openAiCodexIsAuthenticated, kimiCodeIsAuthenticated }
+		},
+		() => {
+			void this.postStateToWebviewWithoutClineMessages().catch(() => {})
+		},
+	)
 	private readonly _postStateToWebviewThrottled = debounce(
 		async () => {
 			try {
@@ -351,6 +385,16 @@ export class ClineProvider
 		// Register this provider with the telemetry service to enable it to add
 		// properties like mode and provider.
 		TelemetryService.instance.setProvider(this)
+
+		const authSubscription = this.context.secrets?.onDidChange?.(({ key }) => {
+			if (key === "openai-codex-oauth-credentials" || key === "kimi-code-oauth-credentials") {
+				this.optionalAuthState.invalidate({
+					openAiCodexIsAuthenticated: false,
+					kimiCodeIsAuthenticated: false,
+				})
+			}
+		})
+		if (authSubscription) this.disposables.push(authSubscription)
 
 		this._workspaceTracker = new WorkspaceTracker(this)
 
@@ -776,6 +820,7 @@ export class ClineProvider
 	- https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	*/
 	private clearWebviewResources() {
+		this.messageQueue.dispose()
 		this.rejectPendingThemeFixtureProbes(new Error("Webview was disposed before the theme fixture probe completed"))
 		while (this.webviewDisposables.length) {
 			const x = this.webviewDisposables.pop()
@@ -802,6 +847,8 @@ export class ClineProvider
 		}
 
 		this._disposed = true
+		this.optionalAuthState.dispose()
+		this.messageQueue.dispose()
 		this._postStateToWebviewThrottled.cancel()
 		this.log("Disposing ClineProvider...")
 
@@ -873,6 +920,11 @@ export class ClineProvider
 
 	public static getAllInstances(): ClineProvider[] {
 		return Array.from(this.activeInstances)
+	}
+
+	public revealChat(): void {
+		if (this.view && "reveal" in this.view) this.view.reveal(undefined, false)
+		else if (this.view) this.view.show(false)
 	}
 
 	public static async getInstance(): Promise<ClineProvider | undefined> {
@@ -1426,11 +1478,7 @@ export class ClineProvider
 			return
 		}
 
-		try {
-			await this.view?.webview.postMessage(message)
-		} catch {
-			// View disposed, drop message silently
-		}
+		this.messageQueue.post(message, this.getCurrentTask()?.taskId)
 	}
 
 	public requestWebviewThemeFixture(timeoutMs = 5_000): Promise<WebviewThemeFixture> {
@@ -1790,12 +1838,15 @@ export class ClineProvider
 	 * @param options.forceRebuild Force rebuilding the API handler regardless of provider/model equality
 	 */
 	private updateTaskApiHandlerIfNeeded(
-		providerSettings: ProviderSettings,
+		rawProviderSettings: ProviderSettings,
 		options: { forceRebuild?: boolean; skipCurrentTaskRebuild?: boolean } = {},
 	): void {
 		if (options.skipCurrentTaskRebuild) return
 		const task = this.getCurrentTask()
 		if (!task) return
+
+		// Saved profiles never carry the OmniRoute tier; apply the live global (FEAT-005).
+		const providerSettings = this.withLiveOmniRouteTier(rawProviderSettings)
 
 		const { forceRebuild = false } = options
 
@@ -1817,6 +1868,11 @@ export class ClineProvider
 			// No rebuild needed, just sync apiConfiguration
 			;(task as any).apiConfiguration = providerSettings
 		}
+	}
+
+	/** Apply the live global OmniRoute cost tier to a provider configuration (FEAT-005). */
+	private withLiveOmniRouteTier(configuration: ProviderSettings): ProviderSettings {
+		return withOmniRouteTier(configuration, this.contextProxy.getValue("omniRouteTier"))
 	}
 
 	getProviderProfileEntries(): ProviderSettingsEntry[] {
@@ -2562,6 +2618,8 @@ export class ClineProvider
 			allowedWriteFiles,
 			alwaysAllowExecute,
 			destructiveCommandGuardEnabled,
+			yoloModeEnabled,
+			omniRouteTier,
 			allowedCommands,
 			deniedCommands,
 			alwaysAllowMcp,
@@ -2572,6 +2630,7 @@ export class ClineProvider
 			autoCondenseContext,
 			autoCondenseContextPercent,
 			soundEnabled,
+			attentionNotificationsEnabled,
 			ttsEnabled,
 			ttsSpeed,
 			enableCheckpoints,
@@ -2596,6 +2655,7 @@ export class ClineProvider
 			customModePrompts,
 			customSupportPrompts,
 			enhancementApiConfigId,
+			condensingApiConfigId,
 			autoApprovalEnabled,
 			customModes,
 			experiments,
@@ -2694,11 +2754,11 @@ export class ClineProvider
 		}
 
 		try {
-			const { isZooCodeAuthenticated, getCachedZooCodeUserInfo, getZooCodeBaseUrl } =
+			const { getCachedZooCodeToken, getCachedZooCodeUserInfo, getZooCodeBaseUrl } =
 				await import("../../services/zoo-code-auth")
 			const userInfo = getCachedZooCodeUserInfo()
 			zooCodeState = {
-				zooCodeIsAuthenticated: await isZooCodeAuthenticated(),
+				zooCodeIsAuthenticated: Boolean(getCachedZooCodeToken()),
 				zooCodeUserName: userInfo.name,
 				zooCodeUserEmail: userInfo.email,
 				zooCodeUserImage: userInfo.image,
@@ -2722,6 +2782,9 @@ export class ClineProvider
 			allowedWriteFiles: allowedWriteFiles ?? [],
 			alwaysAllowExecute: alwaysAllowExecute ?? false,
 			destructiveCommandGuardEnabled,
+			yoloModeEnabled: yoloModeEnabled ?? false,
+			// FEAT-005: round-trip the saved cost tier back to the webview (undefined = server default).
+			omniRouteTier,
 			alwaysAllowMcp: alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: alwaysAllowSubtasks ?? false,
@@ -2739,6 +2802,7 @@ export class ClineProvider
 				? this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task)
 				: [],
 			soundEnabled: soundEnabled ?? false,
+			attentionNotificationsEnabled: attentionNotificationsEnabled ?? false,
 			ttsEnabled: ttsEnabled ?? false,
 			ttsSpeed: ttsSpeed ?? 1.0,
 			enableCheckpoints: enableCheckpoints ?? true,
@@ -2767,6 +2831,7 @@ export class ClineProvider
 			customModePrompts: customModePrompts ?? {},
 			customSupportPrompts: customSupportPrompts ?? {},
 			enhancementApiConfigId,
+			condensingApiConfigId,
 			autoApprovalEnabled: autoApprovalEnabled ?? false,
 			customModes,
 			experiments: experiments ?? experimentDefault,
@@ -2837,22 +2902,7 @@ export class ClineProvider
 			autoCloseZooOpenedFilesAfterUserEdited:
 				autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 			autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
-			openAiCodexIsAuthenticated: await (async () => {
-				try {
-					const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
-					return await openAiCodexOAuthManager.isAuthenticated()
-				} catch {
-					return false
-				}
-			})(),
-			kimiCodeIsAuthenticated: await (async () => {
-				try {
-					const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
-					return await kimiCodeOAuthManager.isAuthenticated()
-				} catch {
-					return false
-				}
-			})(),
+			...this.optionalAuthState.get(),
 			kimiCodeOAuthState: await (async () => {
 				try {
 					const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
@@ -2890,12 +2940,19 @@ export class ClineProvider
 				: providerIdentifiers.anthropic
 
 		// Build the apiConfiguration object combining state values and secrets.
-		const providerSettings = this.contextProxy.getProviderSettings()
+		const rawProviderSettings = this.contextProxy.getProviderSettings()
 
 		// Ensure apiProvider is set properly if not already in state
-		if (!providerSettings.apiProvider) {
-			providerSettings.apiProvider = apiProvider
+		if (!rawProviderSettings.apiProvider) {
+			rawProviderSettings.apiProvider = apiProvider
 		}
+
+		// FEAT-005: the per-request OmniRoute cost tier is a global setting (bound beside the YOLO
+		// control). `omniRouteTier` is also a key in the OpenAI provider schema, so getProviderSettings()
+		// surfaces the same global-state value on providerSettings for every OpenAI profile. Keep it only
+		// for an actual OmniRoute profile — where the request path reads it to emit X-OmniRoute-Tier — and
+		// strip it from any other profile so a non-OmniRoute request never carries the tier.
+		const providerSettings = withOmniRouteTier(rawProviderSettings, stateValues.omniRouteTier)
 
 		let organizationAllowList = ORGANIZATION_ALLOW_ALL
 
@@ -2962,6 +3019,9 @@ export class ClineProvider
 			alwaysAllowExecute: stateValues.alwaysAllowExecute ?? false,
 			destructiveCommandGuardEnabled:
 				stateValues.destructiveCommandGuardEnabled ?? DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+			yoloModeEnabled: stateValues.yoloModeEnabled ?? false,
+			// FEAT-005: undefined means "use the OmniRoute server default" (no X-OmniRoute-Tier header).
+			omniRouteTier: stateValues.omniRouteTier,
 			alwaysAllowMcp: stateValues.alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: stateValues.alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: stateValues.alwaysAllowSubtasks ?? false,
@@ -2976,6 +3036,7 @@ export class ClineProvider
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
 			soundEnabled: stateValues.soundEnabled ?? false,
+			attentionNotificationsEnabled: stateValues.attentionNotificationsEnabled ?? false,
 			ttsEnabled: stateValues.ttsEnabled ?? false,
 			ttsSpeed: stateValues.ttsSpeed ?? 1.0,
 			enableCheckpoints: stateValues.enableCheckpoints ?? true,
@@ -3004,6 +3065,7 @@ export class ClineProvider
 			customModePrompts: stateValues.customModePrompts ?? {},
 			customSupportPrompts: stateValues.customSupportPrompts ?? {},
 			enhancementApiConfigId: stateValues.enhancementApiConfigId,
+			condensingApiConfigId: stateValues.condensingApiConfigId,
 			experiments: stateValues.experiments ?? experimentDefault,
 			autoApprovalEnabled: stateValues.autoApprovalEnabled ?? false,
 			customModes,
@@ -3297,11 +3359,107 @@ export class ClineProvider
 	// from the stack and the caller is resumed in this way we can have a chain
 	// of tasks, each one being a sub task of the previous one until the main
 	// task is finished.
+	/** Each worker owns its provider, terminal state, approval UI and message sequence. */
+	public async createParallelTaskRuntime(
+		parent: Task,
+		spec: ParallelTaskSpec,
+		workspacePath: string,
+		handoffExecutionContext: TaskExecutionContext,
+	): Promise<{ provider: ClineProvider; task: Task }> {
+		const provider = new ClineProvider(
+			this.context,
+			this.outputChannel,
+			"editor",
+			this.contextProxy,
+			this.mdmService,
+		)
+		try {
+			const panel = vscode.window.createWebviewPanel(
+				ClineProvider.tabPanelId,
+				`Zoo: ${spec.name}`,
+				{ viewColumn: vscode.ViewColumn.Active, preserveFocus: true },
+				{ enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [this.context.extensionUri] },
+			)
+			await provider.resolveWebviewView(panel)
+			const task = await provider.createTask(
+				`${spec.message}\n\nYou are an independent parallel worker for task ${parent.taskId}. ` +
+					`Work only in ${workspacePath}; it contains a snapshot of the parent's current changes. ` +
+					"Treat this worktree as the repository root. Use assigned file paths literally and relative to this worktree (for example, docs/design.md); never climb with ../ or read the parent's checkout. " +
+					"Do not inspect any other parallel worker's worktree, including worktrees from earlier batches. The parent's assigned file scope takes precedence over file ownership suggested by a design document; do not edit or retire a sibling worker's files. If a dependency is incomplete, finish your own scope and report the integration contract to the parent instead of requesting reassignment. " +
+					"Complete the assigned scope yourself, without new_task or parallel_tasks. " +
+					"Use attempt_completion to return your result, changed files and validation. The parent will integrate your patch.",
+				undefined,
+				undefined,
+				{
+					workspacePath,
+					handoffExecutionContext,
+					initialTodos: spec.todos ? parseMarkdownChecklist(spec.todos) : [],
+					startTask: false,
+					parallelWorker: true,
+					parallelParentTaskId: parent.taskId,
+					enableCheckpoints: false,
+				},
+			)
+			return { provider, task }
+		} catch (error) {
+			await provider.dispose()
+			throw error
+		}
+	}
+
+	public async getTaskHandoffContext(
+		parent: Task,
+		mode: string,
+		preferSavedModeProfile = false,
+	): Promise<TaskExecutionContext> {
+		const parentExecutionContext: DelegatedChildContext = {
+			mode,
+			apiConfigName: await parent.getTaskApiConfigName(),
+			apiConfiguration: structuredClone(parent.apiConfiguration),
+		}
+		const parentMode = await parent.getTaskMode()
+		const lockApiConfigAcrossModes =
+			mode !== parentMode && this.context.workspaceState.get("lockApiConfigAcrossModes", false)
+		let savedModeProfile: { name?: string; apiConfiguration: ProviderSettings } | undefined
+		if ((mode !== parentMode || preferSavedModeProfile) && !lockApiConfigAcrossModes) {
+			const savedConfigId = await this.providerSettingsManager.getModeConfigId(mode as Mode)
+			if (savedConfigId) {
+				try {
+					const {
+						name,
+						id: _id,
+						...savedConfiguration
+					} = await this.providerSettingsManager.getProfile({
+						id: savedConfigId,
+					})
+					savedModeProfile = { name, apiConfiguration: savedConfiguration }
+				} catch (error) {
+					this.log(
+						`[delegateParentAndOpenChild] Saved profile ${savedConfigId} for mode '${mode}' could not be loaded for parent ${parent.taskId}: ${error instanceof Error ? error.message : String(error)}. Using the parent task configuration.`,
+					)
+				}
+			}
+		}
+		return selectHandoffExecutionContext(
+			parentExecutionContext,
+			mode,
+			parentMode,
+			lockApiConfigAcrossModes,
+			savedModeProfile,
+			preferSavedModeProfile,
+		)
+	}
+
 	public async createTask(
 		text?: string,
 		images?: string[],
 		parentTask?: Task,
-		options: CreateTaskOptions & { handoffExecutionContext?: DelegatedChildContext } = {},
+		options: CreateTaskOptions & {
+			handoffExecutionContext?: DelegatedChildContext
+			workspacePath?: string
+			parallelWorker?: boolean
+			parallelParentTaskId?: string
+		} = {},
 		configuration: RooCodeSettings = {},
 	): Promise<Task> {
 		if (configuration) {
@@ -3352,10 +3510,13 @@ export class ClineProvider
 			organizationAllowList,
 			diffFuzzyThreshold,
 		} = await this.getState()
-		const effectiveApiConfiguration = getEffectiveTaskApiConfiguration(
-			apiConfiguration,
-			options.handoffExecutionContext,
-		)
+		// Every child and parallel worker gets its handler from the handoff profile. Apply the live
+		// global OmniRoute tier here so a saved OmniRoute profile sends X-OmniRoute-Tier (FEAT-005).
+		const handoffExecutionContext = options.handoffExecutionContext && {
+			...options.handoffExecutionContext,
+			apiConfiguration: this.withLiveOmniRouteTier(options.handoffExecutionContext.apiConfiguration),
+		}
+		const effectiveApiConfiguration = getEffectiveTaskApiConfiguration(apiConfiguration, handoffExecutionContext)
 
 		// Single-open-task invariant: always enforce for user-initiated top-level tasks.
 		if (!parentTask) {
@@ -3387,6 +3548,7 @@ export class ClineProvider
 			startTask: false,
 			diffFuzzyThreshold,
 			...options,
+			handoffExecutionContext,
 			rateLimitClock: this.rateLimitClock,
 		})
 
@@ -3782,41 +3944,9 @@ export class ClineProvider
 			}
 		}
 
-		const parentExecutionContext: DelegatedChildContext = {
-			mode,
-			apiConfigName: await parent.getTaskApiConfigName(),
-			apiConfiguration: structuredClone(parent.apiConfiguration),
-		}
-		const parentMode = await parent.getTaskMode()
-		const lockApiConfigAcrossModes =
-			mode !== parentMode && this.context.workspaceState.get("lockApiConfigAcrossModes", false)
-		let savedModeProfile: { name?: string; apiConfiguration: ProviderSettings } | undefined
-		if (mode !== parentMode && !lockApiConfigAcrossModes) {
-			const savedConfigId = await this.providerSettingsManager.getModeConfigId(mode as Mode)
-			if (savedConfigId) {
-				try {
-					const {
-						name,
-						id: _id,
-						...savedConfiguration
-					} = await this.providerSettingsManager.getProfile({
-						id: savedConfigId,
-					})
-					savedModeProfile = { name, apiConfiguration: savedConfiguration }
-				} catch (error) {
-					this.log(
-						`[delegateParentAndOpenChild] Saved profile ${savedConfigId} for mode '${mode}' could not be loaded for parent ${parentTaskId}: ${error instanceof Error ? error.message : String(error)}. Using the parent task configuration.`,
-					)
-				}
-			}
-		}
-		const handoffExecutionContext = selectHandoffExecutionContext(
-			parentExecutionContext,
-			mode,
-			parentMode,
-			lockApiConfigAcrossModes,
-			savedModeProfile,
-		)
+		// The child inherits the parent profile's model id unchanged; OmniRoute owns any
+		// tier/placement decision server-side (design §4.3a).
+		const handoffExecutionContext = await ClineProvider.prototype.getTaskHandoffContext.call(this, parent, mode)
 		// 2) Flush pending tool results to API history BEFORE disposing the parent.
 		//    This is critical: when tools are called before new_task,
 		//    their tool_result blocks are in userMessageContent but not yet saved to API history.

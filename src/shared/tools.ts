@@ -56,6 +56,7 @@ export const toolParamNames = [
 	"start_line",
 	"end_line",
 	"todos",
+	"tasks",
 	"prompt",
 	"image",
 	// read_file parameters (native protocol)
@@ -102,7 +103,20 @@ export type NativeToolArgs = {
 	edit_file: { file_path: string; old_string: string; new_string: string; expected_replacements?: number }
 	apply_patch: { patch: string }
 	list_files: { path: string; recursive?: boolean }
-	new_task: { mode: string; message: string; todos?: string }
+	new_task: {
+		mode: string
+		message: string
+		todos?: string
+	}
+	parallel_tasks: {
+		tasks: Array<{
+			name: string
+			mode: string
+			message: string
+			todos?: string | null
+			route?: string | null
+		}>
+	}
 	ask_followup_question: {
 		question: string
 		follow_up: Array<{ text: string; mode?: string }>
@@ -284,6 +298,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	attempt_completion: "complete tasks",
 	switch_mode: "switch modes",
 	new_task: "create new task",
+	parallel_tasks: "run parallel tasks",
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
 	run_slash_command: "run slash command",
@@ -309,7 +324,7 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 		tools: ["use_mcp_tool", "access_mcp_resource"],
 	},
 	modes: {
-		tools: ["switch_mode", "new_task"],
+		tools: ["switch_mode", "new_task", "parallel_tasks"],
 		alwaysAvailable: true,
 	},
 }
@@ -320,6 +335,7 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"attempt_completion",
 	"switch_mode",
 	"new_task",
+	"parallel_tasks",
 	"update_todo_list",
 	"run_slash_command",
 	"skill",

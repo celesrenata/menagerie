@@ -1,0 +1,7 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"RETIRING may be dead code — the shutdown_date field read from the live /v1/models model object is not part of OpenAI's documented response, so the RETIRING branch may never trigger. Harmless (falls back to \"live\"); worth confirming the field name against the real payload if retirement signaling matters. (possible, non-blocking)"
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/catalog-driven-chat-mcp/review.md"
+}

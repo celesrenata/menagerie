@@ -25,45 +25,45 @@ function createToolUse(name: string, displayName?: string, params: Record<string
 	}
 }
 
+/** Calls check() `times` times with the same block and returns the last result. */
+function checkRepeatedly(detector: ToolRepetitionDetector, block: ToolUse, times: number) {
+	let result = detector.check(block)
+	for (let i = 1; i < times; i++) {
+		result = detector.check(block)
+	}
+	return result
+}
+
 describe("ToolRepetitionDetector", () => {
 	// ===== Initialization tests =====
 	describe("initialization", () => {
 		it("should default to a limit of 3 if no argument provided", () => {
 			const detector = new ToolRepetitionDetector()
-			// We'll verify this through behavior in subsequent tests
+			const tool = createToolUse("test", "test-tool")
 
-			// First call (counter = 0)
-			const result1 = detector.check(createToolUse("test", "test-tool"))
-			expect(result1.allowExecution).toBe(true)
+			// Calls 1-3 (counter 0-2) are allowed
+			for (let i = 0; i < 3; i++) {
+				expect(detector.check(tool).allowExecution).toBe(true)
+			}
 
-			// Second identical call (counter = 1)
-			const result2 = detector.check(createToolUse("test", "test-tool"))
-			expect(result2.allowExecution).toBe(true)
-
-			// Third identical call (counter = 2)
-			const result3 = detector.check(createToolUse("test", "test-tool"))
-			expect(result3.allowExecution).toBe(true)
-
-			// Fourth identical call (counter = 3) reaches the default limit
-			const result4 = detector.check(createToolUse("test", "test-tool"))
+			// Fourth identical call (counter = 3) reaches the default limit and is nudged
+			const result4 = detector.check(tool)
 			expect(result4.allowExecution).toBe(false)
+			expect(result4.nudge).toEqual({ toolName: "test-tool", repeatCount: 3 })
+			expect(result4.askUser).toBeUndefined()
 		})
 
 		it("should use the custom limit when provided", () => {
-			const customLimit = 2
-			const detector = new ToolRepetitionDetector(customLimit)
+			const detector = new ToolRepetitionDetector(2)
+			const tool = createToolUse("test", "test-tool")
 
-			// First call (counter = 0)
-			const result1 = detector.check(createToolUse("test", "test-tool"))
-			expect(result1.allowExecution).toBe(true)
+			expect(detector.check(tool).allowExecution).toBe(true)
+			expect(detector.check(tool).allowExecution).toBe(true)
 
-			// Second identical call (counter = 1)
-			const result2 = detector.check(createToolUse("test", "test-tool"))
-			expect(result2.allowExecution).toBe(true)
-
-			// Third identical call (counter = 2) reaches the custom limit
-			const result3 = detector.check(createToolUse("test", "test-tool"))
+			// Third identical call (counter = 2) reaches the custom limit and is nudged
+			const result3 = detector.check(tool)
 			expect(result3.allowExecution).toBe(false)
+			expect(result3.nudge?.repeatCount).toBe(2)
 		})
 	})
 
@@ -72,144 +72,115 @@ describe("ToolRepetitionDetector", () => {
 		it("should allow execution for different tool calls", () => {
 			const detector = new ToolRepetitionDetector()
 
-			const result1 = detector.check(createToolUse("first", "first-tool"))
-			expect(result1.allowExecution).toBe(true)
-			expect(result1.askUser).toBeUndefined()
-
-			const result2 = detector.check(createToolUse("second", "second-tool"))
-			expect(result2.allowExecution).toBe(true)
-			expect(result2.askUser).toBeUndefined()
-
-			const result3 = detector.check(createToolUse("third", "third-tool"))
-			expect(result3.allowExecution).toBe(true)
-			expect(result3.askUser).toBeUndefined()
+			for (const name of ["first-tool", "second-tool", "third-tool"]) {
+				const result = detector.check(createToolUse(name, name))
+				expect(result.allowExecution).toBe(true)
+				expect(result.nudge).toBeUndefined()
+				expect(result.askUser).toBeUndefined()
+			}
 		})
 
 		it("should reset the counter when different tool calls are made", () => {
 			const detector = new ToolRepetitionDetector(2)
 
-			// First call
+			detector.check(createToolUse("same", "same-tool"))
 			detector.check(createToolUse("same", "same-tool"))
 
-			// Second identical call would reach limit of 2, but we'll make a different call
+			// A different call resets the count
 			detector.check(createToolUse("different", "different-tool"))
 
-			// Back to the first tool - should be allowed since counter was reset
-			const result = detector.check(createToolUse("same", "same-tool"))
-			expect(result.allowExecution).toBe(true)
+			// Back to the first tool: allowed twice before a nudge
+			expect(detector.check(createToolUse("same", "same-tool")).allowExecution).toBe(true)
+			expect(detector.check(createToolUse("same", "same-tool")).allowExecution).toBe(true)
+			expect(detector.check(createToolUse("same", "same-tool")).nudge).toBeDefined()
+		})
+
+		it("should reset the count when a different call interrupts a nudge streak", () => {
+			const detector = new ToolRepetitionDetector(1)
+			const tool = createToolUse("tool", "tool-name")
+
+			detector.check(tool)
+			expect(detector.check(tool).nudge?.repeatCount).toBe(1)
+
+			detector.check(createToolUse("other", "other-tool"))
+
+			// The streak restarts: allowed, then nudged again (not escalated)
+			expect(detector.check(tool).allowExecution).toBe(true)
+			const result = detector.check(tool)
+			expect(result.nudge?.repeatCount).toBe(1)
+			expect(result.askUser).toBeUndefined()
 		})
 	})
 
-	// ===== Repetition Below Limit tests =====
-	describe("repetition below limit", () => {
-		it("should allow execution when repetition is below limit and block when limit reached", () => {
+	// ===== Nudge then escalate (limit 3) =====
+	describe("nudge then escalate with the default limit", () => {
+		it("nudges the 4th, 5th and 6th identical calls and escalates on the 7th", () => {
+			const detector = new ToolRepetitionDetector(3)
+			const tool = createToolUse("repeat", "repeat-tool")
+
+			// Calls 1-3 are allowed
+			for (let i = 0; i < 3; i++) {
+				expect(detector.check(tool)).toEqual({ allowExecution: true })
+			}
+
+			// Calls 4-6 are nudged with the current repeat count
+			for (const repeatCount of [3, 4, 5]) {
+				const result = detector.check(tool)
+				expect(result.allowExecution).toBe(false)
+				expect(result.nudge).toEqual({ toolName: "repeat-tool", repeatCount })
+				expect(result.askUser).toBeUndefined()
+			}
+
+			// Call 7 (counter = 6 = 2 * limit) escalates
+			const result7 = detector.check(tool)
+			expect(result7.allowExecution).toBe(false)
+			expect(result7.nudge).toBeUndefined()
+			expect(result7.askUser?.messageKey).toBe("mistake_limit_reached")
+			expect(result7.askUser?.messageDetail).toContain("repeat-tool")
+		})
+
+		it("resets the counters after escalating, so the 8th call is allowed", () => {
+			const detector = new ToolRepetitionDetector(3)
+			const tool = createToolUse("repeat", "repeat-tool")
+
+			expect(checkRepeatedly(detector, tool, 7).askUser).toBeDefined()
+
+			// The 8th call starts a fresh streak
+			expect(detector.check(tool).allowExecution).toBe(true)
+		})
+
+		it("requires a full nudge-then-escalate cycle again after a reset", () => {
+			const detector = new ToolRepetitionDetector(3)
+			const tool = createToolUse("repeat", "repeat-tool")
+
+			expect(checkRepeatedly(detector, tool, 7).askUser).toBeDefined()
+
+			// Calls 8-10 allowed, 11 nudged, 14 escalated
+			expect(checkRepeatedly(detector, tool, 3).allowExecution).toBe(true)
+			expect(detector.check(tool).nudge?.repeatCount).toBe(3)
+			expect(checkRepeatedly(detector, tool, 3).askUser).toBeDefined()
+		})
+
+		it("allows a new tool call after escalation", () => {
 			const detector = new ToolRepetitionDetector(3)
 
-			// First call (counter = 0)
-			const result1 = detector.check(createToolUse("repeat", "repeat-tool"))
-			expect(result1.allowExecution).toBe(true)
-
-			// Second identical call (counter = 1)
-			const result2 = detector.check(createToolUse("repeat", "repeat-tool"))
-			expect(result2.allowExecution).toBe(true)
-
-			// Third identical call (counter = 2)
-			const result3 = detector.check(createToolUse("repeat", "repeat-tool"))
-			expect(result3.allowExecution).toBe(true)
-
-			// Fourth identical call (counter = 3) reaches limit
-			const result4 = detector.check(createToolUse("repeat", "repeat-tool"))
-			expect(result4.allowExecution).toBe(false)
-		})
-	})
-
-	// ===== Repetition Reaches Limit tests =====
-	describe("repetition reaches limit", () => {
-		it("should block execution when repetition reaches the limit", () => {
-			const detector = new ToolRepetitionDetector(3)
-
-			// First call (counter = 0)
-			detector.check(createToolUse("repeat", "repeat-tool"))
-
-			// Second identical call (counter = 1)
-			detector.check(createToolUse("repeat", "repeat-tool"))
-
-			// Third identical call (counter = 2)
-			detector.check(createToolUse("repeat", "repeat-tool"))
-
-			// Fourth identical call (counter = 3) - should reach limit
-			const result = detector.check(createToolUse("repeat", "repeat-tool"))
-
-			expect(result.allowExecution).toBe(false)
-			expect(result.askUser).toBeDefined()
-			expect(result.askUser?.messageKey).toBe("mistake_limit_reached")
-			expect(result.askUser?.messageDetail).toContain("repeat-tool")
-		})
-
-		it("should reset internal state after limit is reached", () => {
-			const detector = new ToolRepetitionDetector(2)
-
-			// Reach the limit
-			detector.check(createToolUse("repeat", "repeat-tool"))
-			detector.check(createToolUse("repeat", "repeat-tool"))
-			const limitResult = detector.check(createToolUse("repeat", "repeat-tool")) // This reaches limit
-			expect(limitResult.allowExecution).toBe(false)
-
-			// Use a new tool call - should be allowed since state was reset
-			const result = detector.check(createToolUse("new", "new-tool"))
-			expect(result.allowExecution).toBe(true)
-		})
-	})
-
-	// ===== Repetition After Limit (Post-Reset) tests =====
-	describe("repetition after limit", () => {
-		it("should allow execution of previously problematic tool after reset", () => {
-			const detector = new ToolRepetitionDetector(2)
-
-			// Reach the limit with a specific tool
-			detector.check(createToolUse("problem", "problem-tool"))
-			detector.check(createToolUse("problem", "problem-tool"))
-			const limitResult = detector.check(createToolUse("problem", "problem-tool")) // This reaches limit
-			expect(limitResult.allowExecution).toBe(false)
-
-			// The same tool that previously caused problems should now be allowed
-			const result = detector.check(createToolUse("problem", "problem-tool"))
-			expect(result.allowExecution).toBe(true)
-		})
-
-		it("should require reaching the limit again after reset", () => {
-			const detector = new ToolRepetitionDetector(2)
-
-			// Reach the limit
-			detector.check(createToolUse("repeat", "repeat-tool"))
-			detector.check(createToolUse("repeat", "repeat-tool"))
-			const limitResult = detector.check(createToolUse("repeat", "repeat-tool")) // This reaches limit
-			expect(limitResult.allowExecution).toBe(false)
-
-			// First call after reset
-			detector.check(createToolUse("repeat", "repeat-tool"))
-
-			// Second call after reset
-			detector.check(createToolUse("repeat", "repeat-tool"))
-
-			// Third identical call (counter = 2) should reach limit again
-			const result = detector.check(createToolUse("repeat", "repeat-tool"))
-			expect(result.allowExecution).toBe(false)
-			expect(result.askUser).toBeDefined()
+			expect(checkRepeatedly(detector, createToolUse("repeat", "repeat-tool"), 7).askUser).toBeDefined()
+			expect(detector.check(createToolUse("new", "new-tool")).allowExecution).toBe(true)
 		})
 	})
 
 	// ===== Tool Name Interpolation tests =====
 	describe("tool name interpolation", () => {
-		it("should include tool name in the error message", () => {
+		it("should include tool name in the nudge and the escalation message", () => {
 			const detector = new ToolRepetitionDetector(2)
 			const toolName = "special-tool-name"
+			const tool = createToolUse("test", toolName)
 
-			// Reach the limit
-			detector.check(createToolUse("test", toolName))
-			detector.check(createToolUse("test", toolName))
-			const result = detector.check(createToolUse("test", toolName))
+			const nudge = checkRepeatedly(detector, tool, 3)
+			expect(nudge.nudge?.toolName).toBe(toolName)
 
+			// Calls 4 (nudge) and 5 (escalation)
+			const result = checkRepeatedly(detector, tool, 2)
 			expect(result.allowExecution).toBe(false)
 			expect(result.askUser?.messageDetail).toContain(toolName)
 		})
@@ -220,14 +191,10 @@ describe("ToolRepetitionDetector", () => {
 		it("should handle empty tool call", () => {
 			const detector = new ToolRepetitionDetector(2)
 
-			// Create an empty tool call - a tool with no parameters
-			// Use the empty tool directly in the check calls
-			detector.check(createToolUse("empty-tool", "empty-tool"))
-			detector.check(createToolUse("empty-tool", "empty-tool"))
-			const result = detector.check(createToolUse("empty-tool", "empty-tool"))
+			const result = checkRepeatedly(detector, createToolUse("empty-tool", "empty-tool"), 3)
 
 			expect(result.allowExecution).toBe(false)
-			expect(result.askUser).toBeDefined()
+			expect(result.nudge).toBeDefined()
 		})
 
 		it("should handle different tool names with identical serialized JSON", () => {
@@ -238,12 +205,11 @@ describe("ToolRepetitionDetector", () => {
 			detector.check(toolUse1)
 
 			// Create a tool that will serialize to the same JSON as toolUse1
-			// We need to mock the serializeToolUse method to return the same value
 			const toolUse2 = createToolUse("tool-name-2", "tool-name-2", { param: "value" })
 
 			// Override the private method to force identical serialization
-			const originalSerialize = (detector as any).serializeToolUse
-			;(detector as any).serializeToolUse = (tool: ToolUse) => {
+			const originalSerialize = detector["serializeToolUse"]
+			detector["serializeToolUse"] = (tool: ToolUse) => {
 				// Use string comparison for the name since it's technically an enum
 				if (String(tool.name) === "tool-name-2") {
 					return originalSerialize.call(detector, toolUse1) // Return the same JSON as toolUse1
@@ -255,149 +221,110 @@ describe("ToolRepetitionDetector", () => {
 			const result2 = detector.check(toolUse2)
 			expect(result2.allowExecution).toBe(true) // Still allowed (counter = 1)
 
-			// Third call - should be blocked (limit is 2)
+			// Third call - should be nudged (limit is 2)
 			const result3 = detector.check(toolUse2)
 
 			// Restore the original method
-			;(detector as any).serializeToolUse = originalSerialize
+			detector["serializeToolUse"] = originalSerialize
 
 			// Since we're directly manipulating the internal state for testing,
 			// we expect it to consider this a repetition
 			expect(result3.allowExecution).toBe(false)
-			expect(result3.askUser).toBeDefined()
+			expect(result3.nudge).toBeDefined()
 		})
 
 		it("should treat tools with same parameters in different order as identical", () => {
 			const detector = new ToolRepetitionDetector(2)
 
-			// First call with parameters in one order
-			const toolUse1 = createToolUse("same-tool", "same-tool", { a: "1", b: "2", c: "3" })
-			detector.check(toolUse1)
-
-			// Second call with same parameters but in different order
-			const toolUse2 = createToolUse("same-tool", "same-tool", { c: "3", a: "1", b: "2" })
-			detector.check(toolUse2)
-
-			// Third call - should be blocked (limit is 2)
-			const toolUse3 = createToolUse("same-tool", "same-tool", { b: "2", c: "3", a: "1" })
-			const result = detector.check(toolUse3)
+			detector.check(createToolUse("same-tool", "same-tool", { a: "1", b: "2", c: "3" }))
+			detector.check(createToolUse("same-tool", "same-tool", { c: "3", a: "1", b: "2" }))
+			const result = detector.check(createToolUse("same-tool", "same-tool", { b: "2", c: "3", a: "1" }))
 
 			// Since parameters are sorted alphabetically in the serialized JSON,
 			// these should be considered identical
 			expect(result.allowExecution).toBe(false)
-			expect(result.askUser).toBeDefined()
+			expect(result.nudge).toBeDefined()
 		})
 	})
 
-	// ===== Explicit Nth Call Blocking tests =====
-	describe("explicit Nth call blocking behavior", () => {
-		it("should allow the 1st call but block on the 2nd call for limit 1", () => {
+	// ===== Explicit Nth Call tests =====
+	describe("explicit Nth call behavior", () => {
+		it("limit 1: allows the 1st call, nudges the 2nd and escalates on the 3rd", () => {
 			const detector = new ToolRepetitionDetector(1)
+			const tool = createToolUse("tool", "tool-name")
 
-			// First call (counter = 0) should be allowed
-			const result1 = detector.check(createToolUse("tool", "tool-name"))
+			const result1 = detector.check(tool)
 			expect(result1.allowExecution).toBe(true)
 			expect(result1.askUser).toBeUndefined()
 
-			// Second identical call (counter = 1) should be blocked
-			const result2 = detector.check(createToolUse("tool", "tool-name"))
+			const result2 = detector.check(tool)
 			expect(result2.allowExecution).toBe(false)
-			expect(result2.askUser).toBeDefined()
-		})
+			expect(result2.nudge).toEqual({ toolName: "tool-name", repeatCount: 1 })
+			expect(result2.askUser).toBeUndefined()
 
-		it("should allow first 2 calls but block on the 3rd call for limit 2", () => {
-			const detector = new ToolRepetitionDetector(2)
-
-			// First call (counter = 0)
-			const result1 = detector.check(createToolUse("tool", "tool-name"))
-			expect(result1.allowExecution).toBe(true)
-
-			// Second identical call (counter = 1)
-			const result2 = detector.check(createToolUse("tool", "tool-name"))
-			expect(result2.allowExecution).toBe(true)
-
-			// Third identical call (counter = 2) should be blocked
-			const result3 = detector.check(createToolUse("tool", "tool-name"))
+			const result3 = detector.check(tool)
 			expect(result3.allowExecution).toBe(false)
-			expect(result3.askUser).toBeDefined()
+			expect(result3.nudge).toBeUndefined()
+			expect(result3.askUser?.messageKey).toBe("mistake_limit_reached")
 		})
 
-		it("should allow first 3 calls but block on the 4th call for limit 3 (default)", () => {
-			const detector = new ToolRepetitionDetector(3)
+		it("limit 2: allows 2 calls, nudges the 3rd and 4th and escalates on the 5th", () => {
+			const detector = new ToolRepetitionDetector(2)
+			const tool = createToolUse("tool", "tool-name")
 
-			// First call (counter = 0)
-			const result1 = detector.check(createToolUse("tool", "tool-name"))
-			expect(result1.allowExecution).toBe(true)
+			expect(detector.check(tool).allowExecution).toBe(true)
+			expect(detector.check(tool).allowExecution).toBe(true)
 
-			// Second identical call (counter = 1)
-			const result2 = detector.check(createToolUse("tool", "tool-name"))
-			expect(result2.allowExecution).toBe(true)
+			expect(detector.check(tool).nudge?.repeatCount).toBe(2)
+			expect(detector.check(tool).nudge?.repeatCount).toBe(3)
 
-			// Third identical call (counter = 2)
-			const result3 = detector.check(createToolUse("tool", "tool-name"))
-			expect(result3.allowExecution).toBe(true)
+			const result5 = detector.check(tool)
+			expect(result5.allowExecution).toBe(false)
+			expect(result5.askUser?.messageKey).toBe("mistake_limit_reached")
 
-			// Fourth identical call (counter = 3) should be blocked
-			const result4 = detector.check(createToolUse("tool", "tool-name"))
-			expect(result4.allowExecution).toBe(false)
-			expect(result4.askUser).toBeDefined()
+			// After escalating, the counter resets and allows new attempts
+			expect(detector.check(tool).allowExecution).toBe(true)
+		})
+
+		it("limit 5: allows 5 calls, nudges calls 6-10 and escalates on the 11th", () => {
+			const detector = new ToolRepetitionDetector(5)
+			const tool = createToolUse("tool", "tool-name")
+
+			for (let i = 0; i < 5; i++) {
+				const result = detector.check(tool)
+				expect(result.allowExecution).toBe(true)
+				expect(result.askUser).toBeUndefined()
+			}
+
+			for (let i = 0; i < 5; i++) {
+				const result = detector.check(tool)
+				expect(result.allowExecution).toBe(false)
+				expect(result.nudge?.repeatCount).toBe(5 + i)
+			}
+
+			const result11 = detector.check(tool)
+			expect(result11.allowExecution).toBe(false)
+			expect(result11.askUser?.messageKey).toBe("mistake_limit_reached")
 		})
 
 		it("should never block when limit is 0 (unlimited)", () => {
 			const detector = new ToolRepetitionDetector(0)
 
-			// Try many identical calls
 			for (let i = 0; i < 10; i++) {
 				const result = detector.check(createToolUse("tool", "tool-name"))
 				expect(result.allowExecution).toBe(true)
+				expect(result.nudge).toBeUndefined()
 				expect(result.askUser).toBeUndefined()
 			}
-		})
-
-		it("should handle different limits correctly", () => {
-			// Test with limit of 5
-			const detector5 = new ToolRepetitionDetector(5)
-			const tool = createToolUse("tool", "tool-name")
-
-			// First 5 calls should be allowed
-			for (let i = 0; i < 5; i++) {
-				const result = detector5.check(tool)
-				expect(result.allowExecution).toBe(true)
-				expect(result.askUser).toBeUndefined()
-			}
-
-			// 6th call should be blocked
-			const result6 = detector5.check(tool)
-			expect(result6.allowExecution).toBe(false)
-			expect(result6.askUser).toBeDefined()
-			expect(result6.askUser?.messageKey).toBe("mistake_limit_reached")
-		})
-
-		it("should reset counter after blocking and allow new attempts", () => {
-			const detector = new ToolRepetitionDetector(2)
-			const tool = createToolUse("tool", "tool-name")
-
-			// First call allowed
-			expect(detector.check(tool).allowExecution).toBe(true)
-
-			// Second call allowed
-			expect(detector.check(tool).allowExecution).toBe(true)
-
-			// Third call should block (limit is 2)
-			const blocked = detector.check(tool)
-			expect(blocked.allowExecution).toBe(false)
-
-			// After blocking, counter should reset and allow new attempts
-			expect(detector.check(tool).allowExecution).toBe(true)
 		})
 
 		it("should handle negative limits as 0 (unlimited)", () => {
 			const detector = new ToolRepetitionDetector(-1)
 
-			// Should behave like unlimited
-			for (let i = 0; i < 5; i++) {
+			for (let i = 0; i < 10; i++) {
 				const result = detector.check(createToolUse("tool", "tool-name"))
 				expect(result.allowExecution).toBe(true)
+				expect(result.nudge).toBeUndefined()
 				expect(result.askUser).toBeUndefined()
 			}
 		})
@@ -459,10 +386,10 @@ describe("ToolRepetitionDetector", () => {
 			// Second call allowed
 			expect(detector.check(readFile).allowExecution).toBe(true)
 
-			// Third identical call should be blocked (limit is 2)
+			// Third identical call should be nudged (limit is 2)
 			const result = detector.check(readFile)
 			expect(result.allowExecution).toBe(false)
-			expect(result.askUser).toBeDefined()
+			expect(result.nudge).toEqual({ toolName: "read_file", repeatCount: 2 })
 		})
 
 		it("should treat different slice offsets as distinct read_file calls", () => {
@@ -538,7 +465,7 @@ describe("ToolRepetitionDetector", () => {
 
 			const result = detector.check(legacyTool)
 			expect(result.allowExecution).toBe(false)
-			expect(result.askUser).toBeDefined()
+			expect(result.nudge).toBeDefined()
 		})
 	})
 })

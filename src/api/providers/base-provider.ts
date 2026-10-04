@@ -57,7 +57,13 @@ export abstract class BaseProvider implements ApiHandler {
 	/**
 	 * Converts tool schemas to be compatible with OpenAI's strict mode by:
 	 * - Ensuring all properties are in the required array (strict mode requirement)
-	 * - Converting nullable types (["type", "null"]) to non-nullable ("type")
+	 * - Preserving author-declared nullable unions (["type", "null"]) as-is: under OpenAI
+	 *   strict mode every property must appear in `required`, and optionality is expressed by
+	 *   making the property nullable (a type union that includes "null") while keeping it
+	 *   required. A "required but nullable" field is valid strict JSON schema, so we must NOT
+	 *   collapse ["type", "null"] down to "type" — doing so forces a non-null value for fields
+	 *   the tool description instructs the model to send as null (e.g. parallel_tasks/new_task
+	 *   todos/route), making the call unsatisfiable-as-described.
 	 * - Adding additionalProperties: false to all object schemas (required by OpenAI Responses API)
 	 * - Recursively processing nested objects and arrays
 	 *
@@ -86,11 +92,9 @@ export abstract class BaseProvider implements ApiHandler {
 			for (const key of allKeys) {
 				const prop = newProps[key]
 
-				// Handle nullable types by removing null
-				if (prop && Array.isArray(prop.type) && prop.type.includes("null")) {
-					const nonNullTypes = prop.type.filter((t: string) => t !== "null")
-					prop.type = nonNullTypes.length === 1 ? nonNullTypes[0] : nonNullTypes
-				}
+				// Preserve author-declared nullable unions (["type", "null"]) as-is. Under OpenAI
+				// strict mode a field expresses optionality by being nullable while remaining in
+				// `required`, so we intentionally do NOT strip "null" here.
 
 				// Recursively process nested objects
 				if (prop && prop.type === "object") {

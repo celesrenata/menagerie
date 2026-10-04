@@ -54,6 +54,13 @@ Otherwise, if you have not completed the task and do not need additional informa
 (This is an automated message, so do not respond to it conversationally.)`
 	},
 
+	toolRepetitionNudge: (toolName: string, repeatCount: number) => {
+		const base = `You already called ${toolName} with identical arguments ${repeatCount + 1} times in a row; this call was not executed. Do not call it again with the same arguments. Proceed with the next action of your task.`
+		return toolName === "update_todo_list"
+			? `${base} Only call update_todo_list again after an item's status changes.`
+			: base
+	},
+
 	tooManyMistakes: (feedback?: string) =>
 		JSON.stringify({
 			status: "guidance",

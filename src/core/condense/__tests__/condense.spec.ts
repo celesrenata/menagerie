@@ -124,6 +124,7 @@ Line 2
 
 	describe("summarizeConversation", () => {
 		it("should create a summary message with role user (fresh start model)", async () => {
+			const createMessageSpy = vitest.spyOn(mockApiHandler, "createMessage")
 			const messages: ApiMessage[] = [
 				{ role: "user", content: "First message with /prr command content" },
 				{ role: "assistant", content: "Second message" },
@@ -142,7 +143,14 @@ Line 2
 				systemPrompt: "System prompt",
 				taskId,
 				isAutomaticTrigger: false,
+				metadata: { taskId },
 			})
+			expect(createMessageSpy).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Array),
+				expect.objectContaining({ maxOutputTokens: 6144 }),
+			)
+			createMessageSpy.mockRestore()
 
 			// Verify we have a summary message with role "user" (fresh start model)
 			const summaryMessage = result.messages.find((msg) => msg.isSummary)

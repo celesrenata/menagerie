@@ -64,6 +64,8 @@ export interface SingleCompletionHandler {
 }
 
 export interface ApiHandlerCreateMessageMetadata {
+	/** Request-specific output cap, used for bounded internal summaries. */
+	maxOutputTokens?: number
 	/**
 	 * Task ID used for tracking and provider-specific features:
 	 * - Roo: Sent as X-Roo-Task-ID header

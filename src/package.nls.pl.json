@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "Maksymalna liczba plików do indeksowania dla funkcji wyszukiwania plików @. Wyższe wartości zapewniają lepsze wyniki wyszukiwania w dużych projektach, ale mogą zużywać więcej pamięci. Domyślnie: 10 000.",
 	"settings.useAgentRules.description": "Włącz wczytywanie plików AGENTS.md dla reguł specyficznych dla agenta (zobacz https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "Limit czasu odpowiedzi API (sekundy, domyślnie: 600, zakres: 1–3600). Wyższe wartości są zalecane dla lokalnych dostawców. Nieobsługiwani dostawcy: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "Przerwij i ponów strumieniową odpowiedź API, gdy przez tyle sekund nie nadejdą żadne dane (domyślnie: 300, zakres: 0–3600, 0 wyłącza). Czas oczekiwania na pierwszy token jest określany przez limit czasu odpowiedzi API.",
 	"settings.newTaskRequireTodos.description": "Wymagaj parametru todos podczas tworzenia nowych zadań za pomocą narzędzia new_task",
 	"settings.codeIndex.embeddingBatchSize.description": "Rozmiar partii dla operacji osadzania podczas indeksowania kodu. Dostosuj to w oparciu o limity twojego dostawcy API. Domyślnie to 60.",
 	"settings.debug.description": "Włącz tryb debugowania, aby wyświetlić dodatkowe przyciski do przeglądania historii rozmów API i komunikatów interfejsu użytkownika jako sformatowany JSON w plikach tymczasowych.",

@@ -1,0 +1,20 @@
+[
+	{
+		"target": "vllm/qwen3.8-27b-nvfp4",
+		"key": "context_length",
+		"value": 131072,
+		"before": 147456
+	},
+	{
+		"target": "vllm/qwen3.8-27b-nvfp4",
+		"key": "max_input_tokens",
+		"value": 98304,
+		"before": 114688
+	},
+	{
+		"target": "vllm/qwen3.8-27b-nvfp4-balanced",
+		"key": "context_length",
+		"value": 131072,
+		"before": 147456
+	}
+]

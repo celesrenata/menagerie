@@ -1,0 +1,7 @@
+{
+	"task_id": "task-usage-chart-legend",
+	"task_description": "Clean up the analytics 'Model Usage Over Time' stacked area chart (client-side top-N by total tokens with an 'Other' series, exclude non-inference/embedding/zero rows, compact truncated legend with stable colors, persisted Top 5/8/12/All control) and reproduce/fix the browser-only internal server error on /dashboard/cache. Plan: /Users/celes/sources/celesrenata/menagerie/.agents/tasks/usage-chart-legend/plan.md",
+	"status": "pending",
+	"feature_order": ["FEAT-001", "FEAT-002"],
+	"blocked_reason": null
+}

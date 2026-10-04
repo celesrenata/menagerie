@@ -1,0 +1,24 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "ComfyUI coexistence unvalidated",
+			"detail": "700 MiB idle-Comfy-context reservation is unmeasured and the >=1,536 MiB deploy gate will run with ComfyUI failed (F1); re-run the gate once F1 is fixed, apply L1 if needed."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "OmniRoute still serializes",
+			"detail": "Connection e9bd13fb maxConcurrent=1 and omniroute-routing.py:165 / omniroute-mode.py:107 re-persist 1; raise to 4 after deploy gate passes."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "possible",
+			"label": "Offload + hybrid + MTP upstream risk",
+			"detail": "Upstream #50454 still open; require the 30-min c=4 soak (6b) and offload efficacy check (6a) before declaring done; L2 on any connector assertion."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/esnixi-5090-qwen27b-perf/review.md"
+}

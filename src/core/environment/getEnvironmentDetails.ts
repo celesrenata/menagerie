@@ -14,10 +14,12 @@ import { listFiles } from "../../services/glob/list-files"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { arePathsEqual } from "../../utils/path"
+import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { formatResponse } from "../prompts/responses"
 import { getGitStatus } from "../../utils/git"
 
 import { Task } from "../task/Task"
+import { getInterruptedParallelBatchSummary } from "../task/parallelTaskRecovery"
 import { formatReminderSection } from "./reminder"
 
 export async function getEnvironmentDetails(cline: Task, includeFileDetails: boolean = false) {
@@ -32,6 +34,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 	const visibleFilePaths = vscode.window.visibleTextEditors
 		?.map((editor) => editor.document?.uri?.fsPath)
 		.filter(Boolean)
+		.filter((absolutePath) => !isPathOutsideWorkspace(absolutePath, cline.cwd))
 		.map((absolutePath) => path.relative(cline.cwd, absolutePath))
 		.slice(0, maxWorkspaceFiles)
 
@@ -52,6 +55,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		.filter((tab) => tab.input instanceof vscode.TabInputText)
 		.map((tab) => (tab.input as vscode.TabInputText).uri.fsPath)
 		.filter(Boolean)
+		.filter((absolutePath) => !isPathOutsideWorkspace(absolutePath, cline.cwd))
 		.map((absolutePath) => path.relative(cline.cwd, absolutePath).toPosix())
 		.slice(0, maxTabs)
 
@@ -170,6 +174,11 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 
 	if (terminalDetails) {
 		details += terminalDetails
+	}
+
+	if (state?.experiments?.parallelTasks && !cline.parallelWorker && clineProvider) {
+		const recovery = await getInterruptedParallelBatchSummary(clineProvider.context.globalStorageUri.fsPath, cline.taskId)
+		if (recovery) details += `\n\n${recovery}`
 	}
 
 	// Get settings for time and cost display

@@ -1,0 +1,11 @@
+{
+	"rolled_out": true,
+	"new_image": "registry.celestium.life/library/omniroute:3.8.52-failfixes-feat002-005-20261001",
+	"rollback_cmd": "kubectl set image deploy/omniroute -n omniroute omniroute=registry.celestium.life/library/omniroute:3.8.50-native-ovms-spacing-20260929",
+	"pod_ready": true,
+	"manifest_committed": "405efdf38d220383288837b9053973ec56f7db71",
+	"live_pod": "omniroute-774d5b74d4-2t9vz",
+	"live_digest": "sha256:cb0750ca7ad168ba6672a84543a9c90cc615738996e15f46ce87fd9cbc4a51d8",
+	"startup_probe_added": true,
+	"notes": "FINAL STATE (after a flap + temporary rollback + startupProbe fix + re-deploy): live pod omniroute-774d5b74d4-2t9vz is 1/1 Running, ready=true, restarts=0, started=true on image 3.8.52-failfixes-feat002-005-20261001, running digest sha256:cb0750ca (== build digest, authoritative). Held stable ~5min with external /healthz 200 across 13 samples; SIGTERM count=0, so no restart loop. HISTORY: the first 3.8.52 pod (omniroute-774d5b74d4-5dg2m) FLAPPED -- its liveness probe (/livez 5s x3) timed out during the slow cold start (DB open, cleanup sweeps, ModelSync, CredentialHealth), the kubelet SIGTERM-killed and restart-looped it (restarts climbed 1->2->...), producing ~45-60s ingress 'no available server' windows. An operator did a live `kubectl set image` rollback to 3.8.50-native-ovms-spacing-20260929 (uncommitted) AND added a startupProbe (GET /healthz failureThreshold=36 x period 5s = ~180s cold-start budget) to the deployment template. This step then re-set the image to 3.8.52 (startupProbe retained); the startupProbe absorbed the cold start and the pod came up stable with 0 kills. git<->live reconciled: committed manifest 405efdf declares 3.8.52 and the file is clean, so live matches committed git. Rollback target remains 3.8.50-native-ovms-spacing-20260929."
+}

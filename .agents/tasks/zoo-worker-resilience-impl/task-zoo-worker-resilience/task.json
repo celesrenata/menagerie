@@ -1,0 +1,7 @@
+{
+	"task_id": "task-zoo-worker-resilience",
+	"task_description": "Implement the approved Zoo parallel-worker resilience design (/Users/celes/sources/celesrenata/menagerie/.agents/tasks/zoo-worker-resilience/design.md) plus the round-3 review items. Tool failures always settle the turn (A1). Model argument shapes are coerced (A2). Stream first-chunk and idle timeouts get real abort-signal wiring, a new apiStreamIdleTimeout setting, and a bounded auto-condense stream (A3 + round-3 MEDIUM). Parallel workers fail non-interactively with a bounded retry cap (A4). The repetition loop guard nudges, then escalates (B1). update_todo_list no-ops on empty or unchanged lists (B2). The ordered plan with exact edits is /Users/celes/sources/celesrenata/menagerie/.agents/tasks/zoo-worker-resilience-impl/plan.md.",
+	"status": "completed",
+	"feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+	"blocked_reason": null
+}

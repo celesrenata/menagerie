@@ -3,6 +3,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { supportPrompt } from "../../shared/support-prompt"
 import { singleCompletionHandler } from "../../utils/single-completion-handler"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
+import { withOmniRouteTier } from "../../api/providers/omniroute"
 import { ClineProvider } from "./ClineProvider"
 
 export interface MessageEnhancerOptions {
@@ -12,6 +13,8 @@ export interface MessageEnhancerOptions {
 	listApiConfigMeta: Array<{ id: string; name?: string }>
 	enhancementApiConfigId?: string
 	includeTaskHistoryInEnhance?: boolean
+	/** Global OmniRoute cost tier; applied to a dedicated enhancement profile (FEAT-005). */
+	omniRouteTier?: number
 	currentClineMessages?: ClineMessage[]
 	providerSettingsManager: ProviderSettingsManager
 }
@@ -40,6 +43,7 @@ export class MessageEnhancer {
 				listApiConfigMeta,
 				enhancementApiConfigId,
 				includeTaskHistoryInEnhance,
+				omniRouteTier,
 				currentClineMessages,
 				providerSettingsManager,
 			} = options
@@ -54,7 +58,8 @@ export class MessageEnhancer {
 				})
 
 				if (providerSettings.apiProvider) {
-					configToUse = providerSettings
+					// Saved profiles no longer persist the tier; inject the live global one.
+					configToUse = withOmniRouteTier(providerSettings, omniRouteTier)
 				}
 			}
 

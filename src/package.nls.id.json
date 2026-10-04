@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "Jumlah maksimum file yang akan diindeks untuk fitur pencarian file @. Nilai yang lebih besar memberikan hasil pencarian yang lebih baik di proyek besar tetapi mungkin menggunakan lebih banyak memori. Default: 10.000.",
 	"settings.useAgentRules.description": "Aktifkan pemuatan file AGENTS.md untuk aturan khusus agen (lihat https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "Batas waktu respons API (detik, default: 600, rentang: 1–3600). Nilai lebih tinggi direkomendasikan untuk penyedia lokal. Penyedia tidak didukung: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "Batalkan dan ulangi respons API streaming saat tidak ada data yang masuk selama sekian detik ini (default: 300, rentang: 0–3600, 0 menonaktifkan). Waktu tunggu token pertama diatur oleh batas waktu respons API.",
 	"settings.newTaskRequireTodos.description": "Memerlukan parameter todos saat membuat tugas baru dengan alat new_task",
 	"settings.codeIndex.embeddingBatchSize.description": "Ukuran batch untuk operasi embedding selama pengindeksan kode. Sesuaikan ini berdasarkan batas penyedia API kamu. Default adalah 60.",
 	"settings.debug.description": "Aktifkan mode debug untuk menampilkan tombol tambahan untuk melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara.",

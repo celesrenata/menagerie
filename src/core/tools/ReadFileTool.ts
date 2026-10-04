@@ -12,8 +12,8 @@ import path from "path"
 import * as fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
 
-import type { ReadFileParams, ReadFileMode, ReadFileToolParams, FileEntry, LineRange } from "@roo-code/types"
-import { isLegacyReadFileParams, type ClineSayTool } from "@roo-code/types"
+import type { ReadFileParams, BatchReadFileParams, ReadFileMode, ReadFileToolParams, FileEntry, LineRange } from "@roo-code/types"
+import { isBatchReadFileParams, isLegacyReadFileParams, type ClineSayTool } from "@roo-code/types"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
@@ -42,6 +42,7 @@ import { BaseTool, ToolCallbacks } from "./BaseTool"
  */
 interface InternalFileEntry {
 	path: string
+	lineRanges?: LineRange[]
 	mode?: ReadFileMode
 	offset?: number
 	limit?: number
@@ -66,6 +67,17 @@ interface FileResult {
 	entry?: InternalFileEntry
 }
 
+/** Accept array-valued paths double-encoded by some OpenAI-compatible models. */
+function parseStringifiedPathArray(value: unknown): string[] | undefined {
+	if (typeof value !== "string") return undefined
+	try {
+		const parsed: unknown = JSON.parse(value)
+		return Array.isArray(parsed) && parsed.every((entry) => typeof entry === "string") ? parsed : undefined
+	} catch {
+		return undefined
+	}
+}
+
 // ─── Tool Implementation ──────────────────────────────────────────────────────
 
 export class ReadFileTool extends BaseTool<"read_file"> {
@@ -76,8 +88,52 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		if (isLegacyReadFileParams(params)) {
 			return this.executeLegacy(params.files, task, callbacks)
 		}
+		const encodedBatch = "path" in params ? parseStringifiedPathArray(params.path) : undefined
+		if (encodedBatch) {
+			return this.executeBatch({ ...params, path: encodedBatch }, task, callbacks)
+		}
+		if (isBatchReadFileParams(params)) {
+			return this.executeBatch(params, task, callbacks)
+		}
 
 		return this.executeNew(params, task, callbacks)
+	}
+
+	private async executeBatch(params: BatchReadFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
+		const paths = params.path
+		if (paths.length < 1 || paths.length > 8 || paths.some((filePath) => filePath.trim().length === 0)) {
+			task.didToolFailInCurrentTurn = true
+			callbacks.pushToolResult("Error: read_file requires one to eight non-empty paths per batch.")
+			return
+		}
+		const offset = params.offset === 0 ? undefined : params.offset
+		const limit = params.limit === 0 ? undefined : params.limit
+		if (offset !== undefined && offset < 1) {
+			callbacks.pushToolResult(`Error: offset must be a 1-indexed line number (got ${params.offset}). Line numbers start at 1.`)
+			return
+		}
+		if (params.indentation?.anchor_line !== undefined && params.indentation.anchor_line < 1) {
+			callbacks.pushToolResult(`Error: anchor_line must be a 1-indexed line number (got ${params.indentation.anchor_line}). Line numbers start at 1.`)
+			return
+		}
+		return this.executeLegacy(
+			[...new Set(paths)].map((filePath) => ({
+				path: filePath,
+				mode:
+					params.mode === "indentation" && params.indentation?.anchor_line === undefined && (offset ?? 1) <= 1
+						? "slice"
+						: params.mode,
+				offset,
+				limit,
+				anchor_line: params.indentation?.anchor_line,
+				max_levels: params.indentation?.max_levels,
+				include_siblings: params.indentation?.include_siblings,
+				include_header: params.indentation?.include_header,
+				max_lines: params.indentation?.max_lines,
+			})),
+			task,
+			callbacks,
+		)
 	}
 
 	/**
@@ -87,6 +143,10 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		const { pushToolResult } = callbacks
 		const modelInfo = task.api.getModel().info
 		const filePath = params.path
+		// Some native providers emit zero for omitted optional integers. Treat that
+		// as the documented default instead of creating an error/one-line read loop.
+		const offset = params.offset === 0 ? undefined : params.offset
+		const limit = params.limit === 0 ? undefined : params.limit
 
 		// Validate input
 		if (!filePath) {
@@ -101,7 +161,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 		// Initialize file results tracking
 		// Validate line number parameters (must be 1-indexed positive integers)
-		if (params.offset !== undefined && params.offset < 1) {
+		if (offset !== undefined && offset < 1) {
 			const errorMsg = `offset must be a 1-indexed line number (got ${params.offset}). Line numbers start at 1.`
 			pushToolResult(`Error: ${errorMsg}`)
 			return
@@ -114,9 +174,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 		const fileEntry: InternalFileEntry = {
 			path: filePath,
-			mode: params.mode,
-			offset: params.offset,
-			limit: params.limit,
+			mode:
+				params.mode === "indentation" && params.indentation?.anchor_line === undefined && (offset ?? 1) <= 1
+					? "slice"
+					: params.mode,
+			offset,
+			limit,
 			anchor_line: params.indentation?.anchor_line,
 			max_levels: params.indentation?.max_levels,
 			include_siblings: params.indentation?.include_siblings,
@@ -436,7 +499,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			const batchFiles = filesToApprove.map((fileResult) => {
 				const relPath = fileResult.path
 				const fullPath = path.resolve(task.cwd, relPath)
-				const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
+				const isOutsideWorkspace = isPathOutsideWorkspace(fullPath, task.parallelWorker ? task.cwd : undefined)
 				const readablePath = getReadablePath(task.cwd, relPath)
 
 				const lineSnippet = this.getLineSnippet(fileResult.entry!)
@@ -501,7 +564,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			const fileResult = filesToApprove[0]
 			const relPath = fileResult.path
 			const fullPath = path.resolve(task.cwd, relPath)
-			const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
+			const isOutsideWorkspace = isPathOutsideWorkspace(fullPath, task.parallelWorker ? task.cwd : undefined)
 			const lineSnippet = this.getLineSnippet(fileResult.entry!)
 
 			const startLine = this.getStartLine(fileResult.entry!)
@@ -620,12 +683,14 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		}
 	}
 
-	getReadFileToolDescription(blockName: string, blockParams: { path?: string }): string
+	getReadFileToolDescription(blockName: string, blockParams: { path?: string | string[] }): string
 	getReadFileToolDescription(blockName: string, nativeArgs: ReadFileParams): string
 	getReadFileToolDescription(blockName: string, second: unknown): string {
 		// If native typed args were provided
-		if (second && typeof second === "object" && "path" in second && typeof (second as any).path === "string") {
-			return `[${blockName} for '${(second as any).path}']`
+		if (second && typeof second === "object" && "path" in second) {
+			const pathValue = (second as any).path
+			if (typeof pathValue === "string") return `[${blockName} for '${pathValue}']`
+			if (Array.isArray(pathValue)) return `[${blockName} for ${pathValue.length} files]`
 		}
 
 		const blockParams = second as Record<string, unknown>
@@ -642,6 +707,8 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			if (isLegacyReadFileParams(block.nativeArgs)) {
 				// Legacy format - show first file
 				filePath = block.nativeArgs.files[0]?.path ?? ""
+			} else if (isBatchReadFileParams(block.nativeArgs)) {
+				filePath = block.nativeArgs.path[0] ?? ""
 			} else {
 				filePath = block.nativeArgs.path ?? ""
 			}
@@ -651,7 +718,9 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		const sharedMessageProps: ClineSayTool = {
 			tool: "readFile",
 			path: getReadablePath(task.cwd, filePath),
-			isOutsideWorkspace: filePath ? isPathOutsideWorkspace(fullPath) : false,
+			isOutsideWorkspace: filePath
+				? isPathOutsideWorkspace(fullPath, task.parallelWorker ? task.cwd : undefined)
+				: false,
 		}
 		const partialMessage = JSON.stringify({
 			...sharedMessageProps,
@@ -678,67 +747,55 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 		const supportsImages = modelInfo.supportsImages ?? false
 
-		// Process each file sequentially (legacy behavior)
-		const results: string[] = []
+		const fileResults: FileResult[] = fileEntries.map((entry) => ({ path: entry.path, status: "pending", entry }))
+		const filesToApprove: FileResult[] = []
+		const updateFileResult = (filePath: string, updates: Partial<FileResult>) => {
+			const index = fileResults.findIndex((result) => result.path === filePath)
+			if (index !== -1) fileResults[index] = { ...fileResults[index], ...updates }
+		}
 
-		for (const entry of fileEntries) {
-			const relPath = entry.path
-			const fullPath = path.resolve(task.cwd, relPath)
-
-			// RooIgnore validation
-			const accessAllowed = task.rooIgnoreController?.validateAccess(relPath)
+		for (const fileResult of fileResults) {
+			const accessAllowed = task.rooIgnoreController?.validateAccess(fileResult.path)
 			if (!accessAllowed) {
-				await task.say("rooignore_error", relPath)
-				const errorMsg = formatResponse.rooIgnoreError(relPath)
-				results.push(`File: ${relPath}\nError: ${errorMsg}`)
+				await task.say("rooignore_error", fileResult.path)
+				const errorMsg = formatResponse.rooIgnoreError(fileResult.path)
+				updateFileResult(fileResult.path, {
+					status: "blocked",
+					error: errorMsg,
+					nativeContent: `File: ${fileResult.path}\nError: ${errorMsg}`,
+				})
 				// Mirror the native path: a blocked file marks the tool turn as failed.
 				task.didToolFailInCurrentTurn = true
 				continue
 			}
+			filesToApprove.push(fileResult)
+		}
 
-			// Request approval for single file
-			const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
-			let lineSnippet = ""
-			if (entry.lineRanges && entry.lineRanges.length > 0) {
-				const ranges = entry.lineRanges.map((range: LineRange) => `(lines ${range.start}-${range.end})`)
-				lineSnippet = ranges.join(", ")
-			}
+		// One approval request for the batch prevents an array read from turning
+		// into a sequence of per-file prompts.
+		await this.requestApproval(task, filesToApprove, updateFileResult)
 
-			const completeMessage = JSON.stringify({
-				tool: "readFile",
-				path: getReadablePath(task.cwd, relPath),
-				isOutsideWorkspace,
-				content: fullPath,
-				reason: lineSnippet || undefined,
-			} satisfies ClineSayTool)
+		const readApprovedFile = async (fileResult: FileResult, index: number): Promise<void> => {
+			if (fileResult.status !== "approved") return
 
-			const { response, text, images } = await task.ask("tool", completeMessage, false)
-
-			if (response !== "yesButtonClicked") {
-				if (text) await task.say("user_feedback", text, images)
-				task.didRejectTool = true
-				results.push(`File: ${relPath}\nStatus: Denied by user`)
-				continue
-			}
-
-			if (text) await task.say("user_feedback", text, images)
-
+			const entry = fileResult.entry!
+			const relPath = fileResult.path
+			const fullPath = path.resolve(task.cwd, relPath)
 			try {
-				// Check if the path is a directory
+				// Read independent files concurrently, but defer shared metadata writes
+				// until afterward because FileContextTracker uses read-modify-write.
 				const stats = await fs.stat(fullPath)
 				if (stats.isDirectory()) {
 					const errorMsg = `Cannot read '${relPath}' because it is a directory.`
-					results.push(`File: ${relPath}\nError: ${errorMsg}`)
-					await task.say("error", `Error reading file ${relPath}: ${errorMsg}`)
-					// Mirror the native path: a failed read marks the tool turn as failed.
-					task.didToolFailInCurrentTurn = true
-					continue
+					fileResult.status = "error"
+					fileResult.error = errorMsg
+					fileResult.content = `Error: ${errorMsg}`
+					return
 				}
 
 				const isBinary = await isBinaryFile(fullPath).catch(() => false)
 
 				if (isBinary) {
-					// Handle binary files (images)
 					const fileExtension = path.extname(relPath).toLowerCase()
 					if (supportsImages && isSupportedImageFormat(fileExtension)) {
 						const state = await task.providerRef.deref()?.getState()
@@ -754,58 +811,70 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 							0, // Legacy path doesn't track cumulative memory
 						)
 						if (!validation.isValid) {
-							results.push(`File: ${relPath}\nNotice: ${validation.notice ?? "Image validation failed"}`)
-							continue
+							fileResult.content = `Notice: ${validation.notice ?? "Image validation failed"}`
+							return
 						}
 						const imageResult = await processImageFile(fullPath)
-						if (imageResult) {
-							results.push(`File: ${relPath}\n[Image file - content processed for vision model]`)
-						}
-					} else {
-						results.push(`File: ${relPath}\nError: Cannot read binary file`)
+						if (imageResult) fileResult.content = "[Image file - content processed for vision model]"
+						return
 					}
-					continue
+					fileResult.content = "Error: Cannot read binary file"
+					return
 				}
 
-				// Read text file
 				const rawContent = await fs.readFile(fullPath, "utf8")
-
-				// Handle line ranges if specified
-				let content: string
 				if (entry.lineRanges && entry.lineRanges.length > 0) {
 					const lines = rawContent.split("\n")
 					const selectedLines: string[] = []
 
 					for (const range of entry.lineRanges) {
-						// Convert to 0-based index, ranges are 1-based inclusive
 						const startIdx = Math.max(0, range.start - 1)
 						const endIdx = Math.min(lines.length - 1, range.end - 1)
-
-						for (let i = startIdx; i <= endIdx; i++) {
-							selectedLines.push(`${i + 1} | ${lines[i]}`)
-						}
+						for (let i = startIdx; i <= endIdx; i++) selectedLines.push(`${i + 1} | ${lines[i]}`)
 					}
-					content = selectedLines.join("\n")
+					fileResult.content = selectedLines.join("\n")
+				} else if (entry.mode !== undefined || entry.offset !== undefined || entry.limit !== undefined || entry.anchor_line !== undefined) {
+					fileResult.content = this.processTextFile(rawContent, entry)
 				} else {
-					// Read with default limits using slice mode
 					const result = readWithSlice(rawContent, 0, DEFAULT_LINE_LIMIT)
-					content = result.content
+					let content = result.content
 					if (result.wasTruncated) {
 						content += `\n\n[File truncated: showing ${result.returnedLines} of ${result.totalLines} total lines]`
 					}
+					fileResult.content = content
 				}
-
-				results.push(`File: ${relPath}\n${content}`)
-
-				// Track file in context
-				await task.fileContextTracker.trackFileContext(relPath, "read_tool")
+				textReadIndexes.add(index)
 			} catch (error) {
-				const errorMsg = error instanceof Error ? error.message : String(error)
-				results.push(`File: ${relPath}\nError: ${errorMsg}`)
-				await task.say("error", `Error reading file ${relPath}: ${errorMsg}`)
-				// Mirror the native path: a failed read marks the tool turn as failed.
-				task.didToolFailInCurrentTurn = true
+				fileResult.status = "error"
+				fileResult.error = error instanceof Error ? error.message : String(error)
+				fileResult.content = `Error: ${fileResult.error}`
 			}
+		}
+
+		const textReadIndexes = new Set<number>()
+		for (let start = 0; start < fileResults.length; start += 8) {
+			await Promise.all(fileResults.slice(start, start + 8).map((fileResult, offset) => readApprovedFile(fileResult, start + offset)))
+		}
+
+		const results: string[] = []
+		for (const [index, fileResult] of fileResults.entries()) {
+			const relPath = fileResult.path
+			if (fileResult.status === "blocked") {
+				results.push(fileResult.nativeContent ?? `File: ${relPath}\nBlocked`)
+				continue
+			}
+			if (fileResult.status === "denied" || fileResult.status === "pending") {
+				results.push(fileResult.nativeContent ?? `File: ${relPath}\nStatus: Denied by user`)
+				continue
+			}
+			if (fileResult.status === "error") {
+				task.didToolFailInCurrentTurn = true
+				await task.say("error", `Error reading file ${relPath}: ${fileResult.error ?? "Unknown error"}`)
+			}
+			if (fileResult.status === "approved" && textReadIndexes.has(index)) {
+				await task.fileContextTracker.trackFileContext(relPath, "read_tool")
+			}
+			if (fileResult.content !== undefined) results.push(`File: ${relPath}\n${fileResult.content}`)
 		}
 
 		// Push combined results

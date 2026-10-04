@@ -27,5 +27,21 @@ export const MAX_BATCH_TOKENS = 100000
 export const MAX_ITEM_TOKENS = 8191
 export const BATCH_PROCESSING_CONCURRENCY = 10
 
+/**
+ * Embedding request caps, applied to every embeddings HTTP request (see shared/embedding-batches.ts).
+ *
+ * Local servers (e.g. OVMS on an iGPU) run one request as one GPU batch padded to its longest item, so an
+ * uncapped request carrying every chunk of a large file can exhaust memory and crash the server.
+ *
+ * These are deliberately independent of `codeIndex.embeddingBatchSize` (default 60): that setting controls how
+ * many segments the scanner accumulates per createEmbeddings() call and the Qdrant upsert size, while these
+ * bound the size of each wire request inside that call. A 60-segment scanner batch becomes two requests.
+ */
+export const MAX_EMBEDDING_REQUEST_ITEMS = 32
+/** Budget for items x longest item's estimated tokens in one request (approximates the padded GPU batch). */
+export const MAX_EMBEDDING_REQUEST_PADDED_TOKENS = 16384
+/** Maximum halvings of a request after a 5xx/connection error (32 -> 1 needs 5). */
+export const MAX_EMBEDDING_SPLIT_DEPTH = 5
+
 /**Gemini Embedder */
 export const GEMINI_MAX_ITEM_TOKENS = 2048

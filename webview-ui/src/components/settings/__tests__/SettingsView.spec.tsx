@@ -804,3 +804,54 @@ describe("SettingsView - Duplicate Commands", () => {
 		expect(onDone).toHaveBeenCalledTimes(1)
 	})
 })
+
+describe("SettingsView - condensingApiConfigId", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("includes the chosen condensingApiConfigId in the updateSettings Save payload", () => {
+		const { activateTab, getSettingsContent } = renderSettingsView({
+			autoCondenseContext: false,
+			condensingApiConfigId: "",
+			listApiConfigMeta: [{ id: "reader-1", name: "Reader One" }],
+		})
+
+		activateTab("contextManagement")
+
+		// The condensing picker is the Select that offers the "use current configuration"
+		// ("-") option. The mocked Select fires onValueChange("test-change") on button click.
+		const content = getSettingsContent()
+		const condensingSelect = within(content)
+			.getAllByTestId("select")
+			.find((el) => within(el).queryByTestId("select-item--"))!
+		fireEvent.click(within(condensingSelect).getByRole("button"))
+
+		fireEvent.click(screen.getByTestId("save-button"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ condensingApiConfigId: "test-change" }),
+			}),
+		)
+	})
+
+	it("carries condensingApiConfigId as an empty string when nothing is selected", () => {
+		const { activateTab } = renderSettingsView({
+			autoCondenseContext: false,
+			condensingApiConfigId: "",
+			listApiConfigMeta: [{ id: "reader-1", name: "Reader One" }],
+		})
+
+		activateTab("contextManagement")
+		fireEvent.click(screen.getByTestId("save-button"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ condensingApiConfigId: "" }),
+			}),
+		)
+	})
+})

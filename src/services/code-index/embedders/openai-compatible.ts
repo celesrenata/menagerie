@@ -1,11 +1,12 @@
 import { OpenAI } from "openai"
 import { IEmbedder, EmbeddingResponse, EmbedderInfo } from "../interfaces/embedder"
 import {
-	MAX_BATCH_TOKENS,
 	MAX_ITEM_TOKENS,
 	MAX_BATCH_RETRIES as MAX_RETRIES,
 	INITIAL_RETRY_DELAY_MS as INITIAL_DELAY_MS,
+	MAX_EMBEDDING_SPLIT_DEPTH,
 } from "../constants"
+import { estimateEmbeddingTokens, isSplittableEmbeddingError, planEmbeddingRequests } from "../shared/embedding-batches"
 import { getDefaultModelId, getModelQueryPrefix } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
 import { withValidationErrorHandling, HttpError, formatEmbeddingError } from "../shared/validation-helpers"
@@ -73,6 +74,9 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 			this.embeddingsClient = new OpenAI({
 				baseURL: baseUrl,
 				apiKey: apiKey,
+				// No SDK-level retries: a replayed request that crashed one server replica would crash the next.
+				// 429 backoff and split-on-5xx are handled in _embedBatchWithRetries/_embedBatchSplittingOnFailure.
+				maxRetries: 0,
 			})
 		} catch (error) {
 			// Use the error handler to transform ByteString conversion errors
@@ -119,54 +123,74 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 				})
 			: texts
 
-		const allEmbeddings: number[][] = []
+		// Oversized items are skipped (with a warning) and omitted from the result, as before.
+		const embeddableTexts: string[] = []
+		processedTexts.forEach((text, index) => {
+			const itemTokens = estimateEmbeddingTokens(text)
+			if (itemTokens > this.maxItemTokens) {
+				console.warn(
+					t("embeddings:textExceedsTokenLimit", {
+						index,
+						itemTokens,
+						maxTokens: this.maxItemTokens,
+					}),
+				)
+				return
+			}
+			embeddableTexts.push(text)
+		})
+
+		// Every HTTP request is capped by item count and padded-token budget; results keep input order.
+		const orderedEmbeddings: number[][] = new Array(embeddableTexts.length)
 		const usage = { promptTokens: 0, totalTokens: 0 }
-		const remainingTexts = [...processedTexts]
 
-		while (remainingTexts.length > 0) {
-			const currentBatch: string[] = []
-			let currentBatchTokens = 0
-			const processedIndices: number[] = []
+		for (const requestIndices of planEmbeddingRequests(embeddableTexts)) {
+			const requestTexts = requestIndices.map((index) => embeddableTexts[index])
+			const batchResult = await this._embedBatchSplittingOnFailure(requestTexts, modelToUse, 0)
+			requestIndices.forEach((originalIndex, position) => {
+				orderedEmbeddings[originalIndex] = batchResult.embeddings[position]
+			})
+			usage.promptTokens += batchResult.usage.promptTokens
+			usage.totalTokens += batchResult.usage.totalTokens
+		}
 
-			for (let i = 0; i < remainingTexts.length; i++) {
-				const text = remainingTexts[i]
-				const itemTokens = Math.ceil(text.length / 4)
+		return { embeddings: orderedEmbeddings, usage }
+	}
 
-				if (itemTokens > this.maxItemTokens) {
-					console.warn(
-						t("embeddings:textExceedsTokenLimit", {
-							index: i,
-							itemTokens,
-							maxTokens: this.maxItemTokens,
-						}),
-					)
-					processedIndices.push(i)
-					continue
-				}
+	/**
+	 * Embeds one capped request. On a 5xx or connection error the request is split in half and each half is
+	 * embedded separately (up to MAX_EMBEDDING_SPLIT_DEPTH halvings) instead of resending the same payload, which
+	 * could be what crashed the server. Halves run sequentially and the first unrecoverable failure is thrown.
+	 */
+	private async _embedBatchSplittingOnFailure(
+		batchTexts: string[],
+		model: string,
+		depth: number,
+	): Promise<{ embeddings: number[][]; usage: { promptTokens: number; totalTokens: number } }> {
+		let failure: unknown
+		try {
+			return await this._embedBatchWithRetries(batchTexts, model)
+		} catch (error) {
+			failure = error
+		}
 
-				if (currentBatchTokens + itemTokens <= MAX_BATCH_TOKENS) {
-					currentBatch.push(text)
-					currentBatchTokens += itemTokens
-					processedIndices.push(i)
-				} else {
-					break
-				}
-			}
-
-			// Remove processed items from remainingTexts (in reverse order to maintain correct indices)
-			for (let i = processedIndices.length - 1; i >= 0; i--) {
-				remainingTexts.splice(processedIndices[i], 1)
-			}
-
-			if (currentBatch.length > 0) {
-				const batchResult = await this._embedBatchWithRetries(currentBatch, modelToUse)
-				allEmbeddings.push(...batchResult.embeddings)
-				usage.promptTokens += batchResult.usage.promptTokens
-				usage.totalTokens += batchResult.usage.totalTokens
+		if (batchTexts.length > 1 && depth < MAX_EMBEDDING_SPLIT_DEPTH && isSplittableEmbeddingError(failure)) {
+			const middle = Math.ceil(batchTexts.length / 2)
+			console.warn(
+				`OpenAI Compatible embedder: request of ${batchTexts.length} inputs failed; retrying as two smaller requests (split depth ${depth + 1}/${MAX_EMBEDDING_SPLIT_DEPTH})`,
+			)
+			const first = await this._embedBatchSplittingOnFailure(batchTexts.slice(0, middle), model, depth + 1)
+			const second = await this._embedBatchSplittingOnFailure(batchTexts.slice(middle), model, depth + 1)
+			return {
+				embeddings: [...first.embeddings, ...second.embeddings],
+				usage: {
+					promptTokens: first.usage.promptTokens + second.usage.promptTokens,
+					totalTokens: first.usage.totalTokens + second.usage.totalTokens,
+				},
 			}
 		}
 
-		return { embeddings: allEmbeddings, usage }
+		throw formatEmbeddingError(failure, MAX_RETRIES)
 	}
 
 	/**
@@ -348,8 +372,8 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 				// Log the error for debugging
 				console.error(`OpenAI Compatible embedder error (attempt ${attempts + 1}/${MAX_RETRIES}):`, error)
 
-				// Format and throw the error
-				throw formatEmbeddingError(error, MAX_RETRIES)
+				// Rethrow unformatted so _embedBatchSplittingOnFailure can inspect the status; it formats the error.
+				throw error
 			}
 		}
 

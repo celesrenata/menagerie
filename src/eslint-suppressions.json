@@ -586,7 +586,7 @@
 	},
 	"core/assistant-message/presentAssistantMessage.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 3
+			"count": 2
 		}
 	},
 	"core/auto-approval/__tests__/AutoApprovalHandler.spec.ts": {
@@ -684,11 +684,6 @@
 			"count": 1
 		}
 	},
-	"core/environment/__tests__/getEnvironmentDetails.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 2
-		}
-	},
 	"core/ignore/__tests__/RooIgnoreController.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 1
@@ -769,11 +764,6 @@
 			"count": 2
 		}
 	},
-	"core/prompts/tools/native-tools/__tests__/read_file.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 4
-		}
-	},
 	"core/task-persistence/__tests__/TaskHistoryStore.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 4
@@ -851,7 +841,7 @@
 	},
 	"core/task/__tests__/native-tools-filtering.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 3
+			"count": 2
 		}
 	},
 	"core/task/__tests__/new-task-isolation.spec.ts": {
@@ -889,14 +879,9 @@
 			"count": 1
 		}
 	},
-	"core/tools/NewTaskTool.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 1
-		}
-	},
 	"core/tools/ReadFileTool.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 4
+			"count": 3
 		}
 	},
 	"core/tools/ToolRepetitionDetector.ts": {
@@ -917,11 +902,6 @@
 	"core/tools/__tests__/ReadCommandOutputTool.test.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 16
-		}
-	},
-	"core/tools/__tests__/ToolRepetitionDetector.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 3
 		}
 	},
 	"core/tools/__tests__/askFollowupQuestionTool.spec.ts": {
@@ -972,11 +952,6 @@
 	"core/tools/__tests__/newTaskTool.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 26
-		}
-	},
-	"core/tools/__tests__/readFileTool.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 98
 		}
 	},
 	"core/tools/__tests__/runSlashCommandTool.spec.ts": {

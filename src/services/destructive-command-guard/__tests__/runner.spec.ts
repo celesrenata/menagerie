@@ -4,7 +4,7 @@ import { PassThrough } from "stream"
 import { spawn } from "child_process"
 
 import { DCG_MAX_OUTPUT_BYTES } from "../constants"
-import { runDcg } from "../runner"
+import { normalizeNixFlakeRefsForDcg, runDcg } from "../runner"
 
 vi.mock("child_process", () => ({ spawn: vi.fn() }))
 
@@ -49,7 +49,72 @@ describe("runDcg", () => {
 	})
 
 	it.each([
+		["nix build .#packages.x86_64-linux.hyte-touch-interface", "nix build '.#packages.x86_64-linux.hyte-touch-interface'"],
+		["nix eval --raw .#packages.aarch64-darwin.default", "nix eval --raw '.#packages.aarch64-darwin.default'"],
+		["nix flake show .#devShells.default", "nix flake show '.#devShells.default'"],
+		["nix build .#foo && rm -rf /", undefined],
+		["rm -rf .#foo", undefined],
+		["nix build .#foo; rm -rf /", undefined],
+		["nix build .#foo$(whoami)", undefined],
+		["nix build .#foo`whoami`", undefined],
+		["nix build .#foo # comment", undefined],
+		["nix build .#foo/bar", undefined],
+		["nix build '.#foo'", undefined],
+	])("normalizes only a plain Nix flake command %#", (command, expected) => {
+		expect(normalizeNixFlakeRefsForDcg(command)).toBe(expected)
+	})
+
+	it("rechecks a Nix flake reference only after DCG's specific parser false positive", async () => {
+		const first = createChild()
+		const second = createChild()
+		mockSpawn.mockReturnValueOnce(first as unknown as ReturnType<typeof spawn>)
+		mockSpawn.mockReturnValueOnce(second as unknown as ReturnType<typeof spawn>)
+		const command = "nix build .#packages.x86_64-linux.hyte-touch-interface"
+		const result = runDcg("/dcg", command, "/workspace")
+		emitResult(
+			first,
+			{
+				schema_version: 2,
+				decision: "deny",
+				reason: "PowerShell substitution contains comment syntax that dcg cannot statically disambiguate",
+			},
+			1,
+		)
+		await Promise.resolve()
+		expect(mockSpawn).toHaveBeenCalledTimes(2)
+		expect(mockSpawn.mock.calls[0][1].at(-1)).toBe(command)
+		expect(mockSpawn.mock.calls[1][1].at(-1)).toBe("nix build '.#packages.x86_64-linux.hyte-touch-interface'")
+		emitResult(second, { schema_version: 2, decision: "allow" }, 0)
+		await expect(result).resolves.toEqual({ decision: "allow" })
+		expect(warnSpy).not.toHaveBeenCalledWith("[DCG] Command denied", expect.anything())
+	})
+
+	it("keeps a second DCG denial authoritative", async () => {
+		const first = createChild()
+		const second = createChild()
+		mockSpawn.mockReturnValueOnce(first as unknown as ReturnType<typeof spawn>)
+		mockSpawn.mockReturnValueOnce(second as unknown as ReturnType<typeof spawn>)
+		const result = runDcg("/dcg", "nix build .#foo", "/workspace")
+		emitResult(first, { schema_version: 2, decision: "deny", reason: "PowerShell substitution contains comment syntax" }, 1)
+		await Promise.resolve()
+		emitResult(second, { schema_version: 2, decision: "deny", reason: "dangerous", rule_id: "danger" }, 1)
+		await expect(result).resolves.toEqual({ decision: "deny", reason: "dangerous", ruleId: "danger" })
+		expect(warnSpy).toHaveBeenCalledWith("[DCG] Command denied", "dangerous")
+	})
+
+	it("does not retry an ordinary DCG denial or a shell command chain", async () => {
+		const child = createChild()
+		useChild(child)
+		const result = runDcg("/dcg", "nix build .#foo && rm -rf /", "/workspace")
+		emitResult(child, { schema_version: 2, decision: "deny", reason: "PowerShell substitution contains comment syntax" }, 1)
+		await expect(result).resolves.toEqual({ decision: "deny", reason: "PowerShell substitution contains comment syntax", ruleId: undefined })
+		expect(mockSpawn).toHaveBeenCalledTimes(1)
+	})
+
+	it.each([
 		[{ schema_version: 1, decision: "allow" }, 0, { decision: "allow" }],
+		[{ schema_version: 2, decision: "warn", rule_id: "generated-file" }, 0, { decision: "allow" }],
+		[{ schema_version: 2, decision: "log", rule_id: "generated-file" }, 0, { decision: "allow" }],
 		[
 			{ schema_version: 2, decision: "deny", reason: "unsafe", rule_id: "delete" },
 			1,
@@ -107,6 +172,7 @@ describe("runDcg", () => {
 		["not json", 0, "DCG returned invalid JSON"],
 		[JSON.stringify({ schema_version: 3, decision: "allow" }), 0, "DCG returned an unsupported response schema"],
 		[JSON.stringify({ schema_version: 1, decision: "deny" }), 0, "DCG decision did not match its exit status"],
+		[JSON.stringify({ schema_version: 2, decision: "warn" }), 1, "DCG decision did not match its exit status"],
 	])("rejects invalid output %#", async (output, code, message) => {
 		const child = createChild()
 		useChild(child)

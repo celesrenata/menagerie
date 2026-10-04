@@ -174,7 +174,7 @@ export class EditTool extends BaseTool<"edit"> {
 
 			const sanitizedDiff = sanitizeUnifiedDiff(diff)
 			const diffStats = computeDiffStats(sanitizedDiff) || undefined
-			const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+			const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 			const sharedMessageProps: ClineSayTool = {
 				tool: "appliedDiff",
@@ -251,7 +251,7 @@ export class EditTool extends BaseTool<"edit"> {
 
 		// relPath is guaranteed non-null after hasPathStabilized
 		const absolutePath = path.resolve(task.cwd, relPath!)
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath, task.parallelWorker ? task.cwd : undefined)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: "appliedDiff",

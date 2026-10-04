@@ -1,0 +1,36 @@
+SM120 NVFP4-KV dtype-gating DRY pre-check (plan item 14 / design §3.6 step 4)
+=============================================================================
+Run: 2026-10-01, over SSH on esnixi (celes@192.168.42.254), branch feat/nvfp4-reader-fabric.
+Patches live in ~/sources/celesrenata/nix-flakes-refactored/patches/.
+No GPU used. Goal: determine whether the SM120 NVFP4-KV kernel path gates on a
+weight/activation quant scheme (W4A4 vs W4A16) or only on the --kv-cache-dtype value.
+
+Command:
+  grep -nE "W4A4|W4A16|use_a16|quant_algo|kv_cache_quant|activation" \
+    patches/vllm-sm120-nvfp4-kv.patch patches/vllm-sm120-nvfp4-q-dequant.patch
+
+Output:
+  patches/vllm-sm120-nvfp4-kv.patch:676:     # the blockscale tensor of activations NVFP4 Quantization.
+  (patches/vllm-sm120-nvfp4-q-dequant.patch: NO MATCHES)
+
+The single "activation" hit is a code comment on the NVFP4 MoE CUTLASS buffer
+(VLLM_NVFP4_MOE_... env), unrelated to KV-cache dtype gating. Neither patch references
+W4A4, W4A16, use_a16, quant_algo, or kv_cache_quant.
+
+Supporting evidence — the KV kernel keys on the --kv-cache-dtype STRING, not weight dtype:
+  grep -nE "kv_cache_dtype|cache_dtype|nvfp4" patches/vllm-sm120-nvfp4-kv.patch
+  → the kernel `reshape_and_cache_nvfp4_dispatch` branches on
+    `kv_cache_dtype == "nvfp4"` / `"nvfp4_4over6"`, and TORCH_CHECKs
+    "Unsupported NVFP4 KV cache dtype: " for anything else. The FA2 paged nvfp4
+    reader path is selected on sm120/sm121 by compute-capability + kv_cache_dtype,
+    not by the model's weight/activation quantization scheme.
+
+-------------------------------------------------------------------------------
+CONCLUSION — KV path dtype-gated on weight/activation scheme: NO.
+The SM120 NVFP4-KV kernel is gated ONLY on the KV-cache dtype (set by
+`--kv-cache-dtype nvfp4`) and the GPU compute capability, independent of whether
+the model loads as W4A4 or (auto-promoted) W4A16. Therefore the AxionML/Qwen3.5-9B-NVFP4
+checkpoint — which vLLM may auto-promote weight-only NVFP4 to W4A16_NVFP4 at config
+parse (see quant-evidence/vllm_modelopt.py lines 775-791, 842) — poses no problem for
+`--kv-cache-dtype nvfp4` on the RTX 5090 (SM120). The remaining proof is the
+OPERATOR GPU-live serve test (design §3.6 / plan item 20).

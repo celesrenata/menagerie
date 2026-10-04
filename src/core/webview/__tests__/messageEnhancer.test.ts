@@ -102,6 +102,47 @@ describe("MessageEnhancer", () => {
 			expect(mockSingleCompletionHandler).toHaveBeenCalledWith(expectedConfig, expect.any(String))
 		})
 
+		it.each([
+			{ tier: 1, expected: 1 },
+			{ tier: undefined, expected: undefined },
+		])(
+			"applies the global OmniRoute tier ($tier) to an OmniRoute enhancement profile",
+			async ({ tier, expected }) => {
+				vi.mocked(mockProviderSettingsManager.getProfile).mockResolvedValue({
+					name: "Omni Enhancement",
+					apiProvider: providerIdentifiers.openai,
+					openAiIsOmniRoute: true,
+					omniRouteTier: 4, // stale persisted snapshot must never win
+				})
+
+				await MessageEnhancer.enhanceMessage({
+					text: "Test prompt",
+					apiConfiguration: mockApiConfiguration,
+					listApiConfigMeta: mockListApiConfigMeta,
+					enhancementApiConfigId: "config2",
+					omniRouteTier: tier,
+					providerSettingsManager: mockProviderSettingsManager,
+				})
+
+				const usedConfig = mockSingleCompletionHandler.mock.calls[0][0] as ProviderSettings
+				expect(usedConfig.omniRouteTier).toBe(expected)
+			},
+		)
+
+		it("never puts the tier on a non-OmniRoute enhancement profile", async () => {
+			await MessageEnhancer.enhanceMessage({
+				text: "Test prompt",
+				apiConfiguration: mockApiConfiguration,
+				listApiConfigMeta: mockListApiConfigMeta,
+				enhancementApiConfigId: "config2",
+				omniRouteTier: 1,
+				providerSettingsManager: mockProviderSettingsManager,
+			})
+
+			const usedConfig = mockSingleCompletionHandler.mock.calls[0][0] as ProviderSettings
+			expect(usedConfig.omniRouteTier).toBeUndefined()
+		})
+
 		it("should include task history when enabled", async () => {
 			const mockClineMessages: ClineMessage[] = [
 				{ type: "ask", text: "Create a React component", ts: 1000 },

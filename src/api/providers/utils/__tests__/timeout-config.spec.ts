@@ -1,6 +1,6 @@
 // npx vitest run api/providers/utils/__tests__/timeout-config.spec.ts
 
-import { getApiRequestTimeout } from "../timeout-config"
+import { getApiRequestTimeout, getApiStreamIdleTimeout } from "../timeout-config"
 import * as vscode from "vscode"
 
 // Mock vscode
@@ -12,17 +12,17 @@ vitest.mock("vscode", () => ({
 	},
 }))
 
-describe("getApiRequestTimeout", () => {
-	let mockGetConfig: any
+let mockGetConfig: any
 
-	beforeEach(() => {
-		vitest.clearAllMocks()
-		mockGetConfig = vitest.fn()
-		;(vscode.workspace.getConfiguration as any).mockReturnValue({
-			get: mockGetConfig,
-		})
+beforeEach(() => {
+	vitest.clearAllMocks()
+	mockGetConfig = vitest.fn()
+	;(vscode.workspace.getConfiguration as any).mockReturnValue({
+		get: mockGetConfig,
 	})
+})
 
+describe("getApiRequestTimeout", () => {
 	it("should return default timeout of 600000ms when no configuration is set", () => {
 		mockGetConfig.mockReturnValue(600)
 
@@ -135,5 +135,40 @@ describe("getApiRequestTimeout", () => {
 		const timeout = getApiRequestTimeout()
 
 		expect(timeout).toBe(600000) // Should fall back to default since it's not a number
+	})
+})
+
+describe("getApiStreamIdleTimeout", () => {
+	it("returns the 300000ms default when the setting is unset", () => {
+		mockGetConfig.mockImplementation((_key: string, defaultValue: number) => defaultValue)
+
+		const timeout = getApiStreamIdleTimeout()
+
+		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("zoo-code")
+		expect(mockGetConfig).toHaveBeenCalledWith("apiStreamIdleTimeout", 300)
+		expect(timeout).toBe(300000)
+	})
+
+	it("returns 0 (disabled) for 0", () => {
+		mockGetConfig.mockReturnValue(0)
+
+		expect(getApiStreamIdleTimeout()).toBe(0)
+	})
+
+	it("accepts the maximum boundary value (3600 seconds)", () => {
+		mockGetConfig.mockReturnValue(3600)
+
+		expect(getApiStreamIdleTimeout()).toBe(3600000)
+	})
+
+	it.each([
+		["negative", -1],
+		["NaN", NaN],
+		["a string", "x"],
+		["above the maximum", 4000],
+	])("falls back to 300000ms for %s", (_label, value) => {
+		mockGetConfig.mockReturnValue(value)
+
+		expect(getApiStreamIdleTimeout()).toBe(300000)
 	})
 })

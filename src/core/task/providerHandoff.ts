@@ -17,8 +17,13 @@ export function selectHandoffExecutionContext(
 	parentMode: string,
 	lockApiConfigAcrossModes: boolean,
 	savedModeProfile?: SavedModeProfile,
+	preferSavedModeProfile = false,
 ): TaskExecutionContext {
-	if (requestedMode !== parentMode && !lockApiConfigAcrossModes && savedModeProfile?.apiConfiguration.apiProvider) {
+	if (
+		(requestedMode !== parentMode || preferSavedModeProfile) &&
+		!lockApiConfigAcrossModes &&
+		savedModeProfile?.apiConfiguration.apiProvider
+	) {
 		return {
 			mode: requestedMode,
 			apiConfigName: savedModeProfile.name,

@@ -3,6 +3,7 @@
 import pWaitFor from "p-wait-for"
 import delay from "delay"
 import type { Mock } from "vitest"
+import * as vscode from "vscode"
 
 import { getEnvironmentDetails } from "../getEnvironmentDetails"
 import { getFullModeDetails } from "../../../shared/modes"
@@ -21,6 +22,9 @@ import { getGitStatus } from "../../../utils/git"
 import { Task } from "../../task/Task"
 
 vi.mock("vscode", () => ({
+	TabInputText: class {
+		constructor(public uri: { fsPath: string }) {}
+	},
 	window: {
 		tabGroups: { all: [], onDidChangeTabs: vi.fn() },
 		visibleTextEditors: [],
@@ -64,12 +68,17 @@ describe("getEnvironmentDetails", () => {
 		getCurrentWorkingDirectory: Mock
 	}
 
+	type MockState = Record<string, unknown>
+	type MockProvider = { getState: Mock }
+
 	let mockCline: Partial<Task>
-	let mockProvider: any
-	let mockState: any
+	let mockProvider: MockProvider
+	let mockState: MockState
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		;(vscode.window as { visibleTextEditors: unknown }).visibleTextEditors = []
+		;(vscode.window.tabGroups as { all: unknown }).all = []
 
 		mockState = {
 			terminalOutputLineLimit: 100,
@@ -166,6 +175,28 @@ describe("getEnvironmentDetails", () => {
 		})
 
 		expect(getApiMetrics).toHaveBeenCalledWith(mockCline.clineMessages)
+	})
+
+	it("excludes tabs from other task worktrees while keeping current workspace files", async () => {
+		;(vscode.window as { visibleTextEditors: unknown }).visibleTextEditors = [
+			{ document: { uri: { fsPath: "/test/path/src/current.ts" } } },
+			{ document: { uri: { fsPath: "/test/other-worker/src/stale.ts" } } },
+		]
+		const TabInputText = vscode.TabInputText as new (uri: { fsPath: string }) => unknown
+		;(vscode.window.tabGroups as { all: unknown }).all = [
+			{
+				tabs: [
+					{ input: new TabInputText({ fsPath: "/test/path/src/current.ts" }) },
+					{ input: new TabInputText({ fsPath: "/test/other-worker/src/stale.ts" }) },
+				],
+			},
+		]
+
+		const result = await getEnvironmentDetails(mockCline as Task)
+
+		expect(result).toContain("src/current.ts")
+		expect(result).not.toContain("stale.ts")
+		expect(result).not.toContain("../")
 	})
 
 	it("should include file details when includeFileDetails is true", async () => {

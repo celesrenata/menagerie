@@ -6,6 +6,9 @@ import cloneDeep from "clone-deep"
 import crypto from "crypto"
 import { TodoItem, TodoStatus, todoStatusSchema } from "@roo-code/types"
 import { getLatestTodo } from "../../shared/todo"
+import { coerceTodosArg } from "./todoArgs"
+
+export { coerceTodosArg } from "./todoArgs"
 
 interface UpdateTodoListParams {
 	todos: string
@@ -20,11 +23,15 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 		const { pushToolResult, handleError, askApproval } = callbacks
 
 		try {
-			const todosRaw = params.todos
+			// Models sometimes send todos as an array; coerce to the parseable string form.
+			const todosString = coerceTodosArg(params.todos ?? "")
 
 			let todos: TodoItem[]
 			try {
-				todos = parseMarkdownChecklist(todosRaw || "")
+				if (typeof todosString !== "string") {
+					throw new Error("todos is not a string")
+				}
+				todos = parseMarkdownChecklist(todosString)
 			} catch {
 				task.consecutiveMistakeCount++
 				task.recordToolError("update_todo_list")
@@ -47,6 +54,48 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 				content: t.content,
 				status: normalizeStatus(t.status),
 			}))
+
+			// No-op table (first match wins): reject prose with no checklist items, and answer an
+			// unchanged or empty list without an approval ask or touching the stored list.
+			// A non-string todosString already returned above; the typeof only re-narrows it.
+			const trimmed = typeof todosString === "string" ? todosString.trim() : ""
+			const isJsonShaped = trimmed.startsWith("[") || trimmed.startsWith("{")
+			const current = task.todoList ?? []
+			const samePairs =
+				normalizedTodos.length === current.length &&
+				normalizedTodos.every(
+					(todo, i) => todo.content === current[i].content && todo.status === current[i].status,
+				)
+			const n = current.length
+			const m = current.filter((todo) => todo.status === "completed").length
+
+			if (trimmed !== "" && !isJsonShaped && normalizedTodos.length === 0) {
+				task.consecutiveMistakeCount++
+				task.recordToolError("update_todo_list")
+				task.didToolFailInCurrentTurn = true
+				pushToolResult(
+					formatResponse.toolError("No checklist items found. Provide the full list as `[ ] item` lines."),
+				)
+				return
+			}
+
+			if (samePairs) {
+				pushToolResult(
+					formatResponse.toolResult(
+						`Todo list unchanged (${n} items, ${m} completed). Do not call update_todo_list again until an item's status changes; proceed with the next action.`,
+					),
+				)
+				return
+			}
+
+			if (normalizedTodos.length === 0 && n > 0) {
+				pushToolResult(
+					formatResponse.toolResult(
+						`Todo list unchanged: an empty list was ignored. Current list has ${n} items (${m} completed). Proceed with the next item; do not call update_todo_list again until an item's status changes.`,
+					),
+				)
+				return
+			}
 
 			const approvalMsg = JSON.stringify({
 				tool: "updateTodoList",
@@ -182,6 +231,42 @@ function normalizeStatus(status: string | undefined): TodoStatus {
 
 export function parseMarkdownChecklist(md: string): TodoItem[] {
 	if (typeof md !== "string") return []
+	const trimmed = md.trim()
+	// Native-tool providers sometimes serialize a structured todo array into this
+	// string parameter. Treating it as Markdown silently clears the task board.
+	if (trimmed.startsWith("{") || /^\[\s*\{/.test(trimmed) || /^\[\s*\]$/.test(trimmed)) {
+		const parsed: unknown = JSON.parse(trimmed)
+		const items = Array.isArray(parsed)
+			? parsed
+			: parsed && typeof parsed === "object" && "todos" in parsed
+				? (parsed as { todos: unknown }).todos
+				: undefined
+		if (!Array.isArray(items)) throw new Error("Expected a JSON todo array")
+		return items.map((item: unknown) => {
+			if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("Invalid JSON todo item")
+			const record = item as Record<string, unknown>
+			const content = record.content ?? record.text
+			const status = record.status ?? "pending"
+			if (
+				typeof content !== "string" ||
+				!content.trim() ||
+				!todoStatusSchema.options.includes(status as TodoStatus)
+			) {
+				throw new Error("Invalid JSON todo content or status")
+			}
+			return {
+				id:
+					typeof record.id === "string" && record.id
+						? record.id
+						: crypto
+								.createHash("md5")
+								.update(content + status)
+								.digest("hex"),
+				content,
+				status: status as TodoStatus,
+			}
+		})
+	}
 	const lines = md
 		.split(/\r?\n/)
 		.map((l) => l.trim())

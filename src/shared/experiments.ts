@@ -6,6 +6,7 @@ export const EXPERIMENT_IDS = {
 	RUN_SLASH_COMMAND: "runSlashCommand",
 	CUSTOM_TOOLS: "customTools",
 	PARALLEL_TOOL_EXECUTION: "parallelToolExecution",
+	PARALLEL_TASKS: "parallelTasks",
 } as const satisfies Record<string, ExperimentId>
 
 type _AssertExperimentIds = AssertEqual<Equals<ExperimentId, Values<typeof EXPERIMENT_IDS>>>
@@ -23,8 +24,8 @@ export const experimentConfigsMap: Record<ExperimentKey, ExperimentConfig> = {
 	IMAGE_GENERATION: { enabled: false },
 	RUN_SLASH_COMMAND: { enabled: false },
 	CUSTOM_TOOLS: { enabled: false },
-	// TODO: add i18n keys (settings:experimental.PARALLEL_TOOL_EXECUTION.name/.description) in the same PR that sets showInSettings: true
-	PARALLEL_TOOL_EXECUTION: { enabled: false, showInSettings: false },
+	PARALLEL_TOOL_EXECUTION: { enabled: false },
+	PARALLEL_TASKS: { enabled: false },
 }
 
 export const experimentDefault = Object.fromEntries(

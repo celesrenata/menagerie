@@ -1,0 +1,7 @@
+{
+	"task_id": "task-omniroute-failures-and-tier",
+	"task_description": "Fix the OmniRoute request-failure classes observed in production (B: stale 5090 context override causing a 131072 off-by-one 400; C: memory-injection displacing the system message -> 'System message must be at the beginning' 400/500; D: stale openai/gpt-5.6 tier-5 id; E: parallel workers not spreading, resolved by C + observability) with diagnosis for A (empty-502 is NOT memory-injection per the logs; carried as needs-runtime-verification + observability). Also add the per-request cost-tier dropdown ($..$$$$$) beside YOLO that steers the OmniRoute tier via a request header, granted on the OmniRoute side. Agent edits/commits in OmniRoute (feat/hybrid-reader-combo) and the esnixi routing-policy generators (feat/nvfp4-reader-fabric) and menagerie; agent may re-apply routing policy from the Mac with the management key; instance redeploy and any nixos-rebuild switch are documented for the operator. Do NOT push.",
+	"status": "completed",
+	"feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+	"blocked_reason": null
+}

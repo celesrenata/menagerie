@@ -26,6 +26,14 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
+			if (task.parallelWorker) {
+				pushToolResult(
+					formatResponse.toolError(
+						"Parallel workers must complete their assigned task without further delegation",
+					),
+				)
+				return
+			}
 			// Validate required parameters.
 			if (!mode) {
 				task.consecutiveMistakeCount++
@@ -123,7 +131,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 			}
 
 			// Delegate parent and open child as sole active task
-			const child = await (provider as any).delegateParentAndOpenChild({
+			const child = await provider.delegateParentAndOpenChild({
 				parentTaskId: task.taskId,
 				message: unescapedMessage,
 				initialTodos: todoItems,

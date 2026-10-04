@@ -1,0 +1,30 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "Hung target holds the 5090 for up to ~10 min",
+			"detail": "A target that never serves and never fails runs the full 300 s wait_ready, then up to 150 s of stop, then the restore. The whole time, `switching` 409s go to every other request. Consider a per-model readiness budget (reader cold start is about 110 s)."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "Eviction time is charged to the target's start budget",
+			"detail": "select_model shares the started+START_SECONDS deadline between the sleep attempt (up to 90 s), a fresh 150 s stop and the readiness wait. A slow eviction can cut a healthy cold start short and open its breaker. Compute the readiness deadline after eviction."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "possible",
+			"label": "Restore failure blamed on the coder",
+			"detail": "rollback and watchdog_tick record a PRIMARY_UNIT breaker failure even when select_model failed because the reader could not be stopped. That opens the coder's breaker and stops the watchdog for 300 s or more. Only open the restore unit's breaker when the restore unit itself failed."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "Watchdog leaves a crash-looping coder running",
+			"detail": "When the watchdog's coder start fails (NRestarts rise), it records the failure but does not stop vllm.service. The unit keeps Restart=on-failure and re-takes the GPU flock every 10 s. Mirror rollback's bounded stop_and_drain of the failed unit."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/esnixi-switcher-failsafe/review.md"
+}

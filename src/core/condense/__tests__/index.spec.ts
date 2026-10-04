@@ -5,7 +5,7 @@ import type { Mock } from "vitest"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { ApiHandler } from "../../../api"
+import { ApiHandler, ApiHandlerCreateMessageMetadata } from "../../../api"
 import { ApiMessage } from "../../task-persistence/apiMessages"
 import { maybeRemoveImageBlocks } from "../../../api/transform/image-cleaning"
 import {
@@ -19,7 +19,9 @@ import {
 	toolResultToText,
 	convertToolBlocksToText,
 	transformMessagesForCondensing,
+	removeRedundantSummaryContext,
 } from "../index"
+import { StreamIdleTimeoutError } from "../../task/streamIdleTimeout"
 
 vi.mock("../../../api/transform/image-cleaning", () => ({
 	maybeRemoveImageBlocks: vi.fn((messages: ApiMessage[], _apiHandler: ApiHandler) => [...messages]),
@@ -34,6 +36,27 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 
 const taskId = "test-task-id"
+
+describe("removeRedundantSummaryContext", () => {
+	it("removes regenerated file and environment reminders only from prior summaries", () => {
+		const summary: ApiMessage = {
+			role: "user",
+			isSummary: true,
+			content: [
+				{ type: "text", text: "## Conversation Summary\nContinue the confirmed fix" },
+				{ type: "text", text: "<system-reminder>\n## File Context: src/a.ts\n...\n</system-reminder>" },
+				{ type: "text", text: "<environment_details>old state</environment_details>" },
+				{ type: "text", text: "<system-reminder>\n## Active Workflows\n/ship\n</system-reminder>" },
+			],
+		}
+		const ordinary: ApiMessage = { role: "user", content: "User-provided file context", ts: 2 }
+		const result = removeRedundantSummaryContext([summary, ordinary])
+		const summaryBlocks = summary.content as Anthropic.Messages.ContentBlockParam[]
+		expect(result[0].content).toEqual([summaryBlocks[0], summaryBlocks[3]])
+		expect(result[1]).toBe(ordinary)
+		expect(summaryBlocks).toHaveLength(4)
+	})
+})
 
 describe("extractCommandBlocks", () => {
 	it("should extract command blocks from string content", () => {
@@ -919,7 +942,158 @@ describe("summarizeConversation", () => {
 		const mockCallArgs = (maybeRemoveImageBlocks as Mock).mock.calls[0][0] as any[]
 		const finalMessage = mockCallArgs[mockCallArgs.length - 1]
 		expect(finalMessage.role).toBe("user")
-		expect(finalMessage.content).toContain("Your task is to create a detailed summary of the conversation")
+		expect(finalMessage.content).toContain("Summarize the active task for seamless continuation")
+	})
+
+	it("summarizes without executable tools while retaining cancellation and next-request tool costs", async () => {
+		const abortSignal = new AbortController().signal
+		const metadata: ApiHandlerCreateMessageMetadata = {
+			taskId,
+			mode: "code",
+			abortSignal,
+			tools: [{ type: "function", function: { name: "read_file", parameters: { type: "object" } } }],
+			tool_choice: "required",
+			parallelToolCalls: true,
+			allowedFunctionNames: ["read_file"],
+		}
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "Read the file", ts: 1 },
+			{
+				role: "assistant",
+				content: [{ type: "tool_use", id: "read-1", name: "read_file", input: { path: "index.ts" } }],
+				ts: 2,
+			},
+			{ role: "user", content: [{ type: "tool_result", tool_use_id: "read-1", content: "code" }], ts: 3 },
+			{ role: "assistant", content: "Read complete", ts: 4 },
+			{ role: "user", content: "Continue", ts: 5 },
+		]
+
+		await summarizeConversation({
+			messages,
+			apiHandler: mockApiHandler,
+			systemPrompt: defaultSystemPrompt,
+			taskId,
+			metadata,
+		})
+
+		expect(mockApiHandler.createMessage).toHaveBeenCalledWith(expect.any(String), expect.any(Array), {
+			taskId,
+			mode: "code",
+			maxOutputTokens: 6144,
+			// The summarizer gets its own signal, linked to the caller's (see the forwarding test below).
+			abortSignal: expect.any(AbortSignal),
+			tools: undefined,
+			tool_choice: undefined,
+			parallelToolCalls: undefined,
+			allowedFunctionNames: undefined,
+			suppressPreviousResponseId: true,
+		})
+		expect(mockApiHandler.countTokens).toHaveBeenCalledWith([
+			{ type: "text", text: JSON.stringify(metadata.tools) },
+		])
+		expect(metadata.tool_choice).toBe("required")
+		expect(metadata.tools).toHaveLength(1)
+		expect(metadata.parallelToolCalls).toBe(true)
+	})
+
+	describe("stream bounds", () => {
+		const boundedMessages: ApiMessage[] = [
+			{ role: "user", content: "Hello", ts: 1 },
+			{ role: "assistant", content: "Hi there", ts: 2 },
+			{ role: "user", content: "How are you?", ts: 3 },
+			{ role: "assistant", content: "I'm good", ts: 4 },
+			{ role: "user", content: "What's new?", ts: 5 },
+		]
+
+		type CreateMessageArgs = Parameters<ApiHandler["createMessage"]>
+
+		// Returns a createMessage double that records the signal it was given and
+		// streams `chunks`, then runs `afterChunks` (which may never settle).
+		function summarizerStream(
+			chunks: Array<{ type: "text"; text: string }>,
+			afterChunks: (signal: AbortSignal | undefined) => Promise<void>,
+		) {
+			const signals: Array<AbortSignal | undefined> = []
+			const createMessage = vi.fn((...[, , summaryMetadata]: CreateMessageArgs) => {
+				const signal = summaryMetadata?.abortSignal
+				signals.push(signal)
+				return (async function* () {
+					yield* chunks
+					await afterChunks(signal)
+				})()
+			})
+			mockApiHandler.createMessage = createMessage
+			return signals
+		}
+
+		const hang = () => new Promise<void>(() => {})
+		// i18n is not initialized in this suite, so t() returns the key instead of
+		// "Condensing API call failed: …"; accept either.
+		const condenseApiFailed = /errors\.condense_api_failed|Condensing API call failed/
+
+		afterEach(() => {
+			vi.useRealTimers()
+		})
+
+		it("returns an error and aborts the summarizer request when the stream goes idle", async () => {
+			vi.useFakeTimers()
+			const signals = summarizerStream([{ type: "text", text: "partial summary" }], hang)
+
+			const resultPromise = summarizeConversation({
+				messages: boundedMessages,
+				apiHandler: mockApiHandler,
+				systemPrompt: defaultSystemPrompt,
+				taskId,
+				metadata: { taskId, abortSignal: new AbortController().signal },
+			})
+			await vi.advanceTimersByTimeAsync(300_000)
+			const result = await resultPromise
+
+			expect(result.error).toMatch(condenseApiFailed)
+			expect(result.messages).toEqual(boundedMessages)
+			expect(signals[0]?.aborted).toBe(true)
+			expect(signals[0]?.reason).toBeInstanceOf(StreamIdleTimeoutError)
+			expect(signals[0]?.reason).toMatchObject({ phase: "between_chunks", timeoutMs: 300_000 })
+		})
+
+		it("returns an error when the summarizer never sends a first chunk", async () => {
+			vi.useFakeTimers()
+			const signals = summarizerStream([], hang)
+
+			const resultPromise = summarizeConversation({
+				messages: boundedMessages,
+				apiHandler: mockApiHandler,
+				systemPrompt: defaultSystemPrompt,
+				taskId,
+				metadata: { taskId },
+			})
+			await vi.advanceTimersByTimeAsync(600_000)
+			const result = await resultPromise
+
+			expect(result.error).toMatch(condenseApiFailed)
+			expect(result.messages).toEqual(boundedMessages)
+			expect(signals[0]?.reason).toMatchObject({ phase: "first_chunk", timeoutMs: 600_000 })
+		})
+
+		it("forwards an abort of the caller's signal to the summarizer request signal", async () => {
+			const outerController = new AbortController()
+			const signals = summarizerStream([{ type: "text", text: "partial summary" }], async () => {
+				outerController.abort()
+				await hang()
+			})
+
+			const result = await summarizeConversation({
+				messages: boundedMessages,
+				apiHandler: mockApiHandler,
+				systemPrompt: defaultSystemPrompt,
+				taskId,
+				metadata: { taskId, abortSignal: outerController.signal },
+			})
+
+			expect(signals[0]).not.toBe(outerController.signal)
+			expect(signals[0]?.aborted).toBe(true)
+			expect(result.error).toMatch(condenseApiFailed)
+		})
 	})
 
 	it("should include the original first user message in summarization input", async () => {
@@ -1355,6 +1529,14 @@ describe("toolUseToText", () => {
 })
 
 describe("toolResultToText", () => {
+	it("bounds a large saved result while retaining its beginning and end", () => {
+		const content = "START" + "x".repeat(20_000) + "END"
+		const result = toolResultToText({ type: "tool_result", tool_use_id: "patch", content })
+		expect(result).toContain("START")
+		expect(result).toContain("END")
+		expect(result).toContain("[Omitted ")
+		expect(result.length).toBeLessThan(13_000)
+	})
 	it("should convert tool_result with string content to text", () => {
 		const block: Anthropic.Messages.ToolResultBlockParam = {
 			type: "tool_result",

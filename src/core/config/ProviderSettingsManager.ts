@@ -10,6 +10,7 @@ import {
 	ProviderSettingsEntry,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	getModelId,
+	providerIdentifiers,
 	type ProviderName,
 	isProviderName,
 	isRetiredProvider,
@@ -46,6 +47,7 @@ export const providerProfilesSchema = z.object({
 			todoListEnabledMigrated: z.boolean().optional(),
 			claudeCodeLegacySettingsMigrated: z.boolean().optional(),
 			routerProviderMigrated: z.boolean().optional(),
+			omniRouteTierHeaderMigrated: z.boolean().optional(),
 		})
 		.optional(),
 })
@@ -71,6 +73,7 @@ export class ProviderSettingsManager {
 			todoListEnabledMigrated: true, // Mark as migrated on fresh installs
 			claudeCodeLegacySettingsMigrated: true, // Mark as migrated on fresh installs
 			routerProviderMigrated: true, // Mark as migrated on fresh installs
+			omniRouteTierHeaderMigrated: true, // Mark as migrated on fresh installs
 		},
 	}
 
@@ -144,6 +147,7 @@ export class ProviderSettingsManager {
 						todoListEnabledMigrated: false,
 						claudeCodeLegacySettingsMigrated: false,
 						routerProviderMigrated: false,
+						omniRouteTierHeaderMigrated: false,
 					} // Initialize with default values
 					isDirty = true
 				}
@@ -198,6 +202,12 @@ export class ProviderSettingsManager {
 					}
 
 					providerProfiles.migrations.claudeCodeLegacySettingsMigrated = true
+					isDirty = true
+				}
+
+				if (!providerProfiles.migrations.omniRouteTierHeaderMigrated) {
+					await this.migrateOmniRouteTierHeader(providerProfiles)
+					providerProfiles.migrations.omniRouteTierHeaderMigrated = true
 					isDirty = true
 				}
 
@@ -256,6 +266,32 @@ export class ProviderSettingsManager {
 			}
 		} catch (error) {
 			console.error(`[MigrateOpenAiHeaders] Failed to migrate OpenAI headers:`, error)
+		}
+	}
+
+	/**
+	 * One-time migration for profiles created by the removed client-side OmniRoute tier
+	 * subsystem: any OpenAI profile that carried an `X-OmniRoute-Tier` header (case-insensitive)
+	 * is flagged `openAiIsOmniRoute = true` and the header is stripped. No address is invented —
+	 * the user re-enters the Server URL in the OmniRoute settings section
+	 * (see omniroute-integration-design.md §7).
+	 */
+	private async migrateOmniRouteTierHeader(providerProfiles: ProviderProfiles) {
+		try {
+			for (const apiConfig of Object.values(providerProfiles.apiConfigs)) {
+				if (apiConfig.apiProvider !== providerIdentifiers.openai) continue
+				const headers = apiConfig.openAiHeaders
+				if (!headers) continue
+				const tierHeaderKeys = Object.keys(headers).filter((key) => key.toLowerCase() === "x-omniroute-tier")
+				if (tierHeaderKeys.length === 0) continue
+
+				apiConfig.openAiIsOmniRoute = true
+				apiConfig.openAiHeaders = Object.fromEntries(
+					Object.entries(headers).filter(([key]) => key.toLowerCase() !== "x-omniroute-tier"),
+				)
+			}
+		} catch (error) {
+			console.error(`[MigrateOmniRouteTierHeader] Failed to migrate OmniRoute tier headers:`, error)
 		}
 	}
 
@@ -341,10 +377,20 @@ export class ProviderSettingsManager {
 	}
 
 	/**
-	 * Clean model ID by removing prefix before "/"
+	 * Clean model ID by removing prefix before "/".
+	 *
+	 * This is a display shortener for conventional `provider/model` ids. It must
+	 * NOT run for OmniRoute profiles: there the full route id (e.g. `hybrid/code`,
+	 * `local/5090`) IS the model the OmniRoute proxy requires, and stripping the
+	 * prefix yields a bare `code`/`5090` that OmniRoute rejects with
+	 * "Unable to determine provider for model '<x>'". So preserve the id verbatim
+	 * when the profile is flagged OmniRoute.
 	 */
-	private cleanModelId(modelId: string | undefined): string | undefined {
+	private cleanModelId(modelId: string | undefined, isOmniRoute?: boolean): string | undefined {
 		if (!modelId) return undefined
+
+		// OmniRoute route ids are sent whole; never shorten them.
+		if (isOmniRoute) return modelId
 
 		// Check for "/" and take the part after it
 		if (modelId.includes("/")) {
@@ -366,7 +412,7 @@ export class ProviderSettingsManager {
 					name,
 					id: apiConfig.id || "",
 					apiProvider: apiConfig.apiProvider,
-					modelId: this.cleanModelId(getModelId(apiConfig)),
+					modelId: this.cleanModelId(getModelId(apiConfig), apiConfig.openAiIsOmniRoute),
 				}))
 			})
 		} catch (error) {
@@ -386,8 +432,11 @@ export class ProviderSettingsManager {
 				// Preserve the existing ID if this is an update to an existing config.
 				const existingId = providerProfiles.apiConfigs[name]?.id
 				const id = config.id || existingId || this.generateId()
-				const normalizedConfig = downgradeLegacyRooConfig(config as Record<string, unknown>)
-					.config as ProviderSettingsWithId
+				// The OmniRoute cost tier is never stored per profile: the global `omniRouteTier`
+				// setting is the source of truth and is injected when a handler is built (FEAT-005).
+				const { omniRouteTier: _omniRouteTier, ...normalizedConfig } = downgradeLegacyRooConfig(
+					config as Record<string, unknown>,
+				).config as ProviderSettingsWithId
 
 				// For active providers, filter out settings from other providers.
 				// For retired providers, preserve full profile fields (including legacy

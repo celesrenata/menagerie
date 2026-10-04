@@ -471,5 +471,21 @@ describe("writeToFileTool", () => {
 			await executeWriteFileTool({}, { isPartial: true })
 			expect(mockHandleError).toHaveBeenCalledWith("handling partial write_to_file", expect.any(Error))
 		})
+
+		it("rejects non-string content with a tool error instead of throwing", async () => {
+			// W1 incident shape: the model sent content as a parsed JSON object.
+			const objectContent: unknown = { name: "web" }
+
+			await expect(executeWriteFileTool({ content: objectContent as string })).resolves.toBeDefined()
+
+			expect(String(toolResult)).toContain("must be a string")
+			expect(mockHandleError).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.reset).toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.update).not.toHaveBeenCalled()
+			expect(mockCline.consecutiveMistakeCount).toBe(1)
+			expect(mockCline.recordToolError).toHaveBeenCalledWith("write_to_file")
+			expect(mockCline.didToolFailInCurrentTurn).toBe(true)
+		})
 	})
 })

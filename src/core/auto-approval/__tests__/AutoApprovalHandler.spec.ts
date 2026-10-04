@@ -25,6 +25,20 @@ describe("AutoApprovalHandler", () => {
 	})
 
 	describe("checkAutoApprovalLimits", () => {
+		it("bypasses request and cost pauses in YOLO mode", async () => {
+			mockState.yoloModeEnabled = true
+			mockState.allowedMaxRequests = 1
+			mockState.allowedMaxCost = 1
+			mockGetApiMetrics.mockReturnValue({ totalCost: 100 })
+			const messages: ClineMessage[] = [{ type: "say", say: "api_req_started", text: "{}", ts: 1000 }]
+
+			expect(await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)).toEqual({
+				shouldProceed: true,
+				requiresApproval: false,
+			})
+			expect(mockAskForApproval).not.toHaveBeenCalled()
+		})
+
 		it("should proceed when no limits are set", async () => {
 			const messages: ClineMessage[] = []
 			const result = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)

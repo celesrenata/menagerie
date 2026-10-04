@@ -1,0 +1,30 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "Parallel workers don't send the header",
+			"detail": "Menagerie parallel_tasks workers using saved mode profiles omit X-OmniRoute-Tier, so they still escalate. Follow up in menagerie (inject live omniRouteTier in getTaskHandoffContext/runParallelTasks; stop persisting it in saveConfig)."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "No Retry-After on tier-ceiling 503",
+			"detail": "Zero-admitted 503 passes no retryAfter; consider a short Retry-After since the cause is usually local saturation."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "Flatten-mode grandchild refs not re-filtered",
+			"detail": "Tiered combo-refs nested inside an admitted pool escape the ceiling in flatten mode; inert with today's model-only pools."
+		},
+		{
+			"severity": "non-blocking",
+			"confidence": "possible",
+			"label": "Busy path tested via 503 stub",
+			"detail": "Tier-1 failure is simulated by a 503 from handleSingleModel, not the runtime-unit concurrency cap; a capacity-cap case would pin the real symptom."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/priority-tier-ceiling/review.md"
+}

@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "@ファイル検索機能のためにインデックス化するファイルの最大数。大きな値は大規模プロジェクトでより良い検索結果を提供しますが、より多くのメモリを使用する可能性があります。デフォルト: 10,000。",
 	"settings.useAgentRules.description": "エージェント固有のルールのためにAGENTS.mdファイルの読み込みを有効にします（参照：https://agent-rules.org/）",
 	"settings.apiRequestTimeout.description": "API応答タイムアウト（秒、デフォルト：600、範囲：1–3600）。ローカルプロバイダーには高い値を推奨します。非対応プロバイダー：Amazon Bedrock、Google Gemini(directly or through the Vertex AI platform)、Mistral、Moonshot、Ollama、Poe、VS Code LM API。",
+	"settings.apiStreamIdleTimeout.description": "この秒数の間データが届かない場合、ストリーミングAPI応答を中止して再試行します（デフォルト：300、範囲：0–3600、0で無効）。最初のトークンの待機時間はAPI応答タイムアウトで制御されます。",
 	"settings.newTaskRequireTodos.description": "new_taskツールで新しいタスクを作成する際にtodosパラメータを必須にする",
 	"settings.codeIndex.embeddingBatchSize.description": "コードインデックス作成中のエンベディング操作のバッチサイズ。APIプロバイダーの制限に基づいてこれを調整してください。デフォルトは60です。",
 	"settings.debug.description": "デバッグモードを有効にして、API会話履歴とUIメッセージをフォーマットされたJSONとして一時ファイルで表示するための追加ボタンを表示します。",

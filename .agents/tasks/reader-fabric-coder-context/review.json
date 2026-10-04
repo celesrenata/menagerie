@@ -1,0 +1,18 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"severity": "non-blocking",
+			"label": "4070 IQ3 lane left at 147456",
+			"confidence": "confirmed",
+			"detail": "omniroute-routing.py:197 and omniroute-qwen38-4070.Modelfile:2 keep 147456 for the separate 4070 Ti Super IQ3 coder. This is a documented scope decision (the user scoped the narrowing to the 5090 coder); it does not break the switcher readiness coupling, which only concerns the 5090 vLLM served context. No action unless the user later asks to narrow the IQ3 lane."
+		},
+		{
+			"severity": "non-blocking",
+			"label": "Operator follow-ups outstanding",
+			"confidence": "confirmed",
+			"detail": "nixos-rebuild switch on esnixi, omniroute-mode.py <mode> --apply, and setting openAiOmniRouteReaderRouteId=hybrid/reader in Zoo remain for the operator (no sudo/TTY and live-DB constraints this session). Correctly deferred; the flake builds cleanly and the live coder is already observed at the 131072 config."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/reader-fabric-coder-context/review.md"
+}

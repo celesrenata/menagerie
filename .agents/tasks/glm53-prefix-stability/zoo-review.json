@@ -1,0 +1,24 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"id": "reasoning-content-cloud-backends",
+			"blocking": false,
+			"confidence": "possible",
+			"summary": "The preserveReasoning default applies to every OmniRoute route, including cloud backends that may reject or bill for reasoning_content in assistant history. Confirm that OmniRoute strips or translates the field for non-reasoning providers, or scope the default to the reasoning combos."
+		},
+		{
+			"id": "context-growth",
+			"blocking": false,
+			"confidence": "confirmed",
+			"summary": "Reasoning tokens and every earlier env snapshot (including the turn-1 file listing) now stay in context until condense, so condense will trigger sooner on long tasks. This is the accepted cached-token trade-off."
+		},
+		{
+			"id": "omniroute-breakers-out-of-scope",
+			"blocking": false,
+			"confidence": "confirmed",
+			"summary": "OmniRoute memory-context re-ranking and Lite compressToolResults truncation still diverge the prefix earlier than anything Zoo controls. Fix them in OmniRoute before measuring the ds4 live-KV hit rate."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/glm53-prefix-stability/zoo-review.md"
+}

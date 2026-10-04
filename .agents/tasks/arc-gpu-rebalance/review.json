@@ -1,0 +1,18 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"label": "PART 1 mechanism differs from the brief",
+			"blocking": false,
+			"confidence": "confirmed",
+			"detail": "The brief specified least-invasive affinity-based steering (podAntiAffinity/nodeAffinity preference); the implementation instead retires ComfyUI's Intel Arc workers via replicas: 0. This is justified by a confirmed storage-anchor blocker (comfy-xpu-worker pinned by a local-storage PV nodeAffinity to gremlin-1; intel-media holds a shared RWO Longhorn volume), aligns with the explicit user decision in the original messages, achieves the stated placement goal (gremlin-1 5/5->3/5 i915, no co-location of ComfyUI GPU pods with the embeddings replica, no Pending, all nodes <=5 i915), is reversible (Deployments kept at 0), and preserves the embeddings 1/node podAntiAffinity. Non-blocking."
+		},
+		{
+			"label": "memirq root cause persists",
+			"blocking": false,
+			"confidence": "confirmed",
+			"detail": "The i915 SR-IOV VF memirq flood is a hardware-level issue not fixable in k8s; the embeddings crash-loop is resolved only at the tested load (8344 req/5min, 0 restarts). The tightened exec readiness probe is the durable client-facing mitigation (wedged replica leaves the LB in ~15s vs ~600s). Acknowledged by the author and acceptable under the brief's 'reduced not eliminated but invisible to clients' clause. Non-blocking; monitor under heavier contention."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/arc-gpu-rebalance/review.md"
+}

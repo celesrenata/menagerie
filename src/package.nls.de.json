@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "Maximale Anzahl der zu indizierenden Dateien für die @-Dateisuchfunktion. Höhere Werte bieten bessere Suchergebnisse in großen Projekten, können aber mehr Speicher verbrauchen. Standard: 10.000.",
 	"settings.useAgentRules.description": "Aktiviert das Laden von AGENTS.md-Dateien für agentenspezifische Regeln (siehe https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "API-Antwort-Timeout (Sekunden, Standard: 600, Bereich: 1–3600). Höhere Werte werden für lokale Anbieter empfohlen. Nicht unterstützte Anbieter: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "Bricht eine gestreamte API-Antwort ab und wiederholt sie, wenn so viele Sekunden lang keine Daten eintreffen (Standard: 300, Bereich: 0–3600, 0 deaktiviert). Die Wartezeit auf das erste Token wird durch das API-Antwort-Timeout bestimmt.",
 	"settings.newTaskRequireTodos.description": "Todos-Parameter beim Erstellen neuer Aufgaben mit dem new_task-Tool erfordern",
 	"settings.codeIndex.embeddingBatchSize.description": "Die Batch-Größe für Embedding-Operationen während der Code-Indexierung. Passe dies an die Limits deines API-Anbieters an. Standard ist 60.",
 	"settings.debug.description": "Aktiviere den Debug-Modus, um zusätzliche Schaltflächen zum Anzeigen des API-Konversationsverlaufs und der UI-Nachrichten als formatiertes JSON in temporären Dateien anzuzeigen.",

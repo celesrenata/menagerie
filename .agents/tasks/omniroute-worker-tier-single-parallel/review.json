@@ -1,0 +1,27 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "Per-site injection instead of one chokepoint",
+			"detail": "withOmniRouteTier is applied at four sites (getState, createTask handoff, updateTaskApiHandlerIfNeeded, Task.getCondensingApiHandler). Every current task-handler path is covered, but a future buildApiHandler call site can skip it with no failing test. Consider a guard test or a single provider-level builder."
+		},
+		{
+			"id": 2,
+			"severity": "non-blocking",
+			"confidence": "likely",
+			"label": "Enhancement profile drops the tier",
+			"detail": "messageEnhancer uses the saved enhancementApiConfigId profile as-is; since saveConfig now strips omniRouteTier, a dedicated OmniRoute enhancement profile sends no X-OmniRoute-Tier. Wrap configToUse in withOmniRouteTier if enhancement should honor the ceiling."
+		},
+		{
+			"id": 3,
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "Mid-task tier change not applied",
+			"detail": "Pre-existing: a running task keeps the tier it was built with until a mode/profile switch rebuilds the handler. This is relevant to the user's paid-provider fallback report; mention it or rebuild on tier change."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-worker-tier-single-parallel/review.md"
+}

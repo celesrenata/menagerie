@@ -1,5 +1,7 @@
-import { render, screen } from "@/utils/test-utils"
+import { fireEvent, render, screen } from "@/utils/test-utils"
 import { describe, expect, test, vi } from "vitest"
+
+import { vscode } from "@/utils/vscode"
 
 import { AutoApproveDropdown } from "../AutoApproveDropdown"
 
@@ -54,5 +56,16 @@ describe("AutoApproveDropdown", () => {
 		render(<AutoApproveDropdown disabled />)
 
 		expect(screen.getByTestId("auto-approve-dropdown-trigger")).toBeDisabled()
+	})
+
+	test("offers YOLO as an explicit toggle", () => {
+		render(<AutoApproveDropdown />)
+		fireEvent.click(screen.getByTestId("auto-approve-dropdown-trigger"))
+		fireEvent.click(screen.getByTestId("auto-approve-yolo"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updateSettings",
+			updatedSettings: { yoloModeEnabled: true },
+		})
 	})
 })

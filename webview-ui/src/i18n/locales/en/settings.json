@@ -27,6 +27,7 @@
 	},
 	"sections": {
 		"providers": "Providers",
+		"omniroute": "OmniRoute",
 		"modes": "Modes",
 		"mcp": "MCP Servers",
 		"worktrees": "Worktrees",
@@ -43,6 +44,36 @@
 		"experimental": "Experimental",
 		"language": "Language",
 		"about": "About Zoo Code"
+	},
+	"omniroute": {
+		"description": "Connect this profile to an OmniRoute gateway. OmniRoute owns routing, tiering, and GPU placement; menagerie just selects a published model id and sends it through.",
+		"useOmniRoute": "This profile uses OmniRoute",
+		"serverUrl": "Server URL",
+		"serverUrlPlaceholder": "https://<omniroute-host>",
+		"serverUrlHint": "Enter the server root without a /v1 suffix; the extension appends the tokenized path.",
+		"apiKey": "API Key",
+		"apiKeyPlaceholder": "Only required when the server enforces it",
+		"apiKeyHint": "Only needed when the server requires it; stored in the OS keychain.",
+		"checkConnection": "Check connection",
+		"refreshCatalog": "Refresh catalog",
+		"status": {
+			"unknown": "Not checked yet",
+			"connecting": "Connecting…",
+			"connected": "Connected ({{count}} models)",
+			"error": "Connection failed: {{error}}"
+		},
+		"catalog": "Model / route catalog",
+		"searchPlaceholder": "Search models",
+		"noModels": "No models. Check the connection to load the catalog.",
+		"parallelDefaults": "Parallel worker defaults",
+		"readerRoute": "Low reader model id (9B)",
+		"readerPlaceholder": "Low-tier model id for project-reader workers (optional)",
+		"reasonerRoute": "High reader model id (27B) - coder + research",
+		"reasonerPlaceholder": "High-tier model id shared by code workers and project-research (optional)",
+		"customRoutes": "Custom routes",
+		"noCustomRoutes": "No custom routes.",
+		"routeName": "Route name",
+		"routeModelId": "Model id"
 	},
 	"about": {
 		"bugReport": {
@@ -786,6 +817,10 @@
 		}
 	},
 	"notifications": {
+		"attention": {
+			"label": "Raise chats that need input with a loud alert",
+			"description": "When a chat waits for approval or an answer, bring its tab forward, show a VS Code notification, and play the notification sound at full volume. Off by default."
+		},
 		"sound": {
 			"label": "Enable sound effects",
 			"description": "When enabled, Zoo will play sound effects for notifications and events.",
@@ -1055,6 +1090,14 @@
 			"refreshSuccess": "Tools refreshed successfully",
 			"refreshError": "Failed to refresh tools",
 			"toolParameters": "Parameters"
+		},
+		"PARALLEL_TOOL_EXECUTION": {
+			"name": "Parallel read-only tools",
+			"description": "Run independent file reads and searches concurrently. Approvals remain ordered; commands, edits, and MCP calls remain sequential within each task."
+		},
+		"PARALLEL_TASKS": {
+			"name": "Parallel tasks",
+			"description": "Let Zoo run up to three independent agents in separate Git worktrees and tabs. Each keeps its mode and model profile. Review and integrate their patches from the parent task."
 		}
 	},
 	"promptCaching": {

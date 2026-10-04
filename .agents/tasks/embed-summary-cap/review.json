@@ -1,0 +1,10 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"Chars/token estimate not conservative for actual workload (likely, non-blocking): the incident summary measured 2.16 chars/token, so a 12k chunk is ~5.5k real tokens and the 4096-token cap admits ~5.7k real tokens. Fix the 'conservative' comments. Pair the change with OVMS --max_length, and check that OVMS truncates rather than rejects over-length input before lowering it to 4096.",
+		"Equal-weight pooling of uneven chunks (confirmed, non-blocking): a short tail chunk (e.g. 50 chars) gets the same weight as a 12k chunk. Weight by chunk length or fold small tails into the previous chunk.",
+		"Retrieval latency on chat path (likely, non-blocking): a 36k-char query makes 3 sequential ~9-10 s calls. Consider embedding only the first chunk for retrieval queries, or adding a time budget.",
+		"Prefix-cache gate depends on target.provider/connectionId (possible, non-blocking): a ds4 backend under a custom provider-node prefix, with the override only on its connection, is missed when the combo target is not pinned to a connection. The connection-override branch is untested."
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/embed-summary-cap/review.md"
+}

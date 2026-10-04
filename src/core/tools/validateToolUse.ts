@@ -145,6 +145,8 @@ export function isToolAllowedForMode(
 		return false
 	}
 
+	if (resolvedTool === "parallel_tasks" && !experiments?.parallelTasks) return false
+
 	// Always allow these tools (unless explicitly disabled above)
 	if (ALWAYS_AVAILABLE_TOOLS.includes(tool as any)) {
 		return true

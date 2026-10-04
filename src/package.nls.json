@@ -40,6 +40,7 @@
 	"settings.maximumIndexedFilesForFileSearch.description": "Maximum number of files to index for the @ file search feature. Higher values provide better search results in large projects but may use more memory. Default: 10,000.",
 	"settings.useAgentRules.description": "Enable loading of AGENTS.md files for agent-specific rules (see https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "API response timeout (seconds, default: 600, range: 1–3600). Higher values are recommended for local providers. Unsupported providers: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
+	"settings.apiStreamIdleTimeout.description": "Abort and retry a streaming API response when no data arrives for this many seconds (default: 300, range: 0–3600, 0 disables). The wait for the first token is governed by API request timeout.",
 	"settings.newTaskRequireTodos.description": "Require todos parameter when creating new tasks with the new_task tool",
 	"settings.codeIndex.embeddingBatchSize.description": "The batch size for embedding operations during code indexing. Adjust this based on your API provider's limits. Default is 60.",
 	"settings.debug.description": "Enable debug mode to show additional buttons for viewing API conversation history and UI messages as prettified JSON in temporary files.",

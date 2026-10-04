@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Không thể nhập lịch sử Roo Code: {{error}}"
+		"rooHistoryImport": "Không thể nhập lịch sử Roo Code: {{error}}",
+		"presenter_failed": "Thực thi công cụ thất bại ngoài dự kiến: {{message}}. Mô hình đã được gửi kết quả lỗi cho các lệnh gọi công cụ chưa được phản hồi.",
+		"parallel_worker_failed": "Worker song song đã dừng: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Không có nội dung terminal được chọn",

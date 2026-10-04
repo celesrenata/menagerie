@@ -18,7 +18,7 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { MODEL_FETCH_TIMEOUT_MS, Task } from "../Task"
+import { MODEL_FETCH_TIMEOUT_MS, Task, hasForceParallelCommand } from "../Task"
 import { SYSTEM_PROMPT } from "../../prompts/system"
 import { createRateLimitClock } from "../RateLimitClock"
 import { summarizeConversation } from "../../condense"
@@ -31,6 +31,7 @@ import { processUserContentMentions } from "../../mentions/processUserContentMen
 import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
 import type { ApiMessage } from "../../task-persistence"
 import { asyncStreamFrom } from "../../../test-utils/stream"
+import { convertToOpenAiMessages } from "../../../api/transform/openai-format"
 import { McpHub } from "../../../services/mcp/McpHub"
 import { McpServerManager } from "../../../services/mcp/McpServerManager"
 import { writeToFileTool } from "../../tools/WriteToFileTool"
@@ -576,6 +577,35 @@ describe("Cline", () => {
 	})
 
 	describe("native tool-call request isolation", () => {
+		it("does not repeat preceding text when a tool call is followed by text chunks", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "streamed text around tools",
+				startTask: false,
+			})
+			vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
+			vi.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched").mockResolvedValue(stubModelInfo)
+			vi.spyOn(getTaskTestAccess(task), "presentAssistantMessageSafe").mockImplementation(() => {})
+			vi.spyOn(task, "attemptApiRequest").mockImplementation(() =>
+				asyncStreamFrom<ApiStreamChunk>([
+					{ type: "text", text: "I have a solid picture." },
+					{ type: "tool_call_partial", index: 0, id: "call_read", name: "read_file" },
+					{ type: "tool_call_partial", index: 0, arguments: '{"path":"README.md"}' },
+					{ type: "text", text: "\n" },
+					{ type: "text", text: "\n" },
+					{ type: "text", text: "Next step" },
+					{ type: "text", text: "." },
+				]),
+			)
+
+			await task.recursivelyMakeClineRequests([{ type: "text", text: "inspect" }])
+
+			expect(
+				task.assistantMessageContent.filter((block) => block.type === "text").map((block) => block.content),
+			).toEqual(["I have a solid picture.", "Next step."])
+		})
+
 		it("keeps overlapping Task parser state scoped to each request", async () => {
 			const firstTask = new Task({
 				provider: mockProvider,
@@ -943,6 +973,38 @@ describe("Cline", () => {
 	})
 
 	describe("constructor", () => {
+		it("applies the configuration directly and rebuilds the API handler without tier math", () => {
+			const configuration: ProviderSettings = {
+				apiProvider: providerIdentifiers.openai,
+				openAiApiKey: "test-key",
+				openAiBaseUrl: "https://omniroute.example/v1",
+				openAiModelId: "qwen3-27b",
+				openAiIsOmniRoute: true,
+				openAiCustomModelInfo: { contextWindow: 262144, supportsPromptCache: true, reasoningEffort: "high" },
+			}
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: configuration,
+				startTask: false,
+				historyItem: {
+					id: "tier-history",
+					number: 1,
+					task: "migration",
+					ts: 1,
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
+					mode: "code",
+				},
+			})
+			// No client-side tier header is attached anymore; OmniRoute owns tiering.
+			expect(task.apiConfiguration.openAiHeaders?.["X-OmniRoute-Tier"]).toBeUndefined()
+			task.updateApiConfiguration({ ...configuration, openAiModelId: "qwen3-27b-reviewer" })
+			expect(task.apiConfiguration.openAiModelId).toBe("qwen3-27b-reviewer")
+			expect(task.apiConfiguration.openAiHeaders?.["X-OmniRoute-Tier"]).toBeUndefined()
+			expect(task.apiConfiguration.openAiCustomModelInfo?.reasoningEffort).toBe("high")
+		})
+
 		it.each([{ apiConfigName: "parent-local-profile" }, { apiConfigName: undefined }])(
 			"uses an explicit delegated-child context without shared state or startup persistence",
 			async ({ apiConfigName }) => {
@@ -1497,6 +1559,52 @@ describe("Cline", () => {
 			expect(metadata?.mode).toBe("ask")
 		})
 
+		it("forces parallel_tasks for one request when Force Parallel is armed", async () => {
+			vi.spyOn(mockProvider, "getState").mockResolvedValue(
+				providerStateWith({
+					mode: "code",
+					experiments: { parallelTasks: true },
+					autoApprovalEnabled: true,
+					requestDelaySeconds: 0,
+				}),
+			)
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+			vi.spyOn(getTaskTestAccess(task), "getSystemPrompt").mockResolvedValue("mock system prompt")
+			const createMessage = vi.spyOn(task.api, "createMessage").mockImplementation(() =>
+				(async function* () {
+					yield { type: "text", text: "response" } as ApiStreamChunk
+				})(),
+			)
+			task.apiConversationHistory = [
+				{ role: "user", content: [{ type: "text", text: "/force-parallel" }], ts: Date.now() },
+			]
+			;(task as unknown as { forceParallelOnNextRequest: boolean }).forceParallelOnNextRequest = true
+
+			await task.attemptApiRequest().next()
+			const firstMetadata = requireDefined(createMessage.mock.calls[0])[2]
+			expect(firstMetadata?.tool_choice).toEqual({ type: "function", function: { name: "parallel_tasks" } })
+			expect(firstMetadata?.parallelToolCalls).toBe(false)
+
+			await task.attemptApiRequest().next()
+			const secondMetadata = requireDefined(createMessage.mock.calls[1])[2]
+			expect(secondMetadata?.tool_choice).toBe("auto")
+		})
+
+		it("recognizes Force Parallel in Zoo's wrapped user message", () => {
+			expect(hasForceParallelCommand([{ type: "text", text: "/force-parallel" }])).toBe(true)
+			expect(
+				hasForceParallelCommand([
+					{ type: "text", text: "<user_message>\n/force-parallel\nDispatch ready tasks.\n</user_message>" },
+				]),
+			).toBe(true)
+			expect(hasForceParallelCommand([{ type: "text", text: "Please review parallel tasks." }])).toBe(false)
+		})
+
 		it("condenses with an undefined state snapshot when the provider is gone", async () => {
 			const task = new Task({
 				provider: mockProvider,
@@ -1684,6 +1792,94 @@ describe("Cline", () => {
 					},
 				])
 				expect(Object.keys(cleanConversationHistory[0]!)).toEqual(["role", "content"])
+			})
+
+			it("keeps turn N's request as a byte-stable prefix of turn N+1 for an OmniRoute profile", async () => {
+				// GLM-5.3 on ds4 cannot roll back its linear-attention state, so any rewrite
+				// of already-sent history (env-details compaction, dropped reasoning) forces a
+				// full re-prefill. Turn N+1 may only append to what turn N sent.
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: {
+						apiProvider: providerIdentifiers.openai,
+						openAiIsOmniRoute: true,
+						openAiModelId: "hybrid/planner",
+						openAiBaseUrl: "http://omniroute.invalid/api/v1/vscode/public",
+					},
+					task: "test task",
+					startTask: false,
+				})
+				vi.spyOn(getTaskTestAccess(task), "getSystemPrompt").mockResolvedValue("mock system prompt")
+				const createMessageSpy = vi
+					.spyOn(task.api, "createMessage")
+					.mockImplementation(() => asyncStreamFrom<ApiStreamChunk>([{ type: "text", text: "ok" }]))
+
+				// Stored reasoning blocks are a Zoo-only shape absent from Anthropic's
+				// ContentBlockParam union, so the fixtures below need a double assertion.
+				const env = (label: string) => ({
+					type: "text" as const,
+					text: `<environment_details>\n# Current Time\n${label}\n</environment_details>`,
+				})
+				task.apiConversationHistory = [
+					{ role: "user", content: [{ type: "text", text: "<task>do it</task>" }, env("t1")], ts: 1 },
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "reasoning",
+								text: "first plan",
+								summary: [],
+							} as unknown as Anthropic.Messages.ContentBlockParam,
+							{ type: "tool_use", id: "call_1", name: "read_file", input: { path: "a.ts" } },
+						],
+						ts: 2,
+					},
+					{
+						role: "user",
+						content: [{ type: "tool_result", tool_use_id: "call_1", content: "file a" }, env("t2")],
+						ts: 3,
+					},
+				]
+
+				await task.attemptApiRequest(0).next()
+				task.apiConversationHistory.push(
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "reasoning",
+								text: "second plan",
+								summary: [],
+							} as unknown as Anthropic.Messages.ContentBlockParam,
+							{ type: "tool_use", id: "call_2", name: "read_file", input: { path: "b.ts" } },
+						],
+						ts: 4,
+					},
+					{
+						role: "user",
+						content: [{ type: "tool_result", tool_use_id: "call_2", content: "file b" }, env("t3")],
+						ts: 5,
+					},
+				)
+				await task.attemptApiRequest(0).next()
+
+				expect(createMessageSpy).toHaveBeenCalledTimes(2)
+				const [, turnN] = requireDefined(createMessageSpy.mock.calls[0])
+				const [, turnN1] = requireDefined(createMessageSpy.mock.calls[1])
+				const wireN = convertToOpenAiMessages(turnN)
+				const wireN1 = convertToOpenAiMessages(turnN1)
+
+				// Byte-for-byte prefix: only the new tail differs.
+				expect(wireN1.length).toBeGreaterThan(wireN.length)
+				expect(JSON.stringify(wireN1.slice(0, wireN.length))).toBe(JSON.stringify(wireN))
+				// Earlier environment snapshots are still sent verbatim.
+				expect(JSON.stringify(wireN1)).toContain("t1")
+				expect(JSON.stringify(wireN1)).toContain("t2")
+				// Prior assistant reasoning is sent back as reasoning_content.
+				expect(wireN1.filter((message) => message.role === "assistant")).toEqual([
+					expect.objectContaining({ reasoning_content: "first plan" }),
+					expect.objectContaining({ reasoning_content: "second plan" }),
+				])
 			})
 
 			it("should shape image blocks for API compatibility before request construction", async () => {

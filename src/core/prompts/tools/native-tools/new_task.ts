@@ -1,6 +1,6 @@
 import type OpenAI from "openai"
 
-const NEW_TASK_DESCRIPTION = `Create a new task instance in the chosen mode using your provided message and initial todo list (if required).
+const NEW_TASK_DESCRIPTION = `Create one dependent child task in the chosen mode using your provided message and initial todo list (if required). This pauses the parent until that child finishes. If two or more parts can proceed independently, use parallel_tasks instead, including from an ordinary delegated child task.
 
 CRITICAL: This tool MUST be called alone. Do NOT call this tool alongside other tools in the same message turn. If you need to gather information before delegating, use other tools in a separate turn first, then call new_task by itself in the next turn.`
 

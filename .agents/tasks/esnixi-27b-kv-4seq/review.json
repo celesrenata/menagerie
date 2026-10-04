@@ -1,0 +1,14 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		{
+			"id": 1,
+			"severity": "non-blocking",
+			"confidence": "confirmed",
+			"label": "30K shared prefix is short of 4 x 55K",
+			"detail": "Option A (user-approved): 55K = 35 blocks/seq; with S shared full attention blocks 4 x 55K needs 140 - 3S vs 104 usable. A ~30K prefix gives S = 10 -> 110 blocks, so one request still waits; all four run only with >= ~34.2K shared (S >= 12).",
+			"action": "In live-verify case (2), expect Running=3/Waiting=1 at ~30K sharing and report the actual Zoo prefix length with the result; that data feeds the Option B decision."
+		}
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/esnixi-27b-kv-4seq/review.md"
+}

@@ -114,7 +114,7 @@ ${getCapabilitiesSection(policy)}
 
 ${modesSection}
 ${skillsSection ? `\n${skillsSection}` : ""}
-${getRulesSection(cwd, settings, policy)}
+${getRulesSection(cwd, settings, policy, experiments?.parallelToolExecution === true)}
 
 ${getSystemInfoSection(cwd, policy)}
 

@@ -1,0 +1,9 @@
+{
+	"verdict": "APPROVED",
+	"findings": [
+		"Combos-array fallback precedence: `response.data?.data ?? response.data?.combos ?? response.data` is sound for the data/combos/bare-array shapes; non-blocking, awareness only (possible).",
+		"Search over `entry.family` in OmniRouteSettings.tsx is a dead branch for combo entries since combos only carry id/name; cosmetic, shared filter still valid for the alias schema (confirmed).",
+		"Custom routes still store a user-typed modelId verbatim, so a user can still enter a bare `code` and hit the 400; pre-existing, documented, out of scope (confirmed)."
+	],
+	"reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-integration/combo-fix-review.md"
+}

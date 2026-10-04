@@ -386,6 +386,32 @@ describe("ContextProxy", () => {
 			expect(proxy.getGlobalState("apiModelId")).toBeUndefined()
 			expect(proxy.getGlobalState("openAiBaseUrl")).toBeUndefined()
 		})
+
+		it("never clears the global omniRouteTier when activating a profile", async () => {
+			await proxy.setValue("omniRouteTier", 2)
+			await proxy.setProviderSettings({ apiProvider: providerIdentifiers.openai, openAiIsOmniRoute: true })
+			expect(proxy.getValue("omniRouteTier")).toBe(2)
+		})
+
+		it("never overwrites the global omniRouteTier with a stale profile snapshot", async () => {
+			await proxy.setValue("omniRouteTier", 2)
+			await proxy.setProviderSettings({
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+				omniRouteTier: 5,
+			})
+			expect(proxy.getValue("omniRouteTier")).toBe(2)
+		})
+
+		it("does not set the global omniRouteTier from a profile when it is unset", async () => {
+			await proxy.setProviderSettings({
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+				omniRouteTier: 5,
+			})
+			expect(proxy.getValue("omniRouteTier")).toBeUndefined()
+			expect(proxy.getGlobalState("apiProvider")).toBe("openai")
+		})
 	})
 
 	describe("resetAllState", () => {

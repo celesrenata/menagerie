@@ -1,0 +1,7 @@
+{
+	"task_id": "task-zoo-parallel-fabric",
+	"task_description": "Three independent workstreams on ONE branch (feat/omniroute-tier-dropdown-feat005): B-i role/route tier labeling + test-hardening (NOT a logic change), B-ii relax addSharedDocumentReader auto-reader trigger, and A condensingApiConfigId API-configuration port cloned from enhancementApiConfigId. Build order B-i -> B-ii -> A per scope.md.",
+	"status": "completed",
+	"feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+	"blocked_reason": null
+}

@@ -109,6 +109,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setCustomSupportPrompts: (value: CustomSupportPrompts) => void
 	enhancementApiConfigId?: string
 	setEnhancementApiConfigId: (value: string) => void
+	condensingApiConfigId?: string
 	setExperimentEnabled: (id: ExperimentId, enabled: boolean) => void
 	setAutoApprovalEnabled: (value: boolean) => void
 	customModes: ModeConfig[]
@@ -226,6 +227,7 @@ const createInitialExtensionState = (): ExtensionState => ({
 	customSupportPrompts: {},
 	experiments: experimentDefault,
 	enhancementApiConfigId: "",
+	condensingApiConfigId: "",
 	hasOpenedModeSelector: false, // Default to false (not opened yet)
 	autoApprovalEnabled: false,
 	customModes: [],

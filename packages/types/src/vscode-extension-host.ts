@@ -15,7 +15,8 @@ import type { McpServer } from "./mcp.js"
 import { RouterModelsMessageType, type ModelRecord, type RouterModels } from "./model.js"
 import { LmStudioModelsMessageType } from "./providers/lm-studio.js"
 import { OllamaModelsMessageType } from "./providers/ollama.js"
-import { OpenAiModelsMessageType } from "./providers/openai.js"
+import { OmniRouteCatalogMessageType, OpenAiModelsMessageType } from "./providers/openai.js"
+import type { OmniRouteCatalogResponse } from "./providers/openai.js"
 import { VsCodeLmModelsMessageType } from "./providers/vscode-llm.js"
 import type { OpenAiCodexRateLimitInfo } from "./providers/openai-codex-rate-limits.js"
 import type { SkillMetadata } from "./skills.js"
@@ -45,6 +46,7 @@ export interface ExtensionMessage {
 		| typeof RouterModelsMessageType.routerModels
 		| "zooGatewayCredentialsReady"
 		| typeof OpenAiModelsMessageType.openAiModels
+		| typeof OmniRouteCatalogMessageType.omniRouteCatalog
 		| typeof OllamaModelsMessageType.ollamaModels
 		| typeof LmStudioModelsMessageType.lmStudioModels
 		| typeof VsCodeLmModelsMessageType.vsCodeLmModels
@@ -141,6 +143,7 @@ export interface ExtensionMessage {
 	clineMessage?: ClineMessage
 	routerModels?: RouterModels
 	openAiModels?: string[]
+	omniRouteCatalog?: OmniRouteCatalogResponse
 	ollamaModels?: ModelRecord
 	lmStudioModels?: ModelRecord
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
@@ -270,6 +273,8 @@ export type ExtensionState = Pick<
 	| "customInstructions"
 	| "dismissedUpsells"
 	| "autoApprovalEnabled"
+	| "yoloModeEnabled"
+	| "omniRouteTier"
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowReadOnlyOutsideWorkspace"
 	| "allowedReadFiles"
@@ -292,6 +297,7 @@ export type ExtensionState = Pick<
 	| "ttsSpeed"
 	| "soundEnabled"
 	| "soundVolume"
+	| "attentionNotificationsEnabled"
 	| "terminalOutputPreviewSize"
 	| "terminalShellIntegrationTimeout"
 	| "terminalShellIntegrationDisabled"
@@ -312,6 +318,7 @@ export type ExtensionState = Pick<
 	| "customModePrompts"
 	| "customSupportPrompts"
 	| "enhancementApiConfigId"
+	| "condensingApiConfigId"
 	| "customCondensingPrompt"
 	| "codebaseIndexConfig"
 	| "codebaseIndexModels"
@@ -490,6 +497,7 @@ export interface WebviewMessage {
 		| typeof RouterModelsMessageType.flushRouterModels
 		| typeof RouterModelsMessageType.requestRouterModels
 		| typeof OpenAiModelsMessageType.requestOpenAiModels
+		| typeof OmniRouteCatalogMessageType.requestOmniRouteCatalog
 		| typeof OllamaModelsMessageType.requestOllamaModels
 		| typeof LmStudioModelsMessageType.requestLmStudioModels
 		| "requestRooModels"

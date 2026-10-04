@@ -62,7 +62,7 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 
 	// Build description based on capabilities
 	const descriptionIntro =
-		"Read a file and return its contents with line numbers for diffing or discussion. IMPORTANT: This tool reads exactly one file per call. If you need multiple files, issue multiple parallel read_file calls."
+		"Read up to eight files in one call. path MUST be an array, even when reading only one file. Put every already-known independent file path in the same array; do not issue one read_file call per file across separate turns. Results are returned in the same order."
 
 	const modeDescription =
 		` Supports two modes: 'slice' (default) reads lines sequentially with offset/limit; 'indentation' extracts complete semantic code blocks around an anchor line based on indentation hierarchy.` +
@@ -78,8 +78,9 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 		limitNote +
 		" " +
 		getReadFileSupportsNote(supportsImages) +
-		` Example: { path: 'src/app.ts' }` +
-		` Example (indentation mode): { path: 'src/app.ts', mode: 'indentation', indentation: { anchor_line: 42 } }`
+		` Example (one file): { path: ['src/app.ts'] }` +
+		` Example (batch): { path: ['src/app.ts', 'src/config.ts'] }` +
+		` Example (indentation mode): { path: ['src/app.ts'], mode: 'indentation', indentation: { anchor_line: 42 } }`
 
 	const indentationProperties: Record<string, unknown> = {
 		anchor_line: {
@@ -110,8 +111,10 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 
 	const properties: Record<string, unknown> = {
 		path: {
-			type: "string",
-			description: "Path to the file to read, relative to the workspace",
+			type: "array",
+			items: { type: "string" },
+			description:
+				"Required array of one to eight workspace-relative paths. Use a one-item array for a single file and combine all already-known independent files into one call.",
 		},
 		mode: {
 			type: "string",

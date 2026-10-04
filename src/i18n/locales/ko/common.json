@@ -147,7 +147,9 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Roo Code 기록 가져오기 실패: {{error}}"
+		"rooHistoryImport": "Roo Code 기록 가져오기 실패: {{error}}",
+		"presenter_failed": "도구 실행이 예기치 않게 실패했습니다: {{message}}. 응답되지 않은 도구 호출에 대해 모델에 오류 결과를 보냈습니다.",
+		"parallel_worker_failed": "병렬 워커가 중지되었습니다: {{reason}}"
 	},
 	"warnings": {
 		"no_terminal_content": "선택된 터미널 내용이 없습니다",

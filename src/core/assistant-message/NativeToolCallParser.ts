@@ -11,12 +11,25 @@ import {
 	toolParamNames,
 } from "../../shared/tools"
 import { resolveToolAlias } from "../prompts/tools/filter-tools-for-mode"
+// Import from the import-free leaf, not UpdateTodoListTool (which pulls in vscode).
+import { coerceTodosArg } from "../tools/todoArgs"
 import type {
 	ApiStreamToolCallStartChunk,
 	ApiStreamToolCallDeltaChunk,
 	ApiStreamToolCallEndChunk,
 } from "../../api/transform/stream"
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName, normalizeMcpToolName } from "../../utils/mcp-name"
+
+/** Some OpenAI-compatible local models double-encode array-valued tool arguments. */
+function normalizeReadFilePath(value: unknown): unknown {
+	if (typeof value !== "string") return value
+	try {
+		const parsed: unknown = JSON.parse(value)
+		return Array.isArray(parsed) && parsed.every((entry) => typeof entry === "string") ? parsed : value
+	} catch {
+		return value
+	}
+}
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -139,7 +152,7 @@ export class NativeToolCallParser {
 		// `arguments` that stream before the id is known are buffered rather than dropped.
 		if (!tracked) {
 			tracked = {
-				id,
+				id: id || "",
 				name: name || "",
 				nameSeen: name !== undefined,
 				hasStarted: false,
@@ -334,6 +347,18 @@ export class NativeToolCallParser {
 		return finalToolUse
 	}
 
+	/**
+	 * Some models send `write_to_file.content` as a parsed JSON value (e.g. a
+	 * package.json object). Serialize it back to file text so the tool always
+	 * receives a string. Strings and other primitives are returned unchanged.
+	 */
+	private static coerceFileContent(value: unknown): unknown {
+		if (typeof value === "object" && value !== null) {
+			return JSON.stringify(value, null, 2) + "\n"
+		}
+		return value
+	}
+
 	private static coerceOptionalNumber(value: unknown): number | undefined {
 		if (typeof value === "number" && Number.isFinite(value)) {
 			return value
@@ -407,7 +432,9 @@ export class NativeToolCallParser {
 
 		for (const [key, value] of Object.entries(partialArgs)) {
 			if (toolParamNames.includes(key as ToolParamName)) {
-				params[key as ToolParamName] = typeof value === "string" ? value : JSON.stringify(value)
+				const normalizedValue = name === "read_file" && key === "path" ? normalizeReadFilePath(value) : value
+				params[key as ToolParamName] =
+					typeof normalizedValue === "string" ? normalizedValue : JSON.stringify(normalizedValue)
 			}
 		}
 
@@ -449,7 +476,7 @@ export class NativeToolCallParser {
 				// New format: { path: "...", mode: "..." }
 				if (!nativeArgs && partialArgs.path !== undefined) {
 					nativeArgs = {
-						path: partialArgs.path,
+						path: normalizeReadFilePath(partialArgs.path),
 						mode: partialArgs.mode,
 						offset: this.coerceOptionalNumber(partialArgs.offset),
 						limit: this.coerceOptionalNumber(partialArgs.limit),
@@ -489,10 +516,12 @@ export class NativeToolCallParser {
 
 			case "write_to_file":
 				if (partialArgs.path || partialArgs.content) {
+					const content = NativeToolCallParser.coerceFileContent(partialArgs.content)
 					nativeArgs = {
 						path: partialArgs.path,
-						content: partialArgs.content,
+						content,
 					}
+					if (typeof content === "string") params.content = content
 				}
 				break
 
@@ -572,9 +601,11 @@ export class NativeToolCallParser {
 
 			case "update_todo_list":
 				if (partialArgs.todos !== undefined) {
+					const todos = coerceTodosArg(partialArgs.todos)
 					nativeArgs = {
-						todos: partialArgs.todos,
+						todos,
 					}
+					if (typeof todos === "string") params.todos = todos
 				}
 				break
 
@@ -650,6 +681,9 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "parallel_tasks":
+				break // Complete JSON is required before displaying or executing a batch.
+
 			case "new_task":
 				if (partialArgs.mode !== undefined || partialArgs.message !== undefined) {
 					nativeArgs = {
@@ -722,6 +756,9 @@ export class NativeToolCallParser {
 		try {
 			// Parse the arguments JSON string
 			const args = toolCall.arguments === "" ? {} : JSON.parse(toolCall.arguments)
+			if (resolvedName === "read_file" && args.path !== undefined) {
+				args.path = normalizeReadFilePath(args.path)
+			}
 
 			// Build stringified params for display/logging.
 			// Tool execution MUST use nativeArgs (typed) and does not support legacy fallbacks.
@@ -914,9 +951,11 @@ export class NativeToolCallParser {
 
 				case "update_todo_list":
 					if (args.todos !== undefined) {
+						const todos = coerceTodosArg(args.todos)
 						nativeArgs = {
-							todos: args.todos,
+							todos,
 						} as NativeArgsFor<TName>
+						if (typeof todos === "string") params.todos = todos
 					}
 					break
 
@@ -933,10 +972,12 @@ export class NativeToolCallParser {
 
 				case "write_to_file":
 					if (args.path !== undefined && args.content !== undefined) {
+						const content = NativeToolCallParser.coerceFileContent(args.content)
 						nativeArgs = {
 							path: args.path,
-							content: args.content,
+							content,
 						} as NativeArgsFor<TName>
+						if (typeof content === "string") params.content = content
 					}
 					break
 
@@ -1004,6 +1045,23 @@ export class NativeToolCallParser {
 						} as NativeArgsFor<TName>
 					}
 					break
+
+				case "parallel_tasks": {
+					// Some local models (GLM/Qwen on ds4) emit the tasks array as a
+					// JSON-encoded string; decode it like read_file's double-stringified files.
+					let tasks: unknown = args.tasks
+					if (typeof tasks === "string") {
+						try {
+							tasks = JSON.parse(tasks)
+						} catch {
+							// Leave unparsed; the missing-nativeArgs path reports it.
+						}
+					}
+					if (Array.isArray(tasks)) {
+						nativeArgs = { tasks } as NativeArgsFor<TName>
+					}
+					break
+				}
 
 				case "new_task":
 					if (args.mode !== undefined && args.message !== undefined) {

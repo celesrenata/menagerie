@@ -18,13 +18,28 @@ describe("mode-validator", () => {
 				// Code mode has all groups
 				Object.entries(TOOL_GROUPS).forEach(([_, config]) => {
 					config.tools.forEach((tool: string) => {
-						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(true)
+						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(tool !== "parallel_tasks")
 					})
 				})
 			})
 
 			it("disallows unknown tools", () => {
 				expect(isToolAllowedForMode("unknown_tool" as any, codeMode, [])).toBe(false)
+			})
+			it("gates parallel tasks on the experiment and respects explicit disabling", () => {
+				expect(
+					isToolAllowedForMode("parallel_tasks", codeMode, [], undefined, undefined, { parallelTasks: true }),
+				).toBe(true)
+				expect(
+					isToolAllowedForMode("parallel_tasks", codeMode, [], undefined, undefined, {
+						parallelTasks: false,
+					}),
+				).toBe(false)
+				expect(
+					isToolAllowedForMode("parallel_tasks", codeMode, [], { parallel_tasks: false }, undefined, {
+						parallelTasks: true,
+					}),
+				).toBe(false)
 			})
 		})
 

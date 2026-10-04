@@ -51,6 +51,10 @@ vi.mock("../diagnosticsHandler", () => ({
 	generateErrorDiagnostics: vi.fn().mockResolvedValue({ success: true, filePath: "/tmp/diagnostics.json" }),
 }))
 
+vi.mock("../../../api/providers/omniroute", () => ({
+	fetchOmniRouteCatalog: vi.fn(),
+}))
+
 vi.mock("../rulesMessageHandler", () => ({
 	handleRequestRules: vi.fn(),
 	handleCreateRule: vi.fn(),
@@ -77,6 +81,7 @@ import { flushModels, getModels } from "../../../api/providers/fetchers/modelCac
 import { getLMStudioModels } from "../../../api/providers/fetchers/lmstudio"
 import { getCommands } from "../../../services/command/commands"
 import { ensureDcgInstalled } from "../../../services/destructive-command-guard"
+import { fetchOmniRouteCatalog } from "../../../api/providers/omniroute"
 import {
 	handleCreateRule,
 	handleDeleteRule,
@@ -119,11 +124,48 @@ const mockClineProvider = {
 	postStateToWebview: vi.fn(),
 	resolveWebviewThemeFixtureProbe: vi.fn(),
 	getCurrentTask: vi.fn(),
+	createTask: vi.fn(),
 	getTaskWithId: vi.fn(),
 	createTaskWithHistoryItem: vi.fn(),
 	getSkillsManager: vi.fn(),
 	cwd: "/mock/workspace",
 } as unknown as ClineProvider
+
+describe("webviewMessageHandler - OmniRoute catalog", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	it("fetches the catalog with the unsaved server url + key and posts the response back", async () => {
+		vi.mocked(fetchOmniRouteCatalog).mockResolvedValue({
+			status: "connected",
+			entries: [{ id: "qwen3-27b", name: "Qwen3 27B" }],
+		})
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestOmniRouteCatalog",
+			values: { serverUrl: "https://omniroute.example", apiKey: "secret" },
+		})
+		expect(fetchOmniRouteCatalog).toHaveBeenCalledWith("https://omniroute.example", "secret")
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "omniRouteCatalog",
+			omniRouteCatalog: { status: "connected", entries: [{ id: "qwen3-27b", name: "Qwen3 27B" }] },
+		})
+	})
+
+	it("posts an error status when the catalog fetch fails", async () => {
+		vi.mocked(fetchOmniRouteCatalog).mockResolvedValue({
+			status: "error",
+			entries: [],
+			error: "unreachable",
+		})
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestOmniRouteCatalog",
+			values: { serverUrl: "https://omniroute.example" },
+		})
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "omniRouteCatalog",
+			omniRouteCatalog: { status: "error", entries: [], error: "unreachable" },
+		})
+	})
+})
 
 describe("webviewMessageHandler - theme fixture probes", () => {
 	const originalProbeSetting = process.env.ROO_CODE_THEME_FIXTURE_PROBE
@@ -1310,6 +1352,46 @@ describe("webviewMessageHandler - destructiveCommandGuardEnabled", () => {
 	})
 })
 
+describe("webviewMessageHandler - YOLO mode", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		vi.mocked(ensureDcgInstalled).mockResolvedValue("/mock/global/storage/dcg")
+	})
+
+	it("requires DCG and enables attention notifications", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { yoloModeEnabled: true },
+		})
+
+		expect(ensureDcgInstalled).toHaveBeenCalledWith("/mock/global/storage")
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("yoloModeEnabled", true)
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("attentionNotificationsEnabled", true)
+	})
+
+	it("fails closed when DCG cannot be installed", async () => {
+		vi.mocked(ensureDcgInstalled).mockResolvedValue(undefined)
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { yoloModeEnabled: true },
+		})
+
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("yoloModeEnabled", false)
+		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalledWith("attentionNotificationsEnabled", true)
+		expect(vscode.window.showErrorMessage).toHaveBeenCalled()
+	})
+
+	it("turns off without changing saved approvals or uninstalling DCG", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { yoloModeEnabled: false },
+		})
+
+		expect(ensureDcgInstalled).not.toHaveBeenCalled()
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("yoloModeEnabled", false)
+	})
+})
+
 // Both allowlists are normalized by the same branch, so both are held to the
 // same contract.
 describe.each(["allowedReadFiles", "allowedWriteFiles"] as const)("webviewMessageHandler - %s", (key) => {
@@ -1470,6 +1552,35 @@ describe("webviewMessageHandler - terminalProfile", () => {
 		expect(Terminal.getTerminalProfile()).toBeUndefined()
 		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalProfile", undefined)
 		expect(closeIdleTerminalsSpy).toHaveBeenCalledTimes(1)
+	})
+})
+
+describe("webviewMessageHandler - condensingApiConfigId", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("persists a chosen condensingApiConfigId through the generic updateSettings path", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { condensingApiConfigId: "reader-profile-id" },
+		})
+
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith(
+			"condensingApiConfigId",
+			"reader-profile-id",
+		)
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("persists the empty-string sentinel to clear a previously-chosen condensing profile", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { condensingApiConfigId: "" },
+		})
+
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("condensingApiConfigId", "")
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
 	})
 })
 

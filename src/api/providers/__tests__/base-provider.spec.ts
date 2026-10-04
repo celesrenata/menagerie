@@ -140,7 +140,7 @@ describe("BaseProvider", () => {
 			expect(result.properties.level1.properties.level2.properties.level3.additionalProperties).toBe(false)
 		})
 
-		it("should convert nullable types to non-nullable", () => {
+		it("should preserve nullable union types", () => {
 			const schema = {
 				type: "object",
 				properties: {
@@ -150,7 +150,85 @@ describe("BaseProvider", () => {
 
 			const result = provider.testConvertToolSchemaForOpenAI(schema)
 
-			expect(result.properties.name.type).toBe("string")
+			// Nullable union preserved as-is (required-but-nullable is valid OpenAI strict schema)
+			expect(result.properties.name.type).toEqual(["string", "null"])
+			// ...and the field is still required under strict mode
+			expect(result.required).toEqual(["name"])
+		})
+
+		it("should preserve nullable per-item fields for a parallel_tasks-shaped schema", () => {
+			// Mirrors src/core/prompts/tools/native-tools/parallel_tasks.ts item schema
+			const schema = {
+				type: "object",
+				properties: {
+					tasks: {
+						type: "array",
+						minItems: 2,
+						maxItems: 4,
+						items: {
+							type: "object",
+							properties: {
+								name: { type: "string" },
+								mode: { type: "string" },
+								message: { type: "string" },
+								todos: { type: ["string", "null"] },
+								route: { type: ["string", "null"] },
+							},
+							required: ["name", "mode", "message", "todos", "route"],
+							additionalProperties: false,
+						},
+					},
+				},
+				required: ["tasks"],
+				additionalProperties: false,
+			}
+
+			const result = provider.testConvertToolSchemaForOpenAI(schema)
+			const item = result.properties.tasks.items
+
+			// Nullable unions preserved for todos/route
+			expect(item.properties.todos.type).toEqual(["string", "null"])
+			expect(item.properties.route.type).toEqual(["string", "null"])
+			// All five keys remain required under strict mode
+			expect(item.required).toEqual(["name", "mode", "message", "todos", "route"])
+			// Nested object still gets additionalProperties: false
+			expect(item.additionalProperties).toBe(false)
+		})
+
+		it("should preserve the nullable todos field for a new_task-shaped schema", () => {
+			// Mirrors src/core/prompts/tools/native-tools/new_task.ts parameters
+			const schema = {
+				type: "object",
+				properties: {
+					mode: { type: "string" },
+					message: { type: "string" },
+					todos: { type: ["string", "null"] },
+				},
+				required: ["mode", "message", "todos"],
+				additionalProperties: false,
+			}
+
+			const result = provider.testConvertToolSchemaForOpenAI(schema)
+
+			expect(result.properties.todos.type).toEqual(["string", "null"])
+			expect(result.required).toEqual(["mode", "message", "todos"])
+			expect(result.additionalProperties).toBe(false)
+		})
+
+		it("should leave non-nullable control tools unchanged except for strict normalization", () => {
+			const schema = {
+				type: "object",
+				properties: {
+					path: { type: "string" },
+				},
+			}
+
+			const result = provider.testConvertToolSchemaForOpenAI(schema)
+
+			// No spurious type mutation on a plain string field
+			expect(result.properties.path.type).toBe("string")
+			expect(result.required).toEqual(["path"])
+			expect(result.additionalProperties).toBe(false)
 		})
 
 		it("should return non-object schemas unchanged", () => {

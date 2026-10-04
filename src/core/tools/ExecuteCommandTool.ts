@@ -130,7 +130,11 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 			const provider = await task.providerRef.deref()
 			let dcgBlocked = false
-			if (provider?.contextProxy.getValue("destructiveCommandGuardEnabled") === true) {
+			let dcgBlockMessage: string | undefined
+			if (
+				provider?.contextProxy.getValue("destructiveCommandGuardEnabled") === true ||
+				provider?.contextProxy.getValue("yoloModeEnabled") === true
+			) {
 				const { ensureDcgInstalled, runDcg } = await import("../../services/destructive-command-guard")
 				// Resolve through the managed installer on use so an extension update
 				// automatically installs the newly pinned and verified DCG version.
@@ -146,8 +150,27 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				const dcgResult = await runDcg(binaryPath, canonicalCommand, workingDirectory)
 				dcgBlocked = dcgResult.decision === "deny"
 				if (dcgResult.decision === "deny") {
-					await task.say("error", formatDcgBlockedMessage(dcgResult.reason, dcgResult.ruleId))
+					dcgBlockMessage = formatDcgBlockedMessage(dcgResult.reason, dcgResult.ruleId)
 				}
+			}
+
+			// YOLO must not turn a guard rejection into an unattended approval
+			// prompt. Return the denial to the model so it can use a safer command;
+			// the rejected command is never submitted to a terminal.
+			if (dcgBlocked && provider?.contextProxy.getValue("yoloModeEnabled") === true) {
+				// Complete any streamed partial command card as an answered denial.
+				await task.ask("command", canonicalCommand, false, undefined, true)
+				await task.say("error", dcgBlockMessage)
+				task.didToolFailInCurrentTurn = true
+				pushToolResult(
+					formatResponse.toolError(
+						`${dcgBlockMessage} Do not retry this command unchanged. Rewrite the operation to avoid the guarded pattern, or explain why it cannot be completed safely.`,
+					),
+				)
+				return
+			}
+			if (dcgBlocked) {
+				await task.say("error", dcgBlockMessage)
 			}
 
 			// DCG-approved commands are auto-approved by checkAutoApproval. A DCG

@@ -24,6 +24,17 @@ import { providerIdentifiers } from "./provider-identifiers.js"
 export const DEFAULT_WRITE_DELAY_MS = 1000
 
 /**
+ * Per-request OmniRoute cost-tier ceiling ($..$$$$$), sent as the `X-OmniRoute-Tier`
+ * header on OmniRoute chat requests (FEAT-005). Integer 1-5; `undefined` means "use the
+ * server default" and emits no header. Shared schema so the global setting, the webview
+ * control, and the request-path reader agree on the accepted range.
+ */
+export const omniRouteTierSchema = z.number().int().min(1).max(5)
+
+/** The number of cost tiers ($ through $$$$$) the OmniRoute tier control offers. */
+export const OMNIROUTE_TIER_COUNT = 5
+
+/**
  * Default values for the "auto-close files Zoo opened" settings.
  *
  * These are defined once here and consumed by every site that reads the setting
@@ -122,6 +133,14 @@ export const globalSettingsSchema = z.object({
 	customCondensingPrompt: z.string().optional(),
 
 	autoApprovalEnabled: z.boolean().optional(),
+	// Temporary high-autonomy policy layered over the saved BRRR toggles.
+	yoloModeEnabled: z.boolean().optional(),
+	/**
+	 * Per-request OmniRoute cost-tier ceiling ($..$$$$$), selected beside the YOLO
+	 * control and sent as `X-OmniRoute-Tier` on OmniRoute chat requests (FEAT-005).
+	 * Integer 1-5; `undefined` means "use the server default" and emits no header.
+	 */
+	omniRouteTier: omniRouteTierSchema.optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
 	/**
@@ -206,6 +225,7 @@ export const globalSettingsSchema = z.object({
 	ttsSpeed: z.number().optional(),
 	soundEnabled: z.boolean().optional(),
 	soundVolume: z.number().optional(),
+	attentionNotificationsEnabled: z.boolean().optional(),
 
 	maxOpenTabsContext: z.number().optional(),
 	maxWorkspaceFiles: z.number().optional(),
@@ -249,6 +269,7 @@ export const globalSettingsSchema = z.object({
 	customModePrompts: customModePromptsSchema.optional(),
 	customSupportPrompts: customSupportPromptsSchema.optional(),
 	enhancementApiConfigId: z.string().optional(),
+	condensingApiConfigId: z.string().optional(),
 	includeTaskHistoryInEnhance: z.boolean().optional(),
 	historyPreviewCollapsed: z.boolean().optional(),
 	reasoningBlockCollapsed: z.boolean().optional(),

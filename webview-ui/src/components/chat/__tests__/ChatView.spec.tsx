@@ -11,7 +11,7 @@ import {
 } from "@/utils/test-utils"
 
 import { vscode } from "@src/utils/vscode"
-import type { SuggestionItem } from "@roo-code/types"
+import { providerIdentifiers, type SuggestionItem } from "@roo-code/types"
 
 import ChatView, { ChatViewProps } from "../ChatView"
 
@@ -416,6 +416,33 @@ const renderChatView = (props: Partial<ChatViewProps> = {}) => {
 	return renderWithExtensionState(<ChatView {...defaultProps} {...props} />)
 }
 
+describe("ChatView - new task dispatch", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	it("posts a new task without any client-side routing tier", async () => {
+		const { getByTestId } = renderWithExtensionState(<ChatView {...defaultProps} />, {
+			state: makeExtensionState({
+				apiConfiguration: {
+					apiProvider: providerIdentifiers.openai,
+					openAiBaseUrl: "https://omniroute.example/v1",
+					openAiIsOmniRoute: true,
+					openAiModelId: "qwen3-27b",
+				},
+			}),
+		})
+		const input = getByTestId("chat-textarea").querySelector("input")!
+		fireEvent.change(input, { target: { value: "Build it" } })
+		fireEvent.keyDown(input, { key: "Enter" })
+		await waitFor(() =>
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "newTask",
+				text: "Build it",
+				images: [],
+			}),
+		)
+	})
+})
+
 describe("ChatView - Tool Batching Tests", () => {
 	beforeEach(() => vi.clearAllMocks())
 
@@ -673,6 +700,29 @@ describe("ChatView - Sound Playing Tests", () => {
 
 		// Should not play sound for completion when resuming from history
 		expect(mockPlayFunction).not.toHaveBeenCalled()
+	})
+
+	it("allows an interrupted delegated child to resume after showing completion text", async () => {
+		const { getByRole } = renderChatView()
+		mockPostMessage({
+			currentTaskItem: {
+				id: "child-1",
+				ts: Date.now() - 2000,
+				task: "Verify exporter",
+				parentTaskId: "parent-1",
+				status: "interrupted",
+			},
+			clineMessages: [
+				{ type: "say", say: "task", ts: Date.now() - 2000, text: "Verify exporter" },
+				{ type: "say", say: "completion_result", ts: Date.now() - 1000, text: "Verified" },
+				{ type: "ask", ask: "resume_task", ts: Date.now(), text: "" },
+			],
+		})
+
+		const resume = await waitFor(() => getByRole("button", { name: /resume/i }))
+		fireEvent.click(resume)
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "askResponse", askResponse: "yesButtonClicked" })
+		expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "newTask" }))
 	})
 })
 

@@ -293,7 +293,7 @@ describe("executeCommandTool", () => {
 		it("shows a DCG block message as an error before requesting explicit approval", async () => {
 			const provider = await mockCline.providerRef.deref()
 			provider.context = { globalStorageUri: { fsPath: "/test/storage" } }
-			provider.contextProxy.getValue.mockReturnValue(true)
+			provider.contextProxy.getValue.mockImplementation((key: string) => key === "destructiveCommandGuardEnabled")
 			provider.getState.mockResolvedValue({
 				destructiveCommandGuardEnabled: true,
 				terminalShellIntegrationDisabled: true,
@@ -316,6 +316,34 @@ describe("executeCommandTool", () => {
 				"executeCommand.destructiveCommandGuard.blockedWithReasonAndRule",
 			)
 			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test", undefined, true)
+		})
+
+		it("returns a DCG denial to the model without prompting or executing in YOLO mode", async () => {
+			const provider = await mockCline.providerRef.deref()
+			provider.context = { globalStorageUri: { fsPath: "/test/storage" } }
+			provider.contextProxy.getValue.mockImplementation((key: string) => key === "yoloModeEnabled")
+			mockRunDcg.mockResolvedValue({
+				decision: "deny",
+				reason: "dynamic redirect",
+				ruleId: "redirect-truncate-dynamic-path",
+			})
+
+			await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
+				askApproval: mockAskApproval as unknown as AskApproval,
+				handleError: mockHandleError as unknown as HandleError,
+				pushToolResult: mockPushToolResult as unknown as PushToolResult,
+			})
+
+			expect(mockCline.say).toHaveBeenCalledWith("error", expect.any(String))
+			expect(mockCline.ask).toHaveBeenCalledWith("command", "echo test", false, undefined, true)
+			expect(mockCline.ask.mock.invocationCallOrder[0]).toBeLessThan(mockCline.say.mock.invocationCallOrder[0])
+			expect(mockAskApproval).not.toHaveBeenCalled()
+			expect(TerminalRegistry.getOrCreateTerminal).not.toHaveBeenCalled()
+			expect(mockCline.didToolFailInCurrentTurn).toBe(true)
+			expect(formatResponse.toolError).toHaveBeenCalledWith(
+				expect.stringContaining("Do not retry this command unchanged"),
+			)
+			expect(mockPushToolResult).toHaveBeenCalledTimes(1)
 		})
 
 		it("requests normal approval when DCG allows the command", async () => {
@@ -346,6 +374,26 @@ describe("executeCommandTool", () => {
 				destructiveCommandGuardEnabled: true,
 				terminalShellIntegrationDisabled: true,
 			})
+			await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
+				askApproval: mockAskApproval as unknown as AskApproval,
+				handleError: mockHandleError as unknown as HandleError,
+				pushToolResult: mockPushToolResult as unknown as PushToolResult,
+			})
+
+			expect(mockEnsureDcgInstalled).toHaveBeenCalledWith("/test/storage")
+			expect(mockRunDcg).toHaveBeenCalledWith("/test/storage/dcg", "echo test", "/test/workspace")
+		})
+
+		it("requires DCG in YOLO mode even when the ordinary guard toggle is off", async () => {
+			const provider = await mockCline.providerRef.deref()
+			provider.context = { globalStorageUri: { fsPath: "/test/storage" } }
+			provider.contextProxy.getValue.mockImplementation((key: string) => key === "yoloModeEnabled")
+			provider.getState.mockResolvedValue({
+				destructiveCommandGuardEnabled: false,
+				yoloModeEnabled: true,
+				terminalShellIntegrationDisabled: true,
+			})
+
 			await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
 				askApproval: mockAskApproval as unknown as AskApproval,
 				handleError: mockHandleError as unknown as HandleError,

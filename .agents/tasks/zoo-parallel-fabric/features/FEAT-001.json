@@ -1,0 +1,25 @@
+{
+	"id": "FEAT-001",
+	"type": "fix",
+	"description": "Workstream B-i: role/route tier alignment. VERIFIED that READER_MODES={project-reader} (parallelWorkerRouting.ts:10) + the reader-vs-reasoner roleDefault split (:22-24) ALREADY yields the intended mapping under the confirmed two-field model: openAiOmniRouteReaderRouteId = LOW/9B reader (project-reader), openAiOmniRouteReasonerRouteId = HIGH/27B reader (code workers AND project-research share it). So project-reader->reader(9B), project-research->reasoner(27B), code->reasoner(27B) is ALREADY correct. This FEAT is therefore a labeling/clarity + test-hardening change, NOT a logic change. Do NOT add project-research to READER_MODES (that routes it to the 9B field, the opposite of intent). Independent of FEAT-002 and FEAT-003.",
+	"status": "completed",
+	"steps": [
+		"Clarify OmniRoute parallel-worker-defaults labels in webview-ui/src/i18n/locales/en/settings.json under the `omniroute` object: readerRoute -> 'Low reader model id (9B)', readerPlaceholder -> clarify low-tier project-reader workers, reasonerRoute -> 'High reader model id (27B) - coder + research', reasonerPlaceholder -> clarify shared by code workers and project-research. Keys and the OmniRouteSettings.tsx t() call sites (:243,246,251,254) stay the same — label text only. Grep for other en/*.json references to these keys first.",
+		"Harden src/core/task/__tests__/parallelWorkerRouting.spec.ts with explicit regression assertions locking the confirmed mapping: project-reader -> reader route (9B field), project-research -> reasoner route (27B field), code -> reasoner route (27B field), unset route fields -> parent-model fallback (unchanged). Keep READER_MODES.has('project-reader')===true; add READER_MODES.has('project-research')===false to pin that project-research is intentionally NOT a reader-field member. Add a short comment documenting the two-field -> three-tier intent.",
+		"If it improves clarity, expand the READER_MODES/roleDefault doc comments in src/core/task/parallelWorkerRouting.ts to state the field->tier mapping (reader field = low/9B; reasoner field = high/27B shared by code + project-research). NO logic change."
+	],
+	"acceptance_criteria": [
+		"Running `pnpm --dir src exec vitest run src/core/task/__tests__/parallelWorkerRouting.spec.ts` passes with the new assertions (project-reader->reader, project-research->reasoner, code->reasoner, unset->parent).",
+		"The OmniRoute reader/reasoner field labels in en/settings.json clearly read as low reader (9B) and high reader (27B)/coder+research.",
+		"No change to parallelWorkerRouting.ts logic (project-research NOT added to READER_MODES).",
+		"src/eslint-suppressions.json counts for any edited src/ file did not increase."
+	],
+	"verification": [
+		"pnpm --dir src exec vitest run src/core/task/__tests__/parallelWorkerRouting.spec.ts",
+		"pnpm --dir src exec tsc --noEmit",
+		"pnpm --dir webview-ui exec tsc --noEmit",
+		"For each edited src/ file: pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 <relative-file> (count not increased)"
+	],
+	"blocked_reason": null,
+	"findings": "LABELING + TEST-HARDENING only; NO logic change (confirmed project-research NOT added to READER_MODES). Changes: (1) webview-ui/src/i18n/locales/en/settings.json omniroute labels: readerRoute='Low reader model id (9B)', readerPlaceholder clarifies project-reader low-tier, reasonerRoute='High reader model id (27B) - coder + research', reasonerPlaceholder clarifies shared by code + project-research. Keys unchanged; OmniRouteSettings.tsx t() call sites untouched. Grep confirmed these 4 keys live ONLY in en/settings.json. (2) parallelWorkerRouting.ts: expanded READER_MODES + roleDefault doc comments to state two-field->three-tier mapping (reader field=LOW/9B project-reader; reasoner field=HIGH/27B code+project-research). No code change. (3) parallelWorkerRouting.spec.ts: added 'confirmed field->tier mapping (regression lock)' describe block pinning project-reader->reader(9B), project-research->reasoner(27B), code->reasoner(27B), unset->parent fallback, and READER_MODES.has('project-research')===false. VERIFICATION: vitest 13/13 pass (run from src/ dir with relative path core/task/__tests__/parallelWorkerRouting.spec.ts); src tsc --noEmit clean; webview-ui tsc --noEmit clean; eslint --prune-suppressions --max-warnings=0 on both edited src files = exit 0, 0 warnings. Neither edited src file appears in eslint-suppressions.json (0 suppressions, no increase). NOTE: running eslint with --prune-suppressions reformats eslint-suppressions.json (tabs->spaces) across the whole file with NO count/content change (git diff --ignore-all-space empty); reverted that cosmetic rewrite so it is not committed."
+}

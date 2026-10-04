@@ -87,6 +87,32 @@ describe("CustomModesManager", () => {
 	})
 
 	describe("getCustomModes", () => {
+		it("does not wait for a settings write when persisted modes are unchanged", async () => {
+			const mode: ModeConfig = {
+				slug: "code-review",
+				name: "Code Review",
+				roleDefinition: "Review code",
+				groups: ["read"],
+				source: "global",
+			}
+			vi.mocked(fileExistsAtPath).mockImplementation(async (filePath) => filePath === mockSettingsPath)
+			vi.mocked(fs.readFile).mockResolvedValue(yaml.stringify({ customModes: [mode] }))
+			// Property order may differ after serialization; equality must be structural.
+			vi.mocked(mockContext.globalState.get).mockReturnValue([
+				{
+					source: "global",
+					groups: ["read"],
+					roleDefinition: "Review code",
+					name: "Code Review",
+					slug: "code-review",
+				},
+			])
+			vi.mocked(mockContext.globalState.update).mockImplementation(() => new Promise<void>(() => {}))
+
+			await expect(manager.getCustomModes()).resolves.toEqual([mode])
+			expect(mockContext.globalState.update).not.toHaveBeenCalled()
+		})
+
 		it("should handle valid YAML in .roomodes file and JSON for global customModes", async () => {
 			const settingsModes = [{ slug: "mode1", name: "Mode 1", roleDefinition: "Role 1", groups: ["read"] }]
 

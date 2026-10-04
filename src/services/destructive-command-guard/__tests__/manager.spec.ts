@@ -206,7 +206,11 @@ describe("Destructive Command Guard manager", () => {
 		expect(mockSpawn).toHaveBeenCalledTimes(1)
 		const expectedArgs = ["-xJf", "/tmp/dcg.tar.xz", "-C", tempDir, "--no-same-owner"]
 		if (process.platform === "linux") expectedArgs.push("--no-overwrite-dir")
-		expect(mockSpawn).toHaveBeenCalledWith("tar", expectedArgs, { shell: false, stdio: ["ignore", "pipe", "pipe"] })
+		expect(mockSpawn).toHaveBeenCalledWith(process.platform === "darwin" ? "/usr/bin/tar" : "tar", expectedArgs, {
+			shell: false,
+			stdio: ["ignore", "pipe", "pipe"],
+			...(process.platform !== "darwin" && { env: expect.objectContaining({ PATH: expect.any(String) }) }),
+		})
 	})
 
 	it("surfaces process failures during extraction", async () => {
@@ -300,7 +304,7 @@ describe("Destructive Command Guard manager", () => {
 				kill: vi.fn(),
 			})
 			setImmediate(async () => {
-				if (executable === "tar") {
+				if (executable === "tar" || executable === "/usr/bin/tar") {
 					const stagingDir = args[args.indexOf("-C") + 1]
 					await writeFile(path.join(stagingDir, info.binary), "executable")
 				}

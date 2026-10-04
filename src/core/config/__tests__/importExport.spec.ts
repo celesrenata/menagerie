@@ -332,6 +332,44 @@ describe("importExport", () => {
 			])
 		})
 
+		it("round-trips condensingApiConfigId through import (not stripped by the export schema omit list)", async () => {
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+
+			const mockFileContent = JSON.stringify({
+				providerProfiles: {
+					currentApiConfigName: "test",
+					apiConfigs: {
+						test: { apiProvider: providerIdentifiers.openai, apiKey: "test-key", id: "test-id" },
+					},
+				},
+				globalSettings: { mode: "code", condensingApiConfigId: "reader-profile-id" },
+			})
+
+			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
+
+			mockProviderSettingsManager.export.mockResolvedValue({
+				currentApiConfigName: "default",
+				apiConfigs: { default: { apiProvider: providerIdentifiers.anthropic, id: "default-id" } },
+			})
+			mockProviderSettingsManager.listConfig.mockResolvedValue([
+				{ name: "test", id: "test-id", apiProvider: providerIdentifiers.openai },
+			])
+			mockContextProxy.export.mockResolvedValue({ mode: "code" })
+
+			const result = await importSettings({
+				providerSettingsManager: mockProviderSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(true)
+			// condensingApiConfigId is a plain string in globalSettingsSchema and is not in
+			// globalSettingsExportSchema.omit, so it survives import unmodified via setValues.
+			expect(mockContextProxy.setValues).toHaveBeenCalledWith(
+				expect.objectContaining({ condensingApiConfigId: "reader-profile-id" }),
+			)
+		})
+
 		it("should return success: false when file content is invalid", async () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 

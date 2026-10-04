@@ -87,10 +87,29 @@ describe("managed binary archive utilities", () => {
 
 		const expectedArgs = ["-xJf", "/tmp/archive.tar.xz", "-C", "/tmp/output", "--no-same-owner"]
 		if (process.platform === "linux") expectedArgs.push("--no-overwrite-dir")
-		expect(mockSpawn).toHaveBeenCalledWith("tar", expectedArgs, {
+		expect(mockSpawn).toHaveBeenCalledWith(process.platform === "darwin" ? "/usr/bin/tar" : "tar", expectedArgs, {
 			shell: false,
 			stdio: ["ignore", "pipe", "pipe"],
+			...(process.platform !== "darwin" && { env: expect.objectContaining({ PATH: expect.any(String) }) }),
 		})
+	})
+
+	it("makes Nix xz available to GNU tar even when VS Code omits it from PATH", async () => {
+		const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform")
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true })
+		try {
+			const child = createChild()
+			mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+			const extraction = extractTarXzArchive("/tmp/archive.tar.xz", "/tmp/output")
+			child.emit("close", 0)
+			await extraction
+
+			const spawnOptions = mockSpawn.mock.calls[0][2]
+			expect(spawnOptions?.env?.PATH).toContain("/run/current-system/sw/bin")
+			expect(spawnOptions?.env?.PATH).toContain("/nix/var/nix/profiles/default/bin")
+		} finally {
+			if (originalPlatform) Object.defineProperty(process, "platform", originalPlatform)
+		}
 	})
 
 	it("extracts ZIP archives with platform-safe process arguments", async () => {
@@ -151,7 +170,7 @@ describe("managed binary archive utilities", () => {
 
 		expect(mockSpawn).toHaveBeenNthCalledWith(
 			2,
-			"tar",
+			process.platform === "darwin" ? "/usr/bin/tar" : "tar",
 			[
 				"-xJf",
 				"/tmp/archive.tar.xz",

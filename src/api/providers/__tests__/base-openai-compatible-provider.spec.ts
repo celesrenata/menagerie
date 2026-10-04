@@ -279,6 +279,15 @@ describe("BaseOpenAiCompatibleProvider", () => {
 			)
 		})
 
+		it("forwards metadata.abortSignal as the request signal", async () => {
+			mockCreate.mockImplementationOnce(() => asyncStreamFrom([]))
+			const { signal } = new AbortController()
+
+			await collectStream(handler.createMessage("system prompt", [], { taskId: "task-1", abortSignal: signal }))
+
+			expect(mockCreate.mock.calls[0][1]).toEqual({ signal })
+		})
+
 		it("should yield usage data from stream", async () => {
 			mockCreate.mockImplementationOnce(() =>
 				asyncStreamFrom([
