@@ -148,13 +148,13 @@ in
         lib.optionalString (cfg.modes.enable) ''
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "${projPath}/.roo"
           $DRY_RUN_CMD ${pkgs.rsync}/bin/rsync -a --chmod=u+w "${profileDir}/roo/" "${projPath}/.roo/"
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m u+w "${profileDir}/roomodes.yaml" "${projPath}/.roomodes"
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0644 "${profileDir}/roomodes.yaml" "${projPath}/.roomodes"
         '') cfg.modes.projects}
 
       ${lib.optionalString (cfg.modes.enable && cfg.modes.globalStorage) ''
         storageDir="${editorUserDir}/globalStorage/zoocodeorganization.zoo-code/settings"
         $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$storageDir"
-        $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m u+w "${profileDir}/roomodes.yaml" "$storageDir/custom_modes.yaml"
+        $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "${profileDir}/roomodes.yaml" "$storageDir/custom_modes.yaml"
       ''}
     '';
   };
