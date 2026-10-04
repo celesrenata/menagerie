@@ -167,6 +167,20 @@ Options:
 - `--editor=<command>`: Specify the editor command (e.g., `--editor=cursor` or
   `--editor=code-insiders`)
 
+### Nix flake
+
+A Nix flake builds the extension from source into a `.vsix`, bundles the custom
+modes, and ships home-manager / NixOS / nix-darwin modules (Linux + Darwin, all
+four systems):
+
+```sh
+nix build github:celesrenata/menagerie#menagerie-vsix
+code --install-extension ./result/zoo-code-*.vsix
+```
+
+See [`nix/README.md`](nix/README.md) for the full output surface, module options,
+and consumption instructions.
+
 ### Manual VSIX Installation
 
 If you prefer to install the VSIX package manually:
