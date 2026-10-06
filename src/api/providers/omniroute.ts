@@ -102,6 +102,70 @@ export function isOmniRoute(configuration: ProviderSettings): boolean {
 }
 
 /**
+ * Per-route served context windows (input-token capacity), keyed by the OmniRoute
+ * route id used as the model id in an OmniRoute profile.
+ *
+ * SOURCE OF TRUTH: the self-hosted serving config, not a guess. These mirror the
+ * live `--max-model-len` / `num_ctx` the backends actually serve, so Menagerie's
+ * auto-condense math (`willManageContext`) measures usage against the real window
+ * instead of the flat `openAiModelInfoSaneDefaults.contextWindow` (128k) that every
+ * route would otherwise share:
+ *   - coder routes  -> qwen3.8-27b-nvfp4, vLLM --max-model-len 163840 (nix-flakes esnixi/vllm.nix)
+ *   - planner/long/research/reviewer/tester -> ds4-glm53 via ollama, OLLAMA_CONTEXT_LENGTH 262144 (modules/profiles/ai.nix)
+ *   - reader routes -> qwen3.5-9b reader, OmniRoute combo context_length 32768 (deliberately small 9B)
+ *   - tiny/fast     -> small local models; keep conservative 32768
+ *
+ * Keep these in lockstep with the serving config when it changes. A route absent
+ * from this map falls through to the profile's own `openAiCustomModelInfo` (or the
+ * sane default), so an unknown/new route is never given a wrong window.
+ */
+export const OMNIROUTE_ROUTE_CONTEXT_WINDOWS: Readonly<Record<string, number>> = {
+	// 27B coder on the 5090 (vLLM --max-model-len 163840).
+	"hybrid/code": 163840,
+	"pool/tier1/code": 163840,
+	"pool/tier2/code": 163840,
+	// GLM-5.3 on the M5 Max via ollama (OLLAMA_CONTEXT_LENGTH 262144).
+	"hybrid/planner": 262144,
+	"pool/tier1/planner": 262144,
+	"pool/tier2/planner": 262144,
+	"hybrid/research": 262144,
+	"pool/tier1/research": 262144,
+	"hybrid/long": 262144,
+	"pool/tier1/long": 262144,
+	"hybrid/reviewer": 262144,
+	"hybrid/tester": 262144,
+	"hybrid/frontier": 262144,
+	// 9B reader, kept deliberately small (OmniRoute combo context_length 32768).
+	"hybrid/reader": 32768,
+	"local/m5-reader": 32768,
+	"hybrid/tiny": 32768,
+	"hybrid/fast": 32768,
+}
+
+/**
+ * Resolve the effective context window for an OmniRoute route id.
+ *
+ * For a KNOWN route the served window is authoritative: the route *is* the model, so
+ * the real `--max-model-len` / `num_ctx` must drive auto-condense. A profile's
+ * `openAiCustomModelInfo.contextWindow` here is almost always a boilerplate default
+ * (the OpenAI-compatible sane default is 128k) that does not reflect the backend, so
+ * trusting it would silently over-fill a 32k reader. We therefore return the mapped
+ * window regardless of `customContextWindow`.
+ *
+ * An UNKNOWN route returns `undefined` so the caller keeps its existing
+ * `openAiCustomModelInfo` / sane-default behavior unchanged — a new route is never
+ * given a wrong window. (`customContextWindow` is accepted for call-site symmetry and
+ * future per-route opt-outs; it is intentionally not consulted for known routes.)
+ */
+export function resolveOmniRouteContextWindow(
+	routeId: string,
+	customContextWindow?: number,
+): number | undefined {
+	void customContextWindow
+	return OMNIROUTE_ROUTE_CONTEXT_WINDOWS[routeId]
+}
+
+/**
  * Derive OmniRoute's tokenized VS Code base URL from the user-entered server root.
  *
  * The user enters the server root without any suffix; menagerie appends the
