@@ -1,0 +1,251 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create the Branding_Surface inventory and derived-asset manifest module": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284325935
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284333869
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284541782
+      }
+    ],
+    "1.2 Create the carve-out allowlist module": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284325967
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284335923
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284542548
+      }
+    ],
+    "2. Checkpoint - inventory compiles and is consistent": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326006
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284552203
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284673548
+      }
+    ],
+    "3.1 Edit `src/package.json` metadata fields": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326034
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284553028
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284674303
+      }
+    ],
+    "3.2 Resolve NLS strings in `src/package.nls.json` to Menagerie wording": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326083
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284553930
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284675204
+      }
+    ],
+    "4.1 Rewrite the task board labels": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326108
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284554714
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284675988
+      }
+    ],
+    "5. Checkpoint - metadata, NLS, and labels rebranded": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326134
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285295591
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285429524
+      }
+    ],
+    "6.1 Run the inventory-driven user-visible string sweep and rewrite remainders": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326158
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284690426
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285276580
+      }
+    ],
+    "7.1 Implement the asset-derivation script": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326185
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284691229
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285277360
+      }
+    ],
+    "7.2 Repoint the `zoo-code-ActivityBar` container icon": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326223
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285437360
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285499412
+      }
+    ],
+    "8.1 Implement the acceptance scan test with carve-out validation": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326268
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285506867
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285704360
+      }
+    ],
+    "9. Final checkpoint - full rebrand verified": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284326290
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285707903
+      },
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285785450
+      }
+    ],
+    "1. Establish the branding data backbone": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284542585
+      }
+    ],
+    "3. Update package metadata and NLS bundle": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284675229
+      }
+    ],
+    "4. Update task-surface labels in `src/activate/taskBoard.ts`": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791284676013
+      }
+    ],
+    "6. Sweep remaining user-visible strings": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285276627
+      }
+    ],
+    "7. Asset pipeline and activity bar icon": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285499446
+      }
+    ],
+    "8. Guards: acceptance scan and property-style assertions": [
+      {
+        "executionId": "44a878b9-4226-425b-92f9-152245c12c40",
+        "chatSessionId": "sess_e79579f3-3359-46f2-b5da-672cf94169b6",
+        "timestamp": 1791285704396
+      }
+    ]
+  }
+}

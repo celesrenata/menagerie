@@ -31,6 +31,8 @@ import {
 	RouterModelsMessageType,
 	VsCodeLmModelsMessageType,
 	isTelemetryOptedIn,
+	resolveEffectiveParallelismMode,
+	resolveParallelismPolicy,
 } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 import { CloudService } from "@roo-code/cloud"
@@ -79,7 +81,7 @@ import { playTts, setTtsEnabled, setTtsSpeed, stopTts } from "../../utils/tts"
 import { searchCommits } from "../../utils/git"
 import { exportSettings, importSettingsWithFeedback } from "../config/importExport"
 import { getOpenAiModels } from "../../api/providers/openai"
-import { fetchOmniRouteCatalog } from "../../api/providers/omniroute"
+import { fetchOmniRouteCatalog, resolveRequestTier, withOmniRouteTier } from "../../api/providers/omniroute"
 import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { openMention } from "../mentions"
 import { resolveImageMentions } from "../mentions/resolveImageMentions"
@@ -575,6 +577,10 @@ export const webviewMessageHandler = async (
 		}
 	}
 
+	// Delegate observatory read-only messages to the dedicated router
+	const { handleObservatoryMessage } = await import("../../activate/observatory")
+	if (await handleObservatoryMessage(message)) return
+
 	switch (message.type) {
 		case "themeFixtureProbeResponse":
 			if (process.env.ROO_CODE_THEME_FIXTURE_PROBE === "1" && message.requestId && message.themeFixture) {
@@ -696,12 +702,28 @@ export const webviewMessageHandler = async (
 			// task. This essentially creates a fresh slate for the new task.
 			try {
 				const resolved = await resolveIncomingImages({ text: message.text, images: message.images })
+				// FEAT-003: resolve the per-request OmniRoute tier from the envelope + saved tier.
+				// The resolved tier is a non-persisted, per-request override.
+				const savedTier = provider.contextProxy.getValue("omniRouteTier")
+				const resolvedOmniRouteTier = resolveRequestTier(message.requestTier, savedTier)
+				// FEAT-011: resolve the effective parallelism mode (envelope → saved → "auto") and
+				// its ceilings, then hand the resolved ParallelismPolicy off along the same path as
+				// the resolved tier. This is a HAND-OFF ONLY — no enforcement here. The resolved
+				// policy rides to the Task as task.resolvedParallelismPolicy, where the
+				// elastic-parallel-execution feature consumes it as the BoundedElasticScheduler's
+				// User_Parallelism_Policy. This is a non-persisted, per-request value.
+				const savedParallelismMode = provider.contextProxy.getValue("parallelismMode")
+				const resolvedParallelismPolicy = resolveParallelismPolicy(
+					resolveEffectiveParallelismMode(message.parallelism, savedParallelismMode),
+				)
 				await provider.createTask(
 					resolved.text,
 					resolved.images,
 					undefined,
 					{
 						taskId: message.taskId,
+						...(resolvedOmniRouteTier !== undefined ? { resolvedOmniRouteTier } : {}),
+						...(resolvedParallelismPolicy !== undefined ? { resolvedParallelismPolicy } : {}),
 					},
 					message.taskConfiguration,
 				)
@@ -723,9 +745,31 @@ export const webviewMessageHandler = async (
 		case "askResponse":
 			{
 				const resolved = await resolveIncomingImages({ text: message.text, images: message.images })
-				provider
-					.getCurrentTask()
-					?.handleWebviewAskResponse(message.askResponse!, resolved.text, resolved.images)
+				const currentTask = provider.getCurrentTask()
+				// FEAT-003: a messageResponse is a follow-up request that may carry a submit-time
+				// requestTier. Resolve it (envelope → saved → OmniRoute default) and overlay it onto
+				// the current task's apiConfiguration for this request via withOmniRouteTier. This is
+				// a non-persisted, per-request override and is NOT written back to ContextProxy.
+				// Button-click askResponses carry no requestTier and are left unaffected.
+				if (currentTask && message.askResponse === "messageResponse") {
+					const savedTier = provider.contextProxy.getValue("omniRouteTier")
+					const resolvedOmniRouteTier = resolveRequestTier(message.requestTier, savedTier)
+					currentTask.updateApiConfiguration(
+						withOmniRouteTier(currentTask.apiConfiguration, resolvedOmniRouteTier),
+					)
+					// FEAT-011: a follow-up messageResponse may carry a submit-time parallelism
+					// appetite. Resolve it (envelope → saved → "auto") to its ceilings and overlay the
+					// resolved ParallelismPolicy onto the current task's hand-off seam for this request.
+					// HAND-OFF ONLY — no enforcement here; the elastic-parallel-execution feature reads
+					// task.resolvedParallelismPolicy to supply the BoundedElasticScheduler its
+					// User_Parallelism_Policy. Non-persisted and NOT written back to ContextProxy.
+					// Button-click askResponses carry no parallelism and leave the seam unchanged.
+					const savedParallelismMode = provider.contextProxy.getValue("parallelismMode")
+					currentTask.resolvedParallelismPolicy = resolveParallelismPolicy(
+						resolveEffectiveParallelismMode(message.parallelism, savedParallelismMode),
+					)
+				}
+				currentTask?.handleWebviewAskResponse(message.askResponse!, resolved.text, resolved.images)
 			}
 			break
 

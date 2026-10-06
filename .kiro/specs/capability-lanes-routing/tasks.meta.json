@@ -1,0 +1,241 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create `src/core/task/capabilityLanes.ts` with the lane roles, task-type hint, and `laneToRouteCapability`": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941472
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293948346
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294049769
+      }
+    ],
+    "2.1 Create `src/core/task/routingMetadata.ts` with `RoutingMetadata` and `WorkerResultWithRouting`": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941499
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294055967
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294153018
+      }
+    ],
+    "3.1 Create `src/core/task/routingPolicy.ts` with `RoutingContext`, `RoutingDecision`, and `createRoutingPolicy`": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941529
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294171250
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294398920
+      }
+    ],
+    "4.1 Create `src/core/task/readerEscalationDecision.ts` with triggers, `EscalationCost`, and `decide`": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941556
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294172689
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294400302
+      }
+    ],
+    "5.1 Create `src/core/task/preparedContextWorkPackage.ts` with `ReaderFinding`, inputs, and `build`": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941593
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294174004
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294401693
+      }
+    ],
+    "6.1 Create `src/core/task/glmInvocationGate.ts` with the trigger sets and `evaluate`": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941615
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294175058
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294402815
+      }
+    ],
+    "7. Checkpoint - Ensure all pure-component tests pass": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941639
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294412575
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294473669
+      }
+    ],
+    "8.1 Attach additive lane routing metadata to reader/coder `ParallelTaskSpec`s": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941663
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294478758
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294612853
+      }
+    ],
+    "8.2 Produce escalation and GLM follow-up specs in the deeper lane": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941687
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294617223
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294794186
+      }
+    ],
+    "8.3 Insert the prepared-context handoff between reader settle and the coder spec": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941719
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294797365
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294947658
+      }
+    ],
+    "10. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791293941739
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294955314
+      },
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791295025991
+      }
+    ],
+    "1. Define the four capability lanes and the total RouteCapability mapping": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294049804
+      }
+    ],
+    "2. Define RoutingMetadata as an additive-optional extension of WorkerResult": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294153064
+      }
+    ],
+    "3. Implement the pure RoutingPolicy and the five routing patterns": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294398968
+      }
+    ],
+    "4. Implement the confidence-driven ReaderEscalationDecision with the resource-cost model": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294400336
+      }
+    ],
+    "5. Implement the PreparedContextWorkPackage builder and the ReaderFinding contract": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294401726
+      }
+    ],
+    "6. Implement the GLM dual-role invocation gate with the scarcity guard": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294402851
+      }
+    ],
+    "8. Wire lane assignment and follow-up spec production onto the existing ParallelTaskSpec path": [
+      {
+        "executionId": "da82b438-6f6e-4760-b0e1-e54d4e80be97",
+        "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
+        "timestamp": 1791294947707
+      }
+    ]
+  }
+}

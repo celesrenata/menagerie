@@ -19,6 +19,10 @@ import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, Button } from
 interface OmniRouteTierDropdownProps {
 	disabled?: boolean
 	triggerClassName?: string
+	/** Composer-local tier (source of truth for the label). FEAT-003. */
+	selectedTier: number | undefined
+	/** Synchronous local-state setter owned by ChatView. */
+	onSelectTier: (tier: number | undefined) => void
 }
 
 /** Render the cost-tier label ($..$$$$$) for a 1-based tier. */
@@ -30,34 +34,51 @@ const tierLabel = (tier: number): string => "$".repeat(tier)
  * header so the request is granted routing up to that cost tier; "Default" clears it so no
  * header is sent and OmniRoute keeps its own default.
  *
- * The value is read from live extension state and saved immediately via `updateSettings`
- * (the same deliberate immediate-save flow the sibling AutoApproveDropdown uses for the
- * YOLO/auto-approve toggles). This control lives in the chat toolbar, not SettingsView, so
- * the SettingsView `cachedState` buffer does not apply here. The control renders only for an
- * OmniRoute profile.
+ * This is a controlled component (FEAT-003): `selectedTier` and `onSelectTier` are owned by
+ * `ChatView` as composer-local state so the tier is captured synchronously at submit time,
+ * eliminating the stale-tier race. The dropdown still posts `updateSettings` asynchronously
+ * as a separate action to keep the saved default in sync, but the displayed label and the
+ * submit-time capture derive from `selectedTier`, not from the live `omniRouteTier` echo.
+ *
+ * This control lives in the chat toolbar, not SettingsView, so the SettingsView `cachedState`
+ * buffer does not apply here. The control renders only for an OmniRoute profile.
  */
-export const OmniRouteTierDropdown = ({ disabled = false, triggerClassName = "" }: OmniRouteTierDropdownProps) => {
+export const OmniRouteTierDropdown = ({
+	disabled = false,
+	triggerClassName = "",
+	selectedTier,
+	onSelectTier,
+}: OmniRouteTierDropdownProps) => {
 	const [open, setOpen] = React.useState(false)
 	const portalContainer = useRooPortal("roo-portal")
 	const { t } = useAppTranslation()
 
-	const { apiConfiguration, omniRouteTier } = useExtensionState()
+	const { apiConfiguration } = useExtensionState()
 
 	// Mirror the extension-side isOmniRoute discriminator (openai provider + opt-in flag).
 	const isOmniRouteProfile =
 		apiConfiguration?.apiProvider === providerIdentifiers.openai && apiConfiguration?.openAiIsOmniRoute === true
 
-	const handleSelect = React.useCallback((tier: number | undefined) => {
-		vscode.postMessage({ type: "updateSettings", updatedSettings: { omniRouteTier: tier } })
-		setOpen(false)
-	}, [])
+	const handleSelect = React.useCallback(
+		(tier: number | undefined) => {
+			// Capture the selection synchronously in composer-local state (Req 1.1, 1.2) so a
+			// request submitted immediately after carries this tier without waiting on persist.
+			onSelectTier(tier)
+			// Persist the saved default asynchronously as a separate action (Req 1.3); the label
+			// no longer depends on this round trip.
+			vscode.postMessage({ type: "updateSettings", updatedSettings: { omniRouteTier: tier } })
+			setOpen(false)
+		},
+		[onSelectTier],
+	)
 
 	if (!isOmniRouteProfile) {
 		return null
 	}
 
 	const tiers = Array.from({ length: OMNIROUTE_TIER_COUNT }, (_, index) => index + 1)
-	const selectedLabel = typeof omniRouteTier === "number" ? tierLabel(omniRouteTier) : undefined
+	// Derive the label from composer-local state (Req 1.4), not the live omniRouteTier echo.
+	const selectedLabel = typeof selectedTier === "number" ? tierLabel(selectedTier) : undefined
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} data-testid="omniroute-tier-dropdown-root">
@@ -104,7 +125,7 @@ export const OmniRouteTierDropdown = ({ disabled = false, triggerClassName = "" 
 						{tiers.map((tier) => (
 							<Button
 								key={tier}
-								variant={omniRouteTier === tier ? "primary" : "ghost"}
+								variant={selectedTier === tier ? "primary" : "ghost"}
 								onClick={() => handleSelect(tier)}
 								data-testid={`omniroute-tier-option-${tier}`}
 								className="justify-start px-2 py-1.5 text-sm h-auto font-mono">

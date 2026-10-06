@@ -1,0 +1,357 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create `src/core/tools/ProgressAwareLoopDetector.ts` with types and the preserved result contract": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854268
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278868371
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278984889
+      }
+    ],
+    "2.1 Implement `fnv1a`, `normalizeArgs`, and `hashArgs`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854315
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278993918
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279088406
+      }
+    ],
+    "3.1 Implement `extractCursor`, `extractTarget`, and `cursorAdvanced` comparison": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854349
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279096553
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279198023
+      }
+    ],
+    "3.2 Implement `deriveBand` and the band-to-result mapping with clamping": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854399
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279201293
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279285530
+      }
+    ],
+    "4.1 Implement `ITERATIVE_CAPABLE_TOOLS`, `ITERATIVE_COMMAND_PATTERNS`, and `isIterativeCapable`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854431
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279289072
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279355154
+      }
+    ],
+    "5.1 Implement progress-signal derivation in `afterTool`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854465
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279378743
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279555731
+      }
+    ],
+    "5.2 Implement stagnation-signal derivation in `afterTool`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854493
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279559532
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279674674
+      }
+    ],
+    "5.3 Implement `evaluateProgress` scoring with clamping and iterative-capable exemption": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854526
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279678208
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279787801
+      }
+    ],
+    "6.1 Implement the `ProgressAwareLoopDetector` class with the four phase methods and per-task state": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854565
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279792647
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279970841
+      }
+    ],
+    "6.2 Implement `check()` and `recordResult()` wrappers with hysteresis and hard-stop precondition": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854602
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279975344
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280120079
+      }
+    ],
+    "6.3 Add the compatibility exports preserving the old names": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854633
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280124775
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280153815
+      }
+    ],
+    "7. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854667
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280157462
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280248449
+      }
+    ],
+    "8.1 Wire `MetricsSink` emission into `evaluateProgress`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854699
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280252563
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280409411
+      }
+    ],
+    "9.1 Update `Task.ts` to use `ProgressAwareLoopDetector`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854726
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280413027
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280457918
+      }
+    ],
+    "9.2 Add the post-execution `recordResult()` call in `presentAssistantMessage.ts`": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854759
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280462014
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280594992
+      }
+    ],
+    "10.1 Migrate `ToolRepetitionDetector.spec.ts` behavior into the new spec and delete the old file": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854791
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280598674
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280796302
+      }
+    ],
+    "11. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278854817
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280800923
+      },
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280838475
+      }
+    ],
+    "1. Scaffold the detector module with the preserved contract and core type definitions": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791278984924
+      }
+    ],
+    "2. Implement the dependency-free hashing and normalized args hash": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279088452
+      }
+    ],
+    "3. Implement cursor/target extraction and band derivation": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279285573
+      }
+    ],
+    "4. Implement iterative-capable tool classification": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279355190
+      }
+    ],
+    "5. Implement signal derivation and scoring": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791279787840
+      }
+    ],
+    "6. Implement the detector class and two-call protocol": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280153860
+      }
+    ],
+    "8. Implement nudge/stop metrics emission": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280409450
+      }
+    ],
+    "9. Wire the detector into the host and preserve the call-site contract": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280595038
+      }
+    ],
+    "10. Migrate and rewrite the existing detector spec": [
+      {
+        "executionId": "2f420c8a-982e-46b7-a70a-bb1085c53649",
+        "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
+        "timestamp": 1791280796342
+      }
+    ]
+  }
+}

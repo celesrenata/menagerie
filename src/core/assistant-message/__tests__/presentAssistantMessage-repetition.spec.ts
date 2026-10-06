@@ -4,7 +4,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 
 import { presentAssistantMessage } from "../presentAssistantMessage"
 import { readFileTool } from "../../tools/ReadFileTool"
-import type { ToolRepetitionCheckResult } from "../../tools/ToolRepetitionDetector"
+import type { ToolRepetitionCheckResult } from "../../tools/ProgressAwareLoopDetector"
 import type { Task } from "../../task/Task"
 import type { ToolUse } from "../../../shared/tools"
 import { t } from "../../../i18n"

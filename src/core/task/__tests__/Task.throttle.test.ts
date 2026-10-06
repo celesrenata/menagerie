@@ -16,7 +16,7 @@ vi.mock("../../ignore/RooIgnoreController")
 vi.mock("../../protect/RooProtectedController")
 vi.mock("../../context-tracking/FileContextTracker")
 vi.mock("../../../integrations/editor/DiffViewProvider")
-vi.mock("../../tools/ToolRepetitionDetector")
+vi.mock("../../tools/ProgressAwareLoopDetector")
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn(() => ({
 		getModel: () => ({ info: {}, id: "test-model" }),

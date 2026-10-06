@@ -14,13 +14,13 @@
 		"node": "22.23.1"
 	},
 	"author": {
-		"name": "Zoo Code"
+		"name": "Menagerie"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Zoo-Code-Org/Zoo-Code"
+		"url": "https://github.com/celesrenata/menagerie"
 	},
-	"homepage": "https://zoocode.dev",
+	"homepage": "https://github.com/celesrenata/menagerie",
 	"categories": [
 		"AI",
 		"Chat",
@@ -42,8 +42,7 @@
 		"sonnet",
 		"ai",
 		"llama",
-		"zoo code",
-		"zoocode"
+		"menagerie"
 	],
 	"activationEvents": [
 		"onLanguage",
@@ -56,7 +55,7 @@
 				{
 					"id": "zoo-code-ActivityBar",
 					"title": "%views.activitybar.title%",
-					"icon": "assets/icons/icon.svg"
+					"icon": "assets/icons/menagerie-activitybar.png"
 				}
 			]
 		},
@@ -177,11 +176,11 @@
 			},
 			{
 				"command": "zoo-code.showTaskBoard",
-				"title": "Zoo: Show Task Board"
+				"title": "Menagerie: Show Task Board"
 			},
 			{
 				"command": "zoo-code.exportTaskBoard",
-				"title": "Zoo: Export Task Board JSON"
+				"title": "Menagerie: Export Task Board JSON"
 			}
 		],
 		"menus": {
@@ -582,6 +581,7 @@
 		"ai": "6.0.218",
 		"esbuild-wasm": "0.28.1",
 		"execa": "9.6.1",
+		"fast-check": "3.23.2",
 		"mkdirp": "3.0.1",
 		"nock": "14.0.15",
 		"ovsx": "0.10.12",

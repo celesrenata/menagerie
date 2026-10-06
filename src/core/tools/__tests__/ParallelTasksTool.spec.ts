@@ -3,9 +3,11 @@ import type { Task } from "../../task/Task"
 import { ParallelTaskArgumentRecovery } from "../../task/ParallelTaskArgumentRecovery"
 import { runParallelTasks } from "../../task/runParallelTasks"
 import {
+	makeParallelTasksSchema,
 	parallelTaskSpecSchema,
 	parallelTasksSchema,
 	parallelTasksTool,
+	resolveParallelTasksMax,
 	type ParallelTaskSpec,
 } from "../ParallelTasksTool"
 
@@ -21,20 +23,44 @@ const worker = (index: number) => ({
 })
 
 describe("parallelTasksSchema", () => {
-	it("allows one to four tasks, including three Code workers and an independent M5 reader", () => {
+	it("accepts a single task and more than four tasks (elastic live ceiling)", () => {
 		expect(parallelTasksSchema.safeParse({ tasks: [worker(1)] }).success).toBe(true)
 		expect(parallelTasksSchema.safeParse({ tasks: [1, 2, 3, 4].map(worker) }).success).toBe(true)
-		expect(parallelTasksSchema.safeParse({ tasks: [] }).success).toBe(false)
-		expect(parallelTasksSchema.safeParse({ tasks: [1, 2, 3, 4, 5].map(worker) }).success).toBe(false)
+		// Formerly rejected at the fixed `.max(4)`; now valid under the elastic ceiling (default 12).
+		expect(parallelTasksSchema.safeParse({ tasks: [1, 2, 3, 4, 5].map(worker) }).success).toBe(true)
 	})
 
-	// Cap-edge guard: parallelTasksSchema.parse runs on the requested tasks before
-	// addSharedDocumentReader appends its reader, so the input is already capped at 4. The reader's
-	// own `specs.length >= 4` early-return keeps a 4-worker request from being pushed to 5; this
-	// test documents that the schema has no slack for the append path to exceed the cap.
-	it("caps requested tasks at four before any reader append", () => {
-		expect(parallelTasksSchema.safeParse({ tasks: [1, 2, 3].map(worker) }).success).toBe(true)
-		expect(parallelTasksSchema.safeParse({ tasks: [1, 2, 3, 4, 5].map(worker) }).success).toBe(false)
+	it("rejects an empty batch and still rejects duplicate names", () => {
+		expect(parallelTasksSchema.safeParse({ tasks: [] }).success).toBe(false)
+		expect(parallelTasksSchema.safeParse({ tasks: [worker(1), worker(1)] }).success).toBe(false)
+	})
+
+	it("bounds the batch by the scheduler default live ceiling (12)", () => {
+		const twelve = Array.from({ length: 12 }, (_, index) => worker(index + 10))
+		expect(parallelTasksSchema.safeParse({ tasks: twelve }).success).toBe(true)
+		const thirteen = Array.from({ length: 13 }, (_, index) => worker(index + 10))
+		expect(parallelTasksSchema.safeParse({ tasks: thirteen }).success).toBe(false)
+	})
+})
+
+describe("makeParallelTasksSchema / resolveParallelTasksMax", () => {
+	it("resolves to the scheduler default (12) when the policy is absent or unconstrained", () => {
+		expect(resolveParallelTasksMax(undefined)).toBe(12)
+		expect(resolveParallelTasksMax({})).toBe(12)
+	})
+
+	it("tightens, but never raises, the ceiling with the policy maxLive", () => {
+		expect(resolveParallelTasksMax({ maxLive: 3 })).toBe(3)
+		// A policy ceiling above the scheduler default is clamped down to it.
+		expect(resolveParallelTasksMax({ maxLive: 100 })).toBe(12)
+	})
+
+	it("builds a schema bounded by the clamped request ceiling", () => {
+		const schema = makeParallelTasksSchema(resolveParallelTasksMax({ maxLive: 2 }))
+		expect(schema.safeParse({ tasks: [1, 2].map(worker) }).success).toBe(true)
+		expect(schema.safeParse({ tasks: [1, 2, 3].map(worker) }).success).toBe(false)
+		// Unique-name rejection survives the elasticized bound.
+		expect(schema.safeParse({ tasks: [worker(1), worker(1)] }).success).toBe(false)
 	})
 })
 
@@ -122,7 +148,10 @@ describe("ParallelTasksTool.execute", () => {
 
 	it.each([
 		{ label: "0 tasks", input: { tasks: [] } },
-		{ label: "5 tasks", input: { tasks: [1, 2, 3, 5, 6].map(worker) } },
+		{
+			label: "more than the live ceiling",
+			input: { tasks: Array.from({ length: 13 }, (_, index) => worker(index + 10)) },
+		},
 		{ label: "a spec missing message", input: { tasks: [{ name: "a", mode: "code", todos: null }] } },
 		{ label: "duplicate names", input: { tasks: [worker(1), worker(1)] } },
 	])("returns a recoverable tool error for $label", async ({ input }) => {
@@ -134,7 +163,8 @@ describe("ParallelTasksTool.execute", () => {
 		expect(pushToolResult).toHaveBeenCalledOnce()
 		const result: string = pushToolResult.mock.calls[0][0]
 		expect(JSON.parse(result)).toMatchObject({ status: "error" })
-		expect(result).toContain("1-4 tasks")
+		expect(result).toContain("provide at least one task")
+		expect(result).not.toContain("1-4 tasks")
 		expect(handleError).not.toHaveBeenCalled()
 		expect(askApproval).not.toHaveBeenCalled()
 		expect(runParallelTasks).not.toHaveBeenCalled()
@@ -154,7 +184,7 @@ describe("ParallelTasksTool.execute", () => {
 		const result: string = pushToolResult.mock.calls[0][0]
 		expect(JSON.parse(result)).toMatchObject({ status: "error" })
 		expect(result).toContain("Invalid mode: no-such-mode")
-		expect(result).toContain("1-4 tasks")
+		expect(result).toContain("provide at least one task")
 		expect(handleError).not.toHaveBeenCalled()
 		expect(runParallelTasks).not.toHaveBeenCalled()
 		expect(double.recordToolError).toHaveBeenCalledWith("parallel_tasks")

@@ -30,6 +30,193 @@ export const reasoningEffortExtendedSchema = z.enum(reasoningEffortsExtended)
 export type ReasoningEffortExtended = z.infer<typeof reasoningEffortExtendedSchema>
 
 /**
+ * Orchestration Reasoning Effort (normalized subset used by the GLM mastermind)
+ *
+ * This is a strict subset of reasoningEffortsExtended; mapNormalizedToExtended is
+ * total and identity-on-shared-members.
+ */
+export const orchestrationReasoningEfforts = ["minimal", "low", "medium", "high", "max"] as const
+
+export const orchestrationReasoningEffortSchema = z.enum(orchestrationReasoningEfforts)
+
+export type OrchestrationReasoningEffort = z.infer<typeof orchestrationReasoningEffortSchema>
+
+/**
+ * Map a normalized orchestration reasoning effort to an extended reasoning effort.
+ * Total mapping — every normalized value yields a valid ReasoningEffortExtended value.
+ */
+export function mapNormalizedToExtended(value: OrchestrationReasoningEffort): ReasoningEffortExtended {
+	// All five normalized members are already members of reasoningEffortsExtended.
+	return value
+}
+
+/** Rank used for ordering comparisons (maxEffort >= effort, used >= requested). */
+export const orchestrationReasoningRank: Record<OrchestrationReasoningEffort, number> = {
+	minimal: 0,
+	low: 1,
+	medium: 2,
+	high: 3,
+	max: 4,
+}
+
+/**
+ * WorkerReasoningPolicy
+ *
+ * Reasoning intent attached to a delegated worker. The required `effort` expresses
+ * the baseline cognition budget; `adaptive`/`maxEffort` govern escalation and
+ * `priority` biases translation. Rejects a `maxEffort` ranked below `effort`.
+ */
+export const workerReasoningPriorities = ["latency", "balanced", "quality"] as const
+
+export const workerReasoningPolicySchema = z
+	.object({
+		effort: orchestrationReasoningEffortSchema,
+		adaptive: z.boolean().optional(),
+		maxEffort: orchestrationReasoningEffortSchema.optional(),
+		priority: z.enum(workerReasoningPriorities).optional(),
+	})
+	.superRefine((policy, ctx) => {
+		if (
+			policy.maxEffort !== undefined &&
+			orchestrationReasoningRank[policy.maxEffort] < orchestrationReasoningRank[policy.effort]
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `maxEffort (${policy.maxEffort}) must be >= effort (${policy.effort})`,
+				path: ["maxEffort"],
+			})
+		}
+	})
+
+export type WorkerReasoningPolicy = z.infer<typeof workerReasoningPolicySchema>
+
+/**
+ * Resolves the escalation ceiling for a worker reasoning policy.
+ * When `adaptive` is set without a `maxEffort`, the requested `effort` is the ceiling.
+ */
+export function resolveEffortCeiling(policy: WorkerReasoningPolicy): OrchestrationReasoningEffort {
+	return policy.maxEffort ?? policy.effort
+}
+
+/**
+ * EvidenceReference
+ *
+ * A pointer to verifiable support for a worker result or task-state entry.
+ * `lines` is an optional [start, end] tuple; `result` is an optional outcome string.
+ */
+export const evidenceReferenceSchema = z.object({
+	type: z.enum(["file", "test", "command", "url", "screenshot"]),
+	reference: z.string(),
+	lines: z.tuple([z.number(), z.number()]).optional(),
+	result: z.string().optional(),
+})
+
+export type EvidenceReference = z.infer<typeof evidenceReferenceSchema>
+
+/**
+ * Finding
+ *
+ * A single claim produced by a worker, with an optional confidence score.
+ */
+export const findingSchema = z.object({
+	claim: z.string(),
+	confidence: z.number().optional(),
+})
+
+export type Finding = z.infer<typeof findingSchema>
+
+/**
+ * WorkerResult
+ *
+ * The bounded, structured contract a worker returns. Array fields are always present;
+ * the optional `reasoning` telemetry reports requested vs. used effort and escalation count.
+ */
+export const workerResultSchema = z.object({
+	status: z.enum(["completed", "failed", "blocked"]),
+	summary: z.string(),
+	findings: z.array(findingSchema),
+	evidence: z.array(evidenceReferenceSchema),
+	changes: z.array(z.string()),
+	tests: z.array(z.string()),
+	blockers: z.array(z.string()),
+	artifacts: z.array(z.string()),
+	reasoning: z
+		.object({
+			requested: orchestrationReasoningEffortSchema,
+			used: orchestrationReasoningEffortSchema,
+			escalations: z.number().int().nonnegative(),
+		})
+		.optional(),
+})
+
+export type WorkerResult = z.infer<typeof workerResultSchema>
+
+/**
+ * VerificationPolicy
+ *
+ * The mastermind's request for independent verification on a task. `required` gates parent
+ * success through a verifier role; `criteria`, when supplied, yields one pass/fail evidence
+ * entry per criterion.
+ */
+export const verificationPolicySchema = z.object({
+	required: z.boolean(),
+	mode: z.string().optional(),
+	criteria: z.array(z.string()).optional(),
+})
+
+export type VerificationPolicy = z.infer<typeof verificationPolicySchema>
+
+/**
+ * TaskKind
+ *
+ * The categories of delegated work that drive recommended verification defaults.
+ */
+export type TaskKind = "read-only" | "code-modification" | "deployment" | "migration-destructive"
+
+/**
+ * Recommended verification posture by task kind (Requirement 10):
+ * read-only analysis is optional, code modification is recommended, and deployment or
+ * migration/destructive infrastructure changes are required.
+ */
+export function defaultVerificationFor(kind: TaskKind): "optional" | "recommended" | "required" {
+	switch (kind) {
+		case "read-only":
+			return "optional"
+		case "code-modification":
+			return "recommended"
+		case "deployment":
+		case "migration-destructive":
+			return "required"
+	}
+}
+
+/**
+ * AutonomousTaskState
+ *
+ * The authoritative, structured task-state object maintained out-of-band from the
+ * conversational transcript. It accumulates the objective, constraints, decisions,
+ * assumptions, work status, touched files, blockers, open questions, next actions,
+ * and verifiable evidence (reusing the shared `evidenceReferenceSchema`), and survives
+ * `condenseContext` so a read after condensation returns the preserved state rather than
+ * a reconstruction from the transcript.
+ */
+export const autonomousTaskStateSchema = z.object({
+	objective: z.string(),
+	constraints: z.array(z.string()),
+	decisions: z.array(z.string()),
+	assumptions: z.array(z.string()),
+	activeWork: z.array(z.string()),
+	completedWork: z.array(z.string()),
+	filesTouched: z.array(z.string()),
+	blockers: z.array(z.string()),
+	openQuestions: z.array(z.string()),
+	evidence: z.array(evidenceReferenceSchema),
+	nextActions: z.array(z.string()),
+})
+
+export type AutonomousTaskState = z.infer<typeof autonomousTaskStateSchema>
+
+/**
  * Reasoning Effort user setting (includes "disable")
  */
 export const reasoningEffortSettingValues = [

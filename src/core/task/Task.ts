@@ -57,6 +57,7 @@ import {
 	MAX_MCP_TOOLS_THRESHOLD,
 	countEnabledMcpTools,
 	providerIdentifiers,
+	type ParallelismPolicy,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService } from "@roo-code/cloud"
@@ -104,7 +105,11 @@ import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 
 // core modules
-import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
+import { ProgressAwareLoopDetector } from "../tools/ProgressAwareLoopDetector"
+import {
+	type SemanticExplorationState,
+	createSemanticExplorationState,
+} from "../exploration/semanticExplorationState"
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
@@ -144,6 +149,8 @@ import { prepareApiConversationMessage } from "./apiConversationHistory"
 import { shouldAddUserMessageToHistory } from "./messageCounting"
 import { type TaskExecutionContext } from "./providerHandoff"
 import { ParallelTaskArgumentRecovery } from "./ParallelTaskArgumentRecovery"
+import type { AppliedComposedSurface } from "../capability/composedMcpView"
+import { preserveAutonomousTaskState } from "./autonomousTaskState"
 import { awaitWithStreamTimeout, StreamIdleTimeoutError } from "./streamIdleTimeout"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
@@ -217,6 +224,14 @@ export interface TaskOptions extends CreateTaskOptions {
 	handoffExecutionContext?: TaskExecutionContext
 	parallelWorker?: boolean
 	parallelParentTaskId?: string
+	/**
+	 * FEAT-011 (user-controlled-parallelism) hand-off seam. The per-request parallelism
+	 * ceilings resolved at submit time (`resolveParallelismPolicy(effective mode)`). This is a
+	 * hand-off only: this feature does not enforce it. The enforcement owner
+	 * (`elastic-parallel-execution`) reads this to feed the `BoundedElasticScheduler` as its
+	 * `User_Parallelism_Policy`. Undefined preserves today's scheduler-default behavior.
+	 */
+	resolvedParallelismPolicy?: ParallelismPolicy
 }
 
 type AssistantMessagePersistenceResult = boolean
@@ -236,8 +251,26 @@ export function hasForceParallelCommand(content: Anthropic.Messages.ContentBlock
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly parallelWorker: boolean
 	readonly parallelParentTaskId?: string
+	/**
+	 * FEAT-011 (user-controlled-parallelism) hand-off seam. Set to the per-request parallelism
+	 * ceilings resolved at submit time; a follow-up `messageResponse` may overwrite it. This
+	 * feature only resolves and carries the policy — it performs NO enforcement. The
+	 * `elastic-parallel-execution` feature consumes this to supply the `BoundedElasticScheduler`
+	 * its `User_Parallelism_Policy`. Undefined leaves the scheduler default ceilings in effect.
+	 */
+	resolvedParallelismPolicy?: ParallelismPolicy
 	/** Set when a parallel worker terminates itself; read by waitForParallelTask. */
 	parallelWorkerFailure?: string
+	/**
+	 * Injectable composed-surface provider for a parallel worker (FEAT-013,
+	 * MCP-018). Set by `runParallelTasks` after the worker-broker is wired;
+	 * returns the worker's CURRENT composed tool surface — the filtered `McpHub`
+	 * view plus the `disabledTools` suppression filter — or `undefined` when no
+	 * surface has been composed yet. `getSystemPrompt` consults it per generation
+	 * so each generation serializes only this worker's leased schemas. Absent for
+	 * non-parallel tasks, in which case the prompt resolves from the live hub.
+	 */
+	public composedSurfaceProvider?: () => AppliedComposedSurface | undefined
 	/** Consecutive failed API attempts for a parallel worker; reset when a request streams assistant content to completion. */
 	private parallelWorkerApiFailures = 0
 	private readonly lifetimeController = new AbortController()
@@ -391,7 +424,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private rateLimitClock: RateLimitClock
 	private autoApprovalHandler: AutoApprovalHandler
 
-	toolRepetitionDetector: ToolRepetitionDetector
+	toolRepetitionDetector: ProgressAwareLoopDetector
 	rooIgnoreController?: RooIgnoreController
 	rooProtectedController?: RooProtectedController
 	fileContextTracker: FileContextTracker
@@ -421,6 +454,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	consecutiveNoToolUseCount: number = 0
 	consecutiveNoAssistantMessagesCount: number = 0
 	toolUsage: ToolUsage = {}
+
+	// Semantic exploration (cache + shared memory + metrics), lazily created once
+	// per Task instance and retained across turns for the lifetime of the task.
+	private _semanticExplorationState?: SemanticExplorationState
+
+	public get semanticExplorationState(): SemanticExplorationState {
+		if (!this._semanticExplorationState) {
+			this._semanticExplorationState = createSemanticExplorationState()
+		}
+		return this._semanticExplorationState
+	}
 
 	// Conversation message counts, summarized once per Task Completed
 	// installment instead of emitting a separate telemetry event per turn.
@@ -644,10 +688,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		handoffExecutionContext,
 		parallelWorker = false,
 		parallelParentTaskId,
+		resolvedParallelismPolicy,
 	}: TaskOptions) {
 		super()
 		this.parallelWorker = parallelWorker
 		this.parallelParentTaskId = parallelParentTaskId
+		this.resolvedParallelismPolicy = resolvedParallelismPolicy
 		this.resetAssistantMessagePersistence()
 
 		if (startTask && !task && !images && !historyItem) {
@@ -756,7 +802,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Set up diff strategy
 		this.diffStrategy = new MultiSearchReplaceDiffStrategy(diffFuzzyThreshold)
 
-		this.toolRepetitionDetector = new ToolRepetitionDetector(this.consecutiveMistakeLimit)
+		this.toolRepetitionDetector = new ProgressAwareLoopDetector(this.consecutiveMistakeLimit)
 
 		// Initialize todo list if provided
 		if (initialTodos && initialTodos.length > 0) {
@@ -2138,6 +2184,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const condensingApiHandler = await this.getCondensingApiHandler()
 
+		// Capture the authoritative AutonomousTaskState out-of-band before the
+		// transcript is summarized. The state lives in a WeakMap keyed by this
+		// Task (never on apiConversationHistory), so summarization neither reads,
+		// rewrites, nor drops it; a read after condensation returns this same
+		// preserved object rather than a reconstruction from the summary.
+		const preservedAutonomousTaskState = preserveAutonomousTaskState(this)
+
 		const {
 			messages,
 			summary,
@@ -2177,6 +2230,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			return
 		}
 		await this.overwriteApiConversationHistory(messages)
+
+		// The summarized transcript has replaced apiConversationHistory, but the
+		// out-of-band AutonomousTaskState is untouched: a read here returns the
+		// exact object captured before summarization. Asserting object identity
+		// makes the condensation-survival invariant explicit and testable.
+		if (preserveAutonomousTaskState(this) !== preservedAutonomousTaskState) {
+			throw new Error(
+				`[RooCode#condenseContext] task ${this.taskId}.${this.instanceId} lost AutonomousTaskState across condensation`,
+			)
+		}
 
 		const contextCondense: ContextCondense = {
 			summary,
@@ -4599,11 +4662,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// the runtime path; prefer the caller's per-request snapshot when threaded.
 			const modelInfo = requestModelInfo ?? (await this.safeEnsureModelFetched())
 
+			// FEAT-013 (MCP-018): close the per-generation SYSTEM_PROMPT seam. When a
+			// parallel worker has a composed surface, present its filtered hub view and
+			// union its disabledTools so this generation serializes only the leased
+			// schemas. Absent provider/surface preserves the live-hub behavior, and an
+			// undefined hub (mcp disabled) is never resurrected by the applied view.
+			const applied = this.composedSurfaceProvider?.()
+			const effectiveMcpHub =
+				applied?.mcpHub !== undefined && mcpHub !== undefined ? applied.mcpHub : mcpHub
+			const effectiveDisabledTools = this.unionDisabledTools(
+				this.getDisabledTools(requestState?.disabledTools),
+				applied?.disabledTools,
+			)
+
 			return SYSTEM_PROMPT(
 				provider.context,
 				this.cwd,
 				false,
-				mcpHub,
+				effectiveMcpHub,
 				this.diffStrategy,
 				mode ?? defaultModeSlug,
 				customModePrompts,
@@ -4625,10 +4701,31 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				undefined, // todoList
 				this.api.getModel().id,
 				provider.getSkillsManager(),
-				this.getDisabledTools(requestState?.disabledTools),
+				effectiveDisabledTools,
 				modelInfo,
 			)
 		})()
+	}
+
+	/**
+	 * De-duplicated union of two optional disabled-tool lists. Stays `undefined`
+	 * when both inputs are absent or empty, preserving the pre-FEAT-013 behavior
+	 * where a non-parallel task with no disabled tools passed `undefined` to
+	 * SYSTEM_PROMPT. Order is stable: `a` entries first, then any new `b` entries.
+	 */
+	private unionDisabledTools(a?: string[], b?: string[]): string[] | undefined {
+		if ((a === undefined || a.length === 0) && (b === undefined || b.length === 0)) {
+			return undefined
+		}
+		const union: string[] = []
+		const seen = new Set<string>()
+		for (const tool of [...(a ?? []), ...(b ?? [])]) {
+			if (!seen.has(tool)) {
+				seen.add(tool)
+				union.push(tool)
+			}
+		}
+		return union
 	}
 
 	private getCurrentProfileId(state: any): string {

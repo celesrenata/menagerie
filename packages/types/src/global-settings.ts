@@ -35,6 +35,30 @@ export const omniRouteTierSchema = z.number().int().min(1).max(5)
 export const OMNIROUTE_TIER_COUNT = 5
 
 /**
+ * The five user-selectable parallelism appetite modes (FEAT-011), stored as their
+ * internal enum values (never the user-visible labels). The persisted internal value
+ * for the "MAXIMUM CHAOS" label is `"max"`. This expresses a concurrency *ceiling*
+ * (how aggressively Menagerie may fan work out), not a GPU or worker count or target.
+ */
+export const PARALLELISM_MODES = ["conservative", "balanced", "auto", "aggressive", "max"] as const
+
+export type ParallelismMode = (typeof PARALLELISM_MODES)[number]
+
+/**
+ * Default parallelism appetite when the user has not selected one. Auto lets the
+ * mastermind size useful concurrency and OmniRoute decide physical admission, without
+ * manufacturing filler work.
+ */
+export const DEFAULT_PARALLELISM_MODE: ParallelismMode = "auto"
+
+/**
+ * Shared schema for the parallelism appetite mode so the global setting, the webview
+ * control, and the request-path reader agree on the accepted values. Any non-member
+ * value is treated as unset and resolves to the `"auto"` default downstream.
+ */
+export const parallelismModeSchema = z.enum(PARALLELISM_MODES)
+
+/**
  * Default values for the "auto-close files Zoo opened" settings.
  *
  * These are defined once here and consumed by every site that reads the setting
@@ -151,6 +175,14 @@ export const globalSettingsSchema = z.object({
 	 * Integer 1-5; `undefined` means "use the server default" and emits no header.
 	 */
 	omniRouteTier: omniRouteTierSchema.optional(),
+	/**
+	 * Persisted default parallelism appetite (FEAT-011). One of the five
+	 * `ParallelismMode` values; `undefined` means "unset" and resolves to the
+	 * `DEFAULT_PARALLELISM_MODE` (`"auto"`) default downstream. The per-request
+	 * value rides on the request envelope's `parallelism` field and is never
+	 * derived from this persisted default at submit time.
+	 */
+	parallelismMode: parallelismModeSchema.optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
 	/**

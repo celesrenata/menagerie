@@ -20,7 +20,15 @@ import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { batchNearby } from "@src/utils/batchNearby"
 import { isBoundary, isIgnorableBetweenTargets } from "@src/utils/chatBatchingPredicates"
 
-import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType, SuggestionItem } from "@roo-code/types"
+import type {
+	ClineAsk,
+	ClineSayTool,
+	ClineMessage,
+	ExtensionMessage,
+	AudioType,
+	SuggestionItem,
+	ParallelismMode,
+} from "@roo-code/types"
 import { getCompletionCheckpoint, getSuggestionMode, hasUsableAnswer, isRetiredProvider } from "@roo-code/types"
 
 import { findLast } from "@roo/array"
@@ -102,6 +110,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		messageQueue = [],
 		showWorktreesInHomeScreen,
 		telemetrySetting,
+		omniRouteTier,
+		parallelismMode,
 	} = useExtensionState()
 
 	// Show a WarningRow when the user sends a message with a retired provider.
@@ -174,6 +184,41 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+
+	// Composer-local OmniRoute cost tier (FEAT-003). Updated synchronously on select;
+	// seeded once from the saved tier on first mount, after which local state is
+	// authoritative (no host echo dependence). The ref mirrors the latest value so
+	// the stable handleSendMessage callback can read it synchronously at submit time.
+	const [selectedOmniRouteTier, setSelectedOmniRouteTier] = useState<number | undefined>(undefined)
+	const selectedOmniRouteTierRef = useRef<number | undefined>(selectedOmniRouteTier)
+	const tierInitializedRef = useRef(false)
+	useEffect(() => {
+		selectedOmniRouteTierRef.current = selectedOmniRouteTier
+	}, [selectedOmniRouteTier])
+	useEffect(() => {
+		if (!tierInitializedRef.current && omniRouteTier !== undefined) {
+			setSelectedOmniRouteTier(omniRouteTier)
+			tierInitializedRef.current = true
+		}
+	}, [omniRouteTier])
+
+	// Composer-local parallelism appetite (FEAT-011). Mirrors the OmniRoute tier
+	// wiring above: updated synchronously on select; seeded once from the saved
+	// default on first mount, after which local state is authoritative. The ref
+	// mirrors the latest value so the submit handler can read it synchronously.
+	// This dimension is independent of the tier and reasoning-effort state.
+	const [selectedParallelismMode, setSelectedParallelismMode] = useState<ParallelismMode | undefined>(undefined)
+	const selectedParallelismModeRef = useRef<ParallelismMode | undefined>(selectedParallelismMode)
+	const parallelismInitializedRef = useRef(false)
+	useEffect(() => {
+		selectedParallelismModeRef.current = selectedParallelismMode
+	}, [selectedParallelismMode])
+	useEffect(() => {
+		if (!parallelismInitializedRef.current && parallelismMode !== undefined) {
+			setSelectedParallelismMode(parallelismMode)
+			parallelismInitializedRef.current = true
+		}
+	}, [parallelismMode])
 
 	// We need to hold on to the ask because useEffect > lastMessage will always
 	// let us know when an ask comes in and handle it, but by the time
@@ -688,8 +733,20 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				// Mark that user has responded - this prevents any pending auto-approvals.
 				userRespondedRef.current = true
 
+				// Capture the composer-local tier synchronously at submit time (FEAT-003).
+				// Read from the ref to avoid stale-closure issues in the useCallback.
+				const requestTier = selectedOmniRouteTierRef.current
+				// Capture the composer-local parallelism appetite synchronously at submit (FEAT-011). Read from the ref to avoid stale-closure issues. Omitted when unset.
+				const parallelism = selectedParallelismModeRef.current
+
 				if (messagesRef.current.length === 0) {
-					vscode.postMessage({ type: "newTask", text, images })
+					vscode.postMessage({
+						type: "newTask",
+						text,
+						images,
+						...(requestTier ? { requestTier } : {}),
+						...(parallelism ? { parallelism } : {}),
+					})
 				} else if (clineAskRef.current) {
 					if (clineAskRef.current === "followup") {
 						markFollowUpAsAnswered()
@@ -712,13 +769,22 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								askResponse: "messageResponse",
 								text,
 								images,
+								...(requestTier ? { requestTier } : {}),
+								...(parallelism ? { parallelism } : {}),
 							})
 							break
 						// There is no other case that a textfield should be enabled.
 					}
 				} else {
 					// This is a new message in an ongoing task.
-					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
+					vscode.postMessage({
+						type: "askResponse",
+						askResponse: "messageResponse",
+						text,
+						images,
+						...(requestTier ? { requestTier } : {}),
+						...(parallelism ? { parallelism } : {}),
+					})
 				}
 
 				handleChatReset(preserveDraft)
@@ -1903,6 +1969,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				isStreaming={isStreaming}
 				onStop={handleStopTask}
 				onEnqueueMessage={handleEnqueueCurrentMessage}
+				selectedOmniRouteTier={selectedOmniRouteTier}
+				onSelectOmniRouteTier={setSelectedOmniRouteTier}
+				selectedParallelismMode={selectedParallelismMode}
+				onSelectParallelismMode={setSelectedParallelismMode}
 			/>
 
 			{isProfileDisabled && (

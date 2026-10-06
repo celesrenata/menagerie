@@ -6,13 +6,18 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+	DEFAULT_PARALLELISM_MODE,
+	PARALLELISM_MODES,
+	type ParallelismMode,
 } from "@roo-code/types"
+
+import { PARALLELISM_MODE_LABELS } from "../chat/ParallelismControl"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Slider, Button } from "../ui"
+import { Slider, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui"
 import { ExtensionStateContextType } from "@/context/ExtensionStateContext"
 
 export const CHAT_FONT_SIZE_MIN = 8
@@ -26,6 +31,7 @@ interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	autoCloseZooOpenedFiles?: boolean
 	autoCloseZooOpenedFilesAfterUserEdited?: boolean
 	autoCloseZooOpenedNewFiles?: boolean
+	parallelismMode?: ParallelismMode
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
@@ -36,6 +42,7 @@ export const UISettings = ({
 	autoCloseZooOpenedFiles,
 	autoCloseZooOpenedFilesAfterUserEdited,
 	autoCloseZooOpenedNewFiles,
+	parallelismMode,
 	setCachedStateField,
 	...props
 }: UISettingsProps) => {
@@ -219,6 +226,42 @@ export const UISettings = ({
 							</VSCodeCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
 								{t("settings:ui.autoCloseZooOpenedNewFiles.description")}
+							</div>
+						</div>
+					</SearchableSetting>
+
+					{/* Default parallelism appetite (FEAT-011). Mirrors the composer control; the
+					    per-request value is sourced only from composer-local state in ChatView. */}
+					<SearchableSetting
+						settingId="ui-parallelism-default"
+						section="ui"
+						label="Default parallelism">
+						<div className="flex flex-col gap-1">
+							<label className="block font-medium mb-1">Default parallelism</label>
+							<Select
+								value={parallelismMode ?? DEFAULT_PARALLELISM_MODE}
+								onValueChange={(value) =>
+									setCachedStateField("parallelismMode", value as ParallelismMode)
+								}>
+								<SelectTrigger
+									className="w-full"
+									data-testid="parallelism-default-select-trigger">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{PARALLELISM_MODES.map((mode) => (
+										<SelectItem
+											key={mode}
+											value={mode}
+											data-testid={`parallelism-default-option-${mode}`}>
+											{PARALLELISM_MODE_LABELS[mode]}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<div className="text-vscode-descriptionForeground text-sm mt-1">
+								How aggressively Menagerie may fan work out by default. The composer control
+								overrides this per request.
 							</div>
 						</div>
 					</SearchableSetting>

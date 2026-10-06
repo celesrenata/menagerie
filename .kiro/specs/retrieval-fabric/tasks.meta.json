@@ -1,0 +1,483 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add gateway surface and evidence types": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863504
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291871084
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291994598
+      }
+    ],
+    "1.2 Add sizing, dimension, eval, and metrics types": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863526
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291872123
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291995447
+      }
+    ],
+    "2.1 Implement `fuseRRF` deterministic fusion": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863557
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292000398
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292148773
+      }
+    ],
+    "2.3 Implement `planHybridQuery`": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863576
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292001348
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292149658
+      }
+    ],
+    "2.5 Implement `decomposeQuery`": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863593
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292368203
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292544302
+      }
+    ],
+    "2.7 Implement `toEvidencePacket` bounding": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863610
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292002733
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292150605
+      }
+    ],
+    "3.1 Implement `ServingSizing` coupling logic": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863644
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292003677
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292152020
+      }
+    ],
+    "3.3 Implement `DimensionConfig` coupling logic": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863673
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292004586
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292152929
+      }
+    ],
+    "4.1 Implement change-awareness / freshness ranking": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863692
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292157757
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292361335
+      }
+    ],
+    "4.3 Implement graceful degradation across `CodeIndexManager` states": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863713
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292158689
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292362653
+      }
+    ],
+    "4.5 Implement deployment-selection logic": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863730
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292160005
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292363684
+      }
+    ],
+    "5. Checkpoint - pure logic complete": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863748
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292563366
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292572301
+      }
+    ],
+    "6.1 Implement `retrieve()` pipeline orchestration": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863764
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292595990
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292758915
+      }
+    ],
+    "6.3 Implement `RetrievalMetrics` recording": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863782
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292767164
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292958323
+      }
+    ],
+    "7.1 Implement semantic chunking": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863798
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292160837
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292364543
+      }
+    ],
+    "8.1 Digest-pin the embedding StatefulSet image": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863818
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293315777
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293432454
+      }
+    ],
+    "8.2 Add dual-path readiness probe scripts": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863846
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293433380
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293436780
+      }
+    ],
+    "8.3 Replace embedding httpGet readiness with the real-inference exec probe": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863867
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293437762
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293442086
+      }
+    ],
+    "8.4 Set the embedding pod memory limit sized with the serving ceiling": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863885
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293441105
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293445404
+      }
+    ],
+    "8.5 Commit the Qwen3-Reranker-0.6B Deployment replacing the bge drift": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863905
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293446437
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293449722
+      }
+    ],
+    "9.1 Write the config-assertion test over the committed manifests": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863925
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293548380
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293698340
+      }
+    ],
+    "10.1 Implement the evaluation harness": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863943
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292596924
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292757869
+      }
+    ],
+    "11.1 Author the live-check verification document": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291863979
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293701963
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293864887
+      }
+    ],
+    "12. Final checkpoint - ensure all tests pass": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291864000
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293874722
+      },
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293915190
+      }
+    ],
+    "1. Define gateway data models and types": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791291995480
+      }
+    ],
+    "3. Implement serving-ceiling / pod-memory and dimension coupling": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292152974
+      }
+    ],
+    "4. Implement freshness, degradation, and deployment-selection logic": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292363718
+      }
+    ],
+    "7. Implement the semantic-boundary chunker": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292364575
+      }
+    ],
+    "2. Implement pure gateway logic (fusion, planning, decomposition, bounding)": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292544347
+      }
+    ],
+    "10. Build the evaluation harness (runnable benchmark, not a gate)": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292757912
+      }
+    ],
+    "6. Wire the `RetrievalGateway.retrieve()` pipeline and metrics": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791292958381
+      }
+    ],
+    "8. Apply committed config deltas (declarative manifests at `sources/kube/omniroute-memory/`)": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293449762
+      }
+    ],
+    "9. Add the manifest config-assertion test": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293698382
+      }
+    ],
+    "11. Live-cluster verification checklist (MANUAL, non-CI — not auto-verifiable)": [
+      {
+        "executionId": "74912dc9-fdfb-4d09-826d-a31229ad5049",
+        "chatSessionId": "sess_9c691e0a-15ca-4456-afff-3e1bf951df43",
+        "timestamp": 1791293864939
+      }
+    ]
+  }
+}

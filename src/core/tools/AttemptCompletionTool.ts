@@ -219,6 +219,12 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			}
 
 			if (task.parallelWorker) {
+				// A parallel worker delivers its result here: `result` is captured as this
+				// task's completion_result say (above) and read back by waitForParallelTask.
+				// The worker-result layer (runParallelTasks) runs normalizeWorkerResult over
+				// that captured completion output and serializes the full WorkerResult through
+				// the existing `result` channel for persistence + the bounded-parent path.
+				// Do NOT normalize or inject a separate parent payload here (design §FEAT-007).
 				if (await askFinishSubTaskApproval()) await this.emitPublicTaskCompleted(task)
 				return
 			}

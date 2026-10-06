@@ -3,7 +3,7 @@ import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
 import { VolumeX, Image, WandSparkles, SendHorizontal, X, ListEnd, Square, GitFork } from "lucide-react"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage, ParallelismMode } from "@roo-code/types"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
 import { WebviewMessage } from "@roo/WebviewMessage"
@@ -29,6 +29,7 @@ import { ModeSelector } from "./ModeSelector"
 import { ApiConfigSelector } from "./ApiConfigSelector"
 import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { OmniRouteTierDropdown } from "./OmniRouteTierDropdown"
+import { ParallelismControl } from "./ParallelismControl"
 import { MAX_IMAGES_PER_MESSAGE } from "./constants"
 import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
@@ -59,6 +60,14 @@ interface ChatTextAreaProps {
 	isStreaming?: boolean
 	onStop?: () => void
 	onEnqueueMessage?: () => void
+	/** Composer-local OmniRoute tier (FEAT-003). */
+	selectedOmniRouteTier?: number | undefined
+	/** Synchronous local-state setter for the OmniRoute tier (FEAT-003). */
+	onSelectOmniRouteTier?: (tier: number | undefined) => void
+	/** Composer-local parallelism appetite (FEAT-011). */
+	selectedParallelismMode?: ParallelismMode | undefined
+	/** Synchronous local-state setter for the parallelism appetite (FEAT-011). */
+	onSelectParallelismMode?: (mode: ParallelismMode) => void
 }
 
 export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
@@ -83,6 +92,10 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			isStreaming = false,
 			onStop,
 			onEnqueueMessage,
+			selectedOmniRouteTier,
+			onSelectOmniRouteTier,
+			selectedParallelismMode,
+			onSelectParallelismMode,
 		},
 		ref,
 	) => {
@@ -1323,7 +1336,16 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							onToggleLockApiConfig={handleToggleLockApiConfig}
 						/>
 						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
-						<OmniRouteTierDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
+						<OmniRouteTierDropdown
+							triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0"
+							selectedTier={selectedOmniRouteTier}
+							onSelectTier={onSelectOmniRouteTier ?? (() => {})}
+						/>
+						<ParallelismControl
+							triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0"
+							selectedParallelismMode={selectedParallelismMode}
+							onSelect={onSelectParallelismMode ?? (() => {})}
+						/>
 						{!isEditMode && onForceParallel && (
 							<StandardTooltip content={t("chat:forceParallel.description")}>
 								<button
