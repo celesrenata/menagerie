@@ -1,0 +1,405 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add scheduler data-model module": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287286921
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287293790
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287438008
+      }
+    ],
+    "2.1 Implement `TaskDag` over `ExecutionPlan`": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287286945
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287444893
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287675594
+      }
+    ],
+    "3.1 Implement `InferenceLeasePool` over `TaskSemaphore`": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287286972
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287445758
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287676474
+      }
+    ],
+    "4.1 Implement scheduler construction, admission, and dispatch": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287286999
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287692213
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287869933
+      }
+    ],
+    "5.1 Implement completion event bus and DAG unlock in the scheduler": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287018
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287873583
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288040464
+      }
+    ],
+    "6. Checkpoint - Ensure all scheduler-core tests pass": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287052
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288044447
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288096683
+      }
+    ],
+    "7.1 Generalize `ParallelTaskReader` reader fan-out": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287075
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288102676
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288243919
+      }
+    ],
+    "7.2 Implement `stealWork` splitting in the scheduler": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287099
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288247204
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288419453
+      }
+    ],
+    "8.1 Implement speculative execution and isolated cancellation": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287126
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288423947
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288555948
+      }
+    ],
+    "8.3 Implement priority, critical-path preference, and backpressure": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287148
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288559060
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288818370
+      }
+    ],
+    "9. Checkpoint - Ensure reader/speculation/priority tests pass": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287169
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288822301
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288870983
+      }
+    ],
+    "10.1 Elasticize `parallelTasksSchema` and error wording": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287190
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288874316
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289070848
+      }
+    ],
+    "10.3 Build `ExecutionPlan` and admit it in `ParallelTasksTool.execute`": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287208
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289074261
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289226810
+      }
+    ],
+    "11.1 Dispatch workers through the scheduler in `runParallelTasks`": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287243
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289230472
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289521390
+      }
+    ],
+    "11.2 Replace the process-wide pool wiring": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287265
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289524526
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289618716
+      }
+    ],
+    "12. Checkpoint - Ensure tool and runParallelTasks tests pass": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287290
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289621867
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289673848
+      }
+    ],
+    "13.1 Implement `ParallelismMetrics` collection in the scheduler": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287315
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289677050
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289980274
+      }
+    ],
+    "14.1 Map logical-worker states onto persisted lifecycle statuses": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287340
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289983768
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791290127363
+      }
+    ],
+    "15. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287287363
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791290130944
+      },
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791290204467
+      }
+    ],
+    "1. Define elastic-fabric data models and types": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287438041
+      }
+    ],
+    "2. Implement the Task_DAG": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287675642
+      }
+    ],
+    "3. Implement the InferenceLeasePool": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287676507
+      }
+    ],
+    "4. Implement the BoundedElasticScheduler core": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791287869974
+      }
+    ],
+    "5. Wire the event-driven completion bus and partial completion": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288040497
+      }
+    ],
+    "7. Implement reader-swarm generalization and work stealing": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288419490
+      }
+    ],
+    "8. Implement speculation, priority, critical-path, and backpressure": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791288818399
+      }
+    ],
+    "10. Elasticize the parallel_tasks tool schema and ExecutionPlan build": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289226845
+      }
+    ],
+    "11. Rehost runParallelTasks on the scheduler": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289618759
+      }
+    ],
+    "13. Implement parallelism metrics (FEAT-012)": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791289980323
+      }
+    ],
+    "14. Lifecycle integration (reducer change only if unavoidable)": [
+      {
+        "executionId": "2d2b6238-89bf-461b-8dc5-d27a97852b34",
+        "chatSessionId": "sess_9febd9e6-8eeb-431b-a05c-f81d30379a1f",
+        "timestamp": 1791290127397
+      }
+    ]
+  }
+}

@@ -1,0 +1,405 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create `src/core/capability/toolCapability.ts` with `ToolCapabilityId`, risk/access/provider kinds, and the seed vocabulary": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127575
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305135916
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305209838
+      }
+    ],
+    "1.2 Create `src/core/capability/capabilityCatalog.ts` with `CapabilityCatalogEntry`, `CapabilityCatalog`, and the seed catalog + `mastermindView`": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127600
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305213917
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305413913
+      }
+    ],
+    "2.1 Create `src/core/capability/providerRegistry.ts` with `ResolvedTool`, `CapabilityProvider`, and `ProviderRegistry`": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127637
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305215831
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305415349
+      }
+    ],
+    "3.1 Create `src/core/capability/capabilityLease.ts` with lease and `WorkerCapabilityState` types plus pure state transitions": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127678
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305216716
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305416685
+      }
+    ],
+    "3.3 Add the additive `AutonomousTaskState.capabilities` field and worker-state serialization": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127719
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305421080
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305597260
+      }
+    ],
+    "4.1 Create `src/core/capability/capabilityPolicyEngine.ts` with `PolicyDecision` and pure `decide`": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127748
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305422463
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305596306
+      }
+    ],
+    "5.1 Create `src/core/capability/schemaComposer.ts` with `ComposedToolSurface` and deterministic `compose`": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127777
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305423433
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305598537
+      }
+    ],
+    "5.3 Wire the composed surface into SYSTEM_PROMPT via a filtered McpHub view and disabledTools": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127808
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305611575
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305760303
+      }
+    ],
+    "6. Checkpoint - Ensure all pure-component tests pass": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127844
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305772250
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305814262
+      }
+    ],
+    "7.1 Create `src/core/capability/capabilityBroker.ts` with `coreCapabilities`, `requestCapability`, `releaseCapability`, and `snapshot`": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127877
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305826761
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306169661
+      }
+    ],
+    "7.2 Add fail-closed degradation and parent/child least-privilege scoping to the broker": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127917
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306180566
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306472287
+      }
+    ],
+    "8.1 Create `src/core/capability/capabilityDiscovery.ts` with `CapabilityRecommendation` and `recommend`": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127943
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305832427
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306168276
+      }
+    ],
+    "9.1 Attach `NodeCapabilityRequirement` additively to `ParallelTaskSpec` and provision before first generation": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305127977
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306181930
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306473629
+      }
+    ],
+    "10.1 Add the additive capability `ObservationEvent` variant and its webview message type": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305128010
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305835209
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306171062
+      }
+    ],
+    "11.1 Create `src/core/capability/compatibilityMode.ts` mapping legacy alwaysAllow/disabledTools to allowed capabilities": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305128045
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305833907
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306173468
+      }
+    ],
+    "12.1 Add the additive `WorkerResult.capabilityTelemetry` field and the per-generation accounting computation": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305128077
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305836138
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306172463
+      }
+    ],
+    "13.1 Wire the broker into the per-worker runtime and the deploy-then-audit phase lifecycle": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305128111
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306478302
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306881764
+      },
+      {
+        "executionId": "9e91a5e5-6cf7-4d07-bd03-cbb83fd15045",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791307166023
+      },
+      {
+        "executionId": "9e91a5e5-6cf7-4d07-bd03-cbb83fd15045",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791307449543
+      }
+    ],
+    "14. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305128143
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306885450
+      },
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791307021803
+      }
+    ],
+    "1. Define the Tool Capability taxonomy and the extensible provider registry foundations": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305413950
+      }
+    ],
+    "2. Implement the Provider Registry grounded in McpHub": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305415385
+      }
+    ],
+    "4. Implement the pure Capability Policy Engine over checkAutoApproval": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305596345
+      }
+    ],
+    "3. Define the CapabilityLease, two-level worker state, and its AutonomousTaskState persistence": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305597293
+      }
+    ],
+    "5. Implement the deterministic Schema Composer and its SYSTEM_PROMPT enforcement wiring": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791305760337
+      }
+    ],
+    "8. Implement Capability Discovery as a recommendation signal only": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306168321
+      }
+    ],
+    "10. Expose capability state through the Observatory as a read-only event": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306171097
+      }
+    ],
+    "12. Implement context-accounting telemetry on WorkerResult": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306172496
+      }
+    ],
+    "11. Implement the compatibility path from existing McpHub configuration": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306173504
+      }
+    ],
+    "7. Implement the Capability Broker orchestration surface": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306472332
+      }
+    ],
+    "9. Wire DAG-node capability provisioning additively onto ParallelTaskSpec": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306473663
+      }
+    ],
+    "13. End-to-end wiring and real-extension-host boundary smoke": [
+      {
+        "executionId": "1540f6e8-565f-4ebd-b69b-2b49fdecfb11",
+        "chatSessionId": "sess_80a1ca17-8894-49b1-9dc5-82b8711d3122",
+        "timestamp": 1791306881811
+      }
+    ]
+  }
+}

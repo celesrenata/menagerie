@@ -40,6 +40,7 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	DEFAULT_PARALLELISM_MODE,
 	ImageGenerationProvider,
 } from "@roo-code/types"
 
@@ -224,6 +225,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCloseZooOpenedFiles,
 		autoCloseZooOpenedFilesAfterUserEdited,
 		autoCloseZooOpenedNewFiles,
+		parallelismMode,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -453,6 +455,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					autoCloseZooOpenedFilesAfterUserEdited:
 						autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 					autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+					parallelismMode: parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -965,6 +968,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								autoCloseZooOpenedFiles={autoCloseZooOpenedFiles}
 								autoCloseZooOpenedFilesAfterUserEdited={autoCloseZooOpenedFilesAfterUserEdited}
 								autoCloseZooOpenedNewFiles={autoCloseZooOpenedNewFiles}
+								parallelismMode={parallelismMode}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

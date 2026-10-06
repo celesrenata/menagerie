@@ -1,0 +1,191 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Define shared Observatory data models and the read-only message surface": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275089784
+      },
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275097370
+      },
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275267071
+      }
+    ],
+    "2.1 Implement `deriveStatus` in `src/services/observatory/deriveStatus.ts`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275089832
+      },
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275270880
+      }
+    ],
+    "3.1 Implement `PersistedTaskStoreReader` in `src/services/observatory/PersistedTaskStoreReader.ts`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275089864
+      },
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275272333
+      }
+    ],
+    "4.1 Implement `ErrorClassifier.classify` in `src/services/observatory/ErrorClassifier.ts`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275089897
+      },
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275273416
+      }
+    ],
+    "5. Checkpoint - pure models, derivation, persisted reader, and classifier": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275089957
+      }
+    ],
+    "6.1 Implement `TaskObservationService` core lifecycle and read-only subscription in `src/services/observatory/TaskObservationService.ts`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275089992
+      }
+    ],
+    "6.2 Implement event normalization, failure isolation, and debounced batching": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090024
+      }
+    ],
+    "6.3 Implement the SNAPSHOT reconciliation pass": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090065
+      }
+    ],
+    "7.1 Implement Mastermind summary and attention aggregation helpers": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090092
+      }
+    ],
+    "8.1 Add Observatory read-only handlers in `webviewMessageHandler`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090130
+      }
+    ],
+    "9. Checkpoint - host service, aggregation, and routing": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090159
+      }
+    ],
+    "10.1 Implement `ObservatoryRoot` and the observatory store in `webview-ui/src/components/observatory/`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090197
+      }
+    ],
+    "11.1 Implement `TaskTree`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090230
+      }
+    ],
+    "11.3 Implement `AttentionQueue` and `MastermindDashboard`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090257
+      }
+    ],
+    "12.1 Implement `InspectionTabBar` and `InspectionTab`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090300
+      }
+    ],
+    "12.2 Implement `SummaryHeader`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090334
+      }
+    ],
+    "13.1 Implement `DetailTabs`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090365
+      }
+    ],
+    "13.2 Implement `VirtualTimeline` with bounded windowing and lazy expansion": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090392
+      }
+    ],
+    "13.3 Implement `ErrorBadge` and per-event render-failure isolation": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090441
+      }
+    ],
+    "14. Checkpoint - webview surface complete": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090475
+      }
+    ],
+    "15.1 Register `TaskObservationService` during extension activation": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090508
+      }
+    ],
+    "15.2 Trim `src/activate/taskBoard.ts`": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090540
+      }
+    ],
+    "17. Final checkpoint - full feature integrated": [
+      {
+        "executionId": "5bd17a9b-2914-482f-8d58-d8ab04ef03d2",
+        "chatSessionId": "sess_3552681a-efc4-4436-8c02-3df9c8fccdb8",
+        "timestamp": 1791275090573
+      }
+    ]
+  }
+}

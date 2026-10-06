@@ -64,6 +64,36 @@ export function withOmniRouteTier(configuration: ProviderSettings, tier: number 
 }
 
 /**
+ * Resolve the effective OmniRoute cost tier for a single request (FEAT-003).
+ * Precedence: a valid envelope tier wins; else a valid saved tier; else undefined
+ * (OmniRoute default, no header). Any value that is not an integer in 1..5 is
+ * treated as absent. Never mutates persisted state.
+ */
+export function resolveRequestTier(
+	envelopeTier: number | undefined,
+	savedTier: number | undefined,
+): number | undefined {
+	if (omniRouteTierSchema.safeParse(envelopeTier).success) return envelopeTier
+	if (omniRouteTierSchema.safeParse(savedTier).success) return savedTier
+	return undefined
+}
+
+/**
+ * Clamp a mastermind worker's requested tier to the execution ceiling (FEAT-003).
+ * - ceiling undefined => no ceiling; pass the requested tier through (may be undefined).
+ * - requested undefined with a defined ceiling => the ceiling (worker inherits the ceiling).
+ * - otherwise => min(requested, ceiling), i.e. below/at ceiling preserved, above clamped down.
+ */
+export function clampWorkerTier(
+	requestedTier: number | undefined,
+	ceilingTier: number | undefined,
+): number | undefined {
+	if (ceilingTier === undefined) return requestedTier
+	if (requestedTier === undefined) return ceilingTier
+	return Math.min(requestedTier, ceilingTier)
+}
+
+/**
  * True iff this profile is an OmniRoute connection: an OpenAI-compatible provider
  * with the `openAiIsOmniRoute` flag enabled. No URL parsing, no address literal.
  */

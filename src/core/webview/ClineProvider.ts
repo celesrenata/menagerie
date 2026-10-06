@@ -37,6 +37,7 @@ import {
 	type CloudUserInfo,
 	type CloudOrganizationMembership,
 	type CreateTaskOptions,
+	type ParallelismPolicy,
 	type TokenUsage,
 	type ToolUsage,
 	type ExtensionMessage,
@@ -49,6 +50,7 @@ import {
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
@@ -112,7 +114,7 @@ import { t } from "../../i18n"
 
 import { buildApiHandler } from "../../api"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/providers/fetchers/lmstudio"
-import { withOmniRouteTier } from "../../api/providers/omniroute"
+import { clampWorkerTier, withOmniRouteTier } from "../../api/providers/omniroute"
 
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
@@ -1876,6 +1878,22 @@ export class ClineProvider
 		return withOmniRouteTier(configuration, this.contextProxy.getValue("omniRouteTier"))
 	}
 
+	/**
+	 * Apply a mastermind worker's OmniRoute cost tier, clamped to the execution Tier_Ceiling (FEAT-003).
+	 *
+	 * The worker's requested tier is today the live global tier. `ceilingTier` is the execution's
+	 * resolved per-request tier: `clampWorkerTier` keeps a requested tier at or below the ceiling,
+	 * clamps a tier above the ceiling down to it, and — when the ceiling is `undefined` — passes the
+	 * requested tier through unchanged (preserving the FEAT-005 live-global behavior with no ceiling).
+	 */
+	private withClampedWorkerOmniRouteTier(
+		configuration: ProviderSettings,
+		ceilingTier: number | undefined,
+	): ProviderSettings {
+		const requestedWorkerTier = this.contextProxy.getValue("omniRouteTier")
+		return withOmniRouteTier(configuration, clampWorkerTier(requestedWorkerTier, ceilingTier))
+	}
+
 	getProviderProfileEntries(): ProviderSettingsEntry[] {
 		return this.contextProxy.getValues().listApiConfigMeta || []
 	}
@@ -2621,6 +2639,7 @@ export class ClineProvider
 			destructiveCommandGuardEnabled,
 			yoloModeEnabled,
 			omniRouteTier,
+			parallelismMode,
 			allowedCommands,
 			deniedCommands,
 			alwaysAllowMcp,
@@ -2786,6 +2805,8 @@ export class ClineProvider
 			yoloModeEnabled: yoloModeEnabled ?? false,
 			// FEAT-005: round-trip the saved cost tier back to the webview (undefined = server default).
 			omniRouteTier,
+			// FEAT-011: round-trip the saved parallelism default back to the webview.
+			parallelismMode,
 			alwaysAllowMcp: alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: alwaysAllowSubtasks ?? false,
@@ -3024,6 +3045,8 @@ export class ClineProvider
 			yoloModeEnabled: stateValues.yoloModeEnabled ?? false,
 			// FEAT-005: undefined means "use the OmniRoute server default" (no X-OmniRoute-Tier header).
 			omniRouteTier: stateValues.omniRouteTier,
+			// FEAT-011: default the saved parallelism appetite to "auto" so runtime consumers read a mode.
+			parallelismMode: stateValues.parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 			alwaysAllowMcp: stateValues.alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: stateValues.alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: stateValues.alwaysAllowSubtasks ?? false,
@@ -3462,6 +3485,22 @@ export class ClineProvider
 			workspacePath?: string
 			parallelWorker?: boolean
 			parallelParentTaskId?: string
+			/**
+			 * Per-request OmniRoute cost tier resolved at submit time (FEAT-003). When defined,
+			 * it overrides the live/saved tier on this one request's apiConfiguration via
+			 * withOmniRouteTier, without being written back to ContextProxy. When undefined, the
+			 * saved-tier behavior applied by getState() is preserved.
+			 */
+			resolvedOmniRouteTier?: number
+			/**
+			 * FEAT-011 (user-controlled-parallelism): the per-request parallelism ceilings
+			 * resolved at submit time via `resolveParallelismPolicy(effective mode)`. Carried
+			 * through to the Task as a hand-off seam (`task.resolvedParallelismPolicy`); this
+			 * feature performs NO enforcement. The `elastic-parallel-execution` feature consumes
+			 * the seam to supply the `BoundedElasticScheduler` its `User_Parallelism_Policy`.
+			 * Undefined leaves the scheduler default ceilings in effect.
+			 */
+			resolvedParallelismPolicy?: ParallelismPolicy
 		} = {},
 		configuration: RooCodeSettings = {},
 	): Promise<Task> {
@@ -3506,18 +3545,35 @@ export class ClineProvider
 		}
 
 		const {
-			apiConfiguration,
+			apiConfiguration: stateApiConfiguration,
 			enableCheckpoints,
 			checkpointTimeout,
 			experiments,
 			organizationAllowList,
 			diffFuzzyThreshold,
 		} = await this.getState()
+		// FEAT-003: when the caller provides a per-request resolved tier, overlay it onto the
+		// apiConfiguration from getState() via withOmniRouteTier. This is a non-persisted,
+		// per-request override — the resolved tier is NOT written back to ContextProxy.
+		const apiConfiguration =
+			options.resolvedOmniRouteTier !== undefined
+				? withOmniRouteTier(stateApiConfiguration, options.resolvedOmniRouteTier)
+				: stateApiConfiguration
 		// Every child and parallel worker gets its handler from the handoff profile. Apply the live
 		// global OmniRoute tier here so a saved OmniRoute profile sends X-OmniRoute-Tier (FEAT-005).
+		//
+		// FEAT-003: the execution's resolved per-request tier (options.resolvedOmniRouteTier) acts as
+		// the mastermind Tier_Ceiling. Each worker's requested tier (today the live global tier) is
+		// clamped to that ceiling before being applied, so a worker at or below the ceiling keeps its
+		// tier and a worker above the ceiling is clamped down. When the ceiling is undefined,
+		// clampWorkerTier passes the requested tier through unchanged, preserving today's behavior.
+		// OmniRoute still owns model/provider/GPU placement; only the tier header is constrained.
 		const handoffExecutionContext = options.handoffExecutionContext && {
 			...options.handoffExecutionContext,
-			apiConfiguration: this.withLiveOmniRouteTier(options.handoffExecutionContext.apiConfiguration),
+			apiConfiguration: this.withClampedWorkerOmniRouteTier(
+				options.handoffExecutionContext.apiConfiguration,
+				options.resolvedOmniRouteTier,
+			),
 		}
 		const effectiveApiConfiguration = getEffectiveTaskApiConfiguration(apiConfiguration, handoffExecutionContext)
 

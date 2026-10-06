@@ -1,0 +1,318 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add optional `requestTier?: number` to `WebviewMessage` in `packages/types/src/vscode-extension-host.ts`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866672
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280874141
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280951965
+      }
+    ],
+    "2.1 Implement `resolveRequestTier(envelopeTier, savedTier)` in `src/api/providers/omniroute.ts`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866704
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280955395
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281024637
+      }
+    ],
+    "2.2 Implement `clampWorkerTier(requestedTier, ceilingTier)` in `src/api/providers/omniroute.ts`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866739
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281033727
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281099022
+      }
+    ],
+    "3. Checkpoint - pure functions and their tests": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866772
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281115459
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281165576
+      }
+    ],
+    "4.1 Apply `resolveRequestTier` in the `newTask` case of `src/core/webview/webviewMessageHandler.ts`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866818
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281190050
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281475616
+      }
+    ],
+    "4.2 Apply `resolveRequestTier` in the `messageResponse` `askResponse` case of `src/core/webview/webviewMessageHandler.ts`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866855
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281479697
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281619263
+      }
+    ],
+    "5.1 Apply `clampWorkerTier` at the parallel-worker / handoff tier point in `src/core/webview/ClineProvider.ts`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866879
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281480756
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281620121
+      }
+    ],
+    "6. Checkpoint - host wiring": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866906
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281631521
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281708312
+      }
+    ],
+    "7.1 Make `OmniRouteTierDropdown` a controlled component in `webview-ui/src/components/chat/OmniRouteTierDropdown.tsx`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866931
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281712219
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281902932
+      }
+    ],
+    "7.2 Add composer-local tier state and submit-time capture in `webview-ui/src/components/chat/ChatView.tsx`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280866962
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281909215
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282103684
+      }
+    ],
+    "10. Final checkpoint - full verification": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280867006
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282113972
+      },
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282232510
+      }
+    ],
+    "1. Add additive `requestTier` field to the request envelope message types": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791280951997
+      }
+    ],
+    "2. Implement the pure host resolution and clamp functions": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281099056
+      }
+    ],
+    "2.3 Write property test for `resolveRequestTier` precedence and totality": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281179242
+      }
+    ],
+    "2.4 Write property test for `resolveRequestTier` invalid-envelope normalization": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281180133
+      }
+    ],
+    "2.5 Write property test for `clampWorkerTier` min semantics": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281180874
+      }
+    ],
+    "2.6 Write property test for header emission via `withOmniRouteTier` / `omniRouteRequestHeaders`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281181715
+      }
+    ],
+    "2.7 Write unit tests for `resolveRequestTier` and `clampWorkerTier` concrete cases": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281182622
+      }
+    ],
+    "4. Wire resolution into the host message handlers": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281619288
+      }
+    ],
+    "5. Wire the mastermind worker tier ceiling in `ClineProvider`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281620148
+      }
+    ],
+    "4.3 Write unit tests for host resolution wiring in `webviewMessageHandler`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281627063
+      }
+    ],
+    "5.2 Write unit tests for the worker ceiling wiring in `ClineProvider`": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281628217
+      }
+    ],
+    "7.3 Write webview-ui tests for the controlled dropdown and async-persist separation": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791281908165
+      }
+    ],
+    "7. Refactor the composer to capture the tier synchronously at submit time": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282103719
+      }
+    ],
+    "7.4 Write webview-ui tests for submit-time capture": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282108159
+      }
+    ],
+    "8.1 Write the race-regression test parametrized over tiers 1-5": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282109269
+      }
+    ],
+    "8. Add the focused \"race is gone\" webview regression test": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282109302
+      }
+    ],
+    "9.1 Confirm and extend existing host suites remain green": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282110568
+      }
+    ],
+    "9. Preserve existing behavior (backward compatibility)": [
+      {
+        "executionId": "3ccef672-7d12-43f7-ae7d-6098bdfe1750",
+        "chatSessionId": "sess_04beaaef-cc28-46d5-966b-697f174eb9a6",
+        "timestamp": 1791282110604
+      }
+    ]
+  }
+}

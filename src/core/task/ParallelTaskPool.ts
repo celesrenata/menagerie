@@ -50,5 +50,3 @@ export class ParallelTaskPool {
 		while (this.active < this.capacity && this.queue.length) this.queue.shift()!()
 	}
 }
-
-export const parallelTaskPool = new ParallelTaskPool(4)

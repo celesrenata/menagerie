@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { GlobalSettings, RooCodeSettings } from "./global-settings.js"
+import type { GlobalSettings, ParallelismMode, RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettings, ProviderSettingsEntry } from "./provider-settings.js"
 import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
@@ -8,6 +8,14 @@ import type { Experiments } from "./experiment.js"
 import type { ClineMessage, QueuedMessage } from "./message.js"
 import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
 import type { TodoItem } from "./todo.js"
+import type {
+	ObservationEvent,
+	ObservationSource,
+	ObservedTask,
+	MastermindSummary,
+	TimelineEvent,
+	CapabilityObservationEvent,
+} from "./observatory.js"
 import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList, ShareVisibility } from "./cloud.js"
 import type { SerializedCustomToolDefinition } from "./custom-tool.js"
 import type { GitCommit } from "./git.js"
@@ -110,6 +118,12 @@ export interface ExtensionMessage {
 		| "fileContent"
 		| "rooHistoryImportProgress"
 		| "themeFixtureProbeRequest"
+		// Task Observatory (host -> webview), read-only payloads only
+		| "observatoryUpdate"
+		| "observatoryWindow"
+		| "observatoryPersisted"
+		| "observatoryMastermind"
+		| "observatoryError"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -257,7 +271,55 @@ export interface ExtensionMessage {
 	copyProgressItemName?: string
 	// folderSelected
 	path?: string
+	/**
+	 * Task Observatory host -> webview payload. Read-only; carries no mutation path.
+	 * Discriminated by the `type` field above (observatoryUpdate / observatoryWindow /
+	 * observatoryPersisted / observatoryMastermind / observatoryError).
+	 */
+	observatory?: ObservatoryExtensionPayload
 }
+
+/**
+ * Read-only Task Observatory payloads sent host -> webview, discriminated on `kind`
+ * to mirror the `ExtensionMessage.type` variant that carries them.
+ */
+export type ObservatoryExtensionPayload =
+	| {
+			kind: "update"
+			reason: "event" | "snapshot"
+			source: ObservationSource
+			tasks: ObservedTask[]
+			events?: ObservationEvent[]
+	  }
+	| {
+			kind: "window"
+			taskId: string
+			offset: number
+			events: TimelineEvent[]
+	  }
+	| {
+			kind: "persisted"
+			batchId: string
+			workerId: string
+			task: ObservedTask
+			events: TimelineEvent[]
+	  }
+	| {
+			kind: "mastermind"
+			summary: MastermindSummary
+	  }
+	| {
+			// Additive read-only capability variant (dynamic-capability-broker, Req 9.2/9.4).
+			// Carries the four partitions (ACTIVE/AVAILABLE/RELEASED/DENIED) plus optional
+			// lease history; no mutation path.
+			kind: "capability"
+			event: CapabilityObservationEvent
+	  }
+	| {
+			kind: "error"
+			message: string
+			taskId?: string
+	  }
 
 export interface OpenAiCodexRateLimitsMessage {
 	type: "openAiCodexRateLimits"
@@ -275,6 +337,7 @@ export type ExtensionState = Pick<
 	| "autoApprovalEnabled"
 	| "yoloModeEnabled"
 	| "omniRouteTier"
+	| "parallelismMode"
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowReadOnlyOutsideWorkspace"
 	| "allowedReadFiles"
@@ -654,6 +717,13 @@ export interface WebviewMessage {
 		| "openRuleFile"
 		| "openRulesDirectory"
 		| "themeFixtureProbeResponse"
+		// Task Observatory (webview -> host): complete read-only request allowlist.
+		// No variant here mutates task lifecycle, active-chat selection, or routing.
+		| "observatorySubscribe"
+		| "observatoryRequestWindow"
+		| "observatoryRequestPersisted"
+		| "observatoryRequestMastermind"
+		| "observatoryRefresh"
 	text?: string
 	taskId?: string
 	editedMessageContent?: string
@@ -664,6 +734,28 @@ export interface WebviewMessage {
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ProviderSettings
 	images?: string[]
+	/**
+	 * Per-request OmniRoute cost tier captured at submit time (FEAT-003).
+	 * Carried only on the `newTask` message and on the `messageResponse`
+	 * `askResponse` message. Integer 1-5 when present, mirroring the range of
+	 * `omniRouteTierSchema` (packages/types/src/global-settings.ts). Out-of-range
+	 * or non-integer values are treated as absent by `resolveRequestTier` on the
+	 * host, which falls back to the saved tier (then the OmniRoute default).
+	 * Optional and additive: older webview/host builds that omit it still
+	 * interoperate (missing → saved-tier fallback). Omitted when the composer has
+	 * no local tier.
+	 */
+	requestTier?: number
+	/**
+	 * Per-request parallelism appetite captured at submit time (FEAT-011).
+	 * Carried only on the `newTask` message and on the `messageResponse`
+	 * `askResponse` message, mirroring `requestTier`. One of the five
+	 * `ParallelismMode` values; invalid or absent values resolve to the saved
+	 * default and then `"auto"` on the host via `resolveEffectiveParallelismMode`.
+	 * Optional and additive: older webview/host builds that omit it still
+	 * interoperate (missing → saved-default fallback).
+	 */
+	parallelism?: ParallelismMode
 	bool?: boolean
 	value?: number
 	stepIndex?: number
@@ -765,7 +857,26 @@ export interface WebviewMessage {
 	worktreeForce?: boolean
 	worktreeNewWindow?: boolean
 	worktreeIncludeContent?: string
+	/**
+	 * Task Observatory webview -> host request payload. Read-only requests only;
+	 * discriminated by the `type` field above (observatorySubscribe /
+	 * observatoryRequestWindow / observatoryRequestPersisted /
+	 * observatoryRequestMastermind / observatoryRefresh).
+	 */
+	observatory?: ObservatoryWebviewPayload
 }
+
+/**
+ * Read-only Task Observatory request payloads sent webview -> host, discriminated on
+ * `kind` to mirror the `WebviewMessage.type` variant that carries them. This is the
+ * enforceable allowlist for Requirement 4: none of these mutate task state.
+ */
+export type ObservatoryWebviewPayload =
+	| { kind: "subscribe" }
+	| { kind: "requestWindow"; taskId: string; offset: number; limit: number }
+	| { kind: "requestPersisted"; batchId: string; workerId: string }
+	| { kind: "requestMastermind"; parentTaskId: string }
+	| { kind: "refresh" }
 
 export interface WebviewThemeFixture {
 	themeId: string

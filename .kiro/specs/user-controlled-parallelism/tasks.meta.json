@@ -1,0 +1,292 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add `PARALLELISM_MODES`, `ParallelismMode`, `DEFAULT_PARALLELISM_MODE`, and `parallelismModeSchema` in `packages/types/src/global-settings.ts`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230119
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290237698
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290312175
+      }
+    ],
+    "2.1 Add `ParallelismPolicy`, `Ceiling`, `DEFAULT_PARALLELISM_POLICY_TABLE`, and `resolveParallelismPolicy` in `packages/types/src/parallelism-policy.ts`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230143
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290319000
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290389212
+      }
+    ],
+    "2.2 Add `normalizeParallelismMode` and `resolveEffectiveParallelismMode` in `packages/types/src/parallelism-policy.ts`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230167
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290399032
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290482721
+      }
+    ],
+    "3. Checkpoint - pure resolution layer": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230194
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290486354
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290533052
+      }
+    ],
+    "4.1 Add `parallelism?: ParallelismMode` to the `newTask` and `messageResponse` `askResponse` `WebviewMessage` variants in `packages/types/src/vscode-extension-host.ts`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230213
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290537206
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290608709
+      }
+    ],
+    "5.1 Resolve the effective mode and hand the policy to the scheduler": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230231
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290632099
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290929532
+      }
+    ],
+    "5.2 Persist the parallelism default on `updateSettings`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230261
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290633524
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290931796
+      }
+    ],
+    "6. Checkpoint - host wiring": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230286
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290936027
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291139498
+      }
+    ],
+    "7.1 Create `Parallelism_Control` in `webview-ui/src/components/chat/ParallelismControl.tsx`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230312
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290636165
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290932085
+      }
+    ],
+    "8.1 Add composer-local `selectedParallelismMode` state and render the control": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230330
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291144024
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291288620
+      }
+    ],
+    "8.2 Attach `parallelism` at submit time on `newTask` and `messageResponse` `askResponse`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230351
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291292318
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291376029
+      }
+    ],
+    "9. Checkpoint - webview wiring": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230372
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291379890
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291456297
+      }
+    ],
+    "10.1 Add a parallelism-default control to `SettingsView` bound to `cachedState`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230389
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291459961
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291630424
+      }
+    ],
+    "11. Final checkpoint - run narrowest suites and lint": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290230408
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291634358
+      },
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291842443
+      }
+    ],
+    "1. Define `ParallelismMode` enum, default, and schema in `packages/types`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290312209
+      }
+    ],
+    "2. Implement the parallelism policy types and pure resolvers in `packages/types`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290482764
+      }
+    ],
+    "4. Add the additive `parallelism` envelope field and `ExtensionState` carry": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290608742
+      }
+    ],
+    "5. Wire host resolution and persistence in `webviewMessageHandler`": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290931828
+      }
+    ],
+    "7. Implement the `Parallelism_Control` composer component": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791290932119
+      }
+    ],
+    "8. Wire `ChatView` composer-local state and submit-time capture": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291376066
+      }
+    ],
+    "10. Add the optional `SettingsView` mirror": [
+      {
+        "executionId": "cc12ed5d-62b3-4218-acf1-fc7f8a34dce4",
+        "chatSessionId": "sess_d833a90c-48f7-4f84-8ddc-c27a41848e04",
+        "timestamp": 1791291630463
+      }
+    ]
+  }
+}

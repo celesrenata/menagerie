@@ -1,0 +1,401 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add the normalized orchestration enum, mapping, and rank": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805641
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285814218
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285888436
+      }
+    ],
+    "2.1 Add `WorkerReasoningPolicy` schema + `resolveEffortCeiling` (append to `packages/types/src/model.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805667
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285904212
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285979738
+      }
+    ],
+    "2.4 Add `evidenceReferenceSchema`, `findingSchema`, and `workerResultSchema` (append to `packages/types/src/model.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805697
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285989889
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286054370
+      }
+    ],
+    "2.6 Add `verificationPolicySchema`, `TaskKind`, and `defaultVerificationFor` (append to `packages/types/src/model.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805720
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286057897
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286123107
+      }
+    ],
+    "2.8 Add `autonomousTaskStateSchema` (append to `packages/types/src/model.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805741
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286126637
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286181246
+      }
+    ],
+    "3. Checkpoint - Ensure all `packages/types` tests pass": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805785
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286186691
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286217768
+      }
+    ],
+    "4.1 Add optional `reasoning` and `verification` fields to `parallelTaskSpecSchema`": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805809
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286230956
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286357188
+      }
+    ],
+    "4.2 Add mastermind-originated physical-placement rejection": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805837
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286367575
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286521183
+      }
+    ],
+    "5.1 Implement `AdaptiveReasoningController` and telemetry": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805859
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286235418
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286360218
+      }
+    ],
+    "6.1 Implement `normalizeWorkerResult` (new file `src/core/task/normalizeWorkerResult.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805878
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286238557
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286363647
+      }
+    ],
+    "6.3 Wire normalized `WorkerResult` through persistence and the attempt_completion capture": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805897
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286372087
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286524309
+      }
+    ],
+    "7. Checkpoint - Ensure reasoning, normalization, and wiring tests pass": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805917
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286527832
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286594663
+      }
+    ],
+    "8.1 Implement verifier scheduling and the required-verification gate (new file `src/core/task/verificationGate.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805937
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286599704
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286767108
+      }
+    ],
+    "8.2 Implement verifier criteria evaluation and compact evidence list": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805978
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286775151
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286935630
+      }
+    ],
+    "8.3 Implement the fixer loop on verifier FAIL": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285805999
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286945224
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287130290
+      }
+    ],
+    "8.4 Add lifecycle transition only if unavoidable (`src/core/task-persistence/taskLifecycle.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285806020
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286948689
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287133770
+      }
+    ],
+    "9.1 Implement the AutonomousTaskState store and `applyWorkerResult` (new file `src/core/task/autonomousTaskState.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285806043
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286602981
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286770491
+      }
+    ],
+    "9.3 Implement `preserveAutonomousTaskState` hook across `condenseContext` (`src/core/task/Task.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285806063
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286778541
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286939973
+      }
+    ],
+    "10.1 Carry normalized cognition intent to the OmniRoute boundary": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285806084
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286951974
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287137054
+      }
+    ],
+    "11. Final checkpoint - Ensure all tests pass and suppressions did not increase": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285806103
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287140701
+      },
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287266194
+      }
+    ],
+    "1. Normalized orchestration reasoning vocabulary (additive, in `packages/types/src/model.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791285888471
+      }
+    ],
+    "2. Policy, result, and state schemas in `packages/types`": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286181288
+      }
+    ],
+    "5. Adaptive reasoning controller (worker runtime, new file `src/core/task/AdaptiveReasoningController.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286360251
+      }
+    ],
+    "4. Additive `ParallelTaskSpec` fields and ownership rejection (`src/core/tools/ParallelTasksTool.ts`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286521226
+      }
+    ],
+    "6. Worker result normalizer and bounded-parent/persistence wiring": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286524342
+      }
+    ],
+    "9. AutonomousTaskState store, merge, and condensation-survival hook (`src/core/task`)": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791286940007
+      }
+    ],
+    "8. Verifier role, required-verification gate, and fixer loop": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287133809
+      }
+    ],
+    "10. OmniRoute boundary cognition-metadata forwarding": [
+      {
+        "executionId": "5201b48e-c7e4-4208-bbf6-d749e25faaec",
+        "chatSessionId": "sess_c6483cbb-debf-4b95-8d81-b508ea81e6bd",
+        "timestamp": 1791287137086
+      }
+    ]
+  }
+}

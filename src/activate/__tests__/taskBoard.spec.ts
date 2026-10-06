@@ -5,13 +5,6 @@ import { collectTaskBoard, registerTaskBoard } from "../taskBoard"
 const mockProviders = vi.hoisted(() => ({
 	all: [] as unknown[],
 	commandHandlers: new Map<string, (...args: string[]) => unknown>(),
-	selectionHandlers: [] as ((event: { selection: unknown[] }) => void)[],
-	detailPanels: [] as {
-		title: string
-		webview: { html: string }
-		reveal: (...args: unknown[]) => void
-		onDidDispose: (listener: () => void) => void
-	}[],
 }))
 
 vi.mock("vscode", () => ({
@@ -23,21 +16,11 @@ vi.mock("vscode", () => ({
 	window: {
 		createTreeView: vi.fn(() => ({
 			dispose: vi.fn(),
-		onDidChangeSelection: (listener: (event: { selection: unknown[] }) => void) => {
-			mockProviders.selectionHandlers.push(listener)
-			return { dispose: vi.fn() }
-		},
-	})),
-		createWebviewPanel: vi.fn(() => {
-			const panel = {
-				title: "",
-				webview: { html: "" },
-				reveal: vi.fn(),
-				onDidDispose: vi.fn(),
-			}
-			mockProviders.detailPanels.push(panel)
-			return panel
-		}),
+		})),
+		showTextDocument: vi.fn(),
+	},
+	workspace: {
+		openTextDocument: vi.fn(),
 	},
 	commands: {
 		registerCommand: vi.fn((command: string, handler: (...args: string[]) => unknown) => {
@@ -46,7 +29,6 @@ vi.mock("vscode", () => ({
 		}),
 		executeCommand: vi.fn(),
 	},
-	ViewColumn: { Beside: -2 },
 	TreeItemCollapsibleState: { None: 0, Expanded: 2 },
 	TreeItem: class {
 		label: string
@@ -73,8 +55,6 @@ describe("Task Board registration", () => {
 		vi.clearAllMocks()
 		mockProviders.all = []
 		mockProviders.commandHandlers.clear()
-		mockProviders.selectionHandlers = []
-		mockProviders.detailPanels = []
 	})
 
 	it("shows a completed child as completed even when its history status is stale", async () => {
@@ -101,7 +81,7 @@ describe("Task Board registration", () => {
 		expect(rows[0]?.status).toBe("completed")
 	})
 
-	it("provides the contributed view and snapshots on activation without stealing focus", async () => {
+	it("provides the contributed view and writes one initial snapshot without polling", async () => {
 		vi.useFakeTimers()
 		const subscriptions: { dispose(): unknown }[] = []
 		const context = {
@@ -116,21 +96,19 @@ describe("Task Board registration", () => {
 		)
 		await vi.advanceTimersByTimeAsync(0)
 		expect(fs.rename).toHaveBeenCalledTimes(1)
+		// No 5-second polling: advancing 10 seconds should NOT trigger a second snapshot
+		await vi.advanceTimersByTimeAsync(10_000)
+		expect(fs.rename).toHaveBeenCalledTimes(1)
 		expect(vscode.commands.executeCommand).not.toHaveBeenCalled()
-		await vi.advanceTimersByTimeAsync(5_000)
-		expect(fs.rename).toHaveBeenCalledTimes(2)
 		for (const subscription of subscriptions) subscription.dispose()
-		expect(vi.getTimerCount()).toBe(0)
 	})
 
-	it("opens the clicked active task as a read-only snapshot without switching or mutating it", async () => {
+	it("retains the four compat/debug commands and tree item has no command property", async () => {
 		vi.useFakeTimers()
 		const task = {
 			taskId: "active-task",
 			clineMessages: [
 				{ ts: 1_000, type: "say", say: "text", text: "Implement the requested feature" },
-				{ ts: 2_000, type: "say", say: "reasoning", text: "private reasoning text" },
-				{ ts: 3_000, type: "say", say: "tool", text: "Reading the task source" },
 			],
 			getTaskMode: async () => "code",
 			getTaskApiConfigName: async () => "hybrid/code",
@@ -141,12 +119,12 @@ describe("Task Board registration", () => {
 			isStreaming: true,
 			abort: false,
 		}
-		const provider = {
-			getCurrentTask: vi.fn(() => task),
-			taskHistoryStore: { get: () => ({ task: "Inspect Task Board popup", status: "active" }) },
-			revealChat: vi.fn(),
-		}
-		mockProviders.all = [provider]
+		mockProviders.all = [
+			{
+				getCurrentTask: vi.fn(() => task),
+				taskHistoryStore: { get: () => ({ task: "Task title", status: "active" }) },
+			},
+		]
 		const subscriptions: { dispose(): unknown }[] = []
 		const context = {
 			subscriptions,
@@ -156,6 +134,13 @@ describe("Task Board registration", () => {
 		registerTaskBoard(context)
 		await vi.advanceTimersByTimeAsync(0)
 
+		// All four compat commands should be registered
+		expect(mockProviders.commandHandlers.has("zoo-code.getTaskBoard")).toBe(true)
+		expect(mockProviders.commandHandlers.has("zoo-code.taskBoardShowDetails")).toBe(true)
+		expect(mockProviders.commandHandlers.has("zoo-code.showTaskBoard")).toBe(true)
+		expect(mockProviders.commandHandlers.has("zoo-code.exportTaskBoard")).toBe(true)
+
+		// Tree item should NOT have a command property (no focus-on-selection)
 		const treeViewCall = vi.mocked(vscode.window.createTreeView).mock.calls[0]
 		if (!treeViewCall) throw new Error("Task Board view was not created")
 		const children = await treeViewCall[1].treeDataProvider.getChildren()
@@ -163,34 +148,9 @@ describe("Task Board registration", () => {
 		if (!firstTask) throw new Error("Active task was not added to the Task Board")
 		const item = await Promise.resolve(treeViewCall[1].treeDataProvider.getTreeItem(firstTask))
 		expect(item.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None)
-		expect(item.command).toEqual(
-			expect.objectContaining({ command: "zoo-code.taskBoardShowDetails", arguments: ["active-task"] }),
-		)
-		expect(item.tooltip).toContain("Checklist: 0/1 complete")
+		expect(item.command).toBeUndefined()
+		expect(item.tooltip).toContain("Menagerie Task Observatory")
 
-		const selectionHandler = mockProviders.selectionHandlers[0]
-		if (!selectionHandler) throw new Error("Task Board selection handler was not registered")
-		selectionHandler({ selection: [firstTask] })
-		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
-
-		const showDetails = mockProviders.commandHandlers.get("zoo-code.taskBoardShowDetails")
-		if (!showDetails) throw new Error("Task details command was not registered")
-		showDetails("active-task")
-
-		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
-			"zoo-code.taskBoardTaskDetails",
-			expect.any(String),
-			vscode.ViewColumn.Beside,
-			expect.objectContaining({ enableScripts: false }),
-		)
-		const html = mockProviders.detailPanels[0]?.webview.html ?? ""
-		expect(html).toContain("Inspect Task Board popup")
-		expect(html).toContain("Reading the task source")
-		expect(html).toContain("Inspect the task source")
-		expect(html).not.toContain("private reasoning text")
-		expect(provider.revealChat).not.toHaveBeenCalled()
-		expect(vscode.commands.executeCommand).not.toHaveBeenCalled()
-		expect(mockProviders.commandHandlers.has("zoo-code.taskBoardFocusChat")).toBe(false)
 		for (const subscription of subscriptions) subscription.dispose()
 	})
 })

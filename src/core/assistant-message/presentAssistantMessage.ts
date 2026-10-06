@@ -39,10 +39,119 @@ import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
 import { buildToolRequirements } from "../prompts/tools/effective-tool-policy"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
+import type { ToolResultContext } from "../tools/ProgressAwareLoopDetector"
+
+import { decide as explorationDecide } from "../exploration/explorationPolicy"
+import { deriveIndexAvailability, type IndexManagerLike } from "../exploration/indexAvailability"
+import { detectKnownTarget } from "../exploration/knownTargetDetector"
+import { getRetrievalGatewayClient } from "../exploration/gatewayClientProvider"
+import { createRetrievalOutputBudget } from "../exploration/retrievalOutputBudget"
+import {
+	MAX_EVIDENCE_PACKET_ITEMS,
+	type ExplorationPolicyInputs,
+	type IndexAvailabilitySnapshot,
+	type SemanticFinding,
+} from "../exploration/types"
+import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-manager-registry"
 
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 import { collectParallelReadBatch, isParallelRead, runReadBatch } from "./parallelReadTools"
+
+/**
+ * Broad-exploration tools that signal the model is surveying an unseen area of
+ * the codebase (rather than acting on a known target). Used only to derive the
+ * advisory `exploringUnseenArea` input for the ExplorationPolicy.
+ */
+const EXPLORATION_TOOLS: ReadonlySet<string> = new Set(["list_files", "search_files", "codebase_search"])
+
+/**
+ * Availability snapshot with all getters false, so `available` derives false.
+ * Used when no live CodeIndexManager can be obtained for the workspace.
+ */
+const INDEX_UNAVAILABLE_SNAPSHOT: IndexAvailabilitySnapshot = {
+	isConfigurationLoaded: false,
+	isFeatureEnabled: false,
+	isFeatureConfigured: false,
+	isInitialized: false,
+	state: "Standby",
+	available: false,
+}
+
+/**
+ * A resolved `read_file` target used only for advisory useful-hit detection:
+ * the opened file path and, when the model supplied one, the 1-based inclusive
+ * line range it requested. An absent range means a whole-file read.
+ */
+interface ReadFileTarget {
+	path: string
+	startLine?: number
+	endLine?: number
+}
+
+/**
+ * Defensively extract the opened file path and (optional) line range from a
+ * `read_file` tool block. Prefers native typed args, falling back to the
+ * string-shaped legacy params. Returns `undefined` when a single path cannot be
+ * cleanly resolved (e.g. a batch/legacy multi-file read), so advisory metric
+ * recording degrades gracefully rather than guessing.
+ */
+function extractReadFileTarget(block: ToolUse<"read_file">): ReadFileTarget | undefined {
+	// Native protocol: typed args. Resolve only the single-path shapes; a
+	// multi-file batch or legacy array read is skipped (returns undefined) so
+	// advisory recording never guesses which of several files was useful.
+	const native = block.nativeArgs
+	if (native) {
+		// The single-file shape carries a string `path`; the batch shape uses an
+		// array and the legacy shape uses `files`. Only the first is resolvable here.
+		if ("path" in native && typeof native.path === "string") {
+			// `offset` is a 1-based start line; `limit` is a line count (slice mode).
+			const startLine = typeof native.offset === "number" ? native.offset : undefined
+			const endLine =
+				startLine !== undefined && typeof native.limit === "number"
+					? startLine + Math.max(0, native.limit - 1)
+					: undefined
+			return { path: native.path, startLine, endLine }
+		}
+		return undefined
+	}
+
+	// Legacy/string params: path plus optional numeric string line bounds.
+	const path = block.params?.path
+	if (typeof path !== "string" || path.length === 0) {
+		return undefined
+	}
+	const parse = (value: string | undefined): number | undefined => {
+		if (typeof value !== "string") {
+			return undefined
+		}
+		const n = Number.parseInt(value, 10)
+		return Number.isFinite(n) ? n : undefined
+	}
+	return {
+		path,
+		startLine: parse(block.params.start_line),
+		endLine: parse(block.params.end_line),
+	}
+}
+
+/**
+ * Decide whether a `read_file` of `target` is a Useful_Semantic_Hit against a
+ * prior semantic `finding` (Req 7, "Useful_Semantic_Hit"): the same file and,
+ * when both sides supply a line range, an overlapping range. A whole-file read
+ * (no requested range) counts as overlapping any finding in that file.
+ */
+function isUsefulReadOverlap(target: ReadFileTarget, finding: SemanticFinding): boolean {
+	if (target.path !== finding.file) {
+		return false
+	}
+	// Whole-file read, or no usable requested bounds → treat as overlapping.
+	if (target.startLine === undefined || target.endLine === undefined) {
+		return true
+	}
+	// Standard inclusive-range overlap test.
+	return target.startLine <= finding.endLine && finding.startLine <= target.endLine
+}
 
 /**
  * Maps a raw, potentially model-controlled tool name to a safe analytics key.
@@ -666,6 +775,24 @@ export async function executeAssistantMessageBlock(
 					cline.userMessageContent.push(...imageBlocks)
 				}
 
+				// Post-execution signal capture for progress-aware loop detection (two-call protocol).
+				// The pre-execution gate already ran via check(block); this supplies the observable
+				// result so the detector can score progress/stagnation for the next gate. `block` is
+				// in scope from the enclosing per-tool iteration.
+				try {
+					const detectorContext: ToolResultContext = {
+						resultText: resultContent,
+						workspaceChanged: cline.didEditFile === true || undefined,
+					}
+					cline.toolRepetitionDetector.recordResult(
+						block,
+						{ ok: true, body: resultContent },
+						detectorContext,
+					)
+				} catch {
+					// Signal capture must never break tool dispatch.
+				}
+
 				hasToolResult = true
 			}
 
@@ -809,6 +936,116 @@ export async function executeAssistantMessageBlock(
 						taskId: cline.taskId,
 						model: modelInfo?.id,
 					})
+				}
+
+				// Advisory ExplorationPolicy hook. The decision is ADVISORY ONLY: dispatch
+				// always proceeds with the model's chosen tool below and is NEVER blocked.
+				// The whole hook is wrapped so any error is swallowed and never reaches the
+				// dispatch path (the policy must never block or throw into dispatch).
+				try {
+					// Live index availability: derive from the workspace's CodeIndexManager,
+					// or fall back to an all-false snapshot (available: false) when none exists.
+					let indexAvailability: IndexAvailabilitySnapshot = INDEX_UNAVAILABLE_SNAPSHOT
+					const context = cline.providerRef.deref()?.context
+					if (context) {
+						const manager = CodeIndexManagerRegistry.getOrCreate(context, cline.workspacePath)
+						if (manager) {
+							// CodeIndexManager structurally satisfies IndexManagerLike
+							// (four getters + state).
+							indexAvailability = deriveIndexAvailability(manager as IndexManagerLike)
+						}
+					}
+
+					// Gateway health: an injected RetrievalGatewayClient drives
+					// `gatewayAvailable`. No client wired → `false` (safe default that
+					// never forces PreferSemantic). `isAvailable()` never throws.
+					const gatewayClient = getRetrievalGatewayClient()
+					const gatewayAvailable = gatewayClient ? await gatewayClient.isAvailable() : false
+
+					const inputs: ExplorationPolicyInputs = {
+						indexAvailability,
+						gatewayAvailable,
+						knownTarget: detectKnownTarget({ userInstruction: cline.metadata?.task }),
+						exploringUnseenArea: EXPLORATION_TOOLS.has(block.name),
+					}
+
+					const explorationDecision = explorationDecide(inputs)
+
+					// Record the dominant unavailability metric advisorily. This never
+					// affects dispatch; the recorder is best-effort and swallows errors.
+					const metrics = cline.semanticExplorationState.metrics
+					if (explorationDecision.metricEvent === "index-unavailable") {
+						metrics.recordIndexUnavailable()
+					} else if (explorationDecision.metricEvent === "gateway-unavailable") {
+						metrics.recordGatewayUnavailable()
+					}
+
+					// On a PreferSemantic decision with a wired gateway, obtain evidence
+					// through the gateway and surface it COMPACTLY via the output budget
+					// (file/line-range/score/one-line-reason only). This is additive and
+					// advisory: it never blocks dispatch and never touches the
+					// CodebaseSearchTool output contract (Req 6.5, 8.1, 8.2, 8.4). Large
+					// snippets are retained worker-local, never injected into the parent.
+					if (explorationDecision.outcome === "PreferSemantic" && gatewayClient) {
+						// Prefer the model's own semantic query when it issued one; else
+						// fall back to the task description.
+						const query =
+							(block.name === "codebase_search" ? block.params.query : undefined) ??
+							cline.metadata?.task ??
+							""
+						const packet = await gatewayClient.retrieve(
+							query,
+							cline.workspacePath,
+							"exploration",
+							MAX_EVIDENCE_PACKET_ITEMS,
+						)
+						const budget = createRetrievalOutputBudget()
+						const surfaced = budget.surfaceToParent(packet)
+						budget.retainWorkerLocal(packet)
+						metrics.recordSemanticQuery()
+						metrics.recordFilesReturned(surfaced.length)
+					}
+				} catch {
+					// Advisory only — any failure here must never affect dispatch.
+				}
+
+				// Advisory read-file metric recording (Req 7.3–7.5, 7.9, 7.11). Purely
+				// additive and wrapped so a recorder error never affects dispatch. On a
+				// targeted `read_file`, record a file-open and a raw read, flagging the
+				// raw read as preceded by a useful hit when the opened file+range overlaps
+				// a prior semantic finding for this task (cache or shared memory). The
+				// first such overlap also marks the time-to-first-useful-evidence.
+				//
+				// Token accounting (Req 7.6) is intentionally out of scope at this layer:
+				// the dispatch layer does not have a cheap, accurate token count for the
+				// bytes a `read_file` will consume (that is known downstream inside the
+				// read tool). It is left to the consuming layer rather than fabricated here.
+				//
+				// Index-freshness-miss recording (Req 7, 12.4) is driven by the
+				// change-aware consumer (`applyChangeAwarePreference`) against a known
+				// changed-files set, which is not readily available at this dispatch layer;
+				// it is covered by that consumer and its own tests.
+				if (block.name === "read_file") {
+					try {
+						const metrics = cline.semanticExplorationState.metrics
+						metrics.recordFileOpened()
+
+						const read = extractReadFileTarget(block as ToolUse<"read_file">)
+						const findings = [
+							...cline.semanticExplorationState.cache.allFindings(),
+							...cline.semanticExplorationState.sharedMemory.allFindings(),
+						]
+						const precededByUsefulHit =
+							read !== undefined && findings.some((f) => isUsefulReadOverlap(read, f))
+
+						metrics.recordRawRead(precededByUsefulHit)
+						if (precededByUsefulHit) {
+							metrics.recordUsefulHit()
+							metrics.markFirstUsefulEvidence(Date.now())
+						}
+					} catch {
+						// Advisory only — any failure here must never affect dispatch.
+					}
 				}
 			}
 
