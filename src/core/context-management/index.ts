@@ -26,6 +26,13 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
 export const TOKEN_BUFFER_PERCENTAGE = 0.1
 
 /**
+ * After emergency truncation, aim below the hard safe-input boundary rather
+ * than landing directly on it. This gives the next model turn room to emit
+ * tools/results without immediately re-entering context management.
+ */
+export const TRUNCATION_TARGET_PERCENTAGE = 0.8
+
+/**
  * Counts tokens for user content using the provider's token counting implementation.
  *
  * @param {Array<Anthropic.Messages.ContentBlockParam>} content - The content to count tokens for
@@ -75,6 +82,109 @@ export type TruncationResult = {
 	messagesRemoved: number
 }
 
+function getVisibleMessageIndices(messages: ApiMessage[]): number[] {
+	const visibleIndices: number[] = []
+	messages.forEach((msg, index) => {
+		if (!msg.truncationParent && !msg.isTruncationMarker) {
+			visibleIndices.push(index)
+		}
+	})
+	return visibleIndices
+}
+
+async function estimateMessageTokens(message: ApiMessage, apiHandler: ApiHandler): Promise<number> {
+	const content = message.content
+	if (Array.isArray(content)) return estimateTokenCount(content, apiHandler)
+	if (typeof content === "string") {
+		return estimateTokenCount([{ type: "text", text: content }], apiHandler)
+	}
+	return 0
+}
+
+function applyTruncation(messages: ApiMessage[], messagesToRemove: number, taskId: string): TruncationResult {
+	TelemetryService.instance.captureSlidingWindowTruncation(taskId)
+
+	const truncationId = crypto.randomUUID()
+	const visibleIndices = getVisibleMessageIndices(messages)
+	const maxRemovable = Math.max(0, visibleIndices.length - 1)
+	const boundedCount = Math.min(Math.max(0, messagesToRemove), maxRemovable)
+	const evenCount = boundedCount - (boundedCount % 2)
+
+	if (evenCount <= 0) {
+		return {
+			messages,
+			truncationId,
+			messagesRemoved: 0,
+		}
+	}
+
+	const indicesToTruncate = new Set(visibleIndices.slice(1, evenCount + 1))
+	const taggedMessages = messages.map((msg, index) =>
+		indicesToTruncate.has(index) ? { ...msg, truncationParent: truncationId } : msg,
+	)
+
+	const firstKeptVisibleIndex = visibleIndices[evenCount + 1] ?? taggedMessages.length
+	const firstKeptTs = messages[firstKeptVisibleIndex]?.ts ?? Date.now()
+	const truncationMarker: ApiMessage = {
+		role: "user",
+		content: `[Sliding window truncation: ${evenCount} messages hidden to reduce context]`,
+		ts: firstKeptTs - 1,
+		isTruncationMarker: true,
+		truncationId,
+	}
+
+	return {
+		messages: [
+			...taggedMessages.slice(0, firstKeptVisibleIndex),
+			truncationMarker,
+			...taggedMessages.slice(firstKeptVisibleIndex),
+		],
+		truncationId,
+		messagesRemoved: evenCount,
+	}
+}
+
+/**
+ * Calculate the smallest oldest-history cut that should return the parent to a
+ * comfortable point below its safe input budget.
+ *
+ * Unlike the old blind 50% fallback, this counts actual message tokens and
+ * removes complete historical pairs until enough pressure has been relieved.
+ * The original task message and the two newest visible messages are never
+ * selected by this emergency fallback.
+ */
+export async function getAdaptiveTruncationMessageCount(
+	messages: ApiMessage[],
+	prevContextTokens: number,
+	allowedTokens: number,
+	apiHandler: ApiHandler,
+): Promise<number> {
+	if (prevContextTokens <= allowedTokens) return 0
+
+	const visibleIndices = getVisibleMessageIndices(messages)
+	// Preserve the first task message plus the latest two visible messages.
+	const removable = Math.max(0, visibleIndices.length - 3)
+	const maxEvenRemovable = removable - (removable % 2)
+	if (maxEvenRemovable < 2) return 0
+
+	const targetTokens = Math.max(0, allowedTokens * TRUNCATION_TARGET_PERCENTAGE)
+	const tokensToRemove = Math.max(0, prevContextTokens - targetTokens)
+	let removedTokens = 0
+
+	for (let count = 2; count <= maxEvenRemovable; count += 2) {
+		const firstIndex = visibleIndices[count - 1]
+		const secondIndex = visibleIndices[count]
+		if (firstIndex === undefined || secondIndex === undefined) break
+
+		removedTokens += await estimateMessageTokens(messages[firstIndex]!, apiHandler)
+		removedTokens += await estimateMessageTokens(messages[secondIndex]!, apiHandler)
+
+		if (removedTokens >= tokensToRemove) return count
+	}
+
+	return maxEvenRemovable
+}
+
 /**
  * Truncates a conversation by tagging messages as hidden instead of removing them.
  *
@@ -91,73 +201,11 @@ export type TruncationResult = {
  * @returns {TruncationResult} Object containing the tagged messages, truncation ID, and count of messages removed.
  */
 export function truncateConversation(messages: ApiMessage[], fracToRemove: number, taskId: string): TruncationResult {
-	TelemetryService.instance.captureSlidingWindowTruncation(taskId)
-
-	const truncationId = crypto.randomUUID()
-
-	// Filter to only visible messages (those not already truncated)
-	// We need to track original indices to correctly tag messages in the full array
-	const visibleIndices: number[] = []
-	messages.forEach((msg, index) => {
-		if (!msg.truncationParent && !msg.isTruncationMarker) {
-			visibleIndices.push(index)
-		}
-	})
-
-	// Calculate how many visible messages to truncate (excluding first visible message)
+	const visibleIndices = getVisibleMessageIndices(messages)
 	const visibleCount = visibleIndices.length
 	const rawMessagesToRemove = Math.floor((visibleCount - 1) * fracToRemove)
 	const messagesToRemove = rawMessagesToRemove - (rawMessagesToRemove % 2)
-
-	if (messagesToRemove <= 0) {
-		// Nothing to truncate
-		return {
-			messages,
-			truncationId,
-			messagesRemoved: 0,
-		}
-	}
-
-	// Get the indices of visible messages to truncate (skip first visible, take next N)
-	const indicesToTruncate = new Set(visibleIndices.slice(1, messagesToRemove + 1))
-
-	// Tag messages that are being "truncated" (hidden from API calls)
-	const taggedMessages = messages.map((msg, index) => {
-		if (indicesToTruncate.has(index)) {
-			return { ...msg, truncationParent: truncationId }
-		}
-		return msg
-	})
-
-	// Find the actual boundary - the index right after the last truncated message
-	const lastTruncatedVisibleIndex = visibleIndices[messagesToRemove] // Last visible message being truncated
-	// If all visible messages except the first are truncated, insert marker at the end
-	const firstKeptVisibleIndex = visibleIndices[messagesToRemove + 1] ?? taggedMessages.length
-
-	// Insert truncation marker at the actual boundary (between last truncated and first kept)
-	const firstKeptTs = messages[firstKeptVisibleIndex]?.ts ?? Date.now()
-	const truncationMarker: ApiMessage = {
-		role: "user",
-		content: `[Sliding window truncation: ${messagesToRemove} messages hidden to reduce context]`,
-		ts: firstKeptTs - 1,
-		isTruncationMarker: true,
-		truncationId,
-	}
-
-	// Insert marker at the boundary position
-	// Find where to insert: right before the first kept visible message
-	const insertPosition = firstKeptVisibleIndex
-	const result = [
-		...taggedMessages.slice(0, insertPosition),
-		truncationMarker,
-		...taggedMessages.slice(insertPosition),
-	]
-
-	return {
-		messages: result,
-		truncationId,
-		messagesRemoved: messagesToRemove,
-	}
+	return applyTruncation(messages, messagesToRemove, taskId)
 }
 
 /**
@@ -358,7 +406,7 @@ export async function manageContext({
 		})
 		if (contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens) {
 			// Attempt to intelligently condense the context
-			const result = await summarizeConversation({
+			const summarizeOptions = {
 				messages,
 				apiHandler,
 				systemPrompt,
@@ -370,7 +418,29 @@ export async function manageContext({
 				filesReadByRoo,
 				cwd,
 				rooIgnoreController,
-			})
+			}
+			let result = await summarizeConversation(summarizeOptions)
+
+			// A single transient network/timeout/rate-limit/server failure should not
+			// immediately amputate history. Retry exactly once; deterministic/no-op
+			// condense failures fall through without retrying.
+			if (result.error && result.retryable && !metadata?.abortSignal?.aborted) {
+				console.warn(
+					`[ContextManagement#${taskId}] Automatic condense failed transiently; retrying once before fallback truncation.`,
+				)
+				const firstFailure = result
+				const retry = await summarizeConversation(summarizeOptions)
+				result = {
+					...retry,
+					cost: firstFailure.cost + retry.cost,
+					...(firstFailure.errorDetails && retry.errorDetails
+						? {
+								errorDetails: `First attempt:\n${firstFailure.errorDetails}\n\nRetry:\n${retry.errorDetails}`,
+							}
+						: {}),
+				}
+			}
+
 			if (result.error) {
 				error = result.error
 				errorDetails = result.errorDetails
@@ -383,7 +453,13 @@ export async function manageContext({
 
 	// Fall back to sliding window truncation if needed
 	if (prevContextTokens > allowedTokens) {
-		const truncationResult = truncateConversation(messages, 0.5, taskId)
+		const messagesToRemove = await getAdaptiveTruncationMessageCount(
+			messages,
+			prevContextTokens,
+			allowedTokens,
+			apiHandler,
+		)
+		const truncationResult = applyTruncation(messages, messagesToRemove, taskId)
 
 		// Calculate new context tokens after truncation by counting non-truncated messages
 		// Messages with truncationParent are hidden, so we count only those without it

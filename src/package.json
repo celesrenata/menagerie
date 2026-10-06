@@ -4,7 +4,7 @@
 	"description": "%extension.description%",
 	"publisher": "ZooCodeOrganization",
 	"version": "3.84.4",
-	"icon": "assets/icons/icon.png",
+	"icon": "assets/icons/menagerie.png",
 	"galleryBanner": {
 		"color": "#617A91",
 		"theme": "dark"

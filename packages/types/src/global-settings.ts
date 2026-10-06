@@ -61,6 +61,16 @@ export const DEFAULT_DIFF_FUZZY_THRESHOLD = 1.0
 export const DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED = false
 
 /**
+ * Default automatic condensation threshold.
+ *
+ * 100% leaves no runway for the summarizer itself, transient token-count
+ * underestimation, or a large incoming user/tool result. Condensing at 80%
+ * gives the parent coordinator enough headroom to create a good fresh-start
+ * summary before context management becomes an emergency operation.
+ */
+export const DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT = 80
+
+/**
  * Terminal output preview size options for persisted command output.
  *
  * Controls how much command output is kept in memory as a "preview" before

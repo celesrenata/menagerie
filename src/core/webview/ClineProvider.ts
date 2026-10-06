@@ -49,6 +49,7 @@ import {
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
@@ -2791,7 +2792,8 @@ export class ClineProvider
 			allowedMaxRequests,
 			allowedMaxCost,
 			autoCondenseContext: autoCondenseContext ?? true,
-			autoCondenseContextPercent: autoCondenseContextPercent ?? 100,
+			autoCondenseContextPercent:
+				autoCondenseContextPercent ?? DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
@@ -3031,7 +3033,8 @@ export class ClineProvider
 			allowedMaxRequests: stateValues.allowedMaxRequests,
 			allowedMaxCost: stateValues.allowedMaxCost,
 			autoCondenseContext: stateValues.autoCondenseContext ?? true,
-			autoCondenseContextPercent: stateValues.autoCondenseContextPercent ?? 100,
+			autoCondenseContextPercent:
+				stateValues.autoCondenseContextPercent ?? DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 			taskHistory: includeTaskHistory ? this.taskHistoryStore.getAll() : [],
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,

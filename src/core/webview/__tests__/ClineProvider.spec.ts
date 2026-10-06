@@ -18,6 +18,7 @@ import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_WRITE_DELAY_MS,
+	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 	providerIdentifiers,
 	openAiModelInfoSaneDefaults,
 } from "@roo-code/types"
@@ -1861,14 +1862,14 @@ describe("ClineProvider", () => {
 		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
-	test("autoCondenseContextPercent defaults to 100", async () => {
+	test("autoCondenseContextPercent defaults with context headroom", async () => {
 		// Mock globalState.get to return undefined for autoCondenseContextPercent
 		;(mockContext.globalState.get as any).mockImplementation((key: string) => {
 			return key === "autoCondenseContextPercent" ? undefined : null
 		})
 
 		const state = await provider.getState()
-		expect(state.autoCondenseContextPercent).toBe(100)
+		expect(state.autoCondenseContextPercent).toBe(DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT)
 	})
 
 	test("handles autoCondenseContextPercent message", async () => {

@@ -5,6 +5,9 @@ import type OpenAI from "openai"
 /** Default maximum lines to return per file (Codex-inspired predictable limit) */
 export const DEFAULT_LINE_LIMIT = 2000
 
+/** Default aggregate line budget shared across a batched read when limit is omitted. */
+export const DEFAULT_BATCH_LINE_BUDGET = 2400
+
 /** Maximum characters per line before truncation */
 export const MAX_LINE_LENGTH = 2000
 
@@ -62,7 +65,7 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 
 	// Build description based on capabilities
 	const descriptionIntro =
-		"Read up to eight files in one call. path MUST be an array, even when reading only one file. Put every already-known independent file path in the same array; do not issue one read_file call per file across separate turns. Results are returned in the same order."
+		`Read up to eight files in one call. path MUST be an array, even when reading only one file. Put every already-known independent file path in the same array; do not issue one read_file call per file across separate turns. Results are returned in the same order. When limit is omitted, a batched read shares a ${DEFAULT_BATCH_LINE_BUDGET}-line default budget across its files (while a single-file read keeps the ${DEFAULT_LINE_LIMIT}-line default). Set an explicit larger limit only when the extra raw text is genuinely needed. When parallel_tasks/project-reader is available, prefer reader workers for broad repository investigation so raw file contents stay out of the coordinator context.`
 
 	const modeDescription =
 		` Supports two modes: 'slice' (default) reads lines sequentially with offset/limit; 'indentation' extracts complete semantic code blocks around an anchor line based on indentation hierarchy.` +
@@ -70,7 +73,7 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 		` PREFER indentation mode when you have a specific line number from search results, error messages, or definition lookups - it guarantees complete, syntactically valid code blocks without mid-function truncation.` +
 		` IMPORTANT: Indentation mode requires anchor_line to be useful. Without it, only header content (imports) is returned.`
 
-	const limitNote = ` By default, returns up to ${DEFAULT_LINE_LIMIT} lines per file. Lines longer than ${MAX_LINE_LENGTH} characters are truncated.`
+	const limitNote = ` A single-file read defaults to ${DEFAULT_LINE_LIMIT} lines; batched reads share the ${DEFAULT_BATCH_LINE_BUDGET}-line default budget. Lines longer than ${MAX_LINE_LENGTH} characters are truncated.`
 
 	const description =
 		descriptionIntro +
@@ -112,6 +115,8 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 	const properties: Record<string, unknown> = {
 		path: {
 			type: "array",
+			minItems: 1,
+			maxItems: 8,
 			items: { type: "string" },
 			description:
 				"Required array of one to eight workspace-relative paths. Use a one-item array for a single file and combine all already-known independent files into one call.",

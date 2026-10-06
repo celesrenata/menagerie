@@ -22,7 +22,7 @@ import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { getReadablePath } from "../../utils/path"
 import { extractTextFromFile, addLineNumbers, getSupportedBinaryFormats } from "../../integrations/misc/extract-text"
 import { readWithIndentation, readWithSlice } from "../../integrations/misc/indentation-reader"
-import { DEFAULT_LINE_LIMIT } from "../prompts/tools/native-tools/read_file"
+import { DEFAULT_BATCH_LINE_BUDGET, DEFAULT_LINE_LIMIT } from "../prompts/tools/native-tools/read_file"
 import type { ToolUse, PushToolResult } from "../../shared/tools"
 
 import {
@@ -108,6 +108,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		}
 		const offset = params.offset === 0 ? undefined : params.offset
 		const limit = params.limit === 0 ? undefined : params.limit
+		const uniquePaths = [...new Set(paths)]
+		const defaultBatchLimit = Math.min(
+			DEFAULT_LINE_LIMIT,
+			Math.max(1, Math.floor(DEFAULT_BATCH_LINE_BUDGET / uniquePaths.length)),
+		)
+		const effectiveLimit = limit ?? defaultBatchLimit
 		if (offset !== undefined && offset < 1) {
 			callbacks.pushToolResult(`Error: offset must be a 1-indexed line number (got ${params.offset}). Line numbers start at 1.`)
 			return
@@ -117,14 +123,14 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			return
 		}
 		return this.executeLegacy(
-			[...new Set(paths)].map((filePath) => ({
+			uniquePaths.map((filePath) => ({
 				path: filePath,
 				mode:
 					params.mode === "indentation" && params.indentation?.anchor_line === undefined && (offset ?? 1) <= 1
 						? "slice"
 						: params.mode,
 				offset,
-				limit,
+				limit: effectiveLimit,
 				anchor_line: params.indentation?.anchor_line,
 				max_levels: params.indentation?.max_levels,
 				include_siblings: params.indentation?.include_siblings,
