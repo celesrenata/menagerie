@@ -133,8 +133,35 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 		showCollapseAll: true,
 	})
 	context.subscriptions.push(view, events)
-	// Write one initial snapshot; no periodic polling — the Observatory uses its own reconciliation.
+	// Write one initial snapshot. While the board is visible, refresh on a modest interval
+	// so an open board stays current; stop polling when it is hidden. The Observatory uses
+	// its own reconciliation, so the tree only needs to track the live task set when shown.
+	let pollTimer: ReturnType<typeof setInterval> | undefined
+	const stopPolling = () => {
+		if (pollTimer) {
+			clearInterval(pollTimer)
+			pollTimer = undefined
+		}
+	}
+	const startPolling = () => {
+		if (pollTimer) return
+		pollTimer = setInterval(() => void refresh(), 5000)
+	}
+	view.onDidChangeVisibility(
+		(event) => {
+			if (event.visible) {
+				void refresh()
+				startPolling()
+			} else {
+				stopPolling()
+			}
+		},
+		undefined,
+		context.subscriptions,
+	)
+	context.subscriptions.push(new vscode.Disposable(stopPolling))
 	void refresh()
+	if (view.visible) startPolling()
 	context.subscriptions.push(
 		vscode.commands.registerCommand("zoo-code.getTaskBoard", snapshot),
 		vscode.commands.registerCommand("zoo-code.taskBoardShowDetails", () => {
