@@ -1,6 +1,11 @@
 # Spec: GPU-aware parallel execution over OmniRoute
 
-Status: draft · Owner: celes · Base branch: `feat/parallel-tasks-import`
+Status: superseded · Owner: celes
+
+> **Superseded routing design:** Menagerie no longer owns GPU placement.
+> `docs/architecture/omniroute-integration-design.md` §5 is authoritative:
+> Menagerie selects a per-worker OmniRoute model/route id; OmniRoute owns
+> admission, health, queuing, and physical GPU placement.
 
 This spec covers the parallel-execution subsystem imported from the
 `3.84.2-parallel` build and the work still needed to make it compete with

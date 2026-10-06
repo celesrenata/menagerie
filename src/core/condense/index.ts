@@ -250,6 +250,7 @@ export type SummarizeResponse = {
 	newContextTokens?: number // The number of tokens in the context for the next API request
 	error?: string // Populated iff the operation fails: error message shown to the user on failure (see Task.ts)
 	errorDetails?: string // Detailed error information including stack trace and API error info
+	retryable?: boolean // True only for transient API/transport failures safe to retry once automatically
 	condenseId?: string // The unique ID of the created Summary message, for linking to condense_context clineMessage
 }
 
@@ -431,12 +432,15 @@ export async function summarizeConversation(options: SummarizeConversationOption
 
 		// Capture detailed error information for debugging
 		let errorDetails = ""
+		let status: number | undefined
 		if (error instanceof Error) {
 			errorDetails = `Error: ${error.message}`
 			// Capture any additional API error properties
 			const anyError = error as unknown as Record<string, unknown>
 			if (anyError.status) {
 				errorDetails += `\n\nHTTP Status: ${anyError.status}`
+				const numericStatus = Number(anyError.status)
+				if (Number.isFinite(numericStatus)) status = numericStatus
 			}
 			if (anyError.code) {
 				errorDetails += `\nError Code: ${anyError.code}`
@@ -459,11 +463,18 @@ export async function summarizeConversation(options: SummarizeConversationOption
 			errorDetails = String(error)
 		}
 
+		// Retry only transient transport/server pressure. Do not retry auth/config
+		// failures, ordinary 4xx request failures, or a parent cancellation.
+		const retryable =
+			!outerSignal?.aborted &&
+			(status === undefined || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500)
+
 		return {
 			...response,
 			cost,
 			error: t("common:errors.condense_api_failed", { message: errorMessage }),
 			errorDetails,
+			retryable,
 		}
 	} finally {
 		outerSignal?.removeEventListener("abort", forwardAbort)

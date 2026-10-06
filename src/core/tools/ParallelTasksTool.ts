@@ -32,6 +32,70 @@ export const parallelTasksSchema = z
 
 export type ParallelTaskSpec = z.infer<typeof parallelTaskSpecSchema>
 
+export const MAX_READER_PARENT_RESULT_CHARS = 2_400
+export const MAX_WORKER_PARENT_RESULT_CHARS = 6_000
+export const MAX_WORKER_PARENT_ERROR_CHARS = 2_000
+
+type ParentParallelTaskResult = {
+	name: string
+	mode: string
+	state: string
+	taskId?: string
+	profile?: string
+	workspace?: string
+	patch?: string
+	result?: string
+	error?: string
+}
+
+type ParentParallelTaskBatch = {
+	batchId: string
+	manifestPath?: string
+	tasks: ParentParallelTaskResult[]
+}
+
+function clipParentResult(text: string, maxChars: number, manifestPath?: string): string {
+	if (text.length <= maxChars) return text
+	const location = manifestPath
+		? ` Full result: ${manifestPath}`
+		: " Full result retained in the parallel-task manifest."
+	return `${text.slice(0, maxChars)}\n… [clipped ${text.length - maxChars} chars.${location}]`
+}
+
+/**
+ * Bound what parallel workers can inject back into the coordinator context.
+ * Full completion text remains persisted in each worker record and manifest.
+ */
+export function compactParallelTasksResultForParent(result: ParentParallelTaskBatch) {
+	return {
+		batchId: result.batchId,
+		manifestPath: result.manifestPath,
+		tasks: result.tasks.map((worker) => {
+			const maxResultChars =
+				worker.mode === "project-reader" ? MAX_READER_PARENT_RESULT_CHARS : MAX_WORKER_PARENT_RESULT_CHARS
+			const resultClipped = worker.result !== undefined && worker.result.length > maxResultChars
+			const errorClipped = worker.error !== undefined && worker.error.length > MAX_WORKER_PARENT_ERROR_CHARS
+			return {
+				...worker,
+				...(worker.result !== undefined
+					? {
+							result: clipParentResult(worker.result, maxResultChars, result.manifestPath),
+							resultChars: worker.result.length,
+							resultClipped,
+						}
+					: {}),
+				...(worker.error !== undefined
+					? {
+							error: clipParentResult(worker.error, MAX_WORKER_PARENT_ERROR_CHARS, result.manifestPath),
+							errorChars: worker.error.length,
+							errorClipped,
+						}
+					: {}),
+			}
+		}),
+	}
+}
+
 /** A bad parallel_tasks argument the model can fix and retry (as opposed to a runtime failure). */
 class ParallelTasksArgumentError extends Error {}
 
@@ -104,7 +168,7 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			)
 			if (!approved) return
 			const result = await runParallelTasks(task, provider, tasks)
-			callbacks.pushToolResult(JSON.stringify(result))
+			callbacks.pushToolResult(JSON.stringify(compactParallelTasksResultForParent(result)))
 		} catch (error) {
 			// Argument problems are recoverable: report them to the model as a tool error so it can
 			// retry with 1-4 valid tasks, instead of surfacing a fatal user-facing error.

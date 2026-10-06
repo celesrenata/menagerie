@@ -23,6 +23,7 @@ import {
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
+	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 } from "@roo-code/types"
 
 import { findLastIndex } from "@roo/array"
@@ -257,7 +258,7 @@ const createInitialExtensionState = (): ExtensionState => ({
 	organizationAllowList: ORGANIZATION_ALLOW_ALL,
 	organizationSettingsVersion: -1,
 	autoCondenseContext: true,
-	autoCondenseContextPercent: 100,
+	autoCondenseContextPercent: DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 	profileThresholds: {},
 	codebaseIndexConfig: {
 		codebaseIndexEnabled: true,
