@@ -5,6 +5,7 @@ import { collectTaskBoard, registerTaskBoard } from "../taskBoard"
 const mockProviders = vi.hoisted(() => ({
 	all: [] as unknown[],
 	commandHandlers: new Map<string, (...args: string[]) => unknown>(),
+	visibilityHandlers: [] as ((event: { visible: boolean }) => unknown)[],
 }))
 
 vi.mock("vscode", () => ({
@@ -13,8 +14,19 @@ vi.mock("vscode", () => ({
 		fire = vi.fn()
 		dispose = vi.fn()
 	},
+	Disposable: class {
+		dispose: () => unknown
+		constructor(callOnDispose: () => unknown) {
+			this.dispose = callOnDispose
+		}
+	},
 	window: {
 		createTreeView: vi.fn(() => ({
+			visible: true,
+			onDidChangeVisibility: vi.fn((handler: (event: { visible: boolean }) => unknown) => {
+				mockProviders.visibilityHandlers.push(handler)
+				return { dispose: vi.fn() }
+			}),
 			dispose: vi.fn(),
 		})),
 		showTextDocument: vi.fn(),
@@ -55,6 +67,7 @@ describe("Task Board registration", () => {
 		vi.clearAllMocks()
 		mockProviders.all = []
 		mockProviders.commandHandlers.clear()
+		mockProviders.visibilityHandlers = []
 	})
 
 	it("shows a completed child as completed even when its history status is stale", async () => {
@@ -81,7 +94,7 @@ describe("Task Board registration", () => {
 		expect(rows[0]?.status).toBe("completed")
 	})
 
-	it("provides the contributed view and writes one initial snapshot without polling", async () => {
+	it("provides the contributed view, writes an initial snapshot, and polls only while visible", async () => {
 		vi.useFakeTimers()
 		const subscriptions: { dispose(): unknown }[] = []
 		const context = {
@@ -96,9 +109,22 @@ describe("Task Board registration", () => {
 		)
 		await vi.advanceTimersByTimeAsync(0)
 		expect(fs.rename).toHaveBeenCalledTimes(1)
-		// No 5-second polling: advancing 10 seconds should NOT trigger a second snapshot
+		// Visible on activation, so the board polls every 5 seconds to stay current.
+		await vi.advanceTimersByTimeAsync(5_000)
+		expect(fs.rename).toHaveBeenCalledTimes(2)
+
+		// Hiding the board stops polling.
+		for (const handler of mockProviders.visibilityHandlers) await handler({ visible: false })
 		await vi.advanceTimersByTimeAsync(10_000)
-		expect(fs.rename).toHaveBeenCalledTimes(1)
+		expect(fs.rename).toHaveBeenCalledTimes(2)
+
+		// Re-showing the board refreshes immediately and resumes polling.
+		for (const handler of mockProviders.visibilityHandlers) await handler({ visible: true })
+		await vi.advanceTimersByTimeAsync(0)
+		expect(fs.rename).toHaveBeenCalledTimes(3)
+		await vi.advanceTimersByTimeAsync(5_000)
+		expect(fs.rename).toHaveBeenCalledTimes(4)
+
 		expect(vscode.commands.executeCommand).not.toHaveBeenCalled()
 		for (const subscription of subscriptions) subscription.dispose()
 	})
