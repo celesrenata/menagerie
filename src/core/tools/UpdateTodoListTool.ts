@@ -129,6 +129,11 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 
 			await setTodoListForTask(task, normalizedTodos)
 
+			// Signal real progress to the progress-aware loop detector: this call reached the
+			// persist path, meaning a checklist item's status actually changed (the no-op
+			// "unchanged"/empty branches returned earlier without setting this flag).
+			task.didTodoChange = true
+
 			if (isTodoListChanged) {
 				const md = todoListToMarkdown(normalizedTodos)
 				pushToolResult(formatResponse.toolResult("User edits todo:\n\n" + md))

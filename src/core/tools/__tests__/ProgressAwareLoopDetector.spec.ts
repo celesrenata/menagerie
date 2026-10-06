@@ -198,6 +198,105 @@ describe("ProgressAwareLoopDetector", () => {
 		})
 	})
 
+	// ===== update_todo_list no-op does not earn progress credit =====
+	describe("update_todo_list no-op escalation", () => {
+		function todoCall(todos: string): ToolUse {
+			return createToolUse("update_todo_list", "update_todo_list", { todos })
+		}
+
+		it("escalates when update_todo_list is called repeatedly without a status change", () => {
+			const detector = new ProgressAwareLoopDetector()
+			const results: ToolRepetitionCheckResult[] = []
+
+			// Each call sends slightly different todo text (reordered / rephrased) so the args
+			// and result hashes differ — the pre-fix behavior that was miscredited as
+			// query_changed/result_changed progress. With todoChanged omitted (no-op), those
+			// signals are suppressed and stagnation accumulates toward a hard stop.
+			for (let i = 0; i < 12; i++) {
+				const block = todoCall(`[ ] item ${i % 2}\n[ ] another ${i % 3}`)
+				const result = detector.check(block)
+				results.push(result)
+				if (result.askUser) break
+				detector.recordResult(
+					block,
+					{ ok: true, body: `Todo list unchanged (2 items, 0 completed). call ${i}` },
+					{ resultText: `Todo list unchanged (2 items, 0 completed). call ${i}` },
+				)
+			}
+
+			const nudged = results.some((r) => r.allowExecution === false && r.nudge)
+			const stopped = results.some((r) => r.askUser)
+			expect(nudged).toBe(true)
+			expect(stopped).toBe(true)
+		})
+
+		it("does NOT escalate when each update_todo_list call reports a real status change", () => {
+			const detector = new ProgressAwareLoopDetector()
+
+			for (let i = 0; i < 12; i++) {
+				const block = todoCall(`[x] item ${i}\n[ ] next ${i}`)
+				const result = detector.check(block)
+				expect(result.askUser).toBeUndefined()
+				// todoChanged: true credits a todo_changed progress signal that keeps the score low.
+				detector.recordResult(
+					block,
+					{ ok: true, body: `Todo list updated successfully (${i})` },
+					{ resultText: `Todo list updated successfully (${i})`, todoChanged: true },
+				)
+			}
+		})
+	})
+
+	// ===== Tool-less turns escalate via recordNoToolTurn =====
+	describe("empty-response (no tool use) escalation", () => {
+		it("escalates repeated tool-less turns through nudge to a hard stop", () => {
+			const detector = new ProgressAwareLoopDetector()
+			const results: ToolRepetitionCheckResult[] = []
+
+			for (let i = 0; i < 12; i++) {
+				const result = detector.recordNoToolTurn()
+				results.push(result)
+				if (result.askUser) break
+			}
+
+			const firstNudge = results.findIndex((r) => r.allowExecution === false && r.nudge)
+			const firstStop = results.findIndex((r) => r.askUser)
+			expect(firstNudge).toBeGreaterThanOrEqual(0)
+			expect(firstStop).toBeGreaterThanOrEqual(0)
+			expect(firstNudge).toBeLessThan(firstStop)
+		})
+
+		it("does not corrupt the args/result identity used by a following real tool call", () => {
+			const detector = new ProgressAwareLoopDetector()
+			const readFile: ToolUse = {
+				type: "tool_use",
+				name: "read_file" as ToolName,
+				params: {},
+				partial: false,
+				nativeArgs: { path: "a.ts", offset: 0, limit: 2000 },
+			}
+
+			// A real tool, then a tool-less turn, then the same real tool advancing: the
+			// synthetic no-tool turn must preserve the prior tool's hash bookkeeping so the
+			// detector still scores the real tool's progress correctly (no throw, no stop).
+			detector.check(readFile)
+			detector.recordResult(readFile, { ok: true, body: "chunk 0" }, { resultText: "chunk 0" })
+			detector.recordNoToolTurn()
+			const next: ToolUse = {
+				type: "tool_use",
+				name: "read_file" as ToolName,
+				params: {},
+				partial: false,
+				nativeArgs: { path: "a.ts", offset: 2000, limit: 2000 },
+			}
+			const result = detector.check(next)
+			expect(result.askUser).toBeUndefined()
+			expect(() =>
+				detector.recordResult(next, { ok: true, body: "chunk 1" }, { resultText: "chunk 1" }),
+			).not.toThrow()
+		})
+	})
+
 	// ===== Progress prevents escalation (core feature) =====
 	describe("progress prevents escalation", () => {
 		it("never nudges or stops an iterative-capable tool that keeps advancing", () => {

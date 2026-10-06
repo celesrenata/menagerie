@@ -191,14 +191,22 @@ export function deriveProgressSignals(
 		progress.push("target_changed")
 	}
 
+	// update_todo_list makes meaningful progress ONLY when a checklist item's status
+	// actually changes (surfaced via context.todoChanged). Cosmetic edits — reordering
+	// items, rephrasing text, or a validation-rejected update — change the args/result
+	// hash but represent no forward progress. Crediting those as query_changed/result_changed
+	// would cancel the stagnation score and let the model loop on update_todo_list
+	// indefinitely. Suppress both signals for an update_todo_list no-op.
+	const isTodoNoOp = String(block.name) === "update_todo_list" && context.todoChanged !== true
+
 	// Req 3.3: search query / arguments changed meaningfully.
-	if (prevState && newArgsHash !== prevState.normalizedArgsHash) {
+	if (!isTodoNoOp && prevState && newArgsHash !== prevState.normalizedArgsHash) {
 		progress.push("query_changed")
 	}
 
 	// Req 3.4: result body differs from the previous execution.
 	let resultChanged = false
-	if (prevState && newResultHash !== prevState.resultHash) {
+	if (!isTodoNoOp && prevState && newResultHash !== prevState.resultHash) {
 		resultChanged = true
 		progress.push("result_changed")
 	}
@@ -321,6 +329,22 @@ export function deriveStagnationSignals(
 		stagnation.push("empty_mutation_diff")
 	}
 
+	// update_todo_list is a state-mutation tool whose observable effect is a checklist
+	// status change (todoChanged), not a workspace diff. A repeated update_todo_list call
+	// that reports no status change is a stalled checklist edit — the same failure class as
+	// empty_mutation_diff. This fires regardless of whether the todo *text* differs, because
+	// cosmetic reorder/rephrase without a status transition is not progress. Guarding on a
+	// prior update_todo_list ensures the very first call is never penalized.
+	if (
+		prevState &&
+		String(block.name) === "update_todo_list" &&
+		prevState.tool === "update_todo_list" &&
+		context.todoChanged !== true &&
+		!stagnation.includes("empty_mutation_diff")
+	) {
+		stagnation.push("empty_mutation_diff")
+	}
+
 	// Req 4.8: a claimed success contradicted by verification.
 	if (context.verifiedSucceeded === false) {
 		stagnation.push("unverified_success")
@@ -339,6 +363,10 @@ export const STAGNATION_WEIGHTS: Readonly<Record<StagnationSignal, number>> = {
 	repeated_error_class: 3,
 	empty_mutation_diff: 3,
 	unverified_success: 2,
+	// Weighted like a repeated error: a single tool-less turn is a first failure (the
+	// host already grants one silent retry), but repeated empty responses accumulate
+	// toward the same nudge/replanning/hard_stop bands as any other stalled loop.
+	no_tool_use: 3,
 }
 
 /** Each observed progress signal decreases the No_Progress_Score by this amount. */
@@ -428,6 +456,7 @@ export type StagnationSignal =
 	| "repeated_error_class" // Req 4.2, 4.5
 	| "empty_mutation_diff" // Req 4.3, 4.6
 	| "unverified_success" // Req 4.8
+	| "no_tool_use" // Turn produced no tool call (model stalled / empty-response churn)
 
 /**
  * Per-task record describing the most recent evaluated tool execution and the
@@ -785,12 +814,21 @@ export class ProgressAwareLoopDetector {
 	 * band result is recomputed here with the gating semantics applied.
 	 */
 	private gate(id: string, block: ToolUse): ToolRepetitionCheckResult {
-		const state = this.getState(id)
-
 		// Capture pending pre-execution inputs for the matching recordResult step.
 		this.beforeTool(block, id)
+		return this.gateByName(id, String(block.name))
+	}
 
-		const toolName = String(block.name)
+	/**
+	 * Band-gating logic shared by {@link gate} (executed tools, which first run
+	 * {@link beforeTool}) and {@link recordNoToolTurn} (tool-less turns, which have no
+	 * `ToolUse` block and no pending pre-execution inputs to capture). Keyed by a plain
+	 * tool-name string so a synthetic turn needs no fabricated `ToolUse`. All hysteresis,
+	 * once-per-entry nudge, hard-stop precondition, and reset semantics live here.
+	 */
+	private gateByName(id: string, toolName: string): ToolRepetitionCheckResult {
+		const state = this.getState(id)
+
 		const band = deriveBand(state.noProgressScore)
 
 		// Hysteresis: a less-severe band than last time means the score dropped below
@@ -859,6 +897,50 @@ export class ProgressAwareLoopDetector {
 		const id = taskId ?? ProgressAwareLoopDetector.DEFAULT_TASK_ID
 		const captured = this.afterTool(block, result, context, id)
 		this.evaluateProgress(id, captured, block, context)
+	}
+
+	/**
+	 * Records a turn that produced NO tool call (the model emitted only text/reasoning,
+	 * or an empty response). The host's `switch (block.name)` dispatch never runs for
+	 * such a turn, so `recordResult()` is never reached and the detector would otherwise
+	 * be blind to the empty-response retry churn. This feeds a synthetic `no_tool_use`
+	 * stagnation signal through the same scoring path so repeated tool-less turns escalate
+	 * through the normal nudge → replanning → hard_stop bands.
+	 *
+	 * Returns the GATE decision to surface for the NEXT turn, derived from the score
+	 * accumulated so far (including this tool-less turn). The caller may use the result's
+	 * `askUser` to escalate a persistent empty-response loop to the user; `nudge`/`continue`
+	 * can be treated as "retry". `taskId` defaults to the implicit task as elsewhere.
+	 */
+	public recordNoToolTurn(taskId?: string): ToolRepetitionCheckResult {
+		const id = taskId ?? ProgressAwareLoopDetector.DEFAULT_TASK_ID
+		const state = this.getState(id)
+
+		// A tool-less turn carries exactly one stagnation signal and no progress; feed it
+		// through evaluateProgress with a synthetic captured-signal set so the score, band,
+		// and bookkeeping advance identically to a stalled tool execution.
+		const captured: CapturedSignals = {
+			tool: "__no_tool_use__",
+			normalizedArgsHash: state.normalizedArgsHash,
+			resultHash: state.resultHash,
+			cursor: state.cursor,
+			target: state.target,
+			errorClass: state.errorClass,
+			progress: [],
+			stagnation: ["no_tool_use"],
+			workspaceChanged: false,
+			todoChanged: false,
+			resultChanged: false,
+			cursorAdvanced: false,
+		}
+		// evaluateProgress updates the score/band; the return value is unused here because
+		// the gate below re-reads the freshly-updated score to apply the shared band semantics.
+		void this.evaluateProgress(id, captured)
+
+		// Surface interventions through the same hysteresis / once-per-entry / hard-stop
+		// precondition machinery used by executed tools, so empty-response escalation
+		// behaves consistently.
+		return this.gateByName(id, "__no_tool_use__")
 	}
 
 	/**
