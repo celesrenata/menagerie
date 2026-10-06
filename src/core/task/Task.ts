@@ -434,6 +434,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	diffViewProvider: DiffViewProvider
 	diffStrategy?: DiffStrategy
 	didEditFile: boolean = false
+	// True when update_todo_list changed a checklist item's status in the current turn.
+	// Consumed by presentAssistantMessage to feed the progress-aware loop detector, then reset.
+	didTodoChange: boolean = false
 
 	// LLM Messages & Chat Messages
 	apiConversationHistory: ApiMessage[] = []
@@ -3556,6 +3559,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// only prevent attempt_completion within the same assistant message, not across turns
 				// (e.g., if a tool fails, then user sends a message saying "just complete anyway")
 				this.didToolFailInCurrentTurn = false
+				this.didTodoChange = false
 				this.presentAssistantMessageLocked = false
 				this.presentAssistantMessageHasPendingUpdates = false
 				// No legacy text-stream tool parser.
@@ -4433,11 +4437,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// Increment consecutive no-tool-use counter
 						this.consecutiveNoToolUseCount++
 
+						// Feed the progress-aware loop detector so repeated tool-less turns
+						// (empty responses / reasoning-only replies) escalate through the same
+						// no-progress bands as any other stalled loop. recordResult() never runs
+						// for these turns because the tool-dispatch switch is skipped, so without
+						// this the detector would stay blind to empty-response churn.
+						const noToolDecision = this.toolRepetitionDetector.recordNoToolTurn()
+
 						// Only show error and count toward mistake limit after 2 consecutive failures
 						if (this.consecutiveNoToolUseCount >= 2) {
 							await this.say("error", "MODEL_NO_TOOLS_USED")
 							// Only count toward mistake limit after second consecutive failure
 							this.consecutiveMistakeCount++
+						}
+
+						// The detector reached a hard stop for persistent empty responses: raise the
+						// consecutive mistake count to the limit so the existing mistake-limit flow
+						// (user ask, or parallel-worker fail) handles it on the next loop entry,
+						// instead of retrying the empty-response prompt indefinitely.
+						if (noToolDecision.askUser && this.consecutiveMistakeLimit > 0) {
+							this.consecutiveMistakeCount = Math.max(
+								this.consecutiveMistakeCount,
+								this.consecutiveMistakeLimit,
+							)
 						}
 
 						// Use the task's locked protocol for consistent behavior

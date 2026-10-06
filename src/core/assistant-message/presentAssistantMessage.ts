@@ -783,7 +783,14 @@ export async function executeAssistantMessageBlock(
 					const detectorContext: ToolResultContext = {
 						resultText: resultContent,
 						workspaceChanged: cline.didEditFile === true || undefined,
+						// update_todo_list sets didTodoChange only when a checklist item's status
+						// actually changed. Feeding it here lets the detector distinguish real
+						// checklist progress from cosmetic no-op calls that must not reset the
+						// no-progress score. Consume-then-reset so a later tool in the same turn
+						// does not inherit a stale true.
+						todoChanged: cline.didTodoChange === true || undefined,
 					}
+					cline.didTodoChange = false
 					cline.toolRepetitionDetector.recordResult(
 						block,
 						{ ok: true, body: resultContent },
