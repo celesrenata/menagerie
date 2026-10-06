@@ -24,7 +24,7 @@ import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
 import { DEFAULT_HEADERS, NOT_PROVIDED } from "./constants"
-import { isOmniRoute, omniRouteRequestHeaders } from "./omniroute"
+import { isOmniRoute, omniRouteRequestHeaders, resolveOmniRouteContextWindow } from "./omniroute"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata, CompletePromptOptions } from "../index"
 import { handleOpenAIError } from "./utils/error-handler"
@@ -304,11 +304,21 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		// prior turn's reasoning in their live KV cache. Sending it back verbatim keeps
 		// the prompt prefix byte-stable; dropping it makes the server re-render an empty
 		// <think></think> and re-prefill from scratch. An explicit false still wins.
-		const info: ModelInfo =
-			isOmniRoute({ ...this.options, apiProvider: providerIdentifiers.openai }) &&
-			baseInfo.preserveReasoning === undefined
+		const isOmni = isOmniRoute({ ...this.options, apiProvider: providerIdentifiers.openai })
+		let info: ModelInfo =
+			isOmni && baseInfo.preserveReasoning === undefined
 				? { ...baseInfo, preserveReasoning: true }
 				: baseInfo
+		// Route-aware context window: when this is an OmniRoute profile and the model id is a
+		// known route, measure auto-condense against the route's real served window
+		// (vLLM --max-model-len / ollama num_ctx) instead of the flat sane default. A profile
+		// that explicitly set a LARGER window still wins (resolveOmniRouteContextWindow honors it).
+		if (isOmni) {
+			const routeWindow = resolveOmniRouteContextWindow(id, baseInfo.contextWindow)
+			if (routeWindow !== undefined && routeWindow !== info.contextWindow) {
+				info = { ...info, contextWindow: routeWindow }
+			}
+		}
 		const params = getModelParams({
 			format: "openai",
 			modelId: id,

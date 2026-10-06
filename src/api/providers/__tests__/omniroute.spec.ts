@@ -9,6 +9,8 @@ import {
 	isOmniRoute,
 	omniRouteRequestHeaders,
 	omniRouteTokenizedBaseUrl,
+	resolveOmniRouteContextWindow,
+	OMNIROUTE_ROUTE_CONTEXT_WINDOWS,
 	OMNIROUTE_PUBLIC_TOKEN,
 	OMNIROUTE_TIER_HEADER,
 	withOmniRouteTier,
@@ -254,5 +256,33 @@ describe("fetchOmniRouteCatalog", () => {
 		expect(result.status).toBe("error")
 		expect(result.entries).toEqual([])
 		expect(mockedAxiosGet).not.toHaveBeenCalled()
+	})
+})
+
+
+describe("resolveOmniRouteContextWindow", () => {
+	it("returns the mapped served window for a known route", () => {
+		expect(resolveOmniRouteContextWindow("hybrid/code")).toBe(163840)
+		expect(resolveOmniRouteContextWindow("hybrid/planner")).toBe(262144)
+		expect(resolveOmniRouteContextWindow("hybrid/reader")).toBe(32768)
+	})
+
+	it("returns undefined for an unknown route so the caller keeps its default", () => {
+		expect(resolveOmniRouteContextWindow("hybrid/nope")).toBeUndefined()
+		expect(resolveOmniRouteContextWindow("")).toBeUndefined()
+	})
+
+	it("uses the served window for a known route regardless of a custom window", () => {
+		// The served window is authoritative; a boilerplate profile default must not
+		// over-fill a small route or shrink a large one.
+		expect(resolveOmniRouteContextWindow("hybrid/reader", 131072)).toBe(32768)
+		expect(resolveOmniRouteContextWindow("hybrid/code", 32768)).toBe(163840)
+		expect(resolveOmniRouteContextWindow("hybrid/code", 163840)).toBe(163840)
+	})
+
+	it("maps every coder route to the vLLM served max-model-len", () => {
+		for (const route of ["hybrid/code", "pool/tier1/code", "pool/tier2/code"]) {
+			expect(OMNIROUTE_ROUTE_CONTEXT_WINDOWS[route]).toBe(163840)
+		}
 	})
 })

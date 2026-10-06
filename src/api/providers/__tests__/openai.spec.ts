@@ -1194,6 +1194,55 @@ describe("OpenAiHandler", () => {
 				expect(plain.getModel().info.preserveReasoning).toBeUndefined()
 			},
 		)
+
+		// Route-aware context windows: auto-condense must measure against the route's real
+		// served window (vLLM --max-model-len / ollama num_ctx), not the flat sane default.
+		it.each([
+			["hybrid/code", 163840],
+			["pool/tier1/code", 163840],
+			["hybrid/planner", 262144],
+			["hybrid/reader", 32768],
+			["local/m5-reader", 32768],
+		])("applies the served context window %s -> %d for OmniRoute profiles", (routeId, expected) => {
+			const omniRoute = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: true,
+				openAiModelId: routeId,
+			})
+			expect(omniRoute.getModel().info.contextWindow).toBe(expected)
+		})
+
+		it("does not apply route windows for non-OmniRoute profiles", () => {
+			const plain = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: false,
+				openAiModelId: "hybrid/code",
+				openAiCustomModelInfo: { ...openAiModelInfoSaneDefaults, contextWindow: 128_000 },
+			})
+			expect(plain.getModel().info.contextWindow).toBe(128_000)
+		})
+
+		it("uses the served window for a known route even when the profile default is larger", () => {
+			// The route IS the model: a 9B reader serves 32768 regardless of a boilerplate
+			// 128k/131k profile default, so auto-condense must measure against 32768.
+			const omniRoute = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: true,
+				openAiModelId: "hybrid/reader",
+				openAiCustomModelInfo: { ...openAiModelInfoSaneDefaults, contextWindow: 131_072 },
+			})
+			expect(omniRoute.getModel().info.contextWindow).toBe(32768)
+		})
+
+		it("leaves an unknown OmniRoute route on its profile/default window", () => {
+			const omniRoute = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: true,
+				openAiModelId: "hybrid/does-not-exist",
+				openAiCustomModelInfo: { ...openAiModelInfoSaneDefaults, contextWindow: 200_000 },
+			})
+			expect(omniRoute.getModel().info.contextWindow).toBe(200_000)
+		})
 	})
 
 	describe("Azure AI Inference Service", () => {
