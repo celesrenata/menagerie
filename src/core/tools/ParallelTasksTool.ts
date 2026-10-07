@@ -224,7 +224,12 @@ export function buildExecutionPlan(tasks: ParallelTaskSpec[]): ExecutionPlan {
 	return { tasks }
 }
 
-export const MAX_READER_PARENT_RESULT_CHARS = 2_400
+// A project-reader is the mastermind's information channel: it exists to return
+// audits/gap backlogs inline. It therefore gets MORE headroom than a coder, not
+// less — a generous but still-bounded cap so a realistic curated audit backlog
+// fits inline, while still protecting the coordinator's context window from a
+// runaway reader.
+export const MAX_READER_PARENT_RESULT_CHARS = 24_000
 export const MAX_WORKER_PARENT_RESULT_CHARS = 6_000
 export const MAX_WORKER_PARENT_ERROR_CHARS = 2_000
 
@@ -248,9 +253,14 @@ type ParentParallelTaskBatch = {
 
 function clipParentResult(text: string, maxChars: number, manifestPath?: string): string {
 	if (text.length <= maxChars) return text
+	// The coordinator model cannot open files, so the note must make clear the
+	// full text is NOT lost — it is retained verbatim in the structured
+	// parallel-task manifest/worker record. When a path is known it is named only
+	// as the addressable location of that retained record, never as a "go read
+	// this file" instruction.
 	const location = manifestPath
-		? ` Full result: ${manifestPath}`
-		: " Full result retained in the parallel-task manifest."
+		? ` Full result retained in the parallel-task manifest record (${manifestPath}).`
+		: " Full result retained in the parallel-task manifest record."
 	return `${text.slice(0, maxChars)}\n… [clipped ${text.length - maxChars} chars.${location}]`
 }
 

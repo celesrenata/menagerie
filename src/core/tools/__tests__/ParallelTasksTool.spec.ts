@@ -3,7 +3,10 @@ import type { Task } from "../../task/Task"
 import { ParallelTaskArgumentRecovery } from "../../task/ParallelTaskArgumentRecovery"
 import { runParallelTasks } from "../../task/runParallelTasks"
 import {
+	compactParallelTasksResultForParent,
 	makeParallelTasksSchema,
+	MAX_READER_PARENT_RESULT_CHARS,
+	MAX_WORKER_PARENT_RESULT_CHARS,
 	parallelTaskSpecSchema,
 	parallelTasksSchema,
 	parallelTasksTool,
@@ -199,5 +202,80 @@ describe("ParallelTasksTool.execute", () => {
 		expect(handleError).toHaveBeenCalledWith("running parallel tasks", expect.any(Error))
 		expect(pushToolResult).not.toHaveBeenCalled()
 		expect(runParallelTasks).not.toHaveBeenCalled()
+	})
+})
+
+describe("compactParallelTasksResultForParent", () => {
+	const reader = (name: string, result: string) => ({ name, mode: "project-reader", state: "done", result })
+	const coder = (name: string, result: string) => ({ name, mode: "code", state: "done", result })
+
+	// The reader cap must sit well above the coder cap so a reader — the mastermind's
+	// information channel — can return a realistic curated audit backlog inline.
+	it("exposes a reader cap (24_000) that is larger than the coder cap (6_000)", () => {
+		expect(MAX_READER_PARENT_RESULT_CHARS).toBe(24_000)
+		expect(MAX_WORKER_PARENT_RESULT_CHARS).toBe(6_000)
+		expect(MAX_READER_PARENT_RESULT_CHARS).toBeGreaterThan(MAX_WORKER_PARENT_RESULT_CHARS)
+	})
+
+	it("returns a project-reader result between the old 6_000 and the new 24_000 cap in full", () => {
+		const backlog = "G".repeat(12_000)
+		const { tasks } = compactParallelTasksResultForParent({
+			batchId: "b",
+			manifestPath: "/tmp/manifest.json",
+			tasks: [reader("gaps-extract", backlog)],
+		})
+		expect(tasks[0].result).toBe(backlog)
+		expect(tasks[0].result).not.toContain("[clipped")
+		expect(tasks[0].resultChars).toBe(backlog.length)
+		expect(tasks[0].resultClipped).toBe(false)
+	})
+
+	it("clips a project-reader result beyond 24_000 and names the retained manifest record", () => {
+		const backlog = "G".repeat(MAX_READER_PARENT_RESULT_CHARS + 5_000)
+		const { tasks } = compactParallelTasksResultForParent({
+			batchId: "b",
+			manifestPath: "/tmp/manifest.json",
+			tasks: [reader("gaps-extract", backlog)],
+		})
+		expect(tasks[0].resultClipped).toBe(true)
+		expect(tasks[0].resultChars).toBe(backlog.length)
+		expect(tasks[0].result!.startsWith(backlog.slice(0, MAX_READER_PARENT_RESULT_CHARS))).toBe(true)
+		expect(tasks[0].result).toContain(`[clipped ${backlog.length - MAX_READER_PARENT_RESULT_CHARS} chars.`)
+		expect(tasks[0].result).toContain("retained in the parallel-task manifest record")
+		expect(tasks[0].result).toContain("/tmp/manifest.json")
+	})
+
+	it("still clips a non-reader (coder) result at the unchanged 6_000 cap", () => {
+		const output = "C".repeat(MAX_WORKER_PARENT_RESULT_CHARS + 1_000)
+		const { tasks } = compactParallelTasksResultForParent({
+			batchId: "b",
+			manifestPath: "/tmp/manifest.json",
+			tasks: [coder("fix-view", output)],
+		})
+		expect(tasks[0].resultClipped).toBe(true)
+		expect(tasks[0].resultChars).toBe(output.length)
+		expect(tasks[0].result!.startsWith(output.slice(0, MAX_WORKER_PARENT_RESULT_CHARS))).toBe(true)
+		expect(tasks[0].result).toContain(`[clipped ${output.length - MAX_WORKER_PARENT_RESULT_CHARS} chars.`)
+	})
+
+	it("phrases the clip note as manifest retention for the path-known variant", () => {
+		const output = "C".repeat(MAX_WORKER_PARENT_RESULT_CHARS + 1)
+		const { tasks } = compactParallelTasksResultForParent({
+			batchId: "b",
+			manifestPath: "/tmp/manifest.json",
+			tasks: [coder("fix-view", output)],
+		})
+		expect(tasks[0].result).toContain("Full result retained in the parallel-task manifest record (/tmp/manifest.json).")
+		expect(tasks[0].result).not.toMatch(/Full result:/)
+	})
+
+	it("phrases the clip note as manifest retention for the path-unknown variant", () => {
+		const output = "C".repeat(MAX_WORKER_PARENT_RESULT_CHARS + 1)
+		const { tasks } = compactParallelTasksResultForParent({
+			batchId: "b",
+			tasks: [coder("fix-view", output)],
+		})
+		expect(tasks[0].result).toContain("Full result retained in the parallel-task manifest record.")
+		expect(tasks[0].result).not.toMatch(/Full result:/)
 	})
 })
