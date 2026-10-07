@@ -31,6 +31,7 @@ import {
 } from "../helpers/imageHelpers"
 import { extractTextFromFile, addLineNumbers, getSupportedBinaryFormats } from "../../../integrations/misc/extract-text"
 import { readWithIndentation, readWithSlice } from "../../../integrations/misc/indentation-reader"
+import { searchWorkspaceFiles } from "../../../services/search/file-search"
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,12 @@ vi.mock("fs/promises", () => ({
 }))
 
 vi.mock("isbinaryfile")
+
+// The not-found (ENOENT) branch calls suggestNearbyPaths → searchWorkspaceFiles.
+// Default to no suggestions so these tests do not touch ripgrep.
+vi.mock("../../../services/search/file-search", () => ({
+	searchWorkspaceFiles: vi.fn().mockResolvedValue([]),
+}))
 
 vi.mock("../../../integrations/misc/extract-text", () => ({
 	extractTextFromFile: vi.fn(),
@@ -133,6 +140,7 @@ const mockedReadWithIndentation = vi.mocked(readWithIndentation)
 const mockedIsSupportedImageFormat = vi.mocked(isSupportedImageFormat)
 const mockedValidateImageForProcessing = vi.mocked(validateImageForProcessing)
 const mockedProcessImageFile = vi.mocked(processImageFile)
+const mockedSearchWorkspaceFiles = vi.mocked(searchWorkspaceFiles)
 
 // ─── Test Helpers ─────────────────────────────────────────────────────────────
 
@@ -730,6 +738,83 @@ describe("ReadFileTool", () => {
 
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error reading file"))
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
+		})
+	})
+
+	// Feature: file-not-found-as-question (Layer 2). A missing path (ENOENT) is a
+	// recoverable "did you mean" question, not a fatal error.
+	describe("not-found (ENOENT) handling", () => {
+		const enoent = () => Object.assign(new Error("no such file"), { code: "ENOENT" })
+
+		it("returns a structured 'did you mean' notice with near-match paths and does not error", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			mockedFsStat.mockRejectedValue(enoent())
+			mockedSearchWorkspaceFiles.mockResolvedValue([
+				{ path: "src/app.ts", type: "file", label: "app.ts" },
+				{ path: "lib/app.ts", type: "file", label: "app.ts" },
+			])
+
+			await readFileTool.execute({ path: "app.ts" }, asTask(mockTask), callbacks)
+
+			const output = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(output).toContain("File: app.ts")
+			expect(output).toContain("Not found:")
+			expect(output).toContain("Did you mean")
+			expect(output).toContain("src/app.ts")
+			// A not-found read is a question, not an error.
+			expect(mockTask.say).not.toHaveBeenCalledWith("error", expect.anything())
+			expect(mockTask.didToolFailInCurrentTurn).toBe(false)
+		})
+
+		it("states 'no similar files' when there are no near matches", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			mockedFsStat.mockRejectedValue(enoent())
+			mockedSearchWorkspaceFiles.mockResolvedValue([])
+
+			await readFileTool.execute({ path: "missing.ts" }, asTask(mockTask), callbacks)
+
+			const output = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(output).toContain("Not found:")
+			expect(output).toContain("no similar files were found")
+			expect(output).not.toContain("Did you mean")
+			expect(mockTask.didToolFailInCurrentTurn).toBe(false)
+		})
+
+		it("still treats a non-ENOENT error (EACCES) as a fatal error", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			mockedFsStat.mockRejectedValue(Object.assign(new Error("permission denied"), { code: "EACCES" }))
+
+			await readFileTool.execute({ path: "protected.ts" }, asTask(mockTask), callbacks)
+
+			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Error reading file"))
+			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
+		})
+
+		it("surfaces the not-found notice in the legacy format path too", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
+			mockedFsStat.mockRejectedValue(enoent())
+			mockedSearchWorkspaceFiles.mockResolvedValue([{ path: "src/app.ts", type: "file", label: "app.ts" }])
+
+			await readFileTool.execute(
+				{ files: [{ path: "app.ts" }] } as ReadFileToolParams,
+				asTask(mockTask),
+				callbacks,
+			)
+
+			const output = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(output).toContain("File: app.ts")
+			expect(output).toContain("Not found:")
+			expect(output).toContain("src/app.ts")
+			expect(mockTask.didToolFailInCurrentTurn).toBe(false)
 		})
 	})
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 import type { WorkerResult } from "@roo-code/types"
 
-import { normalizeWorkerResult } from "../normalizeWorkerResult"
+import { buildPathConfirmationBlocker, normalizeWorkerResult } from "../normalizeWorkerResult"
 
 /**
  * Validates the normalizer's three outcomes:
@@ -97,6 +97,113 @@ describe("normalizeWorkerResult", () => {
 			})
 
 			expect(result.status).toBe("failed")
+		})
+	})
+
+	// Feature: file-not-found-as-question (Layer 3). A missing REFERENCED INPUT
+	// the worker was told to READ is a recoverable question → blocked; a missing
+	// PRODUCED/expected file (or raw write-ENOENT) stays a genuine failure.
+	describe("not-found input vs produced classification", () => {
+		it("classifies a read-side-framed missing input as 'blocked' with a path-confirmation blocker (AC-7)", () => {
+			const result = normalizeWorkerResult("Could not find the input config/app.yaml to read.", {
+				workerName,
+			})
+
+			expect(result.status).toBe("blocked")
+			expect(result.blockers).toHaveLength(1)
+			expect(result.blockers[0]).toContain("config/app.yaml")
+			expect(result.blockers[0]).toContain("Confirm the correct path")
+		})
+
+		it("classifies a verbatim post-collapse Layer-2 notice body as 'blocked' + blocker (finding #1)", () => {
+			// `rawToText` collapses the notice's newlines to spaces; the `Not found:`
+			// marker must still match.
+			const notice =
+				"File: config/app.yaml Not found: no file exists at this path. Did you mean one of these? - deploy/app.yaml"
+			const result = normalizeWorkerResult(notice, { workerName })
+
+			expect(result.status).toBe("blocked")
+			expect(result.blockers).toHaveLength(1)
+			expect(result.blockers[0]).toContain("config/app.yaml")
+		})
+
+		it("classifies produced-file failure prose as 'failed' (AC-8)", () => {
+			expect(normalizeWorkerResult("Failed to create output.json for the report.", { workerName }).status).toBe(
+				"failed",
+			)
+			expect(
+				normalizeWorkerResult("The expected output report.md is missing after the run.", { workerName }).status,
+			).toBe("failed")
+			expect(
+				normalizeWorkerResult("Verification failed: dist/bundle.js does not exist.", { workerName }).status,
+			).toBe("failed")
+		})
+
+		it("classifies a bare raw write-ENOENT as 'failed', never 'blocked' (AC-9, central safety pin)", () => {
+			const result = normalizeWorkerResult("ENOENT: no such file or directory, open 'dist/output.json'", {
+				workerName,
+			})
+
+			expect(result.status).toBe("failed")
+			expect(result.blockers).toEqual([])
+		})
+
+		it("classifies a narrated write-ENOENT as 'failed' (produced tested first)", () => {
+			const result = normalizeWorkerResult(
+				"could not write the artifact: ENOENT: no such file or directory, open 'dist/out.json'",
+				{ workerName },
+			)
+
+			expect(result.status).toBe("failed")
+		})
+
+		it("classifies produced-negation phrasings as 'failed' (finding #2 breadth)", () => {
+			expect(normalizeWorkerResult("the required artifact was never written", { workerName }).status).toBe(
+				"failed",
+			)
+			expect(normalizeWorkerResult("output was not generated", { workerName }).status).toBe("failed")
+			expect(
+				normalizeWorkerResult("cannot proceed: the artifact was never written", { workerName }).status,
+			).toBe("failed")
+		})
+
+		it("short-circuits produced over a 'did you mean' input marker (ordering guard)", () => {
+			const result = normalizeWorkerResult("failed to create output.json (did you mean dist/output.json?)", {
+				workerName,
+			})
+
+			expect(result.status).toBe("failed")
+		})
+
+		it("keeps a generic 'blocked' prose as 'blocked' (regression pin, no not-found reinterpretation)", () => {
+			const result = normalizeWorkerResult("I am blocked: the web/ directory is missing.", { workerName })
+
+			expect(result.status).toBe("blocked")
+			// Not a not-found input → no synthesized blocker entry.
+			expect(result.blockers).toEqual([])
+		})
+	})
+
+	describe("buildPathConfirmationBlocker", () => {
+		it("extracts a no-slash path token (config.yaml)", () => {
+			const blocker = buildPathConfirmationBlocker("could not find the input config.yaml")
+
+			expect(blocker).toContain("config.yaml")
+			expect(blocker).toContain("Confirm the correct path")
+		})
+
+		it("prefers the first slash-and-extension token in a two-path-token message", () => {
+			const blocker = buildPathConfirmationBlocker(
+				"input src/config/app.yaml not found; did you mean config/app.yaml",
+			)
+
+			expect(blocker).toContain("Referenced input not found: src/config/app.yaml")
+		})
+
+		it("falls back to a generic blocker when no path token is present", () => {
+			const blocker = buildPathConfirmationBlocker("referenced input not found")
+
+			expect(blocker).toBe("Referenced input not found (see summary). Confirm the correct path.")
 		})
 	})
 

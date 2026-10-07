@@ -75,10 +75,13 @@ export function createReadFileTool(options: ReadFileToolOptions = {}): OpenAI.Ch
 
 	const limitNote = ` A single-file read defaults to ${DEFAULT_LINE_LIMIT} lines; batched reads share the ${DEFAULT_BATCH_LINE_BUDGET}-line default budget. Lines longer than ${MAX_LINE_LENGTH} characters are truncated.`
 
+	const notFoundNote = ` If a path does not exist, this returns a "did you mean" list of near-match candidate paths to re-read (or states no similar files were found) rather than a fatal error — verify the intended path and re-read a candidate.`
+
 	const description =
 		descriptionIntro +
 		modeDescription +
 		limitNote +
+		notFoundNote +
 		" " +
 		getReadFileSupportsNote(supportsImages) +
 		` Example (one file): { path: ['src/app.ts'] }` +
