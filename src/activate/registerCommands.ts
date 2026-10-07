@@ -237,6 +237,8 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	}
 
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
+	// Interactive popout: closing the tab detaches the view and keeps the task alive on the board.
+	tabProvider.setEditorViewRole("popout")
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
 
 	// Check if there are any visible text editors, otherwise open a new group
@@ -293,4 +295,71 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
 
 	return tabProvider
+}
+
+/**
+ * Re-open a still-running task in a new editor tab by re-binding a fresh panel to the task's
+ * existing owning (headless/detached) popout provider. Does NOT create a task: if no live
+ * instance owns `taskId` (the task completed/closed between board render and click), it shows
+ * an information message and declines.
+ */
+export const openTaskInNewTab = async (
+	taskId: string,
+	{ context }: Omit<RegisterCommandOptions, "provider" | "outputChannel">,
+): Promise<ClineProvider | undefined> => {
+	const owningProvider = ClineProvider.getAllInstances().find((p) => p.getCurrentTask()?.taskId === taskId)
+	if (!owningProvider) {
+		void vscode.window.showInformationMessage("That task is no longer running")
+		return undefined
+	}
+
+	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
+	const hasVisibleEditors = vscode.window.visibleTextEditors.length > 0
+
+	if (!hasVisibleEditors) {
+		await vscode.commands.executeCommand("workbench.action.newGroupRight")
+	}
+
+	const targetCol = hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two
+
+	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "Zoo Code", targetCol, {
+		enableScripts: true,
+		retainContextWhenHidden: true,
+		localResourceRoots: [context.extensionUri],
+	})
+
+	setPanel(newPanel, "tab")
+
+	newPanel.iconPath = {
+		light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
+		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
+	}
+
+	// Re-bind to the existing owning provider (NOT resolveWebviewView), so first-time init is
+	// not re-run and no listeners accumulate on the surviving provider.
+	await owningProvider.rebindView(newPanel)
+
+	newPanel.onDidChangeViewState(
+		(e) => {
+			const panel = e.webviewPanel
+			if (panel.visible) {
+				panel.webview.postMessage({ type: "action", action: "didBecomeVisible" })
+			}
+		},
+		null,
+		context.subscriptions,
+	)
+
+	newPanel.onDidDispose(
+		() => {
+			setPanel(undefined, "tab")
+		},
+		null,
+		context.subscriptions,
+	)
+
+	await delay(100)
+	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
+
+	return owningProvider
 }

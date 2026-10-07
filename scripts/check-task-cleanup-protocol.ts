@@ -14,6 +14,10 @@ interface TaskState {
 	reversion: PendingResult
 	cleanup: PendingResult
 	finalization: "idle" | "attempted" | "skipped"
+	// View-ownership of this task's owning provider. A popout task begins owned by a provider
+	// with a live view ("owning-visible"); closing the popout tab detaches the view
+	// ("owning-detached") WITHOUT touching abort/disposal/finalization. "none" = no view binding.
+	view: "owning-visible" | "owning-detached" | "none"
 }
 
 interface ModelState {
@@ -29,7 +33,12 @@ interface Step {
 }
 
 const MAX_DEPTH = 20
-const MAX_STATES = 100_000
+// Raised from 100_000 when the orthogonal ternary `view` field was added (view-detach
+// transition). The field multiplies the reachable space by up to 3x per task; this bound
+// keeps the full BFS exhaustive rather than sampling, per the model's extension rules.
+// The exhaustive run visits ~229k states; this bound leaves headroom while still tripping
+// a runaway expansion.
+const MAX_STATES = 300_000
 const expectedActions = [
 	"abort",
 	"dispose",
@@ -47,6 +56,7 @@ const expectedActions = [
 	"shutdown-abort",
 	"shutdown-dispose",
 	"advance-shutdown",
+	"view-detach",
 ] as const
 
 function task(): TaskState {
@@ -58,6 +68,7 @@ function task(): TaskState {
 		reversion: "idle",
 		cleanup: "idle",
 		finalization: "idle",
+		view: "owning-visible",
 	}
 }
 
@@ -169,6 +180,24 @@ function transitions(state: ModelState): Step[] {
 			next.tasks[taskId].disposal = "resolved"
 			result.push({ action: `complete-disposal(${taskId})`, state: next })
 		}
+		// View detach: closing a popout tab detaches the view without aborting/disposing the
+		// task. Enabled only while the view is visible and disposal has not started. The
+		// transition sets ONLY `view`; it changes no abort/disposal/reversion/cleanup/
+		// finalization/shutdown state (orthogonality is asserted below).
+		if (current.view === "owning-visible" && current.disposal === "idle") {
+			const next = clone(state)
+			const detached = next.tasks[taskId]
+			detached.view = "owning-detached"
+			// Orthogonality (construction-time): a view-detach writes ONLY `view`. Assert the
+			// transition changed nothing in the abort/disposal/finalization subspace; a
+			// regression that lets detach touch another field trips this immediately.
+			assert.equal(detached.abort, current.abort, "view-detach must not change abort")
+			assert.equal(detached.disposal, current.disposal, "view-detach must not change disposal")
+			assert.equal(detached.reversion, current.reversion, "view-detach must not change reversion")
+			assert.equal(detached.cleanup, current.cleanup, "view-detach must not change cleanup")
+			assert.equal(detached.finalization, current.finalization, "view-detach must not change finalization")
+			result.push({ action: `view-detach(${taskId})`, state: next })
+		}
 	}
 
 	if (state.shutdown === "idle") {
@@ -226,6 +255,14 @@ function invariantViolations(state: ModelState): string[] {
 		}
 		if (state.drained[taskId] && (!isTerminal(current.abort) || !isTerminal(current.disposal))) {
 			violations.push(`${taskId}: provider advanced before abort and disposal completed`)
+		}
+		// Orthogonality of view-detach: the two modeled tasks are popout-owned, so `view` may
+		// only ever be "owning-visible" (initial) or "owning-detached" (after view-detach).
+		// view-detach is the sole writer of `view` and no action reads it as a guard, so detach
+		// cannot enable, block, or accelerate abort/disposal — reaching "none" here would mean
+		// some other action wrote `view`, breaking that orthogonality.
+		if (current.view === "none") {
+			violations.push(`${taskId}: view reached "none"; only view-detach may write view (orthogonality broken)`)
 		}
 	}
 	if (state.shutdownIndex !== taskIds.filter((taskId) => state.drained[taskId]).length) {
@@ -295,6 +332,15 @@ function runModelCheck(): { states: number; actions: number; landmarks: number }
 			reachedLandmarks.add("history-task-final-save-skip")
 		}
 		if (node.state.shutdown === "done") reachedLandmarks.add("multi-task-shutdown-drained")
+		// A view can detach while the task stays fully live (close ≠ kill): the task is
+		// "owning-detached" yet abort and disposal are both idle.
+		if (
+			node.state.tasks.A.view === "owning-detached" &&
+			node.state.tasks.A.abort === "idle" &&
+			node.state.tasks.A.disposal === "idle"
+		) {
+			reachedLandmarks.add("view-detach-preserves-owned-task")
+		}
 
 		if (node.trace.length === MAX_DEPTH) {
 			frontier.push(node.state)
@@ -323,6 +369,7 @@ function runModelCheck(): { states: number; actions: number; landmarks: number }
 		"shutdown-continues-after-abort-rejection",
 		"history-task-final-save-skip",
 		"multi-task-shutdown-drained",
+		"view-detach-preserves-owned-task",
 	]
 	const missingLandmarks = expectedLandmarks.filter((landmark) => !reachedLandmarks.has(landmark))
 	assert.deepEqual(missingLandmarks, [], `Cleanup protocol has unreachable landmarks: ${missingLandmarks.join(", ")}`)
@@ -332,5 +379,5 @@ function runModelCheck(): { states: number; actions: number; landmarks: number }
 runRepresentativeMemoizationChecks()
 const result = runModelCheck()
 console.log(
-	`Task cleanup protocol model check passed: ${result.states} reachable states, ${result.actions}/${expectedActions.length} actions reachable, ${result.landmarks}/8 landmarks reached, depth <= ${MAX_DEPTH}, tasks=${taskIds.length}`,
+	`Task cleanup protocol model check passed: ${result.states} reachable states, ${result.actions}/${expectedActions.length} actions reachable, ${result.landmarks}/9 landmarks reached, depth <= ${MAX_DEPTH}, tasks=${taskIds.length}`,
 )
