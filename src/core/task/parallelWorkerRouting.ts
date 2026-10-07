@@ -269,7 +269,19 @@ export interface ResolveLaneRouteIdArgs {
  *       regression for an unconfigured user; the spread is opt-in via config.
  *     - `reasoning.escalation` → the reasoner/long-context route id by task type
  *       (scarce lane assigned only by `produceDeeperLaneFollowUp`, unchanged).
- *  3. Else fall back to the parent model id (single-model behavior unchanged).
+ *  3. Else prefer the worker's OWN saved profile model (`profile.openAiModelId`)
+ *     when it is set and differs from `parentModelId`, before the parent model id.
+ *  4. Else fall back to the parent model id (single-model behavior unchanged).
+ *
+ * The own-model tier (3) closes the parent-planner-inheritance trap: a worker's
+ * child context is seeded with its mode-mapped saved profile (e.g. a
+ * `project-reader` carries `openAiModelId: "hybrid/reader"`), but when that
+ * profile leaves the lane's role route id (`openAiOmniRouteReaderRouteId` /
+ * `openAiOmniRouteReasonerRouteId`) null, the lane branch would otherwise fall
+ * straight through to `parentModelId` — the orchestrator's `hybrid/planner` —
+ * sending ALL worker inference to the planner lane and never touching the
+ * reader/code backends. Honoring the worker's own `openAiModelId` before the
+ * parent ensures a reader can never run on the planner.
  *
  * Pure — no side effects, no tier/GPU math.
  */
@@ -278,11 +290,19 @@ export function resolveLaneRouteId(args: ResolveLaneRouteIdArgs): string | undef
 	// 1) Explicit route wins verbatim.
 	if (route) return route
 
+	// The worker's own saved profile model is preferred over the parent's model at
+	// every lane fallback below. Without this, a worker whose profile sets
+	// `openAiModelId` (its real role model) but leaves the lane's role route id
+	// null inherits the parent orchestrator's model (`parentModelId`) — the
+	// parent-planner-inheritance trap documented in this function's JSDoc.
+	const ownModelFallback =
+		profile.openAiModelId && profile.openAiModelId !== parentModelId ? profile.openAiModelId : parentModelId
+
 	// 2) Resolve by lane.
 	switch (lane) {
 		case "reader.fast":
 		case "reader.deep":
-			return profile.openAiOmniRouteReaderRouteId ?? parentModelId
+			return profile.openAiOmniRouteReaderRouteId ?? ownModelFallback
 		case "coder.primary": {
 			// Spread the common reasoning-typed coder population across every
 			// configured code-capable backend by deterministic round-robin keyed on
@@ -294,7 +314,7 @@ export function resolveLaneRouteId(args: ResolveLaneRouteIdArgs): string | undef
 					((ordinal % codeCapableRouteIds.length) + codeCapableRouteIds.length) % codeCapableRouteIds.length
 				return codeCapableRouteIds[index]
 			}
-			return profile.openAiOmniRouteReasonerRouteId ?? codeCapableRouteIds[0] ?? parentModelId
+			return profile.openAiOmniRouteReasonerRouteId ?? codeCapableRouteIds[0] ?? ownModelFallback
 		}
 		case "reasoning.escalation":
 			// The scarce escalation lane. The two-field OmniRoute profile exposes no
@@ -303,7 +323,7 @@ export function resolveLaneRouteId(args: ResolveLaneRouteIdArgs): string | undef
 			// long-context backend behind that route). `taskType` participates in the
 			// capability resolution (laneToRouteCapability) but not the route id here.
 			void taskType
-			return profile.openAiOmniRouteReasonerRouteId ?? parentModelId
+			return profile.openAiOmniRouteReasonerRouteId ?? ownModelFallback
 	}
 }
 
