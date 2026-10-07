@@ -2,7 +2,13 @@ import type { Mock } from "vitest"
 import * as vscode from "vscode"
 import { ClineProvider } from "../../core/webview/ClineProvider"
 
-import { getVisibleProviderOrLog, openClineInNewTab, registerCommands, setPanel } from "../registerCommands"
+import {
+	getVisibleProviderOrLog,
+	openClineInNewTab,
+	openTaskInNewTab,
+	registerCommands,
+	setPanel,
+} from "../registerCommands"
 
 vi.mock("execa", () => ({
 	execa: vi.fn(),
@@ -22,6 +28,7 @@ vi.mock("vscode", () => ({
 	window: {
 		createTextEditorDecorationType: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 		createWebviewPanel: vi.fn(),
+		showInformationMessage: vi.fn(),
 		visibleTextEditors: [],
 	},
 	workspace: {
@@ -423,5 +430,62 @@ describe("openClineInNewTab", () => {
 				retainContextWhenHidden: true,
 			}),
 		)
+	})
+})
+
+describe("openTaskInNewTab", () => {
+	let mockContext: vscode.ExtensionContext
+	let mockPanel: { webview: { postMessage: Mock }; onDidChangeViewState: Mock; onDidDispose: Mock }
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+
+		mockContext = {
+			subscriptions: [],
+			extensionUri: { path: "/mock/ext" },
+		} as unknown as vscode.ExtensionContext
+
+		mockPanel = {
+			webview: { postMessage: vi.fn() },
+			onDidChangeViewState: vi.fn(),
+			onDidDispose: vi.fn(),
+		}
+		;(vscode.window.createWebviewPanel as Mock).mockReturnValue(mockPanel)
+
+		setPanel(undefined, "sidebar")
+		setPanel(undefined, "tab")
+	})
+
+	it("declines and shows an info message when no instance owns the taskId (no task creation)", async () => {
+		;(ClineProvider.getAllInstances as Mock).mockReturnValue([
+			{ getCurrentTask: () => ({ taskId: "other" }) },
+		])
+
+		const result = await openTaskInNewTab("missing-id", { context: mockContext })
+
+		expect(result).toBeUndefined()
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("That task is no longer running")
+		expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled()
+	})
+
+	it("re-binds a fresh panel to the owning provider via rebindView (not resolveWebviewView)", async () => {
+		const rebindView = vi.fn().mockResolvedValue(undefined)
+		const resolveWebviewView = vi.fn().mockResolvedValue(undefined)
+		const createTask = vi.fn()
+		const owningProvider = {
+			getCurrentTask: () => ({ taskId: "live-id" }),
+			rebindView,
+			resolveWebviewView,
+			createTask,
+		}
+		;(ClineProvider.getAllInstances as Mock).mockReturnValue([owningProvider])
+
+		const result = await openTaskInNewTab("live-id", { context: mockContext })
+
+		expect(result).toBe(owningProvider)
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
+		expect(rebindView).toHaveBeenCalledWith(mockPanel)
+		expect(resolveWebviewView).not.toHaveBeenCalled()
+		expect(createTask).not.toHaveBeenCalled()
 	})
 })

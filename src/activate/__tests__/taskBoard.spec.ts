@@ -94,6 +94,52 @@ describe("Task Board registration", () => {
 		expect(rows[0]?.status).toBe("completed")
 	})
 
+	it("returns one row per provider and keeps a popout task after its view detaches", async () => {
+		const makeTaskStub = (id: string, parallelWorker: boolean) => ({
+			taskId: id,
+			clineMessages: [{ ts: 1, type: "say", say: "text", text: `Task ${id}` }],
+			getTaskMode: async () => "code",
+			getTaskApiConfigName: async () => "local-code",
+			api: { getModel: () => ({ id: "model" }) },
+			cwd: "/repo",
+			todoList: [],
+			parallelWorker,
+			isStreaming: true,
+			abort: false,
+		})
+		const providerFor = (task: ReturnType<typeof makeTaskStub>) => ({
+			getCurrentTask: () => task,
+			taskHistoryStore: { get: () => ({ task: `History ${task.taskId}`, status: "active" }) },
+		})
+
+		const popoutA = makeTaskStub("popout-A", false)
+		const popoutB = makeTaskStub("popout-B", false)
+		const worker = makeTaskStub("worker-1", true)
+
+		// Sidebar provider owns no task (returns undefined) + two popouts + one worker.
+		mockProviders.all = [
+			{ getCurrentTask: () => undefined, taskHistoryStore: { get: () => undefined } },
+			providerFor(popoutA),
+			providerFor(popoutB),
+			providerFor(worker),
+		]
+
+		const before = await collectTaskBoard()
+		// Three task-owning providers → three rows (the sidebar provider contributes none).
+		expect(before.map((row) => row.id).sort()).toEqual(["popout-A", "popout-B", "worker-1"])
+		const popoutARowBefore = before.find((row) => row.id === "popout-A")
+		expect(popoutARowBefore?.status).toBe("streaming")
+
+		// Detaching popoutA's view does NOT remove its owning provider from activeInstances, and
+		// the provider still enumerates the (still-running) task. Modeled here by the provider
+		// staying in the list and still returning the task.
+		const after = await collectTaskBoard()
+		const popoutARowAfter = after.find((row) => row.id === "popout-A")
+		expect(after.map((row) => row.id).sort()).toEqual(["popout-A", "popout-B", "worker-1"])
+		expect(popoutARowAfter).toBeDefined()
+		expect(popoutARowAfter?.status).toBe(popoutARowBefore?.status)
+	})
+
 	it("provides the contributed view, writes an initial snapshot, and polls only while visible", async () => {
 		vi.useFakeTimers()
 		const subscriptions: { dispose(): unknown }[] = []

@@ -3103,6 +3103,263 @@ describe("ClineProvider", () => {
 			])
 		})
 	})
+
+	describe("popout tab-close decouple (editorViewRole)", () => {
+		// A WebviewPanel-shaped mock: has onDidChangeViewState (so inTabMode is true) and a
+		// CONTROLLABLE onDidDispose (captures the callback instead of auto-invoking it), plus a
+		// spyable dispose(). fireDispose() invokes the captured view-close callback on demand.
+		type PanelHarness = {
+			panel: vscode.WebviewPanel
+			dispose: ReturnType<typeof vi.fn>
+			fireDispose: () => Promise<void>
+		}
+
+		const makePanel = (): PanelHarness => {
+			let disposeCb: (() => unknown) | undefined
+			const dispose = vi.fn()
+			const panel = {
+				webview: {
+					postMessage: vi.fn(),
+					html: "",
+					options: {},
+					onDidReceiveMessage: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+					asWebviewUri: vi.fn(),
+					cspSource: "vscode-webview://test-csp-source",
+				},
+				visible: true,
+				onDidChangeViewState: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
+				onDidDispose: vi.fn().mockImplementation((cb: () => unknown) => {
+					disposeCb = cb
+					return { dispose: vi.fn() }
+				}),
+				dispose,
+				// Structural WebviewPanel double: the production code only touches the members
+				// mocked above; a precise VS Code panel type is unavailable in unit tests.
+			} as unknown as vscode.WebviewPanel
+			return {
+				panel,
+				dispose,
+				fireDispose: async () => {
+					await disposeCb?.()
+				},
+			}
+		}
+
+		// Private-member accessors via bracket notation (AGENTS.md: prefer over `as any`).
+		const viewOf = (p: ClineProvider): unknown => (p as unknown as { view: unknown }).view
+		const disposedOf = (p: ClineProvider): boolean => (p as unknown as { _disposed: boolean })._disposed
+		const detach = (p: ClineProvider): Promise<void> =>
+			(p as unknown as { detachTabView(): Promise<void> }).detachTabView()
+		const reap = (p: ClineProvider, taskId: string): void =>
+			(p as unknown as { reapIfDetachedPopoutTerminal(id: string): void }).reapIfDetachedPopoutTerminal(taskId)
+		const spyClear = (p: ClineProvider) =>
+			vi.spyOn(p as unknown as { clearWebviewResources(): void }, "clearWebviewResources")
+		const spyDetach = (p: ClineProvider) =>
+			vi.spyOn(p as unknown as { detachTabView(): Promise<void> }, "detachTabView")
+
+		const makePopout = () =>
+			new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+
+		const addTask = async (p: ClineProvider, taskId: string) => {
+			const task = new Task(defaultTaskOptions)
+			Object.defineProperty(task, "taskId", { value: taskId, writable: true })
+			await p.addClineToStack(task)
+			return task
+		}
+
+		test("popout tab-close detaches the view and keeps the running task alive", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			const task = await addTask(popout, "popout-running")
+
+			const removeSpy = vi.spyOn(popout, "removeClineFromStack")
+			const clearSpy = spyClear(popout)
+
+			await h.fireDispose()
+
+			// View detached, resources cleared, provider + task still alive.
+			expect(clearSpy).toHaveBeenCalledTimes(1)
+			expect(viewOf(popout)).toBeUndefined()
+			expect(ClineProvider.getAllInstances()).toContain(popout)
+			expect(popout.getCurrentTask()).toBe(task)
+			// Zero task-killing calls.
+			expect(removeSpy).not.toHaveBeenCalled()
+			expect(task.abortTask).not.toHaveBeenCalled()
+			expect(task.dispose).not.toHaveBeenCalled()
+
+			await popout.dispose()
+		})
+
+		test("worker tab-close still disposes (aborts) the worker", async () => {
+			const worker = makePopout()
+			worker.setEditorViewRole("worker")
+			const h = makePanel()
+			await worker.resolveWebviewView(h.panel)
+			const task = await addTask(worker, "worker-task")
+
+			await h.fireDispose()
+
+			// Worker close goes through dispose(): task is drained/aborted and the instance removed.
+			expect(task.abortTask).toHaveBeenCalled()
+			expect(ClineProvider.getAllInstances()).not.toContain(worker)
+			expect(disposedOf(worker)).toBe(true)
+		})
+
+		test("genuine dispose() still aborts even for a popout provider", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			const task = await addTask(popout, "popout-dispose")
+
+			await popout.dispose()
+
+			expect(task.abortTask).toHaveBeenCalled()
+			expect(ClineProvider.getAllInstances()).not.toContain(popout)
+		})
+
+		test("detachTabView is idempotent (second call is a no-op)", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			await addTask(popout, "popout-idem")
+
+			const clearSpy = spyClear(popout)
+			await detach(popout)
+			await detach(popout)
+
+			expect(clearSpy).toHaveBeenCalledTimes(1)
+			expect(h.dispose).toHaveBeenCalledTimes(1)
+			expect(viewOf(popout)).toBeUndefined()
+
+			await popout.dispose()
+		})
+
+		test("re-entrant onDidDispose during detach short-circuits (null-before-dispose)", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			await addTask(popout, "popout-reentrant")
+
+			const clearSpy = spyClear(popout)
+			// Simulate VS Code re-firing the view-close handler when the panel is disposed.
+			h.dispose.mockImplementation(() => {
+				void h.fireDispose()
+			})
+
+			await h.fireDispose()
+
+			// Effects happen exactly once; the re-entrant call short-circuits at the guard.
+			expect(clearSpy).toHaveBeenCalledTimes(1)
+			expect(h.dispose).toHaveBeenCalledTimes(1)
+			expect(viewOf(popout)).toBeUndefined()
+
+			await popout.dispose()
+		})
+
+		test("self-reap on TaskCompleted removes a detached popout even with the task still in the registry", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			const task = await addTask(popout, "reap-complete")
+
+			// Detach so the provider is headless (view === undefined) but still owns the task.
+			await detach(popout)
+			expect(ClineProvider.getAllInstances()).toContain(popout)
+			// Task is still the current registry entry (registry length 1) — proves the reap
+			// keys on the terminal EVENT, not on registry-emptiness.
+			expect(popout.getCurrentTask()).toBe(task)
+
+			reap(popout, "reap-complete")
+			await vi.waitFor(() => expect(ClineProvider.getAllInstances()).not.toContain(popout))
+		})
+
+		test("self-reap on TaskAborted removes a detached popout", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			await addTask(popout, "reap-abort")
+			await detach(popout)
+
+			reap(popout, "reap-abort")
+			await vi.waitFor(() => expect(ClineProvider.getAllInstances()).not.toContain(popout))
+		})
+
+		test("a terminal event on a VISIBLE popout does not reap", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			await addTask(popout, "visible-complete")
+
+			// view is still defined (visible tab) — the reap must not fire.
+			reap(popout, "visible-complete")
+			expect(ClineProvider.getAllInstances()).toContain(popout)
+
+			await popout.dispose()
+		})
+
+		test("detachTabView after a visible completion reaps via its terminal check", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h = makePanel()
+			await popout.resolveWebviewView(h.panel)
+			const task = await addTask(popout, "post-complete")
+			// Mark the owned task terminal (as if it completed while the tab was still open).
+			;(task as unknown as { abort: boolean }).abort = true
+
+			await detach(popout)
+
+			await vi.waitFor(() => expect(ClineProvider.getAllInstances()).not.toContain(popout))
+		})
+
+		test("rebind cycles do not accumulate view-close listeners", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h1 = makePanel()
+			await popout.resolveWebviewView(h1.panel)
+			await addTask(popout, "no-accum")
+
+			const detachSpy = spyDetach(popout)
+
+			// Close #1.
+			await h1.fireDispose()
+			expect(detachSpy).toHaveBeenCalledTimes(1)
+
+			// Re-open with a fresh panel, then close again.
+			const h2 = makePanel()
+			await popout.rebindView(h2.panel)
+			await h2.fireDispose()
+			// Exactly one additional detach — a single tab-close fires detach once, proving the
+			// prior view-close listener was drained (no accumulation).
+			expect(detachSpy).toHaveBeenCalledTimes(2)
+
+			await popout.dispose()
+		})
+
+		test("rebindView declines (and disposes the passed panel) when the provider is not headless", async () => {
+			const popout = makePopout()
+			popout.setEditorViewRole("popout")
+			const h1 = makePanel()
+			await popout.resolveWebviewView(h1.panel)
+			await addTask(popout, "not-headless")
+
+			// view is still defined — rebind must decline and dispose the new panel.
+			const h2 = makePanel()
+			await popout.rebindView(h2.panel)
+
+			expect(h2.dispose).toHaveBeenCalledTimes(1)
+			expect(viewOf(popout)).toBe(h1.panel)
+
+			await popout.dispose()
+		})
+	})
 })
 
 describe("webviewMessageHandler no-floating-promises coverage", () => {

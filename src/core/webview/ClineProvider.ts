@@ -215,6 +215,11 @@ export class ClineProvider
 	>()
 	private nextThemeFixtureProbeId = 0
 	private view?: vscode.WebviewView | vscode.WebviewPanel
+	// Refines the "editor" renderContext for tab-close semantics:
+	//   "popout" — interactive popout tab; closing the tab DETACHES the view, keeping the task alive.
+	//   "worker" — parallel worker tab; closing the tab ABORTS the worker (intended lifecycle).
+	// undefined — sidebar (or any editor provider whose role was never set) falls back to dispose() on close.
+	private editorViewRole?: "popout" | "worker"
 	private taskRegistry = new TaskRegistry()
 	private taskScheduler = new TaskScheduler()
 	private static readonly delegationTransitionLocks = new Map<string, Promise<void>>()
@@ -449,8 +454,17 @@ export class ClineProvider
 					)
 				}
 				this.emit(RooCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
+				// Headless self-reap: a detached popout provider owns no live view, so its
+				// completed task must trigger the provider's own teardown here — completion
+				// does NOT drain the registry, so nothing else would reap it.
+				this.reapIfDetachedPopoutTerminal(taskId)
 			}
-			const onTaskAborted = () => this.emit(RooCodeEventName.TaskAborted, instance.taskId)
+			const onTaskAborted = () => {
+				this.emit(RooCodeEventName.TaskAborted, instance.taskId)
+				// Synchronous listener with no status write; the "aborted" status is persisted
+				// by the abort flow itself. Reap the detached popout provider on the abort event.
+				this.reapIfDetachedPopoutTerminal(instance.taskId)
+			}
 			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
 			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
 			const onTaskActive = (taskId: string) => this.emit(RooCodeEventName.TaskActive, taskId)
@@ -1034,6 +1048,203 @@ export class ClineProvider
 		}
 	}
 
+	/**
+	 * Bind a view's webview: options, HTML, message listener, the view-state/visibility
+	 * repost listener, and the view-close handler. Every disposable here is pushed onto
+	 * webviewDisposables (view-lifetime), so clearWebviewResources() drains them on each
+	 * view teardown and re-open (via rebindView) does not accumulate listeners.
+	 *
+	 * Assumes this.view is already set to `view`.
+	 */
+	private async bindWebview(view: vscode.WebviewView | vscode.WebviewPanel): Promise<void> {
+		const inTabMode = "onDidChangeViewState" in view
+
+		// Set up webview options with proper resource roots
+		const resourceRoots = [this.contextProxy.extensionUri]
+
+		// Add workspace folders to allow access to workspace files
+		if (vscode.workspace.workspaceFolders) {
+			resourceRoots.push(...vscode.workspace.workspaceFolders.map((folder) => folder.uri))
+		}
+
+		view.webview.options = {
+			enableScripts: true,
+			localResourceRoots: resourceRoots,
+		}
+
+		view.webview.html =
+			this.contextProxy.extensionMode === vscode.ExtensionMode.Development &&
+			process.env.ROO_CODE_THEME_FIXTURE_PROBE !== "1"
+				? await this.getHMRHtmlContent(view.webview)
+				: await this.getHtmlContent(view.webview)
+
+		// Sets up an event listener to listen for messages passed from the webview view context
+		// and executes code based on the message that is received.
+		this.setWebviewMessageListener(view.webview)
+
+		// Listen for when the panel becomes visible.
+		// https://github.com/microsoft/vscode-discussions/discussions/840
+		if ("onDidChangeViewState" in view) {
+			// WebviewView and WebviewPanel have all the same properties except
+			// for this visibility listener panel.
+			const viewStateDisposable = view.onDidChangeViewState(() => {
+				if (this.view?.visible) {
+					// Repost full state so the webview rebuilds if its DOM was dropped
+					// while hidden; otherwise it can render as a gray panel mid-task.
+					void this.postStateToWebview()
+					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+				} else {
+					this.logWebviewHiddenDiagnostics()
+				}
+			})
+
+			this.webviewDisposables.push(viewStateDisposable)
+		} else if ("onDidChangeVisibility" in view) {
+			// sidebar
+			const visibilityDisposable = view.onDidChangeVisibility(() => {
+				if (this.view?.visible) {
+					// Repost full state so the webview rebuilds if its DOM was dropped
+					// while hidden; otherwise it can render as a gray panel mid-task.
+					void this.postStateToWebview()
+					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+				} else {
+					this.logWebviewHiddenDiagnostics()
+				}
+			})
+
+			this.webviewDisposables.push(visibilityDisposable)
+		}
+
+		// Listen for when the view is disposed.
+		// This happens when the user closes the view or when the view is closed programmatically.
+		// Registered on webviewDisposables (NOT this.disposables) so clearWebviewResources()
+		// drains it on every detach/dispose and re-open does not accumulate handlers.
+		const disposeDisposable = view.onDidDispose(async () => {
+			if (inTabMode) {
+				if (this.isDetachableView()) {
+					// Popout tab-close: detach the view, keep the task and provider alive.
+					this.log("Detaching popout tab view (task stays alive on the Task Board)")
+					await this.detachTabView()
+				} else {
+					// Worker (or unknown-role) editor tab-close: existing abort-on-close path.
+					this.log("Disposing ClineProvider instance for tab view")
+					await this.dispose()
+				}
+			} else {
+				this.log("Clearing webview resources for sidebar view")
+				this.clearWebviewResources()
+			}
+		})
+		this.webviewDisposables.push(disposeDisposable)
+
+		// Listen for when color changes
+		const configDisposable = vscode.workspace.onDidChangeConfiguration(async (e) => {
+			if (e && e.affectsConfiguration("workbench.colorTheme")) {
+				// Sends latest theme name to webview
+				await this.postMessageToWebview({ type: "theme", text: JSON.stringify(await getTheme()) })
+			}
+		})
+		this.webviewDisposables.push(configDisposable)
+	}
+
+	/**
+	 * Detach a popout tab's view WITHOUT disposing the provider or its task.
+	 * The provider stays in activeInstances still owning its task, so the Task Board
+	 * (collectTaskBoard → getCurrentTask, one row per provider) keeps enumerating it.
+	 *
+	 * Ordering is load-bearing: the owned panel's dispose() synchronously re-fires the
+	 * view-close onDidDispose handler, so this.view is nulled BEFORE the panel is disposed
+	 * so the re-entrant handler short-circuits at the guard.
+	 */
+	private async detachTabView(): Promise<void> {
+		// Guard: double-detach / detach-after-dispose is a no-op.
+		if (this._disposed || this.view === undefined) {
+			return
+		}
+
+		// Role safety: only popouts detach. A non-popout provider reaching here is a
+		// programming error (workers are routed to dispose() by the onDidDispose branch
+		// before detachTabView is ever considered); fall back to the safe task-draining path.
+		if (!this.isDetachableView()) {
+			this.log("[detachTabView] Non-popout provider reached detach; falling back to dispose()")
+			await this.dispose()
+			return
+		}
+
+		// Capture + null before dispose so the re-entrant onDidDispose short-circuits.
+		const panel = this.view
+		this.view = undefined
+
+		// Drain webview-scoped disposables (view-close listener, message binding, view-state
+		// listener, config listener). Does NOT touch the task registry or activeInstances.
+		this.clearWebviewResources()
+
+		// Dispose the captured panel. Because this.view is already undefined, the re-entrant
+		// onDidDispose (fired synchronously by VS Code) is a no-op at the guard above.
+		if (panel && "dispose" in panel) {
+			try {
+				panel.dispose()
+			} catch (error) {
+				this.log(
+					`[detachTabView] Panel dispose failed: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		}
+
+		// Terminal-check reap: if the tab was closed AFTER the task already finished, there is
+		// no live task to keep around — reap the now-empty headless provider. For a still-running
+		// task, leave the provider live and headless (reaped later by the TaskCompleted/TaskAborted
+		// self-reap). Mirrors the terminal test collectTaskBoard uses.
+		const task = this.getCurrentTask()
+		if (task) {
+			const terminal = this.taskHistoryStore.get(task.taskId)?.status === "completed" || task.abort
+			if (terminal) {
+				void this.dispose()
+			}
+		}
+	}
+
+	/**
+	 * Re-bind a fresh WebviewPanel to this already-initialized, headless (detached) provider.
+	 * Used by openTaskInNewTab to re-open a running task's view. Unlike resolveWebviewView,
+	 * this runs ONLY the shared bind body (no first-time terminal seeding / stale-task clear),
+	 * so it will not evict the task being re-opened and does not accumulate listeners.
+	 */
+	public async rebindView(panel: vscode.WebviewPanel): Promise<void> {
+		if (this._disposed || this.view !== undefined) {
+			// Not headless (or already disposed): decline and dispose the just-created panel
+			// to avoid an orphan window.
+			this.log("[rebindView] Provider is not headless; declining rebind")
+			try {
+				panel.dispose()
+			} catch (error) {
+				this.log(`[rebindView] Panel dispose failed: ${error instanceof Error ? error.message : String(error)}`)
+			}
+			return
+		}
+
+		this.view = panel
+		await this.bindWebview(panel)
+		void this.postStateToWebview()
+	}
+
+	/**
+	 * Reap a detached popout provider when its sole owned task reaches a terminal event.
+	 * Keyed on the terminal EVENT (not registry-emptiness) because completion does NOT drain
+	 * the registry for a standalone popout task. Safe for both the completed path (status
+	 * already written before emit) and the aborted path (status persisted by the abort flow,
+	 * not by the synchronous onTaskAborted listener). dispose() is idempotent via _disposed.
+	 */
+	private reapIfDetachedPopoutTerminal(terminatedTaskId: string): void {
+		if (
+			this.editorViewRole === "popout" &&
+			this.view === undefined &&
+			this.getCurrentTask()?.taskId === terminatedTaskId
+		) {
+			void this.dispose()
+		}
+	}
+
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {
 		this.view = webviewView
 		const inTabMode = "onDidChangeViewState" in webviewView
@@ -1044,24 +1255,10 @@ export class ClineProvider
 			setPanel(webviewView, "sidebar")
 		}
 
-		// Set up webview options with proper resource roots
-		const resourceRoots = [this.contextProxy.extensionUri]
-
-		// Add workspace folders to allow access to workspace files
-		if (vscode.workspace.workspaceFolders) {
-			resourceRoots.push(...vscode.workspace.workspaceFolders.map((folder) => folder.uri))
-		}
-
-		webviewView.webview.options = {
-			enableScripts: true,
-			localResourceRoots: resourceRoots,
-		}
-
-		webviewView.webview.html =
-			this.contextProxy.extensionMode === vscode.ExtensionMode.Development &&
-			process.env.ROO_CODE_THEME_FIXTURE_PROBE !== "1"
-				? await this.getHMRHtmlContent(webviewView.webview)
-				: await this.getHtmlContent(webviewView.webview)
+		// Bind the view's webview (options, HTML, message listener, view-state/visibility
+		// listener, and the view-close handler) onto webviewDisposables. rebindView() reuses
+		// this so a re-opened popout registers identical listeners without accumulation.
+		await this.bindWebview(webviewView)
 
 		// Initialize out-of-scope variables that need to receive persistent
 		// global state values.
@@ -1092,68 +1289,6 @@ export class ClineProvider
 				setTtsSpeed(ttsSpeed ?? 1)
 			},
 		)
-
-		// Sets up an event listener to listen for messages passed from the webview view context
-		// and executes code based on the message that is received.
-		this.setWebviewMessageListener(webviewView.webview)
-
-		// Listen for when the panel becomes visible.
-		// https://github.com/microsoft/vscode-discussions/discussions/840
-		if ("onDidChangeViewState" in webviewView) {
-			// WebviewView and WebviewPanel have all the same properties except
-			// for this visibility listener panel.
-			const viewStateDisposable = webviewView.onDidChangeViewState(() => {
-				if (this.view?.visible) {
-					// Repost full state so the webview rebuilds if its DOM was dropped
-					// while hidden; otherwise it can render as a gray panel mid-task.
-					void this.postStateToWebview()
-					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
-				} else {
-					this.logWebviewHiddenDiagnostics()
-				}
-			})
-
-			this.webviewDisposables.push(viewStateDisposable)
-		} else if ("onDidChangeVisibility" in webviewView) {
-			// sidebar
-			const visibilityDisposable = webviewView.onDidChangeVisibility(() => {
-				if (this.view?.visible) {
-					// Repost full state so the webview rebuilds if its DOM was dropped
-					// while hidden; otherwise it can render as a gray panel mid-task.
-					void this.postStateToWebview()
-					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
-				} else {
-					this.logWebviewHiddenDiagnostics()
-				}
-			})
-
-			this.webviewDisposables.push(visibilityDisposable)
-		}
-
-		// Listen for when the view is disposed
-		// This happens when the user closes the view or when the view is closed programmatically
-		webviewView.onDidDispose(
-			async () => {
-				if (inTabMode) {
-					this.log("Disposing ClineProvider instance for tab view")
-					await this.dispose()
-				} else {
-					this.log("Clearing webview resources for sidebar view")
-					this.clearWebviewResources()
-				}
-			},
-			null,
-			this.disposables,
-		)
-
-		// Listen for when color changes
-		const configDisposable = vscode.workspace.onDidChangeConfiguration(async (e) => {
-			if (e && e.affectsConfiguration("workbench.colorTheme")) {
-				// Sends latest theme name to webview
-				await this.postMessageToWebview({ type: "theme", text: JSON.stringify(await getTheme()) })
-			}
-		})
-		this.webviewDisposables.push(configDisposable)
 
 		// If the extension is starting a new session, clear previous task state.
 		// But don't clear if there's already an active task (e.g., resumed via IPC/bridge).
@@ -3325,6 +3460,20 @@ export class ClineProvider
 		return this.taskRegistry.current
 	}
 
+	/**
+	 * Set the editor-context view role immediately after construction.
+	 * Called by the two editor-provider creators (openClineInNewTab → "popout",
+	 * createParallelTaskRuntime → "worker"). The sidebar provider leaves this unset.
+	 */
+	public setEditorViewRole(role: "popout" | "worker"): void {
+		this.editorViewRole = role
+	}
+
+	/** True only for interactive popout tabs: their tab-close detaches the view instead of aborting the task. */
+	private isDetachableView(): boolean {
+		return this.editorViewRole === "popout"
+	}
+
 	private logWebviewHiddenDiagnostics(): void {
 		const task = this.getCurrentTask()
 		if (!task || task.abort || task.abandoned) {
@@ -3405,6 +3554,8 @@ export class ClineProvider
 			this.contextProxy,
 			this.mdmService,
 		)
+		// Parallel workers keep abort-on-close: closing a worker tab ends the worker (intended).
+		provider.setEditorViewRole("worker")
 		try {
 			const panel = vscode.window.createWebviewPanel(
 				ClineProvider.tabPanelId,
