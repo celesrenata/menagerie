@@ -30,6 +30,7 @@ import {
 	BUDGET_TIGHTENED_LINE_LIMIT,
 } from "@roo-code/types"
 import { isDeniedRead, mergeReadDenylist, type ReadDenylistConfig } from "../../services/glob/readDenylist"
+import { formatNotFoundNotice, isEnoent, suggestNearbyPaths } from "./helpers/notFoundSuggestions"
 
 import {
 	DEFAULT_MAX_IMAGE_FILE_SIZE_MB,
@@ -76,6 +77,13 @@ interface FileResult {
 	imageDataUrl?: string
 	feedbackText?: string
 	feedbackImages?: string[]
+	/**
+	 * Set on the not-found (ENOENT) read branch. Discriminates a "did you mean"
+	 * question (rendered with `status: "blocked"`) from a rooIgnore/denylist
+	 * block: a not-found entry is EXCLUDED from the turn-failure aggregate so it
+	 * does not set `didToolFailInCurrentTurn` (design finding #1).
+	 */
+	notFound?: boolean
 	// Store the original entry for mode processing
 	entry?: InternalFileEntry
 }
@@ -387,6 +395,30 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 					task.readInputBytesConsumed += Buffer.byteLength(nativeContent, "utf8")
 					updateFileResult(relPath, { nativeContent })
 				} catch (error) {
+					// Not-found is a recoverable question, not a fatal error: emit a
+					// structured "did you mean" notice with near-match PATHS and
+					// mark the entry `blocked` + `notFound`. This branch is first,
+					// before the generic error assignment and its say("error"), so a
+					// not-found read never reaches the error channel (design finding #3).
+					if (isEnoent(error)) {
+						const isAccessAllowed = (p: string) => task.rooIgnoreController?.validateAccess(p) !== false
+						const isKnownTarget = (p: string) => task.isKnownTargetPath(p)
+						const suggestions = await suggestNearbyPaths({
+							missingRelPath: relPath,
+							cwd: task.cwd,
+							denylist,
+							isAccessAllowed,
+							isKnownTarget,
+						})
+						const notice = formatNotFoundNotice(relPath, suggestions)
+						updateFileResult(relPath, {
+							status: "blocked",
+							notFound: true,
+							notice,
+							nativeContent: notice,
+						})
+						continue
+					}
 					const errorMsg = error instanceof Error ? error.message : String(error)
 					updateFileResult(relPath, {
 						status: "error",
@@ -397,8 +429,10 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				}
 			}
 
-			// Phase 4: Build and return result
-			const hasErrors = fileResults.some((r) => r.status === "error" || r.status === "blocked")
+			// Phase 4: Build and return result. A not-found entry (`blocked` +
+			// `notFound`) is excluded so it does NOT set didToolFailInCurrentTurn;
+			// rooIgnore/denylist blocks (notFound unset) are still counted (finding #1).
+			const hasErrors = fileResults.some((r) => r.status === "error" || (r.status === "blocked" && !r.notFound))
 			if (hasErrors) {
 				task.didToolFailInCurrentTurn = true
 			}
@@ -973,6 +1007,27 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				}
 				textReadIndexes.add(index)
 			} catch (error) {
+				// Not-found is a recoverable question: emit the structured "did you
+				// mean" notice via `nativeContent` (the legacy blocked render pushes
+				// `nativeContent ?? "File: …\nBlocked"` with no `?? content` fallback,
+				// so `content` would be dropped). The legacy render sets the
+				// turn-failure flag only on `status === "error"`, so a `blocked`
+				// not-found entry does not trip it (design findings #1/#2).
+				if (isEnoent(error)) {
+					const isAccessAllowed = (p: string) => task.rooIgnoreController?.validateAccess(p) !== false
+					const isKnownTarget = (p: string) => task.isKnownTargetPath(p)
+					const suggestions = await suggestNearbyPaths({
+						missingRelPath: relPath,
+						cwd: task.cwd,
+						denylist,
+						isAccessAllowed,
+						isKnownTarget,
+					})
+					fileResult.status = "blocked"
+					fileResult.notFound = true
+					fileResult.nativeContent = formatNotFoundNotice(relPath, suggestions)
+					return
+				}
 				fileResult.status = "error"
 				fileResult.error = error instanceof Error ? error.message : String(error)
 				fileResult.content = `Error: ${fileResult.error}`

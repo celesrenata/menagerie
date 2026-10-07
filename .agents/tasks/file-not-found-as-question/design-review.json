@@ -1,0 +1,27 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "title": "Pin that classifyNotFound runs on the whitespace-collapsed, lowercased text so the L2 'Not found:' marker still matches after rawToText collapses its newline",
+      "location": "Layer 3 \u00a7C step 1; \u00a7Input validation",
+      "fix": "State that classifyNotFound receives the rawToText-collapsed, lowercased text (identical to inferProseStatus input) so 'File:\\nNot found:' -> 'file: ... not found:' still matches /\\bnot found:/; add a test feeding a verbatim post-collapse L2 notice and asserting blocked + path-confirmation blocker."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "title": "AC-4 wording contradicts the intentional Known_Target denylist bypass for suggestions",
+      "location": "AC-4 vs Layer 2 \u00a7B 'knownTarget per-candidate bypass is INTENTIONAL'",
+      "fix": "Amend AC-4 to exempt a Known_Target the user named (matching the tool's own read-gate), so the acceptance criterion and design body agree; keep both the non-known-target-dropped and known-target-allowed tests."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "title": "buildPathConfirmationBlocker path-extraction regex ordering, extension allow-list completeness, and multi-token behavior under-specified",
+      "location": "Layer 3 \u00a7C step 3",
+      "fix": "Pin a single ordered extraction rule (slash-and-extension token first, then known-extension token, then generic fallback), broaden or explicitly scope the extension set as a degrade-to-generic heuristic, and add tests for a no-slash path and a two-path-token message."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/file-not-found-as-question/design-review.md"
+}
