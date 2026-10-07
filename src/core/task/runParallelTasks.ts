@@ -17,54 +17,25 @@ import {
 } from "../capability/composedMcpView"
 import type { AutonomousTaskStateWithCapabilities } from "../capability/capabilityStatePersistence"
 import { getAutonomousTaskState } from "./autonomousTaskState"
-import { resolveWorkerModelId } from "./parallelWorkerRouting"
+import {
+	assignLanes,
+	collectCodeCapableRouteIds,
+	defaultLaneTaskType,
+	resolveLaneRouteId,
+} from "./parallelWorkerRouting"
+import { laneToRouteCapability } from "./capabilityLanes"
+import { computeCapacityBounds, createStaticRouteCapacityProvider } from "./routeCapacityMap"
 import { normalizeWorkerResult } from "./normalizeWorkerResult"
 import { pruneParallelTaskBatches } from "./parallelTaskRetention"
 import { AUTO_READER_NAME } from "./ParallelTaskReader"
 import { snapshotWorkingTree, createParallelWorkspace, exportParallelPatch } from "./ParallelTaskWorkspace"
 import { BoundedElasticScheduler } from "./BoundedElasticScheduler"
 import {
-	DEFAULT_SCHEDULER_BOUNDS,
 	type ExecutionPlan,
 	type RouteCapability,
-	type RouteCapacity,
-	type RouteCapacityProvider,
 	type UserParallelismPolicy,
 	type WorkerOutcome,
 } from "./elasticTypes"
-
-/**
- * The route-capacity source `runParallelTasks` wires into its batch scheduler.
- * Task 11.1 rehosts dispatch onto {@link BoundedElasticScheduler} but does not
- * yet thread a live OmniRoute capacity feed through the child agent loops (the
- * per-generation lease wiring is a later task). Until that feed exists, the
- * scheduler must still admit and dispatch every useful worker, so this provider
- * reports generous capability-only capacity and no sustained pressure. It models
- * no GPU/VRAM/CUDA/node identity — only the capability/capacity abstraction
- * (design §"No GPU-aware logic", PAR-013); OmniRoute still owns real inference
- * admission and physical placement.
- */
-const GENEROUS_BATCH_ROUTES: RouteCapacityProvider = {
-	capacitiesFor(capability: RouteCapability): readonly RouteCapacity[] {
-		// Report ample free generation slots for every capability so lease
-		// acquisition (when later wired into the child loop) never blocks dispatch
-		// on a stand-in capacity reading. `available` must comfortably cover the
-		// live-worker ceiling.
-		return [
-			{
-				route: `local:${capability}`,
-				capability,
-				capacity: DEFAULT_SCHEDULER_BOUNDS.maxLive,
-				available: DEFAULT_SCHEDULER_BOUNDS.maxLive,
-			},
-		]
-	},
-	// No local physical modeling: backpressure is deferred entirely to OmniRoute
-	// (PAR-012.4). Reporting zero sustained pressure keeps new fan-out flowing.
-	sustainedPressure(): number {
-		return 0
-	},
-}
 
 export interface ParallelTaskResult {
 	name: string
@@ -314,13 +285,16 @@ export async function runParallelTasks(
 	// The batch's elastic scheduler owns admission + dispatch, replacing the fixed
 	// four-worker pool (design §"ParallelTasksTool and runParallelTasks"). It is
 	// scoped to this batch so a cancel here never touches another batch's permits.
-	// `maxInferenceLeases` is seeded from the dispatched ceiling as a stand-in
-	// until a live OmniRoute capacity feed is threaded through the child loops.
-	const scheduler = new BoundedElasticScheduler(
-		{ ...DEFAULT_SCHEDULER_BOUNDS, maxInferenceLeases: DEFAULT_SCHEDULER_BOUNDS.maxDispatched },
-		policy,
-		GENEROUS_BATCH_ROUTES,
-	)
+	// Capacity is now real: the static route-capacity provider reports each
+	// capability's summed backend slots (floored at 1), and the scheduler bounds
+	// are seeded from it (design §A/§D). `maxInferenceLeases` reflects the aggregate
+	// real slots instead of the dispatched ceiling, so Menagerie throttles each
+	// capability inside itself (via the per-capability lease pools wired below)
+	// instead of spilling the excess into OmniRoute's rate-limit queue. The
+	// scheduler clamps both bounds down by the user policy (never up); capacity
+	// never raises a bound above what policy allows (design §E).
+	const routeCapacity = createStaticRouteCapacityProvider()
+	const scheduler = new BoundedElasticScheduler(computeCapacityBounds(routeCapacity), policy, routeCapacity)
 	const plan: ExecutionPlan = { tasks: specs }
 	// Admitting the plan compiles the DAG and registers one Logical_Worker per
 	// spec. The tool already admitted an equivalent plan for recoverable
@@ -342,18 +316,55 @@ export async function runParallelTasks(
 	const signal = controller.signal
 	try {
 		signal.throwIfAborted()
+		// Assign a capability lane to every spec (pure, additive — leaves specs
+		// byte-for-byte unchanged; design §C, capability-lanes-routing). The lane
+		// drives BOTH the RouteCapability a worker leases against (below) and the
+		// route id it dispatches with, so a worker's lease pool and its backend
+		// class agree by construction.
+		const assignments = assignLanes(specs)
+		const laneByName = new Map(assignments.map((assignment) => [assignment.spec.name, assignment.lane]))
+		// Per-worker RouteCapability for leasing, keyed by spec name. Derived from
+		// the SAME lane used for route-id resolution (design decisions B and C).
+		const capabilityByName = new Map<string, RouteCapability>(
+			assignments.map((assignment) => [
+				assignment.spec.name,
+				laneToRouteCapability(assignment.lane, defaultLaneTaskType(assignment.spec.mode)),
+			]),
+		)
+		// Coder-only ordinal: the 0-based index of each worker among `coder.primary`
+		// assignments ONLY, in spec order (design §C / finding #3). Interleaved
+		// readers/researchers never perturb the round-robin that spreads code work
+		// across backends, so the distribution stays balanced.
+		const coderOrdinalByName = new Map<string, number>()
+		let nextCoderOrdinal = 0
+		for (const assignment of assignments) {
+			if (assignment.lane === "coder.primary") {
+				coderOrdinalByName.set(assignment.spec.name, nextCoderOrdinal++)
+			}
+		}
+		// The ordered, de-duplicated code-capable route ids the spread round-robins
+		// over, built once from the parent profile (design §C). Spread engages only
+		// when more than one code-capable route is configured; otherwise routing is
+		// identical to today (no regression for an unconfigured user).
+		const parentModelId = parent.apiConfiguration.openAiModelId
 		// Resolve every profile before starting any child. No global profile projection.
-		// Per-worker model id is a pure pass-through: an explicit `route`, else the role
-		// default, else the parent's model id (OmniRoute owns placement — design §5.2).
+		// Per-worker model id is a pure pass-through driven by the worker's lane: an
+		// explicit `route`, else the lane route id (reader lane, code-route spread, or
+		// escalation), else the parent's model id (OmniRoute owns placement — design §C).
 		const contexts = await Promise.all(
 			specs.map(async (spec) => {
 				const context = await provider.getTaskHandoffContext(parent, spec.mode, true)
-				context.apiConfiguration.openAiModelId = resolveWorkerModelId(
-					spec.route,
-					spec.mode,
-					context.apiConfiguration,
-					parent.apiConfiguration.openAiModelId,
-				)
+				const lane = laneByName.get(spec.name)!
+				const codeCapableRouteIds = collectCodeCapableRouteIds(context.apiConfiguration, parentModelId)
+				context.apiConfiguration.openAiModelId = resolveLaneRouteId({
+					lane,
+					taskType: defaultLaneTaskType(spec.mode),
+					profile: context.apiConfiguration,
+					route: spec.route,
+					parentModelId,
+					coderOrdinal: coderOrdinalByName.get(spec.name),
+					codeCapableRouteIds,
+				})
 				return context
 			}),
 		)
@@ -423,90 +434,120 @@ export async function runParallelTasks(
 					// as the pool did. The run body — workspace creation, runtime
 					// creation, waitForParallelTask, worker-N.json writes, result
 					// ownership, and the finally that disposes the child — is unchanged.
-					await scheduler.dispatch(spec.name, async () => {
+					await scheduler.dispatch(spec.name, async (handle) => {
 						signal.throwIfAborted()
-						await createParallelWorkspace(snapshot.root, snapshot.commit, workspace)
-						result.workspace = workspace
-						signal.throwIfAborted()
-						const runtime = await provider.createParallelTaskRuntime(
-							parent,
-							spec,
-							path.join(workspace, relativeCwd),
-							contexts[index]!,
-						)
-						const child = runtime.task
-						// Give this worker its OWN broker-scoped lease set and provision
-						// its DAG-declared required capabilities BEFORE its first
-						// generation (task 13.1, MCP-016). `setUpWorkerBroker`:
-						//  - instantiates a per-worker CapabilityBroker (sibling-isolated),
-						//  - seeds a capability-state holder from the worker's authoritative
-						//    AutonomousTaskState base (additive; never written back through
-						//    the schema-stripping setter),
-						//  - forwards the worker's role/mode so a `project-reader` is
-						//    runtime-forbidden from write/execute/mutate and defaults to the
-						//    { semantic.retrieve, repo.read, core } surface (Req 6.2),
-						//  - captures each composed ComposedToolSurface via `onCompose` and
-						//    applies it (filtered McpHub view + disabledTools) through a
-						//    ComposedSurfaceApplier over the worker's live McpHub, and
-						//  - exposes `releaseAtBoundary` to drop leases at their declared
-						//    tool-/phase-/task-complete boundary so released schemas leave
-						//    the next composition (Req 1.3, 10.1).
-						// The per-generation application of `workerBroker.currentSurface()`
-						// into SYSTEM_PROMPT is wired below via `composedSurfaceProvider`.
-						// Lazy in-execution `capability.request` for undeclared
-						// capabilities routes through the same broker policy path.
-						const workerBroker = await setUpWorkerBroker(
-							child,
-							spec,
-							spec,
-							parent.taskId,
-							runtime.provider.getMcpHub(),
-						)
-						// Close the per-generation SYSTEM_PROMPT seam (MCP-018): hand the
-						// child Task its current composed surface so each generation
-						// serializes only this worker's leased schemas (filtered McpHub
-						// view + disabledTools). Returns undefined until the first
-						// successful composition, which the Task side treats as the
-						// live-hub default.
-						child.composedSurfaceProvider = () => workerBroker.currentSurface()
+						// Acquire a per-worker inference lease for the worker's whole active
+						// lifetime (design §B). The worker already holds the dispatch permit
+						// (acquired by scheduler.dispatch); acquiring the lease strictly INSIDE
+						// that permit fixes the global order permit≺lease with no reverse edge,
+						// so the wait-for graph is acyclic and the batch cannot deadlock. The
+						// per-capability lease pools throttle generations inside Menagerie:
+						// over-capacity workers for a hot capability queue in `waiting-for-
+						// inference` here instead of all being handed to OmniRoute at once.
+						//
+						// Auto-reader workers are EXEMPT (design §B, finding #4): they are
+						// read-only, individually bounded by their own 90s wall-clock deadline,
+						// hit the 9B reader lane rather than the 27B bottleneck, and must keep
+						// today's immediate-dispatch behavior so a reader-swarm wider than the
+						// reader capacity never times out purely from lease-queue wait. An
+						// exempt worker holds no lease, so it adds no edge to the wait graph.
+						const isAutoReader = spec.mode === "project-reader" && spec.name.startsWith(AUTO_READER_NAME)
+						const releaseLease = isAutoReader
+							? () => {}
+							: await handle.acquireLease(capabilityByName.get(spec.name)!, signal)
 						try {
-							result.taskId = child.taskId
-							result.profile = await child.getTaskApiConfigName()
-							await fs.writeFile(
-								path.join(directory, `worker-${index + 1}.json`),
-								JSON.stringify({ ...result, state: "running" }, null, 2),
-								{ mode: 0o600 },
+							await createParallelWorkspace(snapshot.root, snapshot.commit, workspace)
+							result.workspace = workspace
+							signal.throwIfAborted()
+							const runtime = await provider.createParallelTaskRuntime(
+								parent,
+								spec,
+								path.join(workspace, relativeCwd),
+								contexts[index]!,
 							)
-							const workerSignal =
-								spec.mode === "project-reader" && spec.name.startsWith(AUTO_READER_NAME)
-									? AbortSignal.any([signal, AbortSignal.timeout(90_000)])
-									: signal
-							// The worker delivers its result via attempt_completion (captured as the
-							// child's completion_result text in AttemptCompletionTool). Normalize that
-							// raw output into a schema-valid WorkerResult (non-conforming output →
-							// status "failed") and persist the full serialized result through the
-							// existing `result` channel, so compactParallelTasksResultForParent clips
-							// the parent-visible view while the worker record + manifest keep the full
-							// structured result. No new parent-injection path (design §FEAT-007).
-							const rawCompletion = await waitForParallelTask(child, runtime.provider, workerSignal)
-							const workerResult = normalizeWorkerResult(rawCompletion, { workerName: spec.name })
-							result.result = JSON.stringify(workerResult)
-							result.state = "completed"
-						} finally {
-							// The worker's loop has settled: its `task-complete` boundary
-							// is reached, so release every still-active lease at (or below)
-							// that boundary. Released schemas drop from the next composition
-							// (Req 1.3, 10.1); the core set remains resident. Release is
-							// per-worker and never touches a sibling's lease set (Req 7.1).
-							workerBroker.releaseAtBoundary("task-complete")
-							// Stop the agent loop after completion as well as on cancellation. Keep the
-							// panel/history and worktree available for inspection and explicit resume.
-							child.cancelCurrentRequest()
+							const child = runtime.task
+							// Give this worker its OWN broker-scoped lease set and provision
+							// its DAG-declared required capabilities BEFORE its first
+							// generation (task 13.1, MCP-016). `setUpWorkerBroker`:
+							//  - instantiates a per-worker CapabilityBroker (sibling-isolated),
+							//  - seeds a capability-state holder from the worker's authoritative
+							//    AutonomousTaskState base (additive; never written back through
+							//    the schema-stripping setter),
+							//  - forwards the worker's role/mode so a `project-reader` is
+							//    runtime-forbidden from write/execute/mutate and defaults to the
+							//    { semantic.retrieve, repo.read, core } surface (Req 6.2),
+							//  - captures each composed ComposedToolSurface via `onCompose` and
+							//    applies it (filtered McpHub view + disabledTools) through a
+							//    ComposedSurfaceApplier over the worker's live McpHub, and
+							//  - exposes `releaseAtBoundary` to drop leases at their declared
+							//    tool-/phase-/task-complete boundary so released schemas leave
+							//    the next composition (Req 1.3, 10.1).
+							// The per-generation application of `workerBroker.currentSurface()`
+							// into SYSTEM_PROMPT is wired below via `composedSurfaceProvider`.
+							// Lazy in-execution `capability.request` for undeclared
+							// capabilities routes through the same broker policy path.
+							const workerBroker = await setUpWorkerBroker(
+								child,
+								spec,
+								spec,
+								parent.taskId,
+								runtime.provider.getMcpHub(),
+							)
+							// Close the per-generation SYSTEM_PROMPT seam (MCP-018): hand the
+							// child Task its current composed surface so each generation
+							// serializes only this worker's leased schemas (filtered McpHub
+							// view + disabledTools). Returns undefined until the first
+							// successful composition, which the Task side treats as the
+							// live-hub default.
+							child.composedSurfaceProvider = () => workerBroker.currentSurface()
 							try {
-								await child.abortTask()
+								result.taskId = child.taskId
+								result.profile = await child.getTaskApiConfigName()
+								await fs.writeFile(
+									path.join(directory, `worker-${index + 1}.json`),
+									JSON.stringify({ ...result, state: "running" }, null, 2),
+									{ mode: 0o600 },
+								)
+								const workerSignal =
+									spec.mode === "project-reader" && spec.name.startsWith(AUTO_READER_NAME)
+										? AbortSignal.any([signal, AbortSignal.timeout(90_000)])
+										: signal
+								// The worker delivers its result via attempt_completion (captured as the
+								// child's completion_result text in AttemptCompletionTool). Normalize that
+								// raw output into a schema-valid WorkerResult (non-conforming output →
+								// status "failed") and persist the full serialized result through the
+								// existing `result` channel, so compactParallelTasksResultForParent clips
+								// the parent-visible view while the worker record + manifest keep the full
+								// structured result. No new parent-injection path (design §FEAT-007).
+								const rawCompletion = await waitForParallelTask(child, runtime.provider, workerSignal)
+								const workerResult = normalizeWorkerResult(rawCompletion, { workerName: spec.name })
+								result.result = JSON.stringify(workerResult)
+								result.state = "completed"
 							} finally {
-								await child.dispose()
+								// The worker's loop has settled: its `task-complete` boundary
+								// is reached, so release every still-active lease at (or below)
+								// that boundary. Released schemas drop from the next composition
+								// (Req 1.3, 10.1); the core set remains resident. Release is
+								// per-worker and never touches a sibling's lease set (Req 7.1).
+								workerBroker.releaseAtBoundary("task-complete")
+								// Stop the agent loop after completion as well as on cancellation. Keep the
+								// panel/history and worktree available for inspection and explicit resume.
+								child.cancelCurrentRequest()
+								try {
+									await child.abortTask()
+								} finally {
+									await child.dispose()
+								}
 							}
+						} finally {
+							// Release the per-worker inference lease AFTER the child-dispose
+							// finally above, so the lease is held for the worker's whole active
+							// lifetime and freed the instant it settles — success, failure, or
+							// abort (design §B). The release is idempotent (makeHandle /
+							// InferenceLeasePool.makeRelease), so this is a no-op for an exempt
+							// auto-reader and safe even if invoked twice. Freeing it admits the
+							// next queued waiter for this capability via the pool's pump().
+							releaseLease()
 						}
 					})
 				} catch (error) {

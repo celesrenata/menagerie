@@ -17,6 +17,24 @@ import { Button, StandardTooltip } from "@src/components/ui"
 
 import { inputEventTransform } from "./transforms"
 
+/** A single custom-route entry as persisted on `openAiOmniRouteCustomRoutes`. */
+type OmniRouteCustomRoute = NonNullable<ProviderSettings["openAiOmniRouteCustomRoutes"]>[number]
+/** The optional capability classifier a custom route may carry; "" means unclassified. */
+type RouteCapabilityOption = NonNullable<OmniRouteCustomRoute["capability"]>
+
+/**
+ * The capability values a custom route may be classified as. Kept in lockstep
+ * with `routeCapabilitySchema` in `packages/types/src/provider-settings/openai.ts`.
+ * An empty selection means "unclassified" (field omitted).
+ */
+const ROUTE_CAPABILITY_OPTIONS: readonly RouteCapabilityOption[] = [
+	"reader",
+	"reasoner",
+	"long-context",
+	"vision",
+	"general",
+]
+
 type OmniRouteSettingsProps = {
 	apiConfiguration: ProviderSettings
 	setApiConfigurationField: <K extends keyof ProviderSettings>(
@@ -44,6 +62,7 @@ export const OmniRouteSettings = ({ apiConfiguration, setApiConfigurationField }
 	const [search, setSearch] = useState("")
 	const [newRouteName, setNewRouteName] = useState("")
 	const [newRouteModelId, setNewRouteModelId] = useState("")
+	const [newRouteCapability, setNewRouteCapability] = useState("")
 
 	const isOmniRoute = apiConfiguration.openAiIsOmniRoute ?? false
 	const customRoutes = useMemo(
@@ -113,16 +132,41 @@ export const OmniRouteSettings = ({ apiConfiguration, setApiConfigurationField }
 		const name = newRouteName.trim()
 		const modelId = newRouteModelId.trim()
 		if (!name || !modelId) return
-		setApiConfigurationField("openAiOmniRouteCustomRoutes", [...customRoutes, { name, modelId }])
+		// Only persist `capability` when a classification is chosen; an empty
+		// selection stays "unclassified" (field omitted) so a route round-trips
+		// identically to a legacy route with no capability.
+		const route: OmniRouteCustomRoute = newRouteCapability
+			? { name, modelId, capability: newRouteCapability as RouteCapabilityOption }
+			: { name, modelId }
+		setApiConfigurationField("openAiOmniRouteCustomRoutes", [...customRoutes, route])
 		setNewRouteName("")
 		setNewRouteModelId("")
-	}, [newRouteName, newRouteModelId, customRoutes, setApiConfigurationField])
+		setNewRouteCapability("")
+	}, [newRouteName, newRouteModelId, newRouteCapability, customRoutes, setApiConfigurationField])
 
 	const removeCustomRoute = useCallback(
 		(index: number) => {
 			setApiConfigurationField(
 				"openAiOmniRouteCustomRoutes",
 				customRoutes.filter((_, i) => i !== index),
+			)
+		},
+		[customRoutes, setApiConfigurationField],
+	)
+
+	const updateRouteCapability = useCallback(
+		(index: number, capability: string) => {
+			setApiConfigurationField(
+				"openAiOmniRouteCustomRoutes",
+				customRoutes.map((route, i) => {
+					if (i !== index) return route
+					// Drop the field entirely when cleared so the route is unclassified.
+					if (!capability) {
+						const { capability: _omit, ...rest } = route
+						return rest
+					}
+					return { ...route, capability: capability as RouteCapabilityOption }
+				}),
 			)
 		},
 		[customRoutes, setApiConfigurationField],
@@ -271,6 +315,19 @@ export const OmniRouteSettings = ({ apiConfiguration, setApiConfigurationField }
 											{route.modelId}
 										</span>
 									</span>
+									<select
+										value={route.capability ?? ""}
+										onChange={(e) => updateRouteCapability(index, e.target.value)}
+										aria-label={t("settings:omniroute.routeCapability")}
+										data-testid={`omniroute-route-capability-${index}`}
+										className="bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-1 py-0.5">
+										<option value="">{t("settings:omniroute.capabilityUnclassified")}</option>
+										{ROUTE_CAPABILITY_OPTIONS.map((capability) => (
+											<option key={capability} value={capability}>
+												{capability}
+											</option>
+										))}
+									</select>
 									<StandardTooltip content={t("settings:common.remove")}>
 										<VSCodeButton
 											appearance="icon"
@@ -301,6 +358,19 @@ export const OmniRouteSettings = ({ apiConfiguration, setApiConfigurationField }
 								className="flex-1"
 								data-testid="omniroute-new-route-model"
 							/>
+							<select
+								value={newRouteCapability}
+								onChange={(e) => setNewRouteCapability(e.target.value)}
+								aria-label={t("settings:omniroute.routeCapability")}
+								data-testid="omniroute-new-route-capability"
+								className="bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-1 py-0.5">
+								<option value="">{t("settings:omniroute.capabilityUnclassified")}</option>
+								{ROUTE_CAPABILITY_OPTIONS.map((capability) => (
+									<option key={capability} value={capability}>
+										{capability}
+									</option>
+								))}
+							</select>
 							<StandardTooltip content={t("settings:common.add")}>
 								<VSCodeButton
 									appearance="icon"

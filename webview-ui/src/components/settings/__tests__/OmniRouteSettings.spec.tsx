@@ -91,4 +91,60 @@ describe("OmniRouteSettings", () => {
 		postCatalog({ status: "error", entries: [], error: "unreachable" })
 		expect(screen.getByTestId("omniroute-status")).toHaveTextContent("settings:omniroute.status.error")
 	})
+
+	it("adds a custom route carrying the selected capability", () => {
+		const setApiConfigurationField = vi.fn()
+		renderSettings(baseConfig, setApiConfigurationField)
+		fireEvent.input(screen.getByTestId("omniroute-new-route-name"), { target: { value: "overflow" } })
+		fireEvent.input(screen.getByTestId("omniroute-new-route-model"), { target: { value: "ollama/code" } })
+		fireEvent.change(screen.getByTestId("omniroute-new-route-capability"), { target: { value: "reasoner" } })
+		fireEvent.click(screen.getByTestId("omniroute-add-route"))
+		expect(setApiConfigurationField).toHaveBeenCalledWith("openAiOmniRouteCustomRoutes", [
+			{ name: "overflow", modelId: "ollama/code", capability: "reasoner" },
+		])
+	})
+
+	it("adds a custom route with no capability when the selection is left unclassified", () => {
+		const setApiConfigurationField = vi.fn()
+		renderSettings(baseConfig, setApiConfigurationField)
+		fireEvent.input(screen.getByTestId("omniroute-new-route-name"), { target: { value: "legacy" } })
+		fireEvent.input(screen.getByTestId("omniroute-new-route-model"), { target: { value: "hybrid/code" } })
+		fireEvent.click(screen.getByTestId("omniroute-add-route"))
+		expect(setApiConfigurationField).toHaveBeenCalledWith("openAiOmniRouteCustomRoutes", [
+			{ name: "legacy", modelId: "hybrid/code" },
+		])
+	})
+
+	it("updates an existing route's capability via the per-row select", () => {
+		const setApiConfigurationField = vi.fn()
+		renderSettings(
+			{ ...baseConfig, openAiOmniRouteCustomRoutes: [{ name: "overflow", modelId: "ollama/code" }] },
+			setApiConfigurationField,
+		)
+		fireEvent.change(screen.getByTestId("omniroute-route-capability-0"), { target: { value: "general" } })
+		expect(setApiConfigurationField).toHaveBeenCalledWith("openAiOmniRouteCustomRoutes", [
+			{ name: "overflow", modelId: "ollama/code", capability: "general" },
+		])
+	})
+
+	it("clearing a route's capability drops the field (back to unclassified)", () => {
+		const setApiConfigurationField = vi.fn()
+		renderSettings(
+			{
+				...baseConfig,
+				openAiOmniRouteCustomRoutes: [{ name: "overflow", modelId: "ollama/code", capability: "reasoner" }],
+			},
+			setApiConfigurationField,
+		)
+		fireEvent.change(screen.getByTestId("omniroute-route-capability-0"), { target: { value: "" } })
+		expect(setApiConfigurationField).toHaveBeenCalledWith("openAiOmniRouteCustomRoutes", [
+			{ name: "overflow", modelId: "ollama/code" },
+		])
+	})
+
+	it("renders an existing route with no capability without error (back-compat)", () => {
+		renderSettings({ ...baseConfig, openAiOmniRouteCustomRoutes: [{ name: "legacy", modelId: "hybrid/code" }] })
+		const select = screen.getByTestId("omniroute-route-capability-0") as HTMLSelectElement
+		expect(select.value).toBe("")
+	})
 })

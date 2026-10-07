@@ -73,7 +73,9 @@
 		"customRoutes": "Custom routes",
 		"noCustomRoutes": "No custom routes.",
 		"routeName": "Route name",
-		"routeModelId": "Model id"
+		"routeModelId": "Model id",
+		"routeCapability": "Capability",
+		"capabilityUnclassified": "Unclassified"
 	},
 	"about": {
 		"bugReport": {

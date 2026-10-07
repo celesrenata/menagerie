@@ -1,0 +1,30 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "title": "Spread-route capability vs lease-pool capability coupling is prose-only, not an enforced/tested invariant",
+      "location": "Decision C ('How spread route ids relate to lease pools') and Capacity-map data model (STATIC_ROUTE_CAPACITY.reasoner)",
+      "problem": "Every default coder.primary worker leases against the 'reasoner' pool regardless of which round-robin route id it got (including a 'general'-classified overflow route). Correctness of admission then depends on the operator setting STATIC_ROUTE_CAPACITY.reasoner to the summed slots of all spread code backends. The design documents this only as prose operator-responsibility; nothing enforces or tests it. Mis-setting under-admits (not a deadlock, and OmniRoute still queues, so it fails safe).",
+      "fix": "Add the already-listed 'Spread + lease agreement' integration test as an assertion that fails if codeCapableRouteIds.length > 1 while STATIC_ROUTE_CAPACITY.reasoner equals a single backend's slots, and/or put an invariant doc-comment beside the STATIC_ROUTE_CAPACITY.reasoner constant stating it must equal the summed real slots of every route in collectCodeCapableRouteIds once spread is configured."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "title": "Behavior for custom routes classified 'long-context'/'reader'/'vision' in code spread is unspecified",
+      "location": "Decision C ('Code-route source'), collectCodeCapableRouteIds description",
+      "problem": "The helper includes 'reasoner' and 'general' and excludes others, but does not state what happens to a plausibly code-adjacent 'long-context' classification; it is silently excluded from the coder round-robin, which is defensible but undocumented.",
+      "fix": "State explicitly that only 'reasoner' and 'general' classifications are code-capable for the coder round-robin, and that 'long-context'/'reader'/'vision' are intentionally excluded (reachable only via an explicit per-worker route)."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "title": "SMALL_FLOOR = 4 rationale is thin given maxPerCapability already seeds the liveness invariant",
+      "location": "Decision D and Bounds-seeding formula summary",
+      "problem": "With maxPerCapability already in the max(...), SMALL_FLOOR only binds when every per-capability capacity < 4, i.e. it adds extra lease-wait headroom inside Menagerie. The one-line justification undersells why a floor above maxPerCapability is desired.",
+      "fix": "Add a clause: SMALL_FLOOR lets a few extra workers queue in the lease pool (waiting-for-inference) rather than on the dispatch semaphore, so capacity freeing mid-batch is picked up without a dispatch-permit round-trip; it never exceeds maxLive and never affects deadlock-freedom."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/parallel-capacity-routing/design-review.md"
+}

@@ -190,6 +190,124 @@ export function assignLanes(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Lane → route-id spread (parallel-capacity-routing, design §C)
+//
+// These resolvers connect the PURE, additive lane assignment above to the
+// resolved OmniRoute route id, so same-category (non-reader) workers distribute
+// across capable backends instead of all collapsing onto a single reasoner route
+// id. They are additive: `assignLane`/`assignLanes`/`laneToRouteCapability` and
+// `roleDefault`/`resolveWorkerModelId` are untouched (purity contract preserved).
+// Nothing here dispatches, leases, or performs tier/GPU math — it is a pure id
+// pass-through, consistent with this module's existing contract. OmniRoute still
+// owns model + physical placement.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Collect the ordered, de-duplicated list of OmniRoute route ids a
+ * `coder.primary` worker may spread across (design §C "Code-route source").
+ *
+ * The list is the always-present reasoner route id (`openAiOmniRouteReasonerRouteId`,
+ * when set) followed by every `openAiOmniRouteCustomRoutes` entry whose explicit
+ * `capability` classifier is `"reasoner"` or `"general"` (mechanical code work is
+ * still code-capable). Every other classification — including `"reader"`,
+ * `"long-context"`, `"vision"`, and an unclassified route with no `capability` —
+ * is excluded, so the spread can NEVER send code work to a reader-only alias.
+ * Config order is preserved so the round-robin in {@link resolveLaneRouteId} is
+ * deterministic. When the result is empty, falls back to `[parentModelId]`
+ * (filtered of `undefined`) so single-model behavior is unchanged.
+ */
+export function collectCodeCapableRouteIds(profile: ProviderSettings, parentModelId: string | undefined): string[] {
+	const ids: string[] = []
+	const push = (id: string | undefined) => {
+		if (id && !ids.includes(id)) ids.push(id)
+	}
+	push(profile.openAiOmniRouteReasonerRouteId)
+	for (const route of profile.openAiOmniRouteCustomRoutes ?? []) {
+		if (route.capability === "reasoner" || route.capability === "general") {
+			push(route.modelId)
+		}
+	}
+	if (ids.length === 0 && parentModelId) {
+		return [parentModelId]
+	}
+	return ids
+}
+
+/** Inputs to {@link resolveLaneRouteId}: the lane dimension plus the spread inputs. */
+export interface ResolveLaneRouteIdArgs {
+	/** The lane this worker was assigned by {@link assignLanes} (pure, additive). */
+	readonly lane: CapabilityLane
+	/** The lane task type used to disambiguate coder/reasoning capability. */
+	readonly taskType: LaneTaskType
+	/** The worker's resolved profile (OmniRoute route ids live here). */
+	readonly profile: ProviderSettings
+	/** An explicit per-worker route (mastermind- or user-supplied); wins verbatim when set. */
+	readonly route: string | null | undefined
+	/** The parent orchestrator's model id; the final single-model fallback. */
+	readonly parentModelId: string | undefined
+	/** This worker's 0-based index among `coder.primary` workers ONLY (round-robin key). */
+	readonly coderOrdinal: number | undefined
+	/** The ordered, de-duplicated code-capable route ids from {@link collectCodeCapableRouteIds}. */
+	readonly codeCapableRouteIds: readonly string[]
+}
+
+/**
+ * Resolve a parallel worker's effective `openAiModelId` with the lane dimension
+ * layered onto the existing precedence (design §C "Mechanism"):
+ *
+ *  1. An explicit `route` wins verbatim (honors a mastermind/user route and the
+ *     existing pass-through-for-`route` rule).
+ *  2. Else resolve by lane:
+ *     - `reader.fast` / `reader.deep` → `openAiOmniRouteReaderRouteId` (the 9B
+ *       reader lane; readers are preserved exactly, and code work is never sent
+ *       to a reader-only model because only reader-MODE specs get a reader lane).
+ *     - `coder.primary` → THE SPREAD: deterministic round-robin
+ *       `codeCapableRouteIds[coderOrdinal % n]` when more than one code-capable id
+ *       is configured, REGARDLESS of task type (so the common reasoning-typed
+ *       coder population spreads; design-review finding #1). With a single
+ *       configured id, returns `openAiOmniRouteReasonerRouteId` unchanged — no
+ *       regression for an unconfigured user; the spread is opt-in via config.
+ *     - `reasoning.escalation` → the reasoner/long-context route id by task type
+ *       (scarce lane assigned only by `produceDeeperLaneFollowUp`, unchanged).
+ *  3. Else fall back to the parent model id (single-model behavior unchanged).
+ *
+ * Pure — no side effects, no tier/GPU math.
+ */
+export function resolveLaneRouteId(args: ResolveLaneRouteIdArgs): string | undefined {
+	const { lane, taskType, profile, route, parentModelId, coderOrdinal, codeCapableRouteIds } = args
+	// 1) Explicit route wins verbatim.
+	if (route) return route
+
+	// 2) Resolve by lane.
+	switch (lane) {
+		case "reader.fast":
+		case "reader.deep":
+			return profile.openAiOmniRouteReaderRouteId ?? parentModelId
+		case "coder.primary": {
+			// Spread the common reasoning-typed coder population across every
+			// configured code-capable backend by deterministic round-robin keyed on
+			// the coder-only ordinal, regardless of task type (finding #1). With a
+			// single id (or none configured), behavior is unchanged.
+			if (codeCapableRouteIds.length > 1) {
+				const ordinal = coderOrdinal ?? 0
+				const index =
+					((ordinal % codeCapableRouteIds.length) + codeCapableRouteIds.length) % codeCapableRouteIds.length
+				return codeCapableRouteIds[index]
+			}
+			return profile.openAiOmniRouteReasonerRouteId ?? codeCapableRouteIds[0] ?? parentModelId
+		}
+		case "reasoning.escalation":
+			// The scarce escalation lane. The two-field OmniRoute profile exposes no
+			// separate long-context route id, so both long-horizon/architecture and
+			// adjudication work resolve to the reasoner route id (OmniRoute owns the
+			// long-context backend behind that route). `taskType` participates in the
+			// capability resolution (laneToRouteCapability) but not the route id here.
+			void taskType
+			return profile.openAiOmniRouteReasonerRouteId ?? parentModelId
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Deeper-lane follow-up production (capability-lanes-routing, task 8.2)
 //
 // Given a SETTLED `WorkerResultWithRouting` plus failure history and the
@@ -379,7 +497,10 @@ function deepReaderDirective(result: WorkerResultWithRouting, outcome: ReaderEsc
  * above, this is a short directive built from the role and triggers, never the
  * raw metadata block (Req 12.3, 12.4).
  */
-function glmDirective(result: WorkerResultWithRouting, decision: Extract<GlmInvocationDecision, { invoke: true }>): string {
+function glmDirective(
+	result: WorkerResultWithRouting,
+	decision: Extract<GlmInvocationDecision, { invoke: true }>,
+): string {
 	const role = decision.role === "planning" ? "planning/orchestration" : "adjudication/recovery"
 	const triggerList = decision.triggers.join(", ")
 	return clipDirective(
@@ -396,7 +517,12 @@ function glmDirective(result: WorkerResultWithRouting, decision: Extract<GlmInvo
  * within a batch; `todos`/`route`/`reasoning`/`verification` are intentionally
  * left unset so OmniRoute resolves placement from the lane's `RouteCapability`.
  */
-function buildFollowUpSpec(originatingSpec: ParallelTaskSpec, mode: string, directive: string, suffix: string): ParallelTaskSpec {
+function buildFollowUpSpec(
+	originatingSpec: ParallelTaskSpec,
+	mode: string,
+	directive: string,
+	suffix: string,
+): ParallelTaskSpec {
 	return {
 		name: `${originatingSpec.name}#${suffix}`,
 		mode,
@@ -443,8 +569,7 @@ export function produceDeeperLaneFollowUp(input: DeeperLaneFollowUpInput): Deepe
 		// Pick a lane task type so the resolved RouteCapability matches the role:
 		// planning/system-wide work maps to "long-context"; adjudication maps to
 		// "reasoner" (see laneToRouteCapability for reasoning.escalation).
-		const laneTaskType: LaneTaskType =
-			input.contextRequirement === "system-wide" ? "long-horizon" : "adjudication"
+		const laneTaskType: LaneTaskType = input.contextRequirement === "system-wide" ? "long-horizon" : "adjudication"
 		const spec = buildFollowUpSpec(
 			input.originatingSpec,
 			input.originatingSpec.mode,

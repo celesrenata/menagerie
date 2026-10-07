@@ -138,6 +138,48 @@ describe("OpenAI Codex provider settings", () => {
 	})
 })
 
+describe("OmniRoute custom-route capability classifier", () => {
+	it("round-trips a custom route carrying an explicit capability", () => {
+		const settings = {
+			apiProvider: providerIdentifiers.openai,
+			openAiOmniRouteCustomRoutes: [{ name: "overflow", modelId: "ollama/code", capability: "reasoner" }],
+		}
+
+		expect(providerSettingsSchemaDiscriminated.parse(settings)).toEqual(settings)
+		expect(providerSettingsSchema.parse(settings)).toEqual(settings)
+	})
+
+	it("validates a custom route with no capability (back-compat for existing profiles)", () => {
+		const settings = {
+			apiProvider: providerIdentifiers.openai,
+			openAiOmniRouteCustomRoutes: [{ name: "legacy", modelId: "hybrid/code" }],
+		}
+
+		expect(providerSettingsSchemaDiscriminated.parse(settings)).toEqual(settings)
+	})
+
+	it.each(["reader", "reasoner", "long-context", "vision", "general"])(
+		"accepts the %s capability value",
+		(capability) => {
+			const settings = {
+				apiProvider: providerIdentifiers.openai,
+				openAiOmniRouteCustomRoutes: [{ name: "r", modelId: "m", capability }],
+			}
+
+			expect(providerSettingsSchemaDiscriminated.safeParse(settings).success).toBe(true)
+		},
+	)
+
+	it("rejects an unknown capability string", () => {
+		expect(
+			providerSettingsSchemaDiscriminated.safeParse({
+				apiProvider: providerIdentifiers.openai,
+				openAiOmniRouteCustomRoutes: [{ name: "r", modelId: "m", capability: "gpu" }],
+			}).success,
+		).toBe(false)
+	})
+})
+
 describe("getApiProtocol", () => {
 	it("preserves API protocol wire values", () => {
 		expect(ANTHROPIC_API_PROTOCOL).toBe("anthropic")
