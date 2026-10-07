@@ -1,7 +1,9 @@
 import * as fs from "node:fs/promises"
 import path from "node:path"
+import { DEFAULT_READ_DENYLIST } from "@roo-code/types"
 import type { ParallelTaskSpec } from "../tools/ParallelTasksTool"
 import type { UserParallelismPolicy } from "./elasticTypes"
+import { isDeniedRead } from "../../services/glob/readDenylist"
 
 const MAX_READER_DOCUMENT_BYTES = 48 * 1024
 const MAX_READER_EXCERPT_CHARS = 10_000
@@ -107,6 +109,11 @@ export async function addSharedDocumentReader(
 		// readers to match available capacity (PAR-005.5, PAR-005.6).
 		if (readers.length >= ceiling) break
 		if (count < 1) continue
+		// Route the document pick through the shared read denylist so the two
+		// ingestion routes cannot drift (FR-2, AC-7). Skip denied candidates before
+		// the fs.stat/excerpt step. Falls back to DEFAULT_READ_DENYLIST until the
+		// persisted setting (FEAT-003) is wired through to this call site.
+		if (isDeniedRead(relativePath, DEFAULT_READ_DENYLIST).denied) continue
 		try {
 			const file = await fs.realpath(path.join(root, relativePath))
 			const inside = path.relative(root, file)

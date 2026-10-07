@@ -148,6 +148,13 @@ function createMockTask(options: MockTaskOptions = {}) {
 
 	return {
 		cwd: "/test/workspace",
+		// Parallel-worker read-input controls (FEAT-002). These default to a
+		// no-op (no Known_Target set, zero bytes consumed) so existing read
+		// behavior is unchanged; the denylist/budget are exercised in
+		// readFileTool.denylist.spec.ts.
+		knownTargetPaths: new Set<string>(),
+		readInputBytesConsumed: 0,
+		isKnownTargetPath: vi.fn().mockReturnValue(false),
 		api: {
 			getModel: vi.fn().mockReturnValue({
 				info: { supportsImages },
