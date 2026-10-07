@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useState, type FormEvent } from "react"
 import { useEvent } from "react-use"
 import { Checkbox } from "vscrui"
-import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
 	type ExtensionMessage,
+	type GlobalSettings,
 	type OmniRouteCatalogEntry,
 	type OmniRouteConnectionStatus,
 	type ProviderSettings,
@@ -44,6 +45,33 @@ const ROUTE_CAPABILITY_OPTIONS: readonly RouteCapabilityOption[] = [
  */
 type ParallelCapacityMap = Partial<Record<RouteCapabilityOption, number>>
 
+/**
+ * The persisted user-adjustable read-exclusion denylist. Four OPTIONAL
+ * string-array categories; an OMITTED category inherits the hardcoded
+ * `DEFAULT_READ_DENYLIST` while a PROVIDED category (including an explicit empty
+ * array) replaces that field downstream via `mergeReadDenylist`. Kept in lockstep
+ * with `parallelReadDenylistSchema` in `packages/types/src/global-settings.ts`.
+ */
+type ParallelReadDenylist = NonNullable<GlobalSettings["parallelReadDenylist"]>
+
+/** The four editable denylist categories, rendered as one textarea each. */
+const READ_DENYLIST_FIELDS: readonly (keyof ParallelReadDenylist)[] = [
+	"vendoredDirs",
+	"rootDirs",
+	"files",
+	"globs",
+]
+
+/**
+ * Read the current text out of a `VSCodeTextArea`. The toolkit wraps a native
+ * `<textarea>` in a custom element whose `value` is not on `EventTarget`, so it
+ * is read through that element's own interface rather than casting to `any`.
+ */
+function textareaValue(event: Event | FormEvent<HTMLElement>): string {
+	const target = event.currentTarget as (HTMLElement & { value?: string }) | null
+	return target?.value ?? ""
+}
+
 type OmniRouteSettingsProps = {
 	apiConfiguration: ProviderSettings
 	setApiConfigurationField: <K extends keyof ProviderSettings>(
@@ -53,7 +81,9 @@ type OmniRouteSettingsProps = {
 	) => void
 	/** The persisted global parallel-capacity map, read from `cachedState` (never live state). */
 	parallelCapacityMap?: ParallelCapacityMap
-	/** Writes the capacity map back to the SettingsView `cachedState`. */
+	/** The persisted read-exclusion denylist, read from `cachedState` (never live state). */
+	parallelReadDenylist?: ParallelReadDenylist
+	/** Writes the capacity map / denylist back to the SettingsView `cachedState`. */
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
@@ -70,6 +100,7 @@ export const OmniRouteSettings = ({
 	apiConfiguration,
 	setApiConfigurationField,
 	parallelCapacityMap,
+	parallelReadDenylist,
 	setCachedStateField,
 }: OmniRouteSettingsProps) => {
 	const { t } = useAppTranslation()
@@ -207,6 +238,22 @@ export const OmniRouteSettings = ({
 		[parallelCapacityMap, setCachedStateField],
 	)
 
+	const updateDenylistField = useCallback(
+		(field: keyof ParallelReadDenylist, raw: string) => {
+			// Newline-delimited editor: each non-blank, trimmed line is one entry.
+			// An emptied textarea yields `[]`, which REPLACES (clears) that category
+			// downstream (per-field replace semantics) — the deliberate override that
+			// re-enables reading a whole category such as vendored typings.
+			const entries = raw
+				.split("\n")
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+			const next: ParallelReadDenylist = { ...(parallelReadDenylist ?? {}), [field]: entries }
+			setCachedStateField("parallelReadDenylist", next)
+		},
+		[parallelReadDenylist, setCachedStateField],
+	)
+
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="text-sm text-vscode-descriptionForeground">{t("settings:omniroute.description")}</div>
@@ -248,6 +295,40 @@ export const OmniRouteSettings = ({
 										capability,
 									})}
 									data-testid={inputId}
+								/>
+							</div>
+						)
+					})}
+				</div>
+			</div>
+
+			{/* Block 0b: Parallel read exclusions (fleet-wide; always visible, not gated on
+			    `isOmniRoute`). Each textarea edits one denylist category (newline-delimited
+			    entries) that the parallel-worker read path uses to skip vendored/generated
+			    files. Emptying a category CLEARS it (per-field replace), re-enabling reading
+			    that category. Bound to `cachedState` via `setCachedStateField`. */}
+			<div className="flex flex-col gap-2">
+				<label className="block font-medium">{t("settings:omniroute.parallelReadExclusions.label")}</label>
+				<div className="text-sm text-vscode-descriptionForeground">
+					{t("settings:omniroute.parallelReadExclusions.hint")}
+				</div>
+				<div className="flex flex-col gap-2">
+					{READ_DENYLIST_FIELDS.map((field) => {
+						const headingId = `parallel-read-exclusions-${field}-label`
+						const testId = `parallel-read-exclusions-${field}`
+						return (
+							<div key={field} className="flex flex-col gap-1">
+								<label id={headingId} className="text-sm" data-testid={`${testId}-heading`}>
+									{t(`settings:omniroute.parallelReadExclusions.fields.${field}`)}
+								</label>
+								<VSCodeTextArea
+									resize="vertical"
+									rows={3}
+									value={(parallelReadDenylist?.[field] ?? []).join("\n")}
+									onInput={(event) => updateDenylistField(field, textareaValue(event))}
+									className="w-full"
+									aria-labelledby={headingId}
+									data-testid={testId}
 								/>
 							</div>
 						)

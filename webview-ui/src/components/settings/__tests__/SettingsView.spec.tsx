@@ -60,10 +60,11 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 		<input type="radio" value={value} checked={checked} onChange={onChange} />
 	),
 	VSCodeRadioGroup: ({ children, onChange }: any) => <div onChange={onChange}>{children}</div>,
-	VSCodeTextArea: ({ value, onChange, rows, className, "data-testid": dataTestId }: any) => (
+	VSCodeTextArea: ({ value, onChange, onInput, rows, className, "data-testid": dataTestId }: any) => (
 		<textarea
 			value={value}
 			onChange={onChange}
+			onInput={onInput}
 			rows={rows}
 			className={className}
 			data-testid={dataTestId}
@@ -851,6 +852,47 @@ describe("SettingsView - condensingApiConfigId", () => {
 			expect.objectContaining({
 				type: "updateSettings",
 				updatedSettings: expect.objectContaining({ condensingApiConfigId: "" }),
+			}),
+		)
+	})
+
+	it("includes an edited parallelReadDenylist category in the updateSettings Save payload (FEAT-003)", () => {
+		// Edits write LOCAL cachedState via the exclusions control; Save forwards it to the host.
+		const { activateTab } = renderSettingsView()
+
+		activateTab("omniroute")
+		fireEvent.input(screen.getByTestId("parallel-read-exclusions-globs"), {
+			target: { value: "**/*.min.js\n**/*.css.map" },
+		})
+		fireEvent.click(screen.getByTestId("save-button"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({
+					parallelReadDenylist: expect.objectContaining({
+						globs: ["**/*.min.js", "**/*.css.map"],
+					}),
+				}),
+			}),
+		)
+	})
+
+	it("round-trips a cleared denylist category ([]) through the Save payload (FEAT-003)", () => {
+		// Emptying a category writes an explicit [] (per-field replace), which must survive
+		// handleSubmit so a user can re-enable reading a whole category downstream.
+		const { activateTab } = renderSettingsView()
+
+		activateTab("omniroute")
+		fireEvent.input(screen.getByTestId("parallel-read-exclusions-globs"), { target: { value: "" } })
+		fireEvent.click(screen.getByTestId("save-button"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({
+					parallelReadDenylist: expect.objectContaining({ globs: [] }),
+				}),
 			}),
 		)
 	})

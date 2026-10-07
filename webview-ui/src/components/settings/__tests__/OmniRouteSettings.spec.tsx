@@ -36,6 +36,7 @@ const renderSettings = (
 	setApiConfigurationField: (...args: unknown[]) => void = vi.fn(),
 	options: {
 		parallelCapacityMap?: Partial<Record<string, number>>
+		parallelReadDenylist?: Partial<Record<string, string[]>>
 		setCachedStateField?: (...args: unknown[]) => void
 	} = {},
 ) =>
@@ -45,6 +46,7 @@ const renderSettings = (
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField as never}
 				parallelCapacityMap={options.parallelCapacityMap as never}
+				parallelReadDenylist={options.parallelReadDenylist as never}
 				setCachedStateField={(options.setCachedStateField ?? vi.fn()) as never}
 			/>
 		</TooltipProvider>,
@@ -194,5 +196,58 @@ describe("OmniRouteSettings parallel capacity map", () => {
 		renderSettings(baseConfig, vi.fn(), { parallelCapacityMap: { reasoner: 2 }, setCachedStateField })
 		fireEvent.input(screen.getByTestId("parallel-capacity-reasoner"), { target: { value: "0" } })
 		expect(setCachedStateField).toHaveBeenCalledWith("parallelCapacityMap", {})
+	})
+})
+
+describe("OmniRouteSettings — parallel read exclusions (FEAT-003)", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	it("renders one textarea per denylist category, always visible (not gated on isOmniRoute)", () => {
+		// `openAiIsOmniRoute` unset ⇒ the OmniRoute body is hidden, but the fleet-wide
+		// read-exclusions editor is still rendered because it is outside the guard.
+		renderSettings({ apiProvider: providerIdentifiers.openai })
+		for (const field of ["vendoredDirs", "rootDirs", "files", "globs"]) {
+			expect(screen.getByTestId(`parallel-read-exclusions-${field}`)).toBeInTheDocument()
+		}
+	})
+
+	it("seeds each textarea from the persisted cachedState denylist (never live state)", () => {
+		renderSettings(baseConfig, vi.fn(), {
+			parallelReadDenylist: { globs: ["**/*.min.js", "**/*.map"], files: ["package-lock.json"] },
+		})
+		const globs = screen.getByTestId("parallel-read-exclusions-globs") as HTMLTextAreaElement
+		const files = screen.getByTestId("parallel-read-exclusions-files") as HTMLTextAreaElement
+		const rootDirs = screen.getByTestId("parallel-read-exclusions-rootDirs") as HTMLTextAreaElement
+
+		expect(globs.value).toBe("**/*.min.js\n**/*.map")
+		expect(files.value).toBe("package-lock.json")
+		expect(rootDirs.value).toBe("")
+	})
+
+	it("writes an edited category back to cachedState as a trimmed, blank-filtered array", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), {
+			parallelReadDenylist: { files: ["package-lock.json"] },
+			setCachedStateField,
+		})
+		fireEvent.input(screen.getByTestId("parallel-read-exclusions-globs"), {
+			target: { value: "  **/*.min.js \n\n **/*.css.map  " },
+		})
+
+		expect(setCachedStateField).toHaveBeenCalledWith("parallelReadDenylist", {
+			files: ["package-lock.json"],
+			globs: ["**/*.min.js", "**/*.css.map"],
+		})
+	})
+
+	it("emptying a category writes an explicit [] so the save payload clears it (per-field replace)", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), {
+			parallelReadDenylist: { globs: ["**/typescript/lib/*.d.ts"] },
+			setCachedStateField,
+		})
+		fireEvent.input(screen.getByTestId("parallel-read-exclusions-globs"), { target: { value: "" } })
+
+		expect(setCachedStateField).toHaveBeenCalledWith("parallelReadDenylist", { globs: [] })
 	})
 })
