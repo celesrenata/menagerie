@@ -81,6 +81,77 @@ export const parallelismModeSchema = z.enum(PARALLELISM_MODES)
 export const parallelCapacityMapSchema = z.record(routeCapabilitySchema, z.number().int().positive())
 
 /**
+ * Default per-worker read-input byte budget (design §C, Lever 2). Counts only
+ * the bytes `ReadFileTool` returns from a worker's reads, not env details,
+ * preamble, or accumulated turns — so it is NOT directly comparable to the
+ * total-prompt token figure. `600_000` bytes (~150k tokens at ~4 chars/token)
+ * engages well before read accumulation alone could dominate a prompt, while
+ * still permitting a legitimate multi-file first-party investigation. The value
+ * is user-adjustable; FR-6 measurement is the authoritative calibration.
+ */
+export const DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES = 600_000
+
+/**
+ * Default per-read line limit applied to budget-crossed reads with no explicit
+ * `limit` (design §C). Every clamp site uses `min(computedDefault, 500)`, so the
+ * tightening is monotonic — it only lowers (or leaves) the limit, never raises
+ * it.
+ */
+export const BUDGET_TIGHTENED_LINE_LIMIT = 500
+
+/**
+ * Hardcoded default read denylist (design §B). The single source of truth for
+ * every reader; the user-adjustable `parallelReadDenylist` setting merges over
+ * it per-field (see `mergeReadDenylist`). Four fields with distinct match
+ * semantics so first-party source is never caught:
+ *
+ *   - `vendoredDirs` — directory name matched ANYWHERE in the path (unambiguously
+ *     third-party / tool-generated).
+ *   - `rootDirs` — matched ONLY as the first path segment; an `out-*`-style entry
+ *     is prefix-matched. `dist`/`out`/`out-*`/`coverage` are literal `.gitignore`
+ *     root outputs; `build` is retained as a conventional root-anchored
+ *     build-output name (a harmless no-op here because no root `build/` exists).
+ *   - `files` — exact basename (lockfiles).
+ *   - `globs` — `ignore`-compiled globs against the full relPath (vendored
+ *     typings, minified bundles, source maps scoped to code extensions, and
+ *     two-segment build-dependency paths).
+ *
+ * The default intentionally does NOT deny bare `pkg`/`deps`/`bundle`,
+ * anywhere-segment `build`/`out`, a broad map glob, nor all `.d.ts` files —
+ * those recur as first-party roots/segments/files.
+ */
+export const DEFAULT_READ_DENYLIST = {
+	vendoredDirs: ["node_modules", "vendor", "Pods", ".pnpm-store", ".stryker-tmp", "__pycache__"],
+	rootDirs: ["dist", "out", "out-*", "build", "coverage"],
+	files: ["package-lock.json", "pnpm-lock.yaml", "yarn.lock"],
+	globs: [
+		"**/node_modules/@types/**",
+		"**/typescript/lib/*.d.ts",
+		"**/*.min.js",
+		"**/*.min.css",
+		"**/*.js.map",
+		"**/*.css.map",
+		"target/dependency/**",
+		"build/dependencies/**",
+	],
+} as const
+
+/**
+ * Shared schema for the user-adjustable `parallelReadDenylist` setting
+ * (precedent: `parallelCapacityMapSchema`). Four OPTIONAL string-array fields;
+ * an omitted field inherits the hardcoded `DEFAULT_READ_DENYLIST` while a
+ * provided field (including an explicit empty array `[]`) replaces that
+ * category — see `mergeReadDenylist`. `{}` and any subset of the four keys are
+ * accepted so unset/empty is a byte-for-byte no-op of the default.
+ */
+export const parallelReadDenylistSchema = z.object({
+	vendoredDirs: z.array(z.string()).optional(),
+	rootDirs: z.array(z.string()).optional(),
+	files: z.array(z.string()).optional(),
+	globs: z.array(z.string()).optional(),
+})
+
+/**
  * Default values for the "auto-close files Zoo opened" settings.
  *
  * These are defined once here and consumed by every site that reads the setting
@@ -214,6 +285,15 @@ export const globalSettingsSchema = z.object({
 	 * entries are rejected at this schema boundary.
 	 */
 	parallelCapacityMap: parallelCapacityMapSchema.optional(),
+	/**
+	 * Persisted user-adjustable read denylist for the parallel-worker read path
+	 * (design §B/§F). Four OPTIONAL string-array fields; an OMITTED field inherits
+	 * the hardcoded `DEFAULT_READ_DENYLIST` and a PROVIDED field (including an
+	 * explicit empty array `[]`) REPLACES that category downstream via
+	 * `mergeReadDenylist`, so `undefined`/`{}` is a byte-for-byte no-op and `[]`
+	 * clears a category (how a user re-enables reading, e.g. vendored typings).
+	 */
+	parallelReadDenylist: parallelReadDenylistSchema.optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
 	/**
