@@ -19,6 +19,7 @@ import type { AutonomousTaskStateWithCapabilities } from "../capability/capabili
 import { getAutonomousTaskState } from "./autonomousTaskState"
 import { resolveWorkerModelId } from "./parallelWorkerRouting"
 import { normalizeWorkerResult } from "./normalizeWorkerResult"
+import { pruneParallelTaskBatches } from "./parallelTaskRetention"
 import { AUTO_READER_NAME } from "./ParallelTaskReader"
 import { snapshotWorkingTree, createParallelWorkspace, exportParallelPatch } from "./ParallelTaskWorkspace"
 import { BoundedElasticScheduler } from "./BoundedElasticScheduler"
@@ -301,6 +302,12 @@ export async function runParallelTasks(
 	specs: ParallelTaskSpec[],
 	policy: UserParallelismPolicy = {},
 ) {
+	// Prune the cache BEFORE creating this batch's directory. Because the new
+	// batchId dir does not exist on disk yet, the active batch can never be a
+	// deletion target — age/count eviction only ever sees already-persisted
+	// batches. Awaited (not fire-and-forget) so a bounded prune completes before
+	// the new dir is written. Prune never throws; a failed sweep cannot break the run.
+	await pruneParallelTaskBatches(provider.context.globalStorageUri.fsPath)
 	const batchId = crypto.randomUUID()
 	const directory = path.join(provider.context.globalStorageUri.fsPath, "parallel-tasks", batchId)
 	const controller = new AbortController()
