@@ -21,6 +21,7 @@ export async function snapshotWorkingTree(cwd: string, storage: string): Promise
 		}
 		await execa("git", ["add", "-A", "--", "."], { cwd: root, env })
 		const { stdout: tree } = await execa("git", ["write-tree"], { cwd: root, env })
+		await warnOnOmittedTopLevelDirectories(root, tree, env)
 		const { stdout: commit } = await execa("git", ["commit-tree", tree, ...(head ? ["-p", head] : [])], {
 			cwd: root,
 			input: "Zoo parallel task snapshot\n",
@@ -35,6 +36,39 @@ export async function snapshotWorkingTree(cwd: string, storage: string): Promise
 		return { root, commit }
 	} finally {
 		await fs.rm(temporary, { recursive: true, force: true })
+	}
+}
+
+/**
+ * Resilience diagnostic: the snapshot capture (`git add -A -- .`) already includes
+ * all untracked, non-ignored working-tree content, so this does NOT change capture
+ * behavior. It only warns when a top-level directory that exists on disk and is not
+ * ignored is missing from the written tree, which signals a pre-populate race (the
+ * worker read the tree before the directory was materialized) rather than a logic bug.
+ */
+async function warnOnOmittedTopLevelDirectories(
+	root: string,
+	tree: string,
+	env: { GIT_INDEX_FILE: string },
+): Promise<void> {
+	const treeEntries = await execa("git", ["ls-tree", "--name-only", tree], { cwd: root, env })
+	const treeTopLevel = new Set(treeEntries.stdout.split("\n").filter(Boolean))
+
+	const diskEntries = await fs.readdir(root, { withFileTypes: true })
+	const candidates = diskEntries
+		.filter((entry) => entry.isDirectory() && entry.name !== ".git")
+		.map((entry) => entry.name)
+		.filter((name) => !treeTopLevel.has(name))
+
+	for (const name of candidates) {
+		const ignored = await execa("git", ["check-ignore", "-q", "--", name], { cwd: root, reject: false })
+		// `git check-ignore -q` exits 0 when the path IS ignored; skip those.
+		if (ignored.exitCode === 0) {
+			continue
+		}
+		console.warn(
+			`[ParallelTaskWorkspace] Top-level directory "${name}" exists on disk and is not ignored but is absent from the snapshot tree; it may have been materialized after the snapshot was captured.`,
+		)
 	}
 }
 

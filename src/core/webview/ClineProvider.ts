@@ -1104,6 +1104,9 @@ export class ClineProvider
 			// for this visibility listener panel.
 			const viewStateDisposable = webviewView.onDidChangeViewState(() => {
 				if (this.view?.visible) {
+					// Repost full state so the webview rebuilds if its DOM was dropped
+					// while hidden; otherwise it can render as a gray panel mid-task.
+					void this.postStateToWebview()
 					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 				} else {
 					this.logWebviewHiddenDiagnostics()
@@ -1115,6 +1118,9 @@ export class ClineProvider
 			// sidebar
 			const visibilityDisposable = webviewView.onDidChangeVisibility(() => {
 				if (this.view?.visible) {
+					// Repost full state so the webview rebuilds if its DOM was dropped
+					// while hidden; otherwise it can render as a gray panel mid-task.
+					void this.postStateToWebview()
 					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 				} else {
 					this.logWebviewHiddenDiagnostics()

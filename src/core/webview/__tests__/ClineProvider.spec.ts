@@ -675,6 +675,14 @@ describe("ClineProvider", () => {
 			visibilityCallback()
 			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("running-task"))
 		})
+
+		test("reposts full state when the view becomes visible again so it does not stay gray", async () => {
+			const postStateSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+			Object.defineProperty(mockWebviewView, "visible", { value: true, configurable: true })
+			visibilityCallback()
+			expect(postStateSpy).toHaveBeenCalledTimes(1)
+			postStateSpy.mockRestore()
+		})
 	})
 
 	test("resolveWebviewView sets up webview correctly in development mode even if local server is not running", async () => {
