@@ -114,15 +114,17 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 	/**
 	 * Resolve the effective read denylist and per-worker read-input budget from
-	 * provider state. FEAT-003 will add `getEffectiveReadDenylist()` /
-	 * `parallelReadDenylist` to provider state; until then this falls back to the
-	 * shared `DEFAULT_READ_DENYLIST` and `DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES`.
+	 * provider state. The user-adjustable `parallelReadDenylist` setting is merged
+	 * over the shared `DEFAULT_READ_DENYLIST` per field (the same resolution as
+	 * `ClineProvider.getEffectiveReadDenylist`). Falls back to the shared default
+	 * and `DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES` when no provider is attached.
 	 */
 	private async resolveReadControls(task: Task): Promise<{ denylist: ReadDenylistConfig; budgetBytes: number }> {
-		// FEAT-003: resolve the effective denylist from the user-adjustable
-		// `parallelReadDenylist` setting, merged over DEFAULT_READ_DENYLIST per field
-		// via the provider's getEffectiveReadDenylist(). Fall back to the shared
-		// default when no provider is attached (e.g. non-parallel contexts/tests).
+		// Resolve the effective denylist from the user-adjustable `parallelReadDenylist`
+		// setting, merged over DEFAULT_READ_DENYLIST per field. We merge inline here
+		// (identical to ClineProvider.getEffectiveReadDenylist) rather than calling that
+		// helper so test doubles that stub only getState() keep working. Fall back to the
+		// shared default when no provider is attached (e.g. non-parallel contexts/tests).
 		const provider = task.providerRef.deref()
 		if (!provider) {
 			return { denylist: DEFAULT_READ_DENYLIST, budgetBytes: DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES }

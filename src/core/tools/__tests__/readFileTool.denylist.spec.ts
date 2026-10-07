@@ -144,6 +144,7 @@ describe("ReadFileTool parallel-worker read controls", () => {
 		})
 		mockedReadWithIndentation.mockReturnValue({
 			content: "1 | line one",
+			returnedLines: 1,
 			totalLines: 1,
 			wasTruncated: false,
 			includedRanges: [[1, 1]],
@@ -302,8 +303,8 @@ describe("ReadFileTool parallel-worker read controls", () => {
 				callbacks,
 			)
 
-			const logged = infoSpy.mock.calls.map((call) => String(call[0]))
-			const accounting = logged.find((line) => line.includes("read-input accounting"))
+			const logged = infoSpy.mock.calls.map((call: unknown[]) => String(call[0]))
+			const accounting = logged.find((line: string) => line.includes("read-input accounting"))
 			expect(accounting).toBeDefined()
 			expect(accounting).toContain("deniedBytes=")
 			expect(accounting).toContain("ingestedBytesCumulative=")
