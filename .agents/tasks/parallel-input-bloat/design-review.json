@@ -1,0 +1,14 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "title": "Batched-read clamp replacement line cited as :115, actual is :117",
+      "where": "design.md §C clamp step 1 (\"replacing `limit ?? defaultBatchLimit` at :115\")",
+      "problem": "The `effectiveLimit = limit ?? defaultBatchLimit` assignment is at ReadFileTool.ts:117; lines :113-116 build defaultBatchLimit. The cited :112-117 range is correct and the clamp logic (min(defaultBatchLimit, 500) when limit is undefined, monotonic) is accurate, so this is a one-line inner-citation drift only.",
+      "fix": "Change \"at :115\" to \"at :117\" (the effectiveLimit assignment). No logic change needed."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/parallel-input-bloat/design-review.md"
+}

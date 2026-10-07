@@ -1,0 +1,32 @@
+{
+  "project_type": "TypeScript VS Code extension in a pnpm monorepo (roo-code / Menagerie). Extension host code in src/, shared types in packages/types/, webview in webview-ui/.",
+  "language": "TypeScript",
+  "build_system": "pnpm@10.8.1 workspaces + turbo. Node 22.23.1. Root scripts delegate to turbo (lint, check-types, test, build). preinstall/install run scripts/bootstrap.mjs.",
+  "test_framework": "Vitest in every package (script is `vitest run`). Run per-package: `pnpm --dir src exec vitest run <path>`, `pnpm --dir packages/types exec vitest run <path>`, `pnpm --dir webview-ui exec vitest run <path>`.",
+  "build_command": "pnpm --dir packages/types exec tsc --noEmit (type-check types pkg); from a package dir `pnpm exec vitest run` compiles+runs its suite. Full build is `pnpm build` (turbo) but not required per-FEAT.",
+  "test_command": "Per FEAT, run the narrowest Vitest suite(s) listed in that FEAT's verification from the owning package directory with `pnpm --dir <pkg> exec vitest run <relative-path>`.",
+  "verification_instructions": "1) Run the FEAT's named Vitest suites and confirm pass. 2) For packages/types changes also run `pnpm --dir packages/types exec tsc --noEmit`. 3) MANDATORY per AGENTS.md: for EVERY edited file run `pnpm --dir <pkg> exec eslint --prune-suppressions --max-warnings=0 <relative-file>` and confirm the suppression count in src/eslint-suppressions.json did NOT increase. 4) Never edit .changeset or CHANGELOG.md/src/CHANGELOG.md.",
+  "snapshot_or_generated_files": "GLOBAL_SETTINGS_KEYS in packages/types/src/global-settings.ts is DERIVED from globalSettingsSchema.keyof().options — do NOT hand-edit a key array; adding to globalSettingsSchema auto-includes the key. src/eslint-suppressions.json is a checked-in per-file suppression-count map that must never increase.",
+  "environment_constraints": "Local git worktree at the repo root. Do NOT modify src/api/providers/utils/timeout-config.ts, src/core/task/routeCapacityMap.ts or the scheduler, the 64k reader result cap, the 1800s timeouts, or src/core/task-persistence/taskLifecycle.ts and the lifecycle witnesses (#1469/#1021). Commit locally on the branch; never push.",
+  "contribution_requirements": "AGENTS.md: no .changeset/CHANGELOG edits; no `as any` (use typed APIs/bracket notation); no floating promises (void/await/.catch); fix lint in new code rather than suppressing; eslint --prune-suppressions count must not increase for any touched file. SettingsView inputs bind to local cachedState (buffer), never live useExtensionState(). Persisted Setting Checklist must be traced fully for parallelReadDenylist. Prefer narrowest test layer.",
+  "key_patterns": "parallelCapacityMap is the precedent for the new persisted parallelReadDenylist setting: schema `parallelCapacityMapSchema` + optional key in globalSettingsSchema (global-settings.ts ~:216), ExtensionState key union in vscode-extension-host.ts (~:341), merge-over-static-default helper (mergeRouteCapacityMap). The `ignore` npm library is already used (RooIgnoreController.ts, list-files.ts) for glob matching — reuse it. ReadFileTool gates reads only on `task.rooIgnoreController?.validateAccess(relPath)` (new-format and legacy executeLegacy paths); .rooignore here is only `.env`. DIRS_TO_IGNORE (services/glob/constants.ts) governs ONLY listFiles, not the read tool. ReadFileTool reads provider state via `task.providerRef.deref()?.getState()`. Line-limit defaults: DEFAULT_LINE_LIMIT, batched `defaultBatchLimit = min(DEFAULT_LINE_LIMIT, floor(DEFAULT_BATCH_LINE_BUDGET/uniquePaths.length))` then `effectiveLimit = limit ?? defaultBatchLimit`; slice/indentation use `entry.limit ?? DEFAULT_LINE_LIMIT`. ParallelTaskSpec (ParallelTasksTool.ts ~:88-105) has NO structured file-scope field — mastermind scope is prose in spec.message. ParallelTaskReader.SHARED_DOCUMENT regex only matches (docs|specs|contracts)/*.md|mdx|txt|json|yaml|yml.",
+  "relevant_files": [
+    "src/services/glob/readDenylist.ts (NEW — predicate, parser, merge, defaults)",
+    "src/services/glob/constants.ts (study: DIRS_TO_IGNORE, listFiles-only)",
+    "src/core/tools/ReadFileTool.ts (denylist gate after validateAccess; budget clamp in batched/slice/indentation paths; byte accounting)",
+    "src/core/task/ParallelTaskReader.ts (route addSharedDocumentReader pick through isDeniedRead)",
+    "src/core/task/Task.ts (knownTargetPaths set + isKnownTargetPath; readInputBytesConsumed counter)",
+    "src/core/task/ParallelTasksTool.ts (study: ParallelTaskSpec shape, no file-scope field)",
+    "src/core/task/runParallelTasks.ts (study: child-context assembly; stays unchanged except budget flows via provider state)",
+    "src/core/environment/getEnvironmentDetails.ts (study: secondary contributor, names not bodies)",
+    "src/core/ignore/RooIgnoreController.ts (study: validateAccess, `ignore` usage)",
+    "packages/types/src/global-settings.ts (study parallelCapacityMap precedent; add parallelReadDenylistSchema, DEFAULT_READ_DENYLIST, DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES, BUDGET_TIGHTENED_LINE_LIMIT, globalSettingsSchema key)",
+    "packages/types/src/vscode-extension-host.ts (add parallelReadDenylist to ExtensionState key union ~:341)",
+    "src/core/webview/ClineProvider.ts (getState default + getStateToPostToWebview round trip + getEffectiveReadDenylist helper)",
+    "src/core/webview/webviewMessageHandler.ts (persist via contextProxy.setValue)",
+    "webview-ui/src/components/settings/ (SettingsView cachedState-bound exclusions control + handleSubmit payload)",
+    "src/test-utils/ (stream.ts, api.ts, fs.ts, reset.ts, vscode.ts — typed test helpers)",
+    "AGENTS.md (contribution rules, Persisted Setting Checklist, Settings View Pattern)"
+  ],
+  "directory_structure": "src/ = extension host (core/tools, core/task, core/webview, core/environment, core/ignore, services/glob, test-utils). packages/types/src/ = shared zod schemas (global-settings.ts, vscode-extension-host.ts). webview-ui/src/components/settings/ = React settings UI. Tests live in __tests__/ dirs next to sources, suffix .spec.ts."
+}
