@@ -154,3 +154,140 @@ Exit code **0** (esbuild bundle + asset/locale copy completed).
 - `assignLanes`/`assignLane`/`laneToRouteCapability` — unchanged (pure/additive preserved).
 - No `.changeset` or `CHANGELOG.md` edits.
 - No new runtime dependencies.
+
+---
+
+## Post-approval re-verification run
+
+Re-run of the full verification suite after `review.json` recorded **APPROVED**
+(verdict `APPROVED`, 0 findings). Implementation commit `e6dc45210`
+(`feat(parallel): capacity-aware scheduling and backend spread`). All commands run
+from repo root `/Users/celes/sources/celesrenata/menagerie` on macOS (Node v24.21.0,
+pnpm 10.8.1 — the "Unsupported engine" warning is pre-existing and does not affect
+results). No feature changes were made in this step; nothing was broken, so no fix
+was needed.
+
+### (1) `pnpm --dir src check-types`
+```
+> zoo-code@3.84.4 check-types
+> tsc --noEmit
+```
+**Exit code 0** (no type errors).
+
+### (2) Focused Vitest suites (scheduler / lease / routing / capacity)
+
+Combined focused run — the scheduler/lease/routing specs plus the no-deadlock and
+N-workers-across-M-backends tests:
+```
+pnpm --dir src exec vitest run \
+  core/task/__tests__/routeCapacityMap.spec.ts \
+  core/task/__tests__/parallelWorkerRouting.spec.ts \
+  core/task/__tests__/runParallelTasks.capacity.spec.ts \
+  core/task/__tests__/InferenceLeasePool.spec.ts \
+  core/task/__tests__/TaskScheduler.spec.ts
+```
+Result: **Test Files 5 passed (5), Tests 67 passed (67)**, exit 0.
+(`TaskScheduler.spec.ts` exercises `BoundedElasticScheduler`; the class lives in
+`src/core/task/BoundedElasticScheduler.ts`.)
+
+Capacity spec, verbose, confirming the two required scenarios ran and passed:
+```
+pnpm --dir src exec vitest run core/task/__tests__/runParallelTasks.capacity.spec.ts --reporter=verbose
+```
+→ **Tests 9 passed (9)**, exit 0. Named cases:
+- ✓ admits at most `reasoner` capacity generating at once, queueing the rest inside Menagerie
+- ✓ **drains a small-capacity batch with no deadlock (maxDispatched 8, reasoner 2)**
+- ✓ still throttles and drains when a capability falls through to the bounded default
+- ✓ rejects queued waiters on abort while lease-holders settle on their own (PAR-021.5)
+- ✓ never queues an auto-reader on the reader lease, while a non-auto worker does lease (finding #4)
+- ✓ **spreads N reasoning-typed coders across M code routes by coderOrdinal**
+- ✓ holds at most the summed reasoner capacity generating when spread across two backends
+- ✓ seeds the scheduler bounds from capacity and leaves maxLive at 12 (finding #5)
+- ✓ lets a tight user policy clamp both bounds down, and the batch still drains
+
+Supporting suites for the schema/UI additions:
+- `pnpm --dir packages/types exec vitest run src/__tests__/provider-settings.test.ts`
+  → **Test Files 1 passed (1), Tests 90 passed (90)**, exit 0.
+- `pnpm --dir webview-ui exec vitest run src/components/settings/__tests__/OmniRouteSettings.spec.tsx`
+  → **Test Files 1 passed (1), Tests 10 passed (10)**, exit 0.
+
+### (3) Model checks (scheduler fan-out / lifecycle)
+- `pnpm lifecycle:model-check` → **exit 0**. Sub-checks:
+  - "Task lifecycle model check passed: 53 reachable states, 4/4 actions reachable, 2/2 landmarks reached, depth <= 12, 3 task slots"
+  - "Shared-store model check passed: 625 states, 6 scenarios, 6 invariants, 7/7 phases reachable, 3/3 landmarks reached"
+  - "Provider handoff/scheduler model check passed: 104 distinct reachable states, 3/3 profile scenarios, 1/1 downstream shared-mode witness, 10/10 actions, 12/12 landmarks, depth <= 15, states <= 20000, 6/6 legacy counterexamples"
+  - "Task cleanup protocol model check passed: 229464 reachable states, 17/17 actions reachable, 9/9 landmarks reached, depth <= 20, tasks=2"
+  - "Native tool-call parser scope model check passed: 924/924 valid local-order interleavings, 6/6 actions reachable, 8/8 landmarks reached"
+  - "Completion persistence model check passed: 88 states, 12/12 actions reachable, 5 invariants, 7/7 landmarks reached, depth <= 10, writes <= 2"
+  - "Delegated mode reader check passed: regression scenario verified, 4 divergent-mode pairs checked, 5/5 built-in modes verified"
+- `pnpm fanout-protocol:model-check` → **exit 0**:
+  "Task fan-out protocol model check passed: 113 distinct reachable states, 6/6 actions, 5/5 landmarks, 8/8 unsafe counterexamples, depth <= 10, states <= 500"
+
+### (4) ESLint per edited file (`--prune-suppressions --max-warnings=0`)
+All exited **0**; `src/eslint-suppressions.json` was left unchanged by the prune
+(`git status`/`git diff` show no modification) — no suppression-count increase. The
+"@typescript-eslint/typescript-estree ... not officially supported" banner is a
+pre-existing environment warning, not a lint failure.
+- `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 core/task/runParallelTasks.ts core/task/parallelWorkerRouting.ts core/task/routeCapacityMap.ts core/task/__tests__/routeCapacityMap.spec.ts core/task/__tests__/parallelWorkerRouting.spec.ts core/task/__tests__/runParallelTasks.capacity.spec.ts` → exit 0.
+- `pnpm --dir webview-ui exec eslint --prune-suppressions --max-warnings=0 src/components/settings/OmniRouteSettings.tsx` → exit 0.
+- `pnpm --dir packages/types exec eslint --prune-suppressions --max-warnings=0 src/provider-settings/openai.ts` → exit 0.
+
+### (5) `pnpm --dir src bundle`
+```
+> zoo-code@3.84.4 bundle
+> node esbuild.mjs
+[extension] Cleaning dist directory: .../src/dist
+...
+[copyLocales] Copied 126 locale files to .../src/dist/i18n/locales
+[esbuild-problem-matcher#onEnd]
+```
+**Exit code 0** (esbuild bundle + asset/WASM/locale copy completed).
+
+### Re-verification summary
+| Check | Result |
+|-------|--------|
+| `pnpm --dir src check-types` | exit 0 |
+| Focused scheduler/lease/routing Vitest (5 files) | 67/67 passed |
+| Capacity spec (incl. no-deadlock + N×M spread) | 9/9 passed |
+| types provider-settings round-trip | 90/90 passed |
+| webview OmniRouteSettings editor binding | 10/10 passed |
+| `pnpm lifecycle:model-check` | exit 0 |
+| `pnpm fanout-protocol:model-check` | exit 0 |
+| ESLint per edited file (prune-suppressions) | exit 0, no suppression increase |
+| `pnpm --dir src bundle` | exit 0 |
+
+All green. No build/lint/test breakage found; no fixes were required in this step.
+
+### Design decisions recap (as implemented and verified)
+- **Capacity source**: configured static per-capability slot map in
+  `src/core/task/routeCapacityMap.ts` (`STATIC_ROUTE_CAPACITY`: reader 4, reasoner 2,
+  long-context 4, general 1, vision 2), read at batch start through the existing
+  `RouteCapacityProvider` seam. `DEFAULT_UNKNOWN_CAPABILITY_SLOTS = 2` is the bounded
+  fail-safe (never 0, never the old 12); every returned slot is floored at 1 for
+  forward progress; Zod `z.number().int().positive()` validates the map at module load.
+- **acquireLease wiring + deadlock-freedom**: in `runParallelTasks.ts`, each worker's
+  `scheduler.dispatch(name, async (handle) => …)` run body acquires exactly one lease
+  (`handle.acquireLease(capabilityByName.get(spec.name)!, signal)`) after
+  `signal.throwIfAborted()` and releases it in an **outer `finally`** nested around the
+  child-dispose finally; auto-readers are exempt (no-op release). Deadlock-freedom:
+  the dispatch permit is always acquired first and the inference lease strictly inside
+  it — a uniform permit≺lease global order with no reverse edge, so the wait-for graph
+  is acyclic. Reinforced by idempotent `finally` release (leases strictly drain) and
+  the capacity floor keeping `liveCapacity() >= 1` so `pump()` always admits a waiter
+  when a lease frees. The leased capability derives from the same lane that drives the
+  route id, so lease pool and dispatched backend agree by construction.
+- **Routing-spread mechanism**: additive helpers in `parallelWorkerRouting.ts`.
+  `collectCodeCapableRouteIds` builds an ordered, de-duplicated code-route list (the
+  reasoner route id plus custom routes explicitly classified `reasoner`/`general`,
+  `[parentModelId]` fallback). `resolveLaneRouteId` round-robins `coder.primary`
+  workers across that list by a per-batch **coder-only ordinal** (`coderOrdinal % n`)
+  whenever `n > 1`, regardless of task type; otherwise returns the single reasoner id
+  unchanged (no regression). Backed by a new optional `capability` classifier on
+  `openAiOmniRouteCustomRoutes` (optional ⇒ existing profiles round-trip).
+- **Bounds-seeding formula** (`computeCapacityBounds`, pure):
+  `capacitySum = Σ_cap available`; `maxPerCapability = max_cap available`;
+  `maxInferenceLeases = max(1, capacitySum)` (observability aggregate, never 0);
+  `maxDispatched = max(capacitySum, maxPerCapability, SMALL_FLOOR=4)`;
+  `maxLive = 12` (unchanged). The scheduler's `clampCeiling` still lowers both by the
+  `UserParallelismPolicy` and never raises. The `maxPerCapability` term enforces the
+  per-capability liveness invariant `maxDispatched >= max_cap liveCapacity(cap)`.
