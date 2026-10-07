@@ -113,6 +113,7 @@ import {
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
+import { extractKnownTargetPaths } from "../../services/glob/readDenylist"
 import { RooProtectedController } from "../protect/RooProtectedController"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
@@ -280,6 +281,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public getDisabledTools(disabled?: string[]): string[] | undefined {
 		return this.parallelWorker ? [...(disabled ?? []), "new_task", "parallel_tasks"] : disabled
 	}
+
+	/**
+	 * Whether `relPath` was named verbatim in this worker's task text. Compares
+	 * normalized workspace-relative paths against `knownTargetPaths` (seeded by
+	 * `extractKnownTargetPaths`, which normalizes to forward-slash, `./`-stripped
+	 * form). A match makes the read a Known_Target and bypasses the read denylist.
+	 */
+	public isKnownTargetPath(relPath: string): boolean {
+		if (this.knownTargetPaths.size === 0) return false
+		const normalized = relPath.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "")
+		return this.knownTargetPaths.has(normalized)
+	}
+
 	public parallelToolBatch = false
 	readonly parallelTaskArgumentRecovery = new ParallelTaskArgumentRecovery()
 	private forceParallelOnNextRequest = false
@@ -428,6 +442,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	rooIgnoreController?: RooIgnoreController
 	rooProtectedController?: RooProtectedController
 	fileContextTracker: FileContextTracker
+
+	/**
+	 * Workspace-relative paths named verbatim in this worker's task text, seeded
+	 * SOLELY from `extractKnownTargetPaths(task)` (the parallel worker's task text
+	 * carries `spec.message`; mastermind-assigned scope lives in that same prose,
+	 * as `ParallelTaskSpec` has no structured file-scope field). A path in this
+	 * set bypasses the read denylist (`isKnownTargetPath` → `isDeniedRead` opts).
+	 */
+	readonly knownTargetPaths: ReadonlySet<string>
+	/**
+	 * Cumulative bytes this worker has ingested via `read_file` results. Updated by
+	 * `ReadFileTool`; drives the per-worker read-input budget (Lever 2). Worker-local:
+	 * each parallel worker owns its own `Task` and therefore its own counter.
+	 */
+	readInputBytesConsumed: number = 0
 	terminalProcess?: RooTerminalProcess
 
 	// Editing
@@ -727,6 +756,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			images: historyItem ? [] : images,
 		}
 		this._isHistoryTask = !!historyItem && !task && !images
+
+		// Seed the Known_Target set from the worker's task text (which carries
+		// `spec.message` for a parallel worker). A path named verbatim here is
+		// an explicit, intentional read and bypasses the read denylist.
+		this.knownTargetPaths = extractKnownTargetPaths(this.metadata.task ?? "")
 
 		// Normal use-case is usually retry similar history task with new workspace.
 		this.workspacePath = parentTask

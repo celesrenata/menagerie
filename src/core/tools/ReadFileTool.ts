@@ -24,6 +24,12 @@ import { extractTextFromFile, addLineNumbers, getSupportedBinaryFormats } from "
 import { readWithIndentation, readWithSlice } from "../../integrations/misc/indentation-reader"
 import { DEFAULT_BATCH_LINE_BUDGET, DEFAULT_LINE_LIMIT } from "../prompts/tools/native-tools/read_file"
 import type { ToolUse, PushToolResult } from "../../shared/tools"
+import {
+	DEFAULT_READ_DENYLIST,
+	DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES,
+	BUDGET_TIGHTENED_LINE_LIMIT,
+} from "@roo-code/types"
+import { isDeniedRead, type ReadDenylistConfig } from "../../services/glob/readDenylist"
 
 import {
 	DEFAULT_MAX_IMAGE_FILE_SIZE_MB,
@@ -51,6 +57,13 @@ interface InternalFileEntry {
 	include_siblings?: boolean
 	include_header?: boolean
 	max_lines?: number
+	/**
+	 * Set by the batched path when the per-worker read-input budget tightened the
+	 * computed default limit (no explicit `limit`, budget crossed). Drives the
+	 * budget notice in the legacy result loop since the entry carries an explicit
+	 * (already-clamped) `limit` by then (AC-9a).
+	 */
+	budgetTightened?: boolean
 }
 
 interface FileResult {
@@ -99,6 +112,54 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		return this.executeNew(params, task, callbacks)
 	}
 
+	/**
+	 * Resolve the effective read denylist and per-worker read-input budget from
+	 * provider state. FEAT-003 will add `getEffectiveReadDenylist()` /
+	 * `parallelReadDenylist` to provider state; until then this falls back to the
+	 * shared `DEFAULT_READ_DENYLIST` and `DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES`.
+	 */
+	private async resolveReadControls(task: Task): Promise<{ denylist: ReadDenylistConfig; budgetBytes: number }> {
+		// Touch provider state so the effective config read site is in place for
+		// FEAT-003 (which will surface `parallelReadDenylist` / an effective-denylist
+		// helper here). Until FEAT-003 lands we fall back to the shared defaults.
+		await task.providerRef.deref()?.getState()
+		return { denylist: DEFAULT_READ_DENYLIST, budgetBytes: DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES }
+	}
+
+	/**
+	 * Apply the denylist gate for a single file. On deny, mark the result
+	 * `blocked` with a one-line category notice (mirroring the rooIgnore-blocked
+	 * flow) and return the denied notice's byte count; otherwise return 0.
+	 */
+	private applyDenylistGate(
+		task: Task,
+		relPath: string,
+		denylist: ReadDenylistConfig,
+		updateFileResult: (path: string, updates: Partial<FileResult>) => void,
+	): { denied: boolean; deniedBytes: number } {
+		const { denied, category } = isDeniedRead(relPath, denylist, { knownTarget: task.isKnownTargetPath(relPath) })
+		if (!denied) return { denied: false, deniedBytes: 0 }
+		const notice = `File: ${relPath}\nNote: Skipped vendored/generated path (${category}). To read it anyway, name the exact path in your task or set parallelReadDenylist.`
+		updateFileResult(relPath, {
+			status: "blocked",
+			notice,
+			nativeContent: notice,
+		})
+		task.didToolFailInCurrentTurn = true
+		return { denied: true, deniedBytes: Buffer.byteLength(notice, "utf8") }
+	}
+
+	/**
+	 * Emit the per-worker measurability log recording bytes denied by the
+	 * denylist in this invocation and the cumulative bytes ingested (FR-6 / AC-10).
+	 */
+	private emitMeasurabilityLog(task: Task, deniedBytes: number): void {
+		console.info(
+			`[ReadFileTool] read-input accounting: deniedBytes=${deniedBytes} ` +
+				`ingestedBytesCumulative=${task.readInputBytesConsumed}`,
+		)
+	}
+
 	private async executeBatch(params: BatchReadFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const paths = params.path
 		if (paths.length < 1 || paths.length > 8 || paths.some((filePath) => filePath.trim().length === 0)) {
@@ -113,7 +174,14 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			DEFAULT_LINE_LIMIT,
 			Math.max(1, Math.floor(DEFAULT_BATCH_LINE_BUDGET / uniquePaths.length)),
 		)
-		const effectiveLimit = limit ?? defaultBatchLimit
+		// Per-worker read-input budget (Lever 2): once the budget is crossed, clamp
+		// the computed per-file default to BUDGET_TIGHTENED_LINE_LIMIT via a `min`
+		// (monotonic — never raises defaultBatchLimit) but ONLY when `limit` is
+		// undefined. An explicit `limit` is honored unchanged (AC-9/AC-9a).
+		const { budgetBytes } = await this.resolveReadControls(task)
+		const budgetCrossed = task.readInputBytesConsumed >= budgetBytes
+		const effectiveLimit =
+			limit ?? (budgetCrossed ? Math.min(defaultBatchLimit, BUDGET_TIGHTENED_LINE_LIMIT) : defaultBatchLimit)
 		if (offset !== undefined && offset < 1) {
 			callbacks.pushToolResult(`Error: offset must be a 1-indexed line number (got ${params.offset}). Line numbers start at 1.`)
 			return
@@ -136,6 +204,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				include_siblings: params.indentation?.include_siblings,
 				include_header: params.indentation?.include_header,
 				max_lines: params.indentation?.max_lines,
+				budgetTightened: limit === undefined && budgetCrossed,
 			})),
 			task,
 			callbacks,
@@ -208,6 +277,11 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			}
 		}
 
+		// Resolve the effective denylist + per-worker read-input budget once.
+		const { denylist, budgetBytes } = await this.resolveReadControls(task)
+		const budgetCrossed = task.readInputBytesConsumed >= budgetBytes
+		let deniedBytes = 0
+
 		try {
 			// Phase 1: Validate and filter files for approval
 			const filesToApprove: FileResult[] = []
@@ -227,6 +301,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 					})
 					continue
 				}
+
+				// Read-scope junk exclusion (Lever 1): deny vendored/generated paths
+				// immediately after the rooIgnore gate unless the path is a Known_Target.
+				const gate = this.applyDenylistGate(task, relPath, denylist, updateFileResult)
+				deniedBytes += gate.deniedBytes
+				if (gate.denied) continue
 
 				filesToApprove.push(fileResult)
 			}
@@ -285,13 +365,17 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 					// (they become U+FFFD replacement characters instead of throwing)
 					const buffer = await fs.readFile(fullPath)
 					const fileContent = buffer.toString("utf-8")
-					const result = this.processTextFile(fileContent, entry)
+					const result = this.processTextFile(fileContent, entry, budgetCrossed)
+					const budgetNotice =
+						budgetCrossed && entry.limit === undefined
+							? "\nNote: Read-input budget reached — default read limit tightened. Prefer targeted offset/limit reads and semantic retrieval."
+							: ""
 
 					await task.fileContextTracker.trackFileContext(relPath, "read_tool" as RecordSource)
 
-					updateFileResult(relPath, {
-						nativeContent: `File: ${relPath}\n${result}`,
-					})
+					const nativeContent = `File: ${relPath}\n${result}${budgetNotice}`
+					task.readInputBytesConsumed += Buffer.byteLength(nativeContent, "utf8")
+					updateFileResult(relPath, { nativeContent })
 				} catch (error) {
 					const errorMsg = error instanceof Error ? error.message : String(error)
 					updateFileResult(relPath, {
@@ -309,6 +393,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				task.didToolFailInCurrentTurn = true
 			}
 
+			this.emitMeasurabilityLog(task, deniedBytes)
 			this.buildAndPushResult(task, fileResults, pushToolResult)
 		} catch (error) {
 			const relPath = filePath || "unknown"
@@ -335,8 +420,17 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	/**
 	 * Process a text file according to the requested mode.
 	 */
-	private processTextFile(content: string, entry: InternalFileEntry): string {
+	private processTextFile(content: string, entry: InternalFileEntry, budgetCrossed = false): string {
 		const mode = entry.mode || "slice"
+
+		// Per-worker read-input budget clamp (Lever 2): once the budget is crossed,
+		// a read with NO explicit `limit` has its default clamped to
+		// BUDGET_TIGHTENED_LINE_LIMIT via a `min` (monotonic — never raises the
+		// default). An explicit `entry.limit` is honored unchanged (AC-9).
+		const defaultLimit =
+			budgetCrossed && entry.limit === undefined
+				? Math.min(DEFAULT_LINE_LIMIT, BUDGET_TIGHTENED_LINE_LIMIT)
+				: DEFAULT_LINE_LIMIT
 
 		if (mode === "indentation") {
 			// Indentation mode: semantic block extraction
@@ -347,7 +441,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				maxLevels: entry.max_levels,
 				includeSiblings: entry.include_siblings,
 				includeHeader: entry.include_header,
-				limit: entry.limit ?? DEFAULT_LINE_LIMIT,
+				limit: entry.limit ?? defaultLimit,
 				maxLines: entry.max_lines,
 			})
 
@@ -375,7 +469,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		// NOTE: read_file offset is 1-based externally; convert to 0-based for readWithSlice.
 		const offset1 = entry.offset ?? 1
 		const offset0 = Math.max(0, offset1 - 1)
-		const limit = entry.limit ?? DEFAULT_LINE_LIMIT
+		const limit = entry.limit ?? defaultLimit
 
 		const result = readWithSlice(content, offset0, limit)
 
@@ -753,6 +847,11 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 		const supportsImages = modelInfo.supportsImages ?? false
 
+		// Resolve the effective denylist + per-worker read-input budget once.
+		const { denylist, budgetBytes } = await this.resolveReadControls(task)
+		const budgetCrossed = task.readInputBytesConsumed >= budgetBytes
+		let deniedBytes = 0
+
 		const fileResults: FileResult[] = fileEntries.map((entry) => ({ path: entry.path, status: "pending", entry }))
 		const filesToApprove: FileResult[] = []
 		const updateFileResult = (filePath: string, updates: Partial<FileResult>) => {
@@ -774,6 +873,13 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				task.didToolFailInCurrentTurn = true
 				continue
 			}
+
+			// Read-scope junk exclusion (Lever 1): deny vendored/generated paths
+			// immediately after the rooIgnore gate unless the path is a Known_Target.
+			const gate = this.applyDenylistGate(task, fileResult.path, denylist, updateFileResult)
+			deniedBytes += gate.deniedBytes
+			if (gate.denied) continue
+
 			filesToApprove.push(fileResult)
 		}
 
@@ -840,9 +946,15 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 					}
 					fileResult.content = selectedLines.join("\n")
 				} else if (entry.mode !== undefined || entry.offset !== undefined || entry.limit !== undefined || entry.anchor_line !== undefined) {
-					fileResult.content = this.processTextFile(rawContent, entry)
+					fileResult.content = this.processTextFile(rawContent, entry, budgetCrossed)
 				} else {
-					const result = readWithSlice(rawContent, 0, DEFAULT_LINE_LIMIT)
+					// No explicit mode/offset/limit: a plain default read. Clamp the
+					// default to BUDGET_TIGHTENED_LINE_LIMIT once the budget is crossed
+					// (monotonic min — never raises the default).
+					const defaultLimit = budgetCrossed
+						? Math.min(DEFAULT_LINE_LIMIT, BUDGET_TIGHTENED_LINE_LIMIT)
+						: DEFAULT_LINE_LIMIT
+					const result = readWithSlice(rawContent, 0, defaultLimit)
 					let content = result.content
 					if (result.wasTruncated) {
 						content += `\n\n[File truncated: showing ${result.returnedLines} of ${result.totalLines} total lines]`
@@ -880,8 +992,22 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			if (fileResult.status === "approved" && textReadIndexes.has(index)) {
 				await task.fileContextTracker.trackFileContext(relPath, "read_tool")
 			}
-			if (fileResult.content !== undefined) results.push(`File: ${relPath}\n${fileResult.content}`)
+			if (fileResult.content !== undefined) {
+				// A tightened default-limit read (no explicit limit, budget crossed)
+				// carries a one-line budget notice steering toward targeted reads.
+				const defaultLimitRead = fileResult.entry?.limit === undefined || fileResult.entry?.budgetTightened === true
+				const budgetNotice =
+					budgetCrossed && defaultLimitRead
+						? "\nNote: Read-input budget reached — default read limit tightened. Prefer targeted offset/limit reads and semantic retrieval."
+						: ""
+				const nativeContent = `File: ${relPath}\n${fileResult.content}${budgetNotice}`
+				// Byte accounting (FR-5): count the bytes this read returns.
+				task.readInputBytesConsumed += Buffer.byteLength(nativeContent, "utf8")
+				results.push(nativeContent)
+			}
 		}
+
+		this.emitMeasurabilityLog(task, deniedBytes)
 
 		// Push combined results
 		pushToolResult(results.join("\n\n---\n\n"))
