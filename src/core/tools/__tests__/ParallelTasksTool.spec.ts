@@ -211,14 +211,14 @@ describe("compactParallelTasksResultForParent", () => {
 
 	// The reader cap must sit well above the coder cap so a reader — the mastermind's
 	// information channel — can return a realistic curated audit backlog inline.
-	it("exposes a reader cap (24_000) that is larger than the coder cap (6_000)", () => {
-		expect(MAX_READER_PARENT_RESULT_CHARS).toBe(24_000)
+	it("exposes a reader cap (64_000) that is larger than the coder cap (6_000)", () => {
+		expect(MAX_READER_PARENT_RESULT_CHARS).toBe(64_000)
 		expect(MAX_WORKER_PARENT_RESULT_CHARS).toBe(6_000)
 		expect(MAX_READER_PARENT_RESULT_CHARS).toBeGreaterThan(MAX_WORKER_PARENT_RESULT_CHARS)
 	})
 
-	it("returns a project-reader result between the old 6_000 and the new 24_000 cap in full", () => {
-		const backlog = "G".repeat(12_000)
+	it("returns a large project-reader result under the reader cap in full", () => {
+		const backlog = "G".repeat(32_000)
 		const { tasks } = compactParallelTasksResultForParent({
 			batchId: "b",
 			manifestPath: "/tmp/manifest.json",
@@ -230,7 +230,7 @@ describe("compactParallelTasksResultForParent", () => {
 		expect(tasks[0].resultClipped).toBe(false)
 	})
 
-	it("clips a project-reader result beyond 24_000 and names the retained manifest record", () => {
+	it("clips a project-reader result beyond the reader cap and names the retained manifest record", () => {
 		const backlog = "G".repeat(MAX_READER_PARENT_RESULT_CHARS + 5_000)
 		const { tasks } = compactParallelTasksResultForParent({
 			batchId: "b",
