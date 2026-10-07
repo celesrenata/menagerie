@@ -1,0 +1,7 @@
+{
+  "task_id": "parallel-input-bloat",
+  "task_description": "Reduce parallel-worker input bloat (~356k-token prompts) in the Menagerie VS Code extension via a bounded, measurable lever set: Lever 1 read-path junk exclusion (shared denylist predicate + Known_Target override) and a conservative Lever 2 per-worker read-input budget, plus the persisted parallelReadDenylist setting round trip. Implements the APPROVED design at .agents/tasks/parallel-input-bloat/design.md.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
