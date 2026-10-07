@@ -2781,6 +2781,7 @@ export class ClineProvider
 			yoloModeEnabled,
 			omniRouteTier,
 			parallelismMode,
+			parallelCapacityMap,
 			allowedCommands,
 			deniedCommands,
 			alwaysAllowMcp,
@@ -2948,6 +2949,9 @@ export class ClineProvider
 			omniRouteTier,
 			// FEAT-011: round-trip the saved parallelism default back to the webview.
 			parallelismMode,
+			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
+			// STATIC_ROUTE_CAPACITY) so a saved control re-renders instead of reverting.
+			parallelCapacityMap,
 			alwaysAllowMcp: alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: alwaysAllowSubtasks ?? false,
@@ -3188,6 +3192,10 @@ export class ClineProvider
 			omniRouteTier: stateValues.omniRouteTier,
 			// FEAT-011: default the saved parallelism appetite to "auto" so runtime consumers read a mode.
 			parallelismMode: stateValues.parallelismMode ?? DEFAULT_PARALLELISM_MODE,
+			// User-adjustable parallel-task capacity map. Default is left `undefined`:
+			// an unset map merges to exactly `STATIC_ROUTE_CAPACITY` downstream, so the
+			// no-op semantics hold and runtime consumers never see a concrete default here.
+			parallelCapacityMap: stateValues.parallelCapacityMap,
 			alwaysAllowMcp: stateValues.alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: stateValues.alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: stateValues.alwaysAllowSubtasks ?? false,

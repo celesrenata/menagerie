@@ -10,6 +10,7 @@ import {
 	providerSettingsEntrySchema,
 	providerSettingsSchema,
 } from "./provider-settings.js"
+import { routeCapabilitySchema } from "./provider-settings/openai.js"
 import { telemetrySettingsSchema } from "./telemetry.js"
 import { toolNamesSchema } from "./tool.js"
 import { type Keys } from "./type-fu.js"
@@ -57,6 +58,27 @@ export const DEFAULT_PARALLELISM_MODE: ParallelismMode = "auto"
  * value is treated as unset and resolves to the `"auto"` default downstream.
  */
 export const parallelismModeSchema = z.enum(PARALLELISM_MODES)
+
+/**
+ * User-adjustable per-capability parallel-task capacity map (replaces the
+ * previously hardcoded `STATIC_ROUTE_CAPACITY` as the operator-tunable source).
+ * A PARTIAL map keyed by the five route capabilities, each value a positive
+ * integer slot count:
+ *
+ *   - An OMITTED capability falls back to `STATIC_ROUTE_CAPACITY[cap]` (and then
+ *     to the bounded unknown-capability default) at batch start, so unset/empty
+ *     is a byte-for-byte no-op: today's hardcoded capacity.
+ *   - Values are floored to `>= 1` downstream in `createStaticRouteCapacityProvider`;
+ *     the schema's `.int().positive()` rejects 0 / negative / non-integer entries
+ *     at the persistence boundary so a user cannot reintroduce the 0-lease
+ *     deadlock, and the `routeCapabilitySchema` key enum rejects unknown
+ *     capabilities.
+ *
+ * `routeCapabilitySchema` is reused so the key set stays in lockstep with the
+ * `RouteCapability` union / `ROUTE_CAPABILITIES` tuple. `z.record` with an enum
+ * key is partial: it accepts `{}` and any subset of the five keys.
+ */
+export const parallelCapacityMapSchema = z.record(routeCapabilitySchema, z.number().int().positive())
 
 /**
  * Default values for the "auto-close files Zoo opened" settings.
@@ -183,6 +205,15 @@ export const globalSettingsSchema = z.object({
 	 * derived from this persisted default at submit time.
 	 */
 	parallelismMode: parallelismModeSchema.optional(),
+	/**
+	 * Persisted user-adjustable per-capability parallel-task capacity map. A
+	 * PARTIAL `Record<RouteCapability, positive integer>`; `undefined`/empty means
+	 * "unset" and resolves to the hardcoded `STATIC_ROUTE_CAPACITY` default
+	 * downstream (a no-op for users who never set it). Values are floored to `>= 1`
+	 * at the provider; invalid (0/negative/non-integer) and unknown-capability
+	 * entries are rejected at this schema boundary.
+	 */
+	parallelCapacityMap: parallelCapacityMapSchema.optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
 	/**

@@ -88,6 +88,34 @@ export function validateRouteCapacityMap(map: Readonly<Record<RouteCapability, n
 validateRouteCapacityMap(STATIC_ROUTE_CAPACITY)
 
 /**
+ * Merge a user-adjustable partial capacity map over {@link STATIC_ROUTE_CAPACITY}
+ * to produce the full per-capability map fed to {@link createStaticRouteCapacityProvider}.
+ *
+ * For each capability in {@link ROUTE_CAPABILITIES}, the effective slot count is
+ * `userMap[cap]` only when it is a positive integer, else `STATIC_ROUTE_CAPACITY[cap]`.
+ * An omitted, `undefined`, or invalid (0 / negative / non-integer) user entry
+ * therefore falls back to today's static value — so `undefined`/`{}` merges to
+ * exactly `STATIC_ROUTE_CAPACITY` (a byte-for-byte no-op for users who never set it).
+ *
+ * The floor-of-1 fail-safe and the bounded unknown-capability default still live
+ * entirely in {@link createStaticRouteCapacityProvider}: a user value can only
+ * REPLACE a slot count here, never defeat the `>= 1` floor or the bounded default.
+ */
+export function mergeRouteCapacityMap(
+	userMap: Partial<Record<RouteCapability, number>> | undefined,
+): Record<RouteCapability, number> {
+	const merged = {} as Record<RouteCapability, number>
+	for (const capability of ROUTE_CAPABILITIES) {
+		const override = userMap?.[capability]
+		merged[capability] =
+			override !== undefined && Number.isInteger(override) && override > 0
+				? override
+				: STATIC_ROUTE_CAPACITY[capability]
+	}
+	return merged
+}
+
+/**
  * Capabilities already warned about this process, so a persistently unmapped
  * capability is logged once — not once per batch (design §Error handling,
  * finding #7). `createStaticRouteCapacityProvider` is constructed per batch, so

@@ -75,7 +75,13 @@
 		"routeName": "Route name",
 		"routeModelId": "Model id",
 		"routeCapability": "Capability",
-		"capabilityUnclassified": "Unclassified"
+		"capabilityUnclassified": "Unclassified",
+		"parallelCapacity": {
+			"label": "Parallel backend capacity (slots per capability)",
+			"hint": "Set how many parallel inference slots each capability admits. Leave a capability blank to use its default; values are floored to at least 1.",
+			"defaultPlaceholder": "default",
+			"inputAriaLabel": "Parallel capacity slots for {{capability}}"
+		}
 	},
 	"about": {
 		"bugReport": {

@@ -338,6 +338,7 @@ export type ExtensionState = Pick<
 	| "yoloModeEnabled"
 	| "omniRouteTier"
 	| "parallelismMode"
+	| "parallelCapacityMap"
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowReadOnlyOutsideWorkspace"
 	| "allowedReadFiles"

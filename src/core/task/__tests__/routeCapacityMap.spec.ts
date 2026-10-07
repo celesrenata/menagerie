@@ -6,6 +6,7 @@ import {
 	STATIC_ROUTE_CAPACITY,
 	computeCapacityBounds,
 	createStaticRouteCapacityProvider,
+	mergeRouteCapacityMap,
 	resetRouteCapacityWarnings,
 	validateRouteCapacityMap,
 } from "../routeCapacityMap"
@@ -70,6 +71,50 @@ describe("createStaticRouteCapacityProvider", () => {
 		provider.capacitiesFor("vision")
 		provider.capacitiesFor("vision")
 		expect(warn).toHaveBeenCalledTimes(1)
+	})
+})
+
+describe("mergeRouteCapacityMap", () => {
+	beforeEach(() => resetRouteCapacityWarnings())
+
+	it("merges undefined to exactly STATIC_ROUTE_CAPACITY (unset = today's behavior)", () => {
+		expect(mergeRouteCapacityMap(undefined)).toEqual(STATIC_ROUTE_CAPACITY)
+	})
+
+	it("merges the empty map to exactly STATIC_ROUTE_CAPACITY (empty = no-op)", () => {
+		expect(mergeRouteCapacityMap({})).toEqual(STATIC_ROUTE_CAPACITY)
+	})
+
+	it("replaces only the overridden capability, keeping static defaults for the rest", () => {
+		expect(mergeRouteCapacityMap({ reasoner: 5 })).toEqual({ ...STATIC_ROUTE_CAPACITY, reasoner: 5 })
+	})
+
+	it.each([0, -1, 2.5, Number.NaN])(
+		"ignores an invalid user override (%s) and falls back to the static value",
+		(bad) => {
+			const merged = mergeRouteCapacityMap({ reasoner: bad })
+			expect(merged.reasoner).toBe(STATIC_ROUTE_CAPACITY.reasoner)
+		},
+	)
+
+	it("feeds the provider a map that still floors every value >= 1", () => {
+		// Even a merged map built from a hostile override keeps the >= 1 floor at the provider.
+		const provider = createStaticRouteCapacityProvider(mergeRouteCapacityMap({ reasoner: 0 }))
+		const [snapshot] = provider.capacitiesFor("reasoner")
+		// 0 override is ignored → merged value is the static 2 → provider reports >= 1.
+		expect(snapshot?.available).toBe(STATIC_ROUTE_CAPACITY.reasoner)
+		expect(snapshot?.available).toBeGreaterThanOrEqual(1)
+	})
+
+	it("preserves no-deadlock bounds under a tiny user capacity map (floor + SMALL_FLOOR hold)", () => {
+		const provider = createStaticRouteCapacityProvider(mergeRouteCapacityMap({ reasoner: 1 }))
+		const bounds = computeCapacityBounds(provider)
+		expect(bounds.maxInferenceLeases).toBeGreaterThanOrEqual(1)
+		expect(bounds.maxDispatched).toBeGreaterThanOrEqual(1)
+		// A hostile { reasoner: 0 } user map still yields a positive provider slot (no 0-lease deadlock).
+		const zeroProvider = createStaticRouteCapacityProvider(mergeRouteCapacityMap({ reasoner: 0 }))
+		expect(zeroProvider.capacitiesFor("reasoner")[0]?.available).toBeGreaterThanOrEqual(1)
+		expect(computeCapacityBounds(zeroProvider).maxInferenceLeases).toBeGreaterThanOrEqual(1)
 	})
 })
 
