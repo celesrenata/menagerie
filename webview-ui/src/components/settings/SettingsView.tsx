@@ -226,6 +226,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCloseZooOpenedFilesAfterUserEdited,
 		autoCloseZooOpenedNewFiles,
 		parallelismMode,
+		parallelCapacityMap,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -456,6 +457,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 					autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 					parallelismMode: parallelismMode ?? DEFAULT_PARALLELISM_MODE,
+					// Persist the user-adjustable parallel-capacity map. `undefined` keeps the
+					// no-op default (merges to STATIC_ROUTE_CAPACITY); an empty object is also a no-op.
+					parallelCapacityMap: parallelCapacityMap ?? {},
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -828,6 +832,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 									<OmniRouteSettings
 										apiConfiguration={apiConfiguration}
 										setApiConfigurationField={setApiConfigurationField}
+										parallelCapacityMap={parallelCapacityMap}
+										setCachedStateField={setCachedStateField}
 									/>
 								</Section>
 							</div>

@@ -34,12 +34,18 @@ const postCatalog = (response: OmniRouteCatalogResponse) => {
 const renderSettings = (
 	apiConfiguration: ProviderSettings,
 	setApiConfigurationField: (...args: unknown[]) => void = vi.fn(),
+	options: {
+		parallelCapacityMap?: Partial<Record<string, number>>
+		setCachedStateField?: (...args: unknown[]) => void
+	} = {},
 ) =>
 	render(
 		<TooltipProvider>
 			<OmniRouteSettings
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField as never}
+				parallelCapacityMap={options.parallelCapacityMap as never}
+				setCachedStateField={(options.setCachedStateField ?? vi.fn()) as never}
 			/>
 		</TooltipProvider>,
 	)
@@ -146,5 +152,47 @@ describe("OmniRouteSettings", () => {
 		renderSettings({ ...baseConfig, openAiOmniRouteCustomRoutes: [{ name: "legacy", modelId: "hybrid/code" }] })
 		const select = screen.getByTestId("omniroute-route-capability-0") as HTMLSelectElement
 		expect(select.value).toBe("")
+	})
+})
+
+describe("OmniRouteSettings parallel capacity map", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	it("renders a numeric input per capability, always visible (not gated on isOmniRoute)", () => {
+		// `openAiIsOmniRoute` unset ⇒ the OmniRoute body is hidden, but the fleet-wide
+		// capacity grid is still rendered because it is outside the isOmniRoute guard.
+		renderSettings({ apiProvider: providerIdentifiers.openai })
+		for (const capability of ["reader", "reasoner", "long-context", "general", "vision"]) {
+			expect(screen.getByTestId(`parallel-capacity-${capability}`)).toBeInTheDocument()
+		}
+	})
+
+	it("seeds the inputs from a persisted parallelCapacityMap and leaves unset capabilities blank", () => {
+		renderSettings(baseConfig, vi.fn(), { parallelCapacityMap: { reader: 6 } })
+		const readerInput = screen.getByTestId("parallel-capacity-reader") as HTMLInputElement
+		const reasonerInput = screen.getByTestId("parallel-capacity-reasoner") as HTMLInputElement
+		expect(readerInput.value).toBe("6")
+		expect(reasonerInput.value).toBe("")
+	})
+
+	it("writes a valid positive integer back to cachedState via setCachedStateField", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), { parallelCapacityMap: {}, setCachedStateField })
+		fireEvent.input(screen.getByTestId("parallel-capacity-reader"), { target: { value: "8" } })
+		expect(setCachedStateField).toHaveBeenCalledWith("parallelCapacityMap", { reader: 8 })
+	})
+
+	it("deletes the key when an input is cleared so the capability falls back to default", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), { parallelCapacityMap: { reader: 6 }, setCachedStateField })
+		fireEvent.input(screen.getByTestId("parallel-capacity-reader"), { target: { value: "" } })
+		expect(setCachedStateField).toHaveBeenCalledWith("parallelCapacityMap", {})
+	})
+
+	it("deletes the key for a non-positive / non-integer entry (floor-of-1 preserved at the control)", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), { parallelCapacityMap: { reasoner: 2 }, setCachedStateField })
+		fireEvent.input(screen.getByTestId("parallel-capacity-reasoner"), { target: { value: "0" } })
+		expect(setCachedStateField).toHaveBeenCalledWith("parallelCapacityMap", {})
 	})
 })

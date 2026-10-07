@@ -14,8 +14,10 @@ import {
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
 import { Button, StandardTooltip } from "@src/components/ui"
+import type { ExtensionStateContextType } from "@src/context/ExtensionStateContext"
 
 import { inputEventTransform } from "./transforms"
+import { SetCachedStateField } from "./types"
 
 /** A single custom-route entry as persisted on `openAiOmniRouteCustomRoutes`. */
 type OmniRouteCustomRoute = NonNullable<ProviderSettings["openAiOmniRouteCustomRoutes"]>[number]
@@ -35,6 +37,13 @@ const ROUTE_CAPABILITY_OPTIONS: readonly RouteCapabilityOption[] = [
 	"general",
 ]
 
+/**
+ * Persisted user-adjustable per-capability parallel-task capacity map. A PARTIAL
+ * map keyed by the five route capabilities; an omitted capability uses the
+ * default (`STATIC_ROUTE_CAPACITY`) and values are floored to `>= 1` downstream.
+ */
+type ParallelCapacityMap = Partial<Record<RouteCapabilityOption, number>>
+
 type OmniRouteSettingsProps = {
 	apiConfiguration: ProviderSettings
 	setApiConfigurationField: <K extends keyof ProviderSettings>(
@@ -42,6 +51,10 @@ type OmniRouteSettingsProps = {
 		value: ProviderSettings[K],
 		isUserAction?: boolean,
 	) => void
+	/** The persisted global parallel-capacity map, read from `cachedState` (never live state). */
+	parallelCapacityMap?: ParallelCapacityMap
+	/** Writes the capacity map back to the SettingsView `cachedState`. */
+	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
 /**
@@ -53,7 +66,12 @@ type OmniRouteSettingsProps = {
  * `upsertApiConfiguration` save path.
  * See docs/architecture/omniroute-integration-design.md §2.
  */
-export const OmniRouteSettings = ({ apiConfiguration, setApiConfigurationField }: OmniRouteSettingsProps) => {
+export const OmniRouteSettings = ({
+	apiConfiguration,
+	setApiConfigurationField,
+	parallelCapacityMap,
+	setCachedStateField,
+}: OmniRouteSettingsProps) => {
 	const { t } = useAppTranslation()
 
 	const [status, setStatus] = useState<OmniRouteConnectionStatus>("unknown")
@@ -172,9 +190,70 @@ export const OmniRouteSettings = ({ apiConfiguration, setApiConfigurationField }
 		[customRoutes, setApiConfigurationField],
 	)
 
+	const updateCapacitySlot = useCallback(
+		(capability: RouteCapabilityOption, raw: string) => {
+			const trimmed = raw.trim()
+			const parsed = Number(trimmed)
+			const next: ParallelCapacityMap = { ...(parallelCapacityMap ?? {}) }
+			// An empty/blank or non-positive-integer entry DELETES the key so the
+			// capability falls back to its default; only a valid positive integer sets it.
+			if (trimmed === "" || !Number.isInteger(parsed) || parsed <= 0) {
+				delete next[capability]
+			} else {
+				next[capability] = parsed
+			}
+			setCachedStateField("parallelCapacityMap", next)
+		},
+		[parallelCapacityMap, setCachedStateField],
+	)
+
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="text-sm text-vscode-descriptionForeground">{t("settings:omniroute.description")}</div>
+
+			{/* Block 0: Parallel backend capacity map (fleet-wide; always visible, not gated on
+			    `isOmniRoute`). Each input tunes the per-capability real inference-slot count the
+			    parallel-task scheduler admits; an unset capability uses the default and values are
+			    floored to >= 1 downstream. Bound to `cachedState` via `setCachedStateField`. */}
+			<div className="flex flex-col gap-2">
+				<label className="block font-medium">{t("settings:omniroute.parallelCapacity.label")}</label>
+				<div className="text-sm text-vscode-descriptionForeground">
+					{t("settings:omniroute.parallelCapacity.hint")}
+				</div>
+				<div className="grid grid-cols-2 gap-2">
+					{ROUTE_CAPABILITY_OPTIONS.map((capability) => {
+						const inputId = `parallel-capacity-${capability}`
+						return (
+							<div key={capability} className="flex flex-col gap-1">
+								<label htmlFor={inputId} className="text-sm">
+									{capability}
+								</label>
+								<VSCodeTextField
+									id={inputId}
+									type="text"
+									inputMode="numeric"
+									value={
+										parallelCapacityMap?.[capability] !== undefined
+											? String(parallelCapacityMap[capability])
+											: ""
+									}
+									onInput={(e: unknown) =>
+										updateCapacitySlot(
+											capability,
+											(e as { target: HTMLInputElement }).target.value,
+										)
+									}
+									placeholder={t("settings:omniroute.parallelCapacity.defaultPlaceholder")}
+									aria-label={t("settings:omniroute.parallelCapacity.inputAriaLabel", {
+										capability,
+									})}
+									data-testid={inputId}
+								/>
+							</div>
+						)
+					})}
+				</div>
+			</div>
 
 			{/* Block 1: Endpoint setup */}
 			<Checkbox

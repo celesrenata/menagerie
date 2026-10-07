@@ -24,7 +24,7 @@ import {
 	resolveLaneRouteId,
 } from "./parallelWorkerRouting"
 import { laneToRouteCapability } from "./capabilityLanes"
-import { computeCapacityBounds, createStaticRouteCapacityProvider } from "./routeCapacityMap"
+import { computeCapacityBounds, createStaticRouteCapacityProvider, mergeRouteCapacityMap } from "./routeCapacityMap"
 import { normalizeWorkerResult } from "./normalizeWorkerResult"
 import { pruneParallelTaskBatches } from "./parallelTaskRetention"
 import { AUTO_READER_NAME } from "./ParallelTaskReader"
@@ -293,7 +293,15 @@ export async function runParallelTasks(
 	// instead of spilling the excess into OmniRoute's rate-limit queue. The
 	// scheduler clamps both bounds down by the user policy (never up); capacity
 	// never raises a bound above what policy allows (design §E).
-	const routeCapacity = createStaticRouteCapacityProvider()
+	//
+	// The per-capability slot counts come from the user-adjustable
+	// `parallelCapacityMap` setting merged over `STATIC_ROUTE_CAPACITY`:
+	// `mergeRouteCapacityMap` keeps today's static value for any capability the
+	// user did not override (so unset/empty is a byte-for-byte no-op), and
+	// `createStaticRouteCapacityProvider` still floors every value to `>= 1`, so a
+	// user map can tune capacity but never reintroduce the 0-lease deadlock.
+	const { parallelCapacityMap } = await provider.getState()
+	const routeCapacity = createStaticRouteCapacityProvider(mergeRouteCapacityMap(parallelCapacityMap))
 	const scheduler = new BoundedElasticScheduler(computeCapacityBounds(routeCapacity), policy, routeCapacity)
 	const plan: ExecutionPlan = { tasks: specs }
 	// Admitting the plan compiles the DAG and registers one Logical_Worker per
