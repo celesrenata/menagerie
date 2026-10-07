@@ -1,6 +1,8 @@
 import path from "node:path"
 import * as fs from "node:fs/promises"
 
+import { MAX_BATCH_AGE_MS as MAX_RECOVERABLE_BATCH_AGE_MS } from "./parallelTaskRetention"
+
 type SavedWorker = {
 	name?: string
 	state?: string
@@ -47,7 +49,14 @@ export async function getInterruptedParallelBatchSummary(storageRoot: string, pa
 			}
 		}),
 	)
-	const latest = batches.filter((batch) => batch !== undefined).sort((a, b) => b.modified - a.modified)[0]
+	// Age-bound the candidates BEFORE picking the newest so an ancient interrupted
+	// batch cannot shadow (or resurface in place of) a recent one. Reuses the shared
+	// retention window; no duplicated literal.
+	const oldestAllowed = Date.now() - MAX_RECOVERABLE_BATCH_AGE_MS
+	const latest = batches
+		.filter((batch) => batch !== undefined)
+		.filter((batch) => batch.modified >= oldestAllowed)
+		.sort((a, b) => b.modified - a.modified)[0]
 	if (!latest) return undefined
 	const batchKey = `${parentTaskId}:${latest.directory}:${latest.modified}`
 	if (surfacedBatches.has(batchKey)) return undefined
