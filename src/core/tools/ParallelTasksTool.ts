@@ -228,8 +228,11 @@ export function buildExecutionPlan(tasks: ParallelTaskSpec[]): ExecutionPlan {
 // audits/gap backlogs inline. It therefore gets MORE headroom than a coder, not
 // less — a generous but still-bounded cap so a realistic curated audit backlog
 // fits inline, while still protecting the coordinator's context window from a
-// runaway reader.
-export const MAX_READER_PARENT_RESULT_CHARS = 24_000
+// runaway reader. Sized for a large-context coordinator (e.g. GLM at 160k
+// tokens): 64_000 chars ≈ 16k tokens, so even a multi-reader fan-out stays a
+// small fraction of the coordinator window while comfortably fitting a big
+// consolidated audit backlog inline.
+export const MAX_READER_PARENT_RESULT_CHARS = 64_000
 export const MAX_WORKER_PARENT_RESULT_CHARS = 6_000
 export const MAX_WORKER_PARENT_ERROR_CHARS = 2_000
 
