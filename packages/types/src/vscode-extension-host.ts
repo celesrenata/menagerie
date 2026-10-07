@@ -339,6 +339,7 @@ export type ExtensionState = Pick<
 	| "omniRouteTier"
 	| "parallelismMode"
 	| "parallelCapacityMap"
+	| "parallelReadDenylist"
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowReadOnlyOutsideWorkspace"
 	| "allowedReadFiles"
