@@ -279,4 +279,82 @@ describe("resolveLaneRouteId (lane → route-id spread)", () => {
 		expect(resolveLaneRouteId({ ...base, lane: "coder.primary", profile: profile() })).toBe("parent")
 		expect(resolveLaneRouteId({ ...base, lane: "reader.fast", profile: profile() })).toBe("parent")
 	})
+
+	// Regression: the parent-planner-inheritance trap. A worker's child context is
+	// seeded with its mode-mapped saved profile (so a project-reader carries
+	// openAiModelId "hybrid/reader"), but when that profile leaves the lane's role
+	// route id null, the lane branch used to fall straight through to parentModelId
+	// ("hybrid/planner"), sending ALL reader inference to the planner lane. These
+	// cases pin that a worker's OWN saved profile model is honored before the parent.
+	describe("own-saved-profile-model fallback (parent-planner-inheritance trap)", () => {
+		it("resolves a reader to its own hybrid/reader, NOT the inherited parent planner", () => {
+			// Exact live-bug scenario: own model "hybrid/reader", reader route id null,
+			// parent "hybrid/planner". Must NOT inherit the planner.
+			expect(
+				resolveLaneRouteId({
+					...base,
+					lane: "reader.fast",
+					profile: profile({ openAiModelId: "hybrid/reader" }),
+					parentModelId: "hybrid/planner",
+				}),
+			).toBe("hybrid/reader")
+		})
+
+		it("still prefers a configured reader route id over the own model", () => {
+			expect(
+				resolveLaneRouteId({
+					...base,
+					lane: "reader.fast",
+					profile: profile({ openAiModelId: "hybrid/reader", openAiOmniRouteReaderRouteId: "9b" }),
+					parentModelId: "hybrid/planner",
+				}),
+			).toBe("9b")
+		})
+
+		it("still lets an explicit per-worker route win over the own model for a reader", () => {
+			expect(
+				resolveLaneRouteId({
+					...base,
+					lane: "reader.fast",
+					profile: profile({ openAiModelId: "hybrid/reader" }),
+					route: "explicit-id",
+					parentModelId: "hybrid/planner",
+				}),
+			).toBe("explicit-id")
+		})
+
+		it("resolves a coder with no code-capable ids to its own code model, not the parent planner", () => {
+			expect(
+				resolveLaneRouteId({
+					...base,
+					lane: "coder.primary",
+					profile: profile({ openAiModelId: "hybrid/code" }),
+					parentModelId: "hybrid/planner",
+				}),
+			).toBe("hybrid/code")
+		})
+
+		it("resolves a reasoning.escalation worker to its own model when the reasoner route is unset", () => {
+			expect(
+				resolveLaneRouteId({
+					...base,
+					lane: "reasoning.escalation",
+					taskType: "adjudication",
+					profile: profile({ openAiModelId: "hybrid/reasoner" }),
+					parentModelId: "hybrid/planner",
+				}),
+			).toBe("hybrid/reasoner")
+		})
+
+		it("falls back to the parent when the own model equals the parent and no role route is set", () => {
+			expect(
+				resolveLaneRouteId({
+					...base,
+					lane: "reader.fast",
+					profile: profile({ openAiModelId: "hybrid/planner" }),
+					parentModelId: "hybrid/planner",
+				}),
+			).toBe("hybrid/planner")
+		})
+	})
 })
