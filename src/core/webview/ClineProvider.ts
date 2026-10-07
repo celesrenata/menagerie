@@ -42,6 +42,7 @@ import {
 	type ToolUsage,
 	type ExtensionMessage,
 	type ExtensionState,
+	type GlobalSettings,
 	type WebviewThemeFixture,
 	type MarketplaceInstalledMetadata,
 	RooCodeEventName,
@@ -51,6 +52,7 @@ import {
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
 	DEFAULT_PARALLELISM_MODE,
+	DEFAULT_READ_DENYLIST,
 	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
@@ -101,6 +103,7 @@ import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-m
 import type { CodeIndexWorkspaceScope } from "../../services/code-index/code-index-workspace-scope"
 import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
+import { mergeReadDenylist, type ReadDenylistConfig } from "../../services/glob/readDenylist"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
@@ -2761,6 +2764,37 @@ export class ClineProvider
 		}
 	}
 
+	/**
+	 * FEAT-003: resolve the single effective read denylist consumed by the
+	 * parallel-worker read path. Merges the stored, user-adjustable
+	 * `parallelReadDenylist` over the hardcoded `DEFAULT_READ_DENYLIST` with
+	 * per-field replace semantics (an omitted field inherits the default; a
+	 * provided field — including an explicit `[]` — replaces that category). An
+	 * unset value is a byte-for-byte no-op of the default.
+	 */
+	public getEffectiveReadDenylist(
+		stored: GlobalSettings["parallelReadDenylist"] | undefined,
+	): ReadDenylistConfig {
+		return mergeReadDenylist(stored, DEFAULT_READ_DENYLIST)
+	}
+
+	/**
+	 * FEAT-003: the effective denylist shaped for the webview `ExtensionState`
+	 * (mutable string arrays). Copies each merged (readonly) field into a fresh
+	 * mutable array so a saved control re-renders without reverting.
+	 */
+	private getEffectiveReadDenylistForWebview(
+		stored: GlobalSettings["parallelReadDenylist"] | undefined,
+	): GlobalSettings["parallelReadDenylist"] {
+		const effective = this.getEffectiveReadDenylist(stored)
+		return {
+			vendoredDirs: [...effective.vendoredDirs],
+			rootDirs: [...effective.rootDirs],
+			files: [...effective.files],
+			globs: [...effective.globs],
+		}
+	}
+
 	async getStateToPostToWebview({ includeTaskHistory = true }: GetStateOptions = {}): Promise<ExtensionState> {
 		// Ensure the store is initialized before reading task history
 		await this.taskHistoryStore.initialized
@@ -2782,6 +2816,7 @@ export class ClineProvider
 			omniRouteTier,
 			parallelismMode,
 			parallelCapacityMap,
+			parallelReadDenylist,
 			allowedCommands,
 			deniedCommands,
 			alwaysAllowMcp,
@@ -2952,6 +2987,11 @@ export class ClineProvider
 			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
 			// STATIC_ROUTE_CAPACITY) so a saved control re-renders instead of reverting.
 			parallelCapacityMap,
+			// FEAT-003: round-trip the EFFECTIVE read denylist so the "Parallel read
+			// exclusions" control renders the current exclusions. Unset merges to the
+			// hardcoded DEFAULT_READ_DENYLIST and a cleared category ([]) survives the
+			// round trip (per-field replace), so a saved control never visually reverts.
+			parallelReadDenylist: this.getEffectiveReadDenylistForWebview(parallelReadDenylist),
 			alwaysAllowMcp: alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: alwaysAllowSubtasks ?? false,
@@ -3196,6 +3236,10 @@ export class ClineProvider
 			// an unset map merges to exactly `STATIC_ROUTE_CAPACITY` downstream, so the
 			// no-op semantics hold and runtime consumers never see a concrete default here.
 			parallelCapacityMap: stateValues.parallelCapacityMap,
+			// FEAT-003: expose the RAW stored read denylist (undefined when unset). Runtime
+			// consumers (ReadFileTool) resolve the effective config via
+			// getEffectiveReadDenylist(), which merges over DEFAULT_READ_DENYLIST per field.
+			parallelReadDenylist: stateValues.parallelReadDenylist,
 			alwaysAllowMcp: stateValues.alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: stateValues.alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: stateValues.alwaysAllowSubtasks ?? false,

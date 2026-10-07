@@ -81,6 +81,16 @@
 			"hint": "Set how many parallel inference slots each capability admits. Leave a capability blank to use its default; values are floored to at least 1.",
 			"defaultPlaceholder": "default",
 			"inputAriaLabel": "Parallel capacity slots for {{capability}}"
+		},
+		"parallelReadExclusions": {
+			"label": "Parallel read exclusions",
+			"hint": "Paths parallel workers skip when reading files, one entry per line. Emptying a category re-enables reading it. Each category inherits its built-in default until you edit it.",
+			"fields": {
+				"vendoredDirs": "Vendored directories (matched anywhere in the path)",
+				"rootDirs": "Build-output directories (matched at the workspace root; a trailing * is a prefix match)",
+				"files": "Exact file names",
+				"globs": "Glob patterns"
+			}
 		}
 	},
 	"about": {

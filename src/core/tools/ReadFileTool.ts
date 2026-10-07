@@ -29,7 +29,7 @@ import {
 	DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES,
 	BUDGET_TIGHTENED_LINE_LIMIT,
 } from "@roo-code/types"
-import { isDeniedRead, type ReadDenylistConfig } from "../../services/glob/readDenylist"
+import { isDeniedRead, mergeReadDenylist, type ReadDenylistConfig } from "../../services/glob/readDenylist"
 
 import {
 	DEFAULT_MAX_IMAGE_FILE_SIZE_MB,
@@ -119,11 +119,19 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	 * shared `DEFAULT_READ_DENYLIST` and `DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES`.
 	 */
 	private async resolveReadControls(task: Task): Promise<{ denylist: ReadDenylistConfig; budgetBytes: number }> {
-		// Touch provider state so the effective config read site is in place for
-		// FEAT-003 (which will surface `parallelReadDenylist` / an effective-denylist
-		// helper here). Until FEAT-003 lands we fall back to the shared defaults.
-		await task.providerRef.deref()?.getState()
-		return { denylist: DEFAULT_READ_DENYLIST, budgetBytes: DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES }
+		// FEAT-003: resolve the effective denylist from the user-adjustable
+		// `parallelReadDenylist` setting, merged over DEFAULT_READ_DENYLIST per field
+		// via the provider's getEffectiveReadDenylist(). Fall back to the shared
+		// default when no provider is attached (e.g. non-parallel contexts/tests).
+		const provider = task.providerRef.deref()
+		if (!provider) {
+			return { denylist: DEFAULT_READ_DENYLIST, budgetBytes: DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES }
+		}
+		const state = await provider.getState()
+		return {
+			denylist: mergeReadDenylist(state.parallelReadDenylist, DEFAULT_READ_DENYLIST),
+			budgetBytes: DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES,
+		}
 	}
 
 	/**

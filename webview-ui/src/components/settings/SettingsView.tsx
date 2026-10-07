@@ -227,6 +227,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCloseZooOpenedNewFiles,
 		parallelismMode,
 		parallelCapacityMap,
+		parallelReadDenylist,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -460,6 +461,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					// Persist the user-adjustable parallel-capacity map. `undefined` keeps the
 					// no-op default (merges to STATIC_ROUTE_CAPACITY); an empty object is also a no-op.
 					parallelCapacityMap: parallelCapacityMap ?? {},
+					// Persist the user-adjustable parallel read-exclusion denylist. `undefined`
+					// keeps the no-op default (merges to DEFAULT_READ_DENYLIST per field); a
+					// provided category (including an explicit empty array) replaces that field.
+					parallelReadDenylist: parallelReadDenylist ?? {},
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -833,6 +838,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 										apiConfiguration={apiConfiguration}
 										setApiConfigurationField={setApiConfigurationField}
 										parallelCapacityMap={parallelCapacityMap}
+										parallelReadDenylist={parallelReadDenylist}
 										setCachedStateField={setCachedStateField}
 									/>
 								</Section>

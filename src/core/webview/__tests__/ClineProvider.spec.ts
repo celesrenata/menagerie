@@ -19,6 +19,7 @@ import {
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
+	DEFAULT_READ_DENYLIST,
 	providerIdentifiers,
 	openAiModelInfoSaneDefaults,
 } from "@roo-code/types"
@@ -1719,6 +1720,59 @@ describe("ClineProvider", () => {
 
 		expect(state.condensingApiConfigId).toBeUndefined()
 		expect(postedState.condensingApiConfigId).toBeUndefined()
+	})
+
+	test("getStateToPostToWebview returns the merged DEFAULT_READ_DENYLIST when parallelReadDenylist is unset (FEAT-003)", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+
+		// getState() exposes the RAW stored value (undefined when unset); the webview
+		// round-trips the EFFECTIVE merged default so the control renders exclusions.
+		expect(state.parallelReadDenylist).toBeUndefined()
+		expect(postedState.parallelReadDenylist).toEqual({
+			vendoredDirs: [...DEFAULT_READ_DENYLIST.vendoredDirs],
+			rootDirs: [...DEFAULT_READ_DENYLIST.rootDirs],
+			files: [...DEFAULT_READ_DENYLIST.files],
+			globs: [...DEFAULT_READ_DENYLIST.globs],
+		})
+	})
+
+	test("getStateToPostToWebview round-trips a cleared parallelReadDenylist category (FEAT-003)", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		// An explicit [] clears the globs category (per-field replace); other fields
+		// inherit the default. The cleared category must survive the webview round trip.
+		await provider.contextProxy.setValue("parallelReadDenylist", { globs: [] })
+
+		const state = await provider.getState()
+		const postedState = await provider.getStateToPostToWebview()
+
+		expect(state.parallelReadDenylist).toEqual({ globs: [] })
+		expect(postedState.parallelReadDenylist).toEqual({
+			vendoredDirs: [...DEFAULT_READ_DENYLIST.vendoredDirs],
+			rootDirs: [...DEFAULT_READ_DENYLIST.rootDirs],
+			files: [...DEFAULT_READ_DENYLIST.files],
+			globs: [],
+		})
+	})
+
+	test("getStateToPostToWebview returns a saved parallelReadDenylist override (FEAT-003)", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setValue("parallelReadDenylist", {
+			vendoredDirs: ["node_modules"],
+			globs: ["**/*.min.js"],
+		})
+
+		const postedState = await provider.getStateToPostToWebview()
+
+		// Provided categories replace the default; omitted categories inherit it.
+		expect(postedState.parallelReadDenylist).toEqual({
+			vendoredDirs: ["node_modules"],
+			rootDirs: [...DEFAULT_READ_DENYLIST.rootDirs],
+			files: [...DEFAULT_READ_DENYLIST.files],
+			globs: ["**/*.min.js"],
+		})
 	})
 
 	test("getStateToPostToWebview returns the saved destructive command guard setting", async () => {
