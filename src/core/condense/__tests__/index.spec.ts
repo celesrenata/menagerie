@@ -1046,14 +1046,14 @@ describe("summarizeConversation", () => {
 				taskId,
 				metadata: { taskId, abortSignal: new AbortController().signal },
 			})
-			await vi.advanceTimersByTimeAsync(300_000)
+			await vi.advanceTimersByTimeAsync(1_800_000)
 			const result = await resultPromise
 
 			expect(result.error).toMatch(condenseApiFailed)
 			expect(result.messages).toEqual(boundedMessages)
 			expect(signals[0]?.aborted).toBe(true)
 			expect(signals[0]?.reason).toBeInstanceOf(StreamIdleTimeoutError)
-			expect(signals[0]?.reason).toMatchObject({ phase: "between_chunks", timeoutMs: 300_000 })
+			expect(signals[0]?.reason).toMatchObject({ phase: "between_chunks", timeoutMs: 1_800_000 })
 		})
 
 		it("returns an error when the summarizer never sends a first chunk", async () => {
@@ -1067,12 +1067,12 @@ describe("summarizeConversation", () => {
 				taskId,
 				metadata: { taskId },
 			})
-			await vi.advanceTimersByTimeAsync(600_000)
+			await vi.advanceTimersByTimeAsync(1_800_000)
 			const result = await resultPromise
 
 			expect(result.error).toMatch(condenseApiFailed)
 			expect(result.messages).toEqual(boundedMessages)
-			expect(signals[0]?.reason).toMatchObject({ phase: "first_chunk", timeoutMs: 600_000 })
+			expect(signals[0]?.reason).toMatchObject({ phase: "first_chunk", timeoutMs: 1_800_000 })
 		})
 
 		it("forwards an abort of the caller's signal to the summarizer request signal", async () => {

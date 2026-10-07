@@ -23,14 +23,14 @@ beforeEach(() => {
 })
 
 describe("getApiRequestTimeout", () => {
-	it("should return default timeout of 600000ms when no configuration is set", () => {
-		mockGetConfig.mockReturnValue(600)
+	it("should return default timeout of 1800000ms when no configuration is set", () => {
+		mockGetConfig.mockReturnValue(1800)
 
 		const timeout = getApiRequestTimeout()
 
 		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("zoo-code")
-		expect(mockGetConfig).toHaveBeenCalledWith("apiRequestTimeout", 600)
-		expect(timeout).toBe(600000) // 600 seconds in milliseconds
+		expect(mockGetConfig).toHaveBeenCalledWith("apiRequestTimeout", 1800)
+		expect(timeout).toBe(1800000) // 1800 seconds (30 min) in milliseconds
 	})
 
 	it("should return custom timeout in milliseconds when within allowed range", () => {
@@ -62,7 +62,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000)
+		expect(timeout).toBe(1800000)
 	})
 
 	it("should fall back to default for negative values (below minimum)", () => {
@@ -70,7 +70,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000)
+		expect(timeout).toBe(1800000)
 	})
 
 	it("should fall back to default for fractional values below 1", () => {
@@ -78,7 +78,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000)
+		expect(timeout).toBe(1800000)
 	})
 
 	it("should fall back to default for values above the maximum (>3600)", () => {
@@ -86,7 +86,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000)
+		expect(timeout).toBe(1800000)
 	})
 
 	it("should fall back to default for very large values", () => {
@@ -94,7 +94,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000)
+		expect(timeout).toBe(1800000)
 	})
 
 	it("should handle null by using default", () => {
@@ -102,7 +102,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000) // Should fall back to default 600 seconds
+		expect(timeout).toBe(1800000) // Should fall back to default 1800 seconds (30 min)
 	})
 
 	it("should handle undefined by using default", () => {
@@ -110,7 +110,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000) // Should fall back to default 600 seconds
+		expect(timeout).toBe(1800000) // Should fall back to default 1800 seconds (30 min)
 	})
 
 	it("should handle NaN by using default", () => {
@@ -118,7 +118,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000) // Should fall back to default 600 seconds
+		expect(timeout).toBe(1800000) // Should fall back to default 1800 seconds (30 min)
 	})
 
 	it("should handle string values by using default", () => {
@@ -126,7 +126,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000) // Should fall back to default since it's not a number
+		expect(timeout).toBe(1800000) // Should fall back to default since it's not a number
 	})
 
 	it("should handle boolean values by using default", () => {
@@ -134,19 +134,19 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(timeout).toBe(600000) // Should fall back to default since it's not a number
+		expect(timeout).toBe(1800000) // Should fall back to default since it's not a number
 	})
 })
 
 describe("getApiStreamIdleTimeout", () => {
-	it("returns the 300000ms default when the setting is unset", () => {
+	it("returns the 1800000ms default when the setting is unset", () => {
 		mockGetConfig.mockImplementation((_key: string, defaultValue: number) => defaultValue)
 
 		const timeout = getApiStreamIdleTimeout()
 
 		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("zoo-code")
-		expect(mockGetConfig).toHaveBeenCalledWith("apiStreamIdleTimeout", 300)
-		expect(timeout).toBe(300000)
+		expect(mockGetConfig).toHaveBeenCalledWith("apiStreamIdleTimeout", 1800)
+		expect(timeout).toBe(1800000)
 	})
 
 	it("returns 0 (disabled) for 0", () => {
@@ -166,9 +166,9 @@ describe("getApiStreamIdleTimeout", () => {
 		["NaN", NaN],
 		["a string", "x"],
 		["above the maximum", 4000],
-	])("falls back to 300000ms for %s", (_label, value) => {
+	])("falls back to 1800000ms for %s", (_label, value) => {
 		mockGetConfig.mockReturnValue(value)
 
-		expect(getApiStreamIdleTimeout()).toBe(300000)
+		expect(getApiStreamIdleTimeout()).toBe(1800000)
 	})
 })
