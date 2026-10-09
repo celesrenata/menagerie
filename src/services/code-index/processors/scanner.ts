@@ -24,8 +24,10 @@ import {
 	PARSING_CONCURRENCY,
 	BATCH_PROCESSING_CONCURRENCY,
 	MAX_PENDING_BATCHES,
+	MAX_INDEX_SCAN_FILES,
 } from "../constants"
 import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
+import { isPathInIndexExcludedDirectory } from "../shared/index-excluded-dirs"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
@@ -92,7 +94,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 		const allowedPaths = ignoreController.filterPaths(filePaths)
 
 		// Filter by supported extensions, ignore patterns, and excluded directories
-		const supportedPaths = allowedPaths.filter((filePath) => {
+		let supportedPaths = allowedPaths.filter((filePath) => {
 			const ext = path.extname(filePath).toLowerCase()
 			const relativeFilePath = generateRelativeFilePath(filePath, scanWorkspace)
 
@@ -102,8 +104,32 @@ export class DirectoryScanner implements IDirectoryScanner {
 				return false
 			}
 
+			// Also skip index-only excluded directories (i18n/locales/translations). This is separate from the
+			// shared denylist so it does not affect the agent's general file-listing tools (see
+			// INDEX_EXCLUDED_DIRS in ../constants).
+			if (isPathInIndexExcludedDirectory(relativeFilePath)) {
+				return false
+			}
+
 			return scannerExtensions.includes(ext) && !this.ignoreInstance.ignores(relativeFilePath)
 		})
+
+		// Safety cap: bound the number of files handed to the parser. We apply this at the pre-parse filter rather
+		// than mid-scan because a hard per-block abort would entangle the parallel pLimit/mutex/AbortSignal batching
+		// machinery (fragile and invasive). If more indexable files survive filtering than MAX_INDEX_SCAN_FILES,
+		// truncate and surface one prominent warning through the existing onError path (collected into the executor's
+		// batchErrors) so the user knows to add a .rooignore. This is a tighter backstop below the
+		// MAX_LIST_FILES_LIMIT_CODE_INDEX cap already applied at the listFiles layer.
+		if (supportedPaths.length > MAX_INDEX_SCAN_FILES) {
+			onError?.(
+				new Error(
+					t("embeddings:scanner.indexScanCapped", {
+						maxFiles: MAX_INDEX_SCAN_FILES,
+					}),
+				),
+			)
+			supportedPaths = supportedPaths.slice(0, MAX_INDEX_SCAN_FILES)
+		}
 
 		// Initialize tracking variables
 		const processedFiles = new Set<string>()

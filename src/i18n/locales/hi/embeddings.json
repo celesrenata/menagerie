@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "फ़ाइल {{filePath}} प्रसंस्करण में अज्ञात त्रुटि",
 		"unknownErrorDeletingPoints": "{{filePath}} के लिए बिंदु हटाने में अज्ञात त्रुटि",
-		"failedToProcessBatchWithError": "{{maxRetries}} प्रयासों के बाद बैच प्रसंस्करण विफल: {{errorMessage}}"
+		"failedToProcessBatchWithError": "{{maxRetries}} प्रयासों के बाद बैच प्रसंस्करण विफल: {{errorMessage}}",
+		"indexScanCapped": "कोड इंडेक्स {{maxFiles}} फ़ाइलों तक सीमित कर दिया गया क्योंकि कार्यस्थान में बहुत अधिक इंडेक्स करने योग्य फ़ाइलें हैं। बड़ी निर्देशिकाओं (जैसे docs, i18n, जनरेट किया गया कोड) को बाहर करने के लिए एक .rooignore जोड़ें, फिर फिर से इंडेक्स करें।"
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Qdrant वेक्टर डेटाबेस से कनेक्ट करने में विफल। कृपया सुनिश्चित करें कि Qdrant चल रहा है और {{qdrantUrl}} पर पहुंच योग्य है। त्रुटि: {{errorMessage}}",

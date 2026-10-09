@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Неизвестная ошибка при обработке файла {{filePath}}",
 		"unknownErrorDeletingPoints": "Неизвестная ошибка при удалении точек для {{filePath}}",
-		"failedToProcessBatchWithError": "Не удалось обработать пакет после {{maxRetries}} попыток: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Не удалось обработать пакет после {{maxRetries}} попыток: {{errorMessage}}",
+		"indexScanCapped": "Индексация кода была ограничена {{maxFiles}} файлами, так как в рабочей области слишком много индексируемых файлов. Добавьте файл .rooignore, чтобы исключить большие каталоги (например docs, i18n, сгенерированный код), затем переиндексируйте."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Не удалось подключиться к векторной базе данных Qdrant. Убедитесь, что Qdrant запущен и доступен по адресу {{qdrantUrl}}. Ошибка: {{errorMessage}}",

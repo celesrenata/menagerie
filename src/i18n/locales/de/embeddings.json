@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Unbekannter Fehler beim Verarbeiten der Datei {{filePath}}",
 		"unknownErrorDeletingPoints": "Unbekannter Fehler beim Löschen der Punkte für {{filePath}}",
-		"failedToProcessBatchWithError": "Verarbeitung des Batches nach {{maxRetries}} Versuchen fehlgeschlagen: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Verarbeitung des Batches nach {{maxRetries}} Versuchen fehlgeschlagen: {{errorMessage}}",
+		"indexScanCapped": "Die Code-Indizierung wurde auf {{maxFiles}} Dateien begrenzt, weil der Arbeitsbereich zu viele indexierbare Dateien enthält. Füge eine .rooignore hinzu, um große Verzeichnisse auszuschließen (z. B. docs, i18n, generierter Code), und indiziere dann neu."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Verbindung zur Qdrant-Vektordatenbank fehlgeschlagen. Stelle sicher, dass Qdrant läuft und unter {{qdrantUrl}} erreichbar ist. Fehler: {{errorMessage}}",

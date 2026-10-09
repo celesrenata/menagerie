@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "處理檔案 {{filePath}} 時發生未知錯誤",
 		"unknownErrorDeletingPoints": "刪除 {{filePath}} 的資料點時發生未知錯誤",
-		"failedToProcessBatchWithError": "嘗試 {{maxRetries}} 次後批次處理失敗：{{errorMessage}}"
+		"failedToProcessBatchWithError": "嘗試 {{maxRetries}} 次後批次處理失敗：{{errorMessage}}",
+		"indexScanCapped": "由於工作區中可索引的檔案過多，程式碼索引已限制為 {{maxFiles}} 個檔案。請新增 .rooignore 以排除大型目錄（例如 docs、i18n、產生的程式碼），然後重新索引。"
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "連接 Qdrant 向量資料庫失敗。請確保 Qdrant 正在執行並可在 {{qdrantUrl}} 存取。錯誤：{{errorMessage}}",

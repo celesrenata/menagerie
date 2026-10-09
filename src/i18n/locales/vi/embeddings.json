@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Lỗi không xác định khi xử lý tệp {{filePath}}",
 		"unknownErrorDeletingPoints": "Lỗi không xác định khi xóa điểm cho {{filePath}}",
-		"failedToProcessBatchWithError": "Không thể xử lý lô sau {{maxRetries}} lần thử: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Không thể xử lý lô sau {{maxRetries}} lần thử: {{errorMessage}}",
+		"indexScanCapped": "Lập chỉ mục mã đã bị giới hạn ở {{maxFiles}} tệp vì không gian làm việc có quá nhiều tệp có thể lập chỉ mục. Thêm .rooignore để loại trừ các thư mục lớn (ví dụ docs, i18n, mã được tạo), sau đó lập chỉ mục lại."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Không thể kết nối với cơ sở dữ liệu vector Qdrant. Vui lòng đảm bảo Qdrant đang chạy và có thể truy cập tại {{qdrantUrl}}. Lỗi: {{errorMessage}}",

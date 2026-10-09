@@ -440,3 +440,33 @@ describe("listFiles nonexistent directory", () => {
 		)
 	})
 })
+
+describe("shared DIRS_TO_IGNORE is unaffected by the code-index-only exclusion", () => {
+	beforeEach(async () => {
+		vi.clearAllMocks()
+		resetFsPromiseMocks()
+		// A prior describe block leaves getBinPath rejecting; restore the default resolved binary path.
+		const { getBinPath } = await import("../../ripgrep")
+		vi.mocked(getBinPath).mockResolvedValue("/mock/path/to/rg")
+	})
+
+	it("does not add index-only directory names to the shared denylist", async () => {
+		// The code indexer excludes i18n/locales/translations via its own INDEX_EXCLUDED_DIRS list. Those names
+		// must NOT leak into the shared DIRS_TO_IGNORE denylist, which backs the agent's general file-listing tools.
+		const { DIRS_TO_IGNORE } = await import("../constants")
+		expect(DIRS_TO_IGNORE).not.toContain("i18n")
+		expect(DIRS_TO_IGNORE).not.toContain("locales")
+		expect(DIRS_TO_IGNORE).not.toContain("translations")
+	})
+
+	it("still lists files under an i18n directory in recursive listings (agent file listing is unchanged)", async () => {
+		const mockSpawn = vi.mocked(childProcess.spawn)
+		// ripgrep surfaces a file under i18n/; the general listing must not filter it out.
+		mockSpawn.mockReturnValue(createMockRipgrepProcess(["src/app.ts\n", "docs/i18n/en.md\n"]) as never)
+
+		const [files] = await listFiles("/test", true, 100)
+
+		// i18n content must still be surfaced by the general file listing.
+		expect(files.some((file) => file.includes("i18n"))).toBe(true)
+	})
+})

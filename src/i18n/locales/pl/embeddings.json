@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Nieznany błąd podczas przetwarzania pliku {{filePath}}",
 		"unknownErrorDeletingPoints": "Nieznany błąd podczas usuwania punktów dla {{filePath}}",
-		"failedToProcessBatchWithError": "Nie udało się przetworzyć partii po {{maxRetries}} próbach: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Nie udało się przetworzyć partii po {{maxRetries}} próbach: {{errorMessage}}",
+		"indexScanCapped": "Indeksowanie kodu zostało ograniczone do {{maxFiles}} plików, ponieważ obszar roboczy zawiera zbyt wiele plików do zindeksowania. Dodaj plik .rooignore, aby wykluczyć duże katalogi (np. docs, i18n, wygenerowany kod), a następnie zindeksuj ponownie."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Nie udało się połączyć z bazą danych wektorowych Qdrant. Upewnij się, że Qdrant jest uruchomiony i dostępny pod adresem {{qdrantUrl}}. Błąd: {{errorMessage}}",

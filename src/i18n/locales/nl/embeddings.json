@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Onbekende fout bij verwerken van bestand {{filePath}}",
 		"unknownErrorDeletingPoints": "Onbekende fout bij verwijderen van punten voor {{filePath}}",
-		"failedToProcessBatchWithError": "Verwerken van batch mislukt na {{maxRetries}} pogingen: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Verwerken van batch mislukt na {{maxRetries}} pogingen: {{errorMessage}}",
+		"indexScanCapped": "Code-indexering is beperkt tot {{maxFiles}} bestanden omdat de werkruimte te veel indexeerbare bestanden heeft. Voeg een .rooignore toe om grote mappen uit te sluiten (bijvoorbeeld docs, i18n, gegenereerde code) en indexeer vervolgens opnieuw."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Kan geen verbinding maken met Qdrant vectordatabase. Zorg ervoor dat Qdrant draait en toegankelijk is op {{qdrantUrl}}. Fout: {{errorMessage}}",
