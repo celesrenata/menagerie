@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ovms-reranker
+  name: ovms-reranker
+  namespace: omniroute-memory
+spec:
+  # Initial desired topology: the reranker-0.6b runs on all four Intel GPU nodes
+  # alongside the embedding replica (task 8.5, Req 4.1). The fallback 3+1
+  # topology is adopted only after the benchmark-contention gate (Req 4.2/4.3).
+  replicas: 4
+  selector:
+    matchLabels:
+      app: ovms-reranker
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ovms-reranker
+    spec:
+      # One reranker per Intel GPU node, mirroring the embedding topology so the
+      # four nodes each run embedding + reranker for the initial desired state.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: ovms-reranker
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - args:
+        - --rest_port=8000
+        - --model_name=qwen3-reranker-0.6b
+        - --model_path=/models/OpenVINO/Qwen3-Reranker-0.6B-int8-ov
+        # Digest-pinned to match the embedding image (task 8.5, Req 21).
+        image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /v2/health/live
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: ovms
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        # Dual-path real-inference readiness: tiny real rerank request; reports
+        # not-ready on a wedged GPU rerank path even when /v2/health/ready is
+        # green (task 8.5, Req 5.3/5.4).
+        readinessProbe:
+          exec:
+            command:
+            - /opt/readiness/rerank-probe.sh
+          failureThreshold: 4
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: "4"
+            gpu.intel.com/i915: "1"
+            # arc-embed-ceiling-boost / FEAT-001: +50% off the live 8Gi base = 12Gi.
+            # Applied LIVE as a value-only patch (the live reranker keeps its HTTP
+            # /v2/health/ready probe; the exec rerank-probe.sh below is NOT applied
+            # live because /v3/rerank 404s on the live reranker). Measured OVMS
+            # footprint is ~5-6.6Gi, so 12Gi carries headroom (see live-verify.md).
+            memory: 12Gi
+          requests:
+            cpu: "1"
+            gpu.intel.com/i915: "1"
+            memory: 2Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /models
+          name: models
+        - mountPath: /opt/readiness
+          name: readiness-scripts
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - chown -R 5000:5000 /models
+        image: busybox:1.37
+        imagePullPolicy: IfNotPresent
+        name: model-volume-permissions
+        resources: {}
+        securityContext:
+          runAsUser: 0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /models
+          name: models
+      - args:
+        - --pull
+        - --model_repository_path=/models
+        - --source_model=OpenVINO/Qwen3-Reranker-0.6B-int8-ov
+        - --model_name=qwen3-reranker-0.6b
+        - --task=rerank
+        - --target_device=GPU
+        image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
+        imagePullPolicy: IfNotPresent
+        name: model-pull
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /models
+          name: models
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 5000
+        fsGroupChangePolicy: OnRootMismatch
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: models
+        persistentVolumeClaim:
+          claimName: reranker-models
+      - name: readiness-scripts
+        configMap:
+          name: ovms-readiness-scripts
+          defaultMode: 0755

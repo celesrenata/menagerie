@@ -19,6 +19,14 @@
 > host-native OVMS graph `max_length=4096` set by FEAT-003) — 8192 failed the
 > token sweep because the GPU wedges serving a single near-8192-token item. See
 > `.agents/tasks/arc-embed-ceiling-boost/deploy-report.md` + `live-verify.md`.
+>
+> **FEAT-005 workspace-sync note (2026-10-09):** the manifests in this directory
+> now diff-match the live cluster for the fields this task changed (embeddings STS
+> + reranker `memory: 12Gi`, embeddings model-pull `--truncate=true
+> --max_length=4096`, `embed-probe.sh` POST `/v1/embeddings`). The OmniRoute app
+> env change (`OMNIROUTE_EMBEDDING_SPLIT_MAX_ITEM_TOKENS=4096`,
+> `OMNIROUTE_MEMORY_MB=12288`) lives ONLY on the remote `kubectl`-applied copy —
+> there is no local `sources/kube/omniroute/` directory in this workspace.
 
 This checklist complements the automated config-assertion gate at
 `src/services/code-index/retrieval-fabric/__tests__/committed-manifests.test.ts`.
@@ -275,8 +283,8 @@ headroom, and baseline inference-latency metrics per node.
 ### 2.3 Drive real concurrent embedding + rerank load
 
 Use real workload (indexing a real repository through the gateway, or a load
-script issuing concurrent `/v3/embeddings` and `/v3/rerank` requests at realistic
-batch sizes up to the 8192-token ceiling) so both serving paths are exercised on
+script issuing concurrent `/v1/embeddings` and `/v3/rerank` requests at realistic
+batch sizes up to the 4096-token ceiling) so both serving paths are exercised on
 the **same** iGPU on each node simultaneously.
 
 ```sh
@@ -301,7 +309,7 @@ kubectl -n omniroute-memory get events --sort-by=.lastTimestamp \
 
 **Observe:** per-node iGPU contention indicators under combined load — rerank
 and embedding latency vs the idle baseline, `ovms_current_requests` queue depth,
-pod memory headroom vs the 10Gi limit, and any readiness flaps, restarts, or OOM
+pod memory headroom vs the 12Gi limit, and any readiness flaps, restarts, or OOM
 events that signal instability.
 
 ### 2.4 Decide the contention signal
@@ -323,30 +331,32 @@ node, with numbers) that gates the fallback decision. The fallback 3+1 topology
 
 ## Section 3 — Sized ceiling / pod-memory validation against live real-inference probes
 
-**Requirement 6.4.** Confirms the `10Gi` pod memory limit and the 8192-token
-per-item serving ceiling hold under a real request at the ceiling, and that a
-ceiling-sized request cannot produce a padded GPU batch or pod footprint
-exceeding measured safe memory — validated against the live dual-path
-real-inference probes **before** adoption.
+**Requirement 6.4.** Confirms the `12Gi` pod memory limit (+50% off the live 8Gi
+base, applied by FEAT-004) and the `4096`-token per-item serving ceiling (applied
+by FEAT-003 — 8192 failed the token sweep) hold under a real request at the
+ceiling, and that a ceiling-sized request cannot produce a padded GPU batch or
+pod footprint exceeding measured safe memory — validated against the live
+dual-path real-inference probes **before** adoption.
 
 ### 3.1 Confirm the committed limit and ceiling are live
 
 ```sh
 kubectl -n omniroute-memory get statefulset ovms-embeddings \
   -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}{"\n"}'
-# Expect: 10Gi
+# Expect: 12Gi
 
 kubectl -n omniroute-memory get deployment ovms-reranker \
   -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}{"\n"}'
-# Expect: 10Gi
+# Expect: 12Gi
 ```
 
-**Observe:** both pods carry the `10Gi` limit sized with the 8192-token ceiling.
+**Observe:** both pods carry the `12Gi` limit (+50% off the live 8Gi base) sized
+with the `4096`-token ceiling.
 
 ### 3.2 Issue a real request at the serving ceiling and watch memory
 
 ```sh
-# Build a request whose per-item token count is at the 8192 serving ceiling and
+# Build a request whose per-item token count is at the 4096 serving ceiling and
 # send it to a single replica while sampling that pod's memory.
 EMB_POD="$(kubectl -n omniroute-memory get pod -l app=ovms-embeddings \
   -o jsonpath='{.items[0].metadata.name}')"
@@ -356,13 +366,13 @@ kubectl -n omniroute-memory top pod "${EMB_POD}" --containers
 kubectl -n omniroute-memory exec "${EMB_POD}" -c ovms -- \
   curl -s -o /dev/null -w 'http=%{http_code} t=%{time_total}s\n' \
   -H 'Content-Type: application/json' -X POST \
-  http://127.0.0.1:8000/v3/embeddings \
-  -d @/path/to/ceiling-request.json      # input sized to ~8192 tokens per item
+  http://127.0.0.1:8000/v1/embeddings \
+  -d @/path/to/ceiling-request.json      # input sized to ~4096 tokens per item
 kubectl -n omniroute-memory top pod "${EMB_POD}" --containers
 ```
 
 **Observe:** the ceiling request returns a well-formed embedding (`http=200`) and
-peak pod memory stays below the `10Gi` limit with headroom above the ~5.6 Gi
+peak pod memory stays below the `12Gi` limit with headroom above the ~4.5-6.6 Gi
 baseline. No OOMKill.
 
 ### 3.3 Confirm no OOM / batch blow-up at the ceiling
@@ -394,8 +404,8 @@ kubectl -n omniroute-memory exec "${RRK_POD}" -c ovms -- /opt/readiness/rerank-p
 ceiling-sized load — the sized ceiling and memory are validated against the live
 dual-path real-inference probes.
 
-**PASS CRITERION (Section 3):** the `10Gi` limit and 8192-token ceiling hold
-under a real ceiling-sized request (measured peak memory below `10Gi`, no OOM),
+**PASS CRITERION (Section 3):** the `12Gi` limit and 4096-token ceiling hold
+under a real ceiling-sized request (measured peak memory below `12Gi`, no OOM),
 and the live dual-path probes still pass — i.e. the sizing is validated live
 **before** it is adopted (Req 6.4).
 
