@@ -1,0 +1,22 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "RC2 — correct the wrong model id wherever 'qwen3-embedded' is referenced. 'arc-embed/qwen3-embedded' is not a real OVMS graph (it returns 'Mediapipe graph definition with requested name is not found'); the real id is 'arc-embed/qwen3-embedding-0.6b' (OVMS model_name qwen3-embedding-0.6b). Independent of FEAT-001 but low-risk; sequenced after the outage fix so the API is healthy enough to verify the corrected id resolves. Prefer correcting the source id over adding an alias.",
+  "status": "completed",
+  "steps": [
+    "Grep the OmniRoute provider/model config on the remote host and any in-repo client/config for the literal 'qwen3-embedded' to positively identify every caller/config that emits the wrong id (this was NOT yet identified during design; identifying it is the first substep).",
+    "Correct each reference to 'qwen3-embedding-0.6b' (full model path 'arc-embed/qwen3-embedding-0.6b' where the provider prefix is used). Keep the remote .bak convention before editing any remote manifest file (<file>.yaml.bak-<desc>-<UTC-timestamp>).",
+    "ONLY if the caller set is unknown/unowned and cannot all be corrected, fall back to adding an OmniRoute alias mapping qwen3-embedded -> the real graph; prefer correcting the source over perpetuating a wrong name. If an alias is used, apply it on the live omniroute config (kubectl, no sudo); note that the on-disk omniroute.yaml file reconcile needs sudo (see context.json BLOCKER).",
+    "If the correction touches the live omniroute Deployment, apply via kubectl (set env/patch/apply of the specific config), not a sudo file overwrite."
+  ],
+  "acceptance_criteria": [
+    "A public API call with arc-embed/qwen3-embedding-0.6b returns HTTP 200 + a 1024-dim vector.",
+    "Either arc-embed/qwen3-embedded resolves correctly (if an alias was deliberately added) OR a grep of the corrected config shows no remaining caller emits qwen3-embedded (design AC4)."
+  ],
+  "verification": [
+    "ssh -o BatchMode=yes celes@192.168.42.254 'grep -rn \"qwen3-embedded\" ~/sources/kube/' — expect no stray references in the config this task owns (or only an intentional alias mapping).",
+    "Public API: POST /v1/embeddings model arc-embed/qwen3-embedding-0.6b -> 200 + 1024 dims; model arc-embed/qwen3-embedded -> resolves (if aliased) or the known caller no longer emits it."
+  ],
+  "blocked_reason": null,
+  "findings": "Caller/config search for the literal 'qwen3-embedded' was exhaustive and the OmniRoute-owned config set is CLEAN; no source correction or alias was required. Searched: (1) remote `~/sources/kube/` recursively (incl. omniroute.yaml, omniroute-memory/*) -> 0 hits; (2) namespace omniroute ConfigMaps (kube-root-ca.crt, omniroute-nfs-backup-script) -> 0 hits; (3) omniroute Deployment env/spec -> 0 hits (no model-id env present); (4) OmniRoute live DB `/app/data/storage.sqlite` active config tables (provider_connections, provider_nodes, model_combo_mappings, model_context_overrides, model_capability_overrides, combos, key_value, auto_candidate_overrides, reasoning_routing_rules, model_capabilities, model_intelligence, api_key_context_sources) -> all 0 hits. The ONLY occurrences of 'arc-embed/qwen3-embedded' are append-only HISTORY, not config: 3 rows in `call_logs` (column `model`, requested_model=NULL, path=/v1/embeddings, error_type model_not_found/server_error, timestamps 2026-10-09T09:07:49Z, 09:08:32Z, 09:24:24Z) plus one application log file (app.2026-10-09_113615.log). Local workspace hits are only task/design docs under .agents/tasks/ describing the problem, not callers. IDENTIFIED CALLER: an EXTERNAL client posted model=arc-embed/qwen3-embedded to the public /v1/embeddings endpoint during the 09:07-09:24Z window on 2026-10-09; it is outside the config this task owns and must correct its own request body to arc-embed/qwen3-embedding-0.6b. No live omniroute mutation, no .bak, no alias, and no qdrant interaction were needed. Verification: public POST /v1/embeddings model=arc-embed/qwen3-embedding-0.6b -> HTTP 200 + 1024-dim vector (after a transient 504 that is RC1/FEAT-001's serving-outage scope, not RC2); model=arc-embed/qwen3-embedded -> HTTP 404 clean upstream_error 'Mediapipe graph definition with requested name is not found'; grep of owned config shows no remaining emitter (design AC4)."
+}
