@@ -67,6 +67,27 @@ The remaining intermittent wedge under heavy load is a GPU driver/firmware limit
 - Build on one node first, canary under sustained load, then roll node-by-node (cordon/drain, rebuild, reboot, verify no `ccs0` recurrence) — same propagation discipline used here.
 - Complementary source-side lever: cap OmniRoute embedding **concurrency/rate** (not just per-item tokens) so the aggregate background load never drives a PF GPU into the multi-hundred-second regime that triggers the wedge.
 
+## FEAT-004 — memory +50% / env bump reconcile (completed 2026-10-09T20Z)
+
+Scope: the two remaining +50% targets off the live 8Gi/8192 base (reranker Deployment, OmniRoute app env) plus reconciling the declarative sizing comments. embeddings 8Gi->12Gi already shipped in FEAT-001.
+
+**Live state (authoritative) — all verified:**
+- embeddings StatefulSet `limits.memory` = **12Gi** (FEAT-001 bump confirmed took).
+- reranker Deployment `limits.memory` = **12Gi**, applied as a VALUE-ONLY patch; readiness probe is the live HTTP `httpGet /v2/health/ready` (NOT the committed `/v3/rerank` exec script); restarts=0, no OOMKill. gen=6/observed=6, spec.replicas=1.
+- `OMNIROUTE_MEMORY_MB` = **12288** (kubectl set env); omniroute app pod 1/1, restarts=0, rollout successful.
+- No Pending/OOMKilled pods; qdrant untouched (gen=1, uid a2c81b89); gremlin-2 at 57% mem-limits / 13% requests, ample headroom.
+
+**Declarative-file reconcile (remote host, fresh timestamped `.bak` each):**
+- `~/sources/kube/omniroute-memory/ovms-reranker-deployment.yaml`: `10Gi -> 12Gi` + ceiling-formula comment replaced with the +50%/12Gi directive rationale (bak `...bak-feat004-mem12gi-20261009T201835Z`). NOT applied live (value-only patch already in place; the committed manifest would swap in the `/v3/rerank` exec probe that 404s live). kubectl client dry-run parses clean.
+- `~/sources/kube/omniroute-memory/LIVE-VERIFICATION.md`: stale "Pod memory limit: now 10Gi …" summary line updated to the 12Gi/+50% rationale incl. `OMNIROUTE_MEMORY_MB=12288` (bak `...bak-feat004-mem12gi-20261009T201835Z`).
+- `~/sources/kube/omniroute/omniroute.yaml`: `OMNIROUTE_MEMORY_MB 8192 -> 12288` reconciled in-file (bak `...bak-memorymb-12288-20261009T201901Z`). The live kubectl value is authoritative regardless.
+
+**AC note — "reranker stays 1/1" is NOT APPLICABLE (user decision: Option A).** The reranker was ALREADY `0/1` before this step and stayed `0/1`, for the PRE-EXISTING, explicitly out-of-scope `/v3/rerank` OVMS mediapipe graph-load hang (`/v1/config` returns `{}`, `/v2/health/ready` 503 for 35+ min). This change neither caused it nor touched the probe — evidence: restarts=0, no OOMKill, empty lastState, probe unchanged (HTTP `/v2/health/ready`), and the 12Gi limit + env were already live before this step began. Not pulling the reranker fix into FEAT-004 (scope creep on a live service).
+
+**Bookkeeping / follow-ups for the user:**
+1. **omniroute.yaml ownership changed root -> celes** as a side effect of the in-file rewrite (the dir was writable, so the reconcile created a new inode owned by celes; passwordless sudo was unavailable). If the original root ownership was intentional, restore it with `sudo chown root:root ~/sources/kube/omniroute/omniroute.yaml`. NOT done here (no sudo; re-touching could compound drift). The `.bak` files are retained as the record.
+2. **reranker 0/1** — the `/v3/rerank` 404 / OVMS mediapipe graph-load hang remains a SEPARATE, already-identified out-of-scope follow-up, alongside D (GPU driver/firmware fix). Not fixed here.
+
 ## Rollback notes
 - Re-scale `ovms-embeddings` StatefulSet > 0 to restore the kube/VF path (not recommended — it wedges).
 - Remove the shared NixOS module import from `common.nix` + rebuild to stop the host-native services.
