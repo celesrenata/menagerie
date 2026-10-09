@@ -1,0 +1,112 @@
+# arc-embed-ceiling-boost / FEAT-001 — in-cluster reverse proxy that fronts the
+# four HOST-NATIVE OVMS embedding backends (gremlin PF Arc devices on
+# 10.1.1.12-15:8000) and is what the ovms-embeddings Service points at.
+#
+# Why this exists: OmniRoute reaches arc-embed via the ovms-embeddings Service
+# DNS. Pointing that Service directly at the host node IPs hit a kube-proxy
+# hairpin (a pod cannot reliably reach the host OVMS on its OWN node via a
+# ClusterIP->node-IP endpoint). Running the proxy with hostNetwork=true puts it
+# in the host netns so pod->same-node-host works, and nginx fans out to all four
+# PF backends with fast failover so a mid-wedge node is ejected quickly.
+#
+# Service repoint: `kubectl -n omniroute-memory patch svc ovms-embeddings`
+#   selector -> app=ovms-embeddings-proxy, targetPort -> 8001 (proxy listen port;
+#   8000 on the host is the OVMS PF service itself).
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovms-embeddings-proxy-conf
+  namespace: omniroute-memory
+  labels:
+    feat: arc-embed-host-native
+data:
+  nginx.conf: |
+    worker_processes auto;
+    events { worker_connections 1024; }
+    http {
+      # Bound concurrency per PF GPU (OVMS NUM_STREAMS=1 serves one inference at
+      # a time) and eject a wedged node fast. least_conn spreads load; a short
+      # read timeout trips failover before a client times out, because a wedged
+      # OVMS keeps /v2/health 200 while inference hangs.
+      upstream ovms_hosts {
+        zone ovms_hosts 64k;
+        least_conn;
+        server 10.1.1.12:8000 max_conns=6 max_fails=2 fail_timeout=15s;
+        server 10.1.1.13:8000 max_conns=6 max_fails=2 fail_timeout=15s;
+        server 10.1.1.14:8000 max_conns=6 max_fails=2 fail_timeout=15s;
+        server 10.1.1.15:8000 max_conns=6 max_fails=2 fail_timeout=15s;
+        keepalive 16;
+      }
+      server {
+        listen 8001;
+        proxy_connect_timeout 2s;
+        proxy_send_timeout 15s;
+        proxy_read_timeout 15s;
+        location / {
+          proxy_pass http://ovms_hosts;
+          proxy_http_version 1.1;
+          proxy_set_header Connection "";
+          proxy_next_upstream error timeout http_502 http_503 http_504;
+          proxy_next_upstream_tries 4;
+          proxy_next_upstream_timeout 50s;
+          proxy_set_header Host $host;
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ovms-embeddings-proxy
+  namespace: omniroute-memory
+  labels:
+    app: ovms-embeddings-proxy
+    feat: arc-embed-host-native
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: ovms-embeddings-proxy
+  template:
+    metadata:
+      labels:
+        app: ovms-embeddings-proxy
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: ovms-embeddings-proxy
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 8001
+          name: http
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        readinessProbe:
+          httpGet:
+            path: /v2/health/live
+            port: 8001
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: "1"
+            memory: 128Mi
+      volumes:
+      - name: conf
+        configMap:
+          name: ovms-embeddings-proxy-conf
