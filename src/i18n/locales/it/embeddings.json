@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Errore sconosciuto nell'elaborazione del file {{filePath}}",
 		"unknownErrorDeletingPoints": "Errore sconosciuto nell'eliminazione dei punti per {{filePath}}",
-		"failedToProcessBatchWithError": "Elaborazione del batch fallita dopo {{maxRetries}} tentativi: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Elaborazione del batch fallita dopo {{maxRetries}} tentativi: {{errorMessage}}",
+		"indexScanCapped": "L'indicizzazione del codice è stata limitata a {{maxFiles}} file perché l'area di lavoro ha troppi file indicizzabili. Aggiungi un .rooignore per escludere directory di grandi dimensioni (ad esempio docs, i18n, codice generato), quindi reindicizza."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Impossibile connettersi al database vettoriale Qdrant. Assicurati che Qdrant sia in esecuzione e accessibile su {{qdrantUrl}}. Errore: {{errorMessage}}",

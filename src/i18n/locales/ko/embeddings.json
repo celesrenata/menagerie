@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "파일 {{filePath}} 처리 중 알 수 없는 오류",
 		"unknownErrorDeletingPoints": "{{filePath}}의 포인트 삭제 중 알 수 없는 오류",
-		"failedToProcessBatchWithError": "{{maxRetries}}번 시도 후 배치 처리 실패: {{errorMessage}}"
+		"failedToProcessBatchWithError": "{{maxRetries}}번 시도 후 배치 처리 실패: {{errorMessage}}",
+		"indexScanCapped": "작업 공간에 인덱싱 가능한 파일이 너무 많아 코드 인덱스가 {{maxFiles}}개 파일로 제한되었습니다. 큰 디렉터리(예: docs, i18n, 생성된 코드)를 제외하도록 .rooignore를 추가한 다음 다시 인덱싱하세요."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Qdrant 벡터 데이터베이스에 연결하지 못했습니다. Qdrant가 실행 중이고 {{qdrantUrl}}에서 접근 가능한지 확인하세요. 오류: {{errorMessage}}",

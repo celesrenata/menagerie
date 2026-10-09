@@ -256,6 +256,38 @@ describe("FileWatcher", () => {
 			expect(skippedPaths).toContain("/mock/workspace/node_modules/package/index.js")
 		})
 
+		it("should skip files in index-excluded directories (i18n/locales) on create/change events", async () => {
+			await fileWatcher.initialize()
+
+			const batchPromise = waitForNextBatch()
+
+			const testCases = [
+				{ path: "/mock/workspace/src/file.ts", shouldProcess: true },
+				{ path: "/mock/workspace/docs/i18n/en.md", shouldProcess: false },
+				{ path: "/mock/workspace/packages/x/locales/fr.json", shouldProcess: false },
+				{ path: "/mock/workspace/src/translations/strings.ts", shouldProcess: false },
+			]
+
+			for (const { path } of testCases) {
+				await mockOnDidCreate({ fsPath: path })
+			}
+
+			await flushBatch()
+
+			const batchSummary = await batchPromise
+			const successPaths = batchSummary.processedFiles
+				.filter((result: { status: string; path: string }) => result.status === "success")
+				.map((result: { status: string; path: string }) => result.path)
+			const skippedPaths = batchSummary.processedFiles
+				.filter((result: { status: string; path: string }) => result.status === "skipped")
+				.map((result: { status: string; path: string }) => result.path)
+
+			expect(successPaths).toContain("/mock/workspace/src/file.ts")
+			expect(skippedPaths).toContain("/mock/workspace/docs/i18n/en.md")
+			expect(skippedPaths).toContain("/mock/workspace/packages/x/locales/fr.json")
+			expect(skippedPaths).toContain("/mock/workspace/src/translations/strings.ts")
+		})
+
 		it("should ignore files in hidden directories on change events", async () => {
 			// Initialize the file watcher
 			await fileWatcher.initialize()

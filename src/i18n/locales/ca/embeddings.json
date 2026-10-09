@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Error desconegut en processar el fitxer {{filePath}}",
 		"unknownErrorDeletingPoints": "Error desconegut en eliminar els punts per a {{filePath}}",
-		"failedToProcessBatchWithError": "No s'ha pogut processar el lot després de {{maxRetries}} intents: {{errorMessage}}"
+		"failedToProcessBatchWithError": "No s'ha pogut processar el lot després de {{maxRetries}} intents: {{errorMessage}}",
+		"indexScanCapped": "La indexació de codi s'ha limitat a {{maxFiles}} fitxers perquè l'espai de treball té massa fitxers indexables. Afegeix un .rooignore per excloure directoris grans (per exemple docs, i18n, codi generat) i torna a indexar."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "No s'ha pogut connectar a la base de dades vectorial Qdrant. Assegura't que Qdrant estigui funcionant i sigui accessible a {{qdrantUrl}}. Error: {{errorMessage}}",

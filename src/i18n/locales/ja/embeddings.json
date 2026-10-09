@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "ファイル{{filePath}}の処理中に不明なエラーが発生しました",
 		"unknownErrorDeletingPoints": "{{filePath}}のポイント削除中に不明なエラーが発生しました",
-		"failedToProcessBatchWithError": "{{maxRetries}}回の試行後、バッチ処理に失敗しました：{{errorMessage}}"
+		"failedToProcessBatchWithError": "{{maxRetries}}回の試行後、バッチ処理に失敗しました：{{errorMessage}}",
+		"indexScanCapped": "ワークスペースにインデックス可能なファイルが多すぎるため、コードインデックスは{{maxFiles}}ファイルに制限されました。大きなディレクトリ（docs、i18n、生成コードなど）を除外する.rooignoreを追加してから、再インデックスしてください。"
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Qdrantベクターデータベースへの接続に失敗しました。Qdrantが実行中で{{qdrantUrl}}でアクセス可能であることを確認してください。エラー：{{errorMessage}}",

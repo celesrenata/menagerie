@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Erro desconhecido ao processar arquivo {{filePath}}",
 		"unknownErrorDeletingPoints": "Erro desconhecido ao deletar pontos para {{filePath}}",
-		"failedToProcessBatchWithError": "Falha ao processar lote após {{maxRetries}} tentativas: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Falha ao processar lote após {{maxRetries}} tentativas: {{errorMessage}}",
+		"indexScanCapped": "A indexação de código foi limitada a {{maxFiles}} arquivos porque o espaço de trabalho tem arquivos indexáveis demais. Adicione um .rooignore para excluir diretórios grandes (por exemplo docs, i18n, código gerado) e reindexe."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Falha ao conectar com o banco de dados vetorial Qdrant. Certifique-se de que o Qdrant esteja rodando e acessível em {{qdrantUrl}}. Erro: {{errorMessage}}",

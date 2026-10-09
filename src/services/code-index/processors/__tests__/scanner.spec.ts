@@ -291,6 +291,66 @@ describe("DirectoryScanner", () => {
 			expect(mockCodeParser.parseFile).toHaveBeenCalledTimes(2)
 		})
 
+		it("should exclude files in index-only directories (i18n/locales/translations) but index identical files in normal dirs", async () => {
+			const { listFiles } = await import("../../../glob/list-files")
+			vi.mocked(listFiles).mockResolvedValue([
+				[
+					"src/app.ts",
+					"docs/i18n/en.md",
+					"packages/x/locales/fr.json",
+					"src/translations/strings.ts",
+					"src/components/Button.tsx",
+				],
+				false,
+			])
+
+			const processedFiles: string[] = []
+			mockCodeParser.parseFile.mockImplementation((filePath: string) => {
+				processedFiles.push(filePath)
+				return []
+			})
+
+			await scanner.scanDirectory("/test")
+
+			// Normal source files are still indexed...
+			expect(processedFiles).toContain("src/app.ts")
+			expect(processedFiles).toContain("src/components/Button.tsx")
+			// ...while index-excluded directories are skipped.
+			expect(processedFiles).not.toContain("docs/i18n/en.md")
+			expect(processedFiles).not.toContain("packages/x/locales/fr.json")
+			expect(processedFiles).not.toContain("src/translations/strings.ts")
+			expect(mockCodeParser.parseFile).toHaveBeenCalledTimes(2)
+		})
+
+		it("should cap the scan and emit a warning when supported files exceed MAX_INDEX_SCAN_FILES", async () => {
+			const { MAX_INDEX_SCAN_FILES } = await import("../../constants")
+			const { listFiles } = await import("../../../glob/list-files")
+
+			// Produce more supported files than the cap allows.
+			const manyFiles = Array.from({ length: MAX_INDEX_SCAN_FILES + 50 }, (_, i) => `src/file${i}.js`)
+			vi.mocked(listFiles).mockResolvedValue([manyFiles, false])
+			mockCodeParser.parseFile.mockResolvedValue([])
+
+			const onError = vi.fn()
+			await scanner.scanDirectory("/test", onError)
+
+			// Exactly one capped warning, and no more than the cap of files are parsed.
+			expect(onError).toHaveBeenCalledTimes(1)
+			expect(onError.mock.calls[0][0]).toBeInstanceOf(Error)
+			expect(mockCodeParser.parseFile.mock.calls.length).toBeLessThanOrEqual(MAX_INDEX_SCAN_FILES)
+		})
+
+		it("should NOT emit the cap warning for a normal number of files", async () => {
+			const { listFiles } = await import("../../../glob/list-files")
+			vi.mocked(listFiles).mockResolvedValue([["src/file1.js", "src/file2.js"], false])
+			mockCodeParser.parseFile.mockResolvedValue([])
+
+			const onError = vi.fn()
+			await scanner.scanDirectory("/test", onError)
+
+			expect(onError).not.toHaveBeenCalled()
+		})
+
 		it("should process markdown files alongside code files", async () => {
 			// Create scanner without embedder to test the non-embedding path
 			const scannerNoEmbeddings = new DirectoryScanner(

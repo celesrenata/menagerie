@@ -16,6 +16,43 @@ export const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024 // 1MB
 
 /**Directory Scanner */
 export const MAX_LIST_FILES_LIMIT_CODE_INDEX = 50_000
+
+/**
+ * Directory names the code indexer skips in addition to the shared `DIRS_TO_IGNORE` denylist.
+ *
+ * These are documentation / translation trees that are high-volume and low-value for code search. A large
+ * monorepo (e.g. OmniRoute) can carry 10k+ markdown files under `docs/i18n/`, which the scanner would otherwise
+ * parse into hundreds of thousands of tree-sitter "blocks".
+ *
+ * Excluded names (directory-name based, matched on any path segment so nested variants like `docs/i18n/...`,
+ * `src/i18n/...`, and `packages/x/locales/...` are all caught):
+ *   - "i18n"
+ *   - "locales"
+ *   - "translations"
+ *
+ * IMPORTANT: these are index-only. They are deliberately NOT added to `src/services/glob/constants.ts`
+ * (`DIRS_TO_IGNORE`), because that list also backs `src/services/glob/list-files.ts`, which powers the agent's
+ * general file-listing tools. Adding these names there would hide i18n/locale dirs from the agent app-wide. The
+ * exclusion here applies to the code indexer only, via `isPathInIndexExcludedDirectory()`.
+ */
+export const INDEX_EXCLUDED_DIRS = ["i18n", "locales", "translations"] as const
+
+/**
+ * Hard cap on the number of indexable files handed to the parser in a single full scan.
+ *
+ * This is a second, tighter backstop below `MAX_LIST_FILES_LIMIT_CODE_INDEX` (50_000, applied at the `listFiles`
+ * layer). `MAX_INDEX_SCAN_FILES` is applied AFTER .rooignore / ignored-dir / extension / index-exclude filtering,
+ * so it bounds the count of files that would actually be parsed and embedded. On a genuinely unbounded tree the
+ * scanner truncates to this many files and surfaces one prominent warning (via the existing `onError` path)
+ * telling the user to add a `.rooignore`.
+ *
+ * Tradeoff: a precise per-block mid-scan abort would require reworking the existing parallel `pLimit` / mutex /
+ * `AbortSignal` batching machinery, which is fragile and invasive. Capping the pre-parse file list is
+ * deterministic, cheap, and surfaces cleanly through the existing status/error path. The value (25_000) sits
+ * above every known-good repo but below the OmniRoute pathological case; once i18n/locale/translation dirs are
+ * excluded a normal repo drops well under it, so the cap only trips on truly unbounded trees.
+ */
+export const MAX_INDEX_SCAN_FILES = 25_000
 export const BATCH_SEGMENT_THRESHOLD = 60 // Number of code segments to batch for embeddings/upserts
 export const MAX_BATCH_RETRIES = 3
 export const INITIAL_RETRY_DELAY_MS = 500

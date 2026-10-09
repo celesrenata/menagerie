@@ -6,6 +6,7 @@ import type { FilePreparationDependencies } from "./file-preparation-dependencie
 import { MAX_FILE_SIZE_BYTES, QDRANT_CODE_BLOCK_NAMESPACE } from "../constants"
 import { generateNormalizedAbsolutePath, generateRelativeFilePath } from "../shared/get-relative-path"
 import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
+import { isPathInIndexExcludedDirectory } from "../shared/index-excluded-dirs"
 import { planEmbeddingRequests } from "../shared/embedding-batches"
 
 /** Prepares one file for batching without writing points or mutating the hash cache. */
@@ -52,6 +53,12 @@ export class FilePreparation {
 		const relativeFilePath = generateRelativeFilePath(filePath, dependencies.workspacePath)
 		if (isPathInIgnoredDirectory(relativeFilePath)) {
 			return "File is in an ignored directory"
+		}
+
+		// Index-only excluded directories (i18n/locales/translations). Keeps the incremental file-watcher path
+		// consistent with the full scanner without touching the shared denylist (see INDEX_EXCLUDED_DIRS).
+		if (isPathInIndexExcludedDirectory(relativeFilePath)) {
+			return "File is in an index-excluded directory"
 		}
 
 		if (

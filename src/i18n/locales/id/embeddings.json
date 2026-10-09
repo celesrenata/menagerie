@@ -26,7 +26,8 @@
 	"scanner": {
 		"unknownErrorProcessingFile": "Error tidak dikenal saat memproses file {{filePath}}",
 		"unknownErrorDeletingPoints": "Error tidak dikenal saat menghapus points untuk {{filePath}}",
-		"failedToProcessBatchWithError": "Gagal memproses batch setelah {{maxRetries}} percobaan: {{errorMessage}}"
+		"failedToProcessBatchWithError": "Gagal memproses batch setelah {{maxRetries}} percobaan: {{errorMessage}}",
+		"indexScanCapped": "Indeks kode dibatasi hingga {{maxFiles}} file karena ruang kerja memiliki terlalu banyak file yang dapat diindeks. Tambahkan .rooignore untuk mengecualikan direktori besar (misalnya docs, i18n, kode yang dihasilkan), lalu indeks ulang."
 	},
 	"vectorStore": {
 		"qdrantConnectionFailed": "Gagal terhubung ke database vektor Qdrant. Pastikan Qdrant berjalan dan dapat diakses di {{qdrantUrl}}. Error: {{errorMessage}}",
