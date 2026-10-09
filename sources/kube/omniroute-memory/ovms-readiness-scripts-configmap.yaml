@@ -1,0 +1,70 @@
+# Feature: retrieval-fabric — dual-path real-inference readiness scripts (task 8.2, Req 5.2/5.3/5.5).
+#
+# Committed declaratively and mounted at /opt/readiness/ in both the embedding
+# StatefulSet and the Qwen3 reranker Deployment. The embedding pod runs
+# embed-probe.sh; the reranker pod runs rerank-probe.sh. Both report not-ready
+# on a wedged GPU serving path even when /v2/health/ready is green.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovms-readiness-scripts
+  namespace: omniroute-memory
+  labels:
+    app: ovms-embeddings
+data:
+  embed-probe.sh: |
+    #!/bin/sh
+    # Feature: retrieval-fabric — real-inference embedding readiness probe (task 8.2, Req 5.2).
+    #
+    # Issues a tiny REAL embedding request against the local OVMS embedding endpoint
+    # and asserts a well-formed embedding of the expected dimension comes back. If
+    # the Intel GPU embedding serving path is wedged, this fails (or times out) even
+    # while /v2/health/ready is green, so Kubernetes removes the replica from
+    # rotation (Req 5.4). Reports not-ready (exit != 0) on any failure/timeout.
+    #
+    # arc-embed-ceiling-boost / FEAT-005: endpoint reconciled /v3 -> /v1 to match
+    # the live applied ConfigMap. Both /v1 and /v3/embeddings serve a 1024-dim
+    # vector on a healthy replica; /v1 is the path the live inline probe uses.
+    set -eu
+    
+    HOST="127.0.0.1:8000"
+    MODEL="qwen3-embedding-0.6b"
+    # qwen3-embedding-0.6b stored dimension (getModelDimension) — see embeddingModels.ts.
+    EXPECTED_DIM="1024"
+    TIMEOUT="4"
+    
+    RESP="$(curl -fsS --max-time "${TIMEOUT}" \
+      -H 'Content-Type: application/json' \
+      -X POST "http://${HOST}/v1/embeddings" \
+      -d "{\"model\":\"${MODEL}\",\"input\":\"readiness\"}")" || exit 1
+    
+    # Assert a non-empty float array of the expected dimension is present.
+    echo "${RESP}" | grep -q '"embedding"' || exit 1
+    DIM="$(echo "${RESP}" | tr -d ' \n' | sed -n 's/.*"embedding":\[\([^]]*\)\].*/\1/p' | awk -F',' '{print NF}')"
+    [ "${DIM}" = "${EXPECTED_DIM}" ] || exit 1
+    
+    exit 0
+  rerank-probe.sh: |
+    #!/bin/sh
+    # Feature: retrieval-fabric — real-inference rerank readiness probe (task 8.2, Req 5.3).
+    #
+    # Issues a tiny REAL rerank request against the local OVMS rerank endpoint and
+    # asserts a well-formed numeric score comes back. If the Intel GPU reranking
+    # serving path is wedged, this fails (or times out) even while /v2/health/ready
+    # is green, so Kubernetes removes the reranker replica from rotation (Req 5.4).
+    # Reports not-ready (exit != 0) on any failure/timeout.
+    set -eu
+    
+    HOST="127.0.0.1:8000"
+    MODEL="qwen3-reranker-0.6b"
+    TIMEOUT="4"
+    
+    RESP="$(curl -fsS --max-time "${TIMEOUT}" \
+      -H 'Content-Type: application/json' \
+      -X POST "http://${HOST}/v3/rerank" \
+      -d "{\"model\":\"${MODEL}\",\"query\":\"readiness\",\"documents\":[\"readiness check document\"]}")" || exit 1
+    
+    # Assert a well-formed relevance score is present in the response.
+    echo "${RESP}" | grep -Eq '"relevance_score"[[:space:]]*:[[:space:]]*-?[0-9]' || exit 1
+    
+    exit 0

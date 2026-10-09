@@ -84,11 +84,12 @@ spec:
           limits:
             cpu: "4"
             gpu.intel.com/i915: "1"
-            # Sized with the per-item serving ceiling (8192 tokens): base 8Gi +
-            # ceil(8192/4096) = 10Gi (task 8.4, Req 6.2/6.6). Measured usage is
-            # ~5.6Gi; 10Gi keeps headroom on the ~94GB-allocatable shared-RAM
-            # nodes. Raising the ceiling raises this in tandem.
-            memory: 10Gi
+            # arc-embed-ceiling-boost / FEAT-004: +50% off the live 8Gi base = 12Gi
+            # (matches the live applied value). Measured OVMS usage under load is
+            # ~4.5-6.6Gi, so 12Gi keeps comfortable headroom on the ~94GB-allocatable
+            # shared-RAM nodes. Moot while this STS is scaled to 0 (host-native
+            # serving per the header); recorded here for rollback parity.
+            memory: 12Gi
           requests:
             cpu: "1"
             gpu.intel.com/i915: "1"
@@ -125,6 +126,12 @@ spec:
         - --model_name=qwen3-embedding-0.6b
         - --task=embeddings
         - --pooling=LAST
+        # Per-item token ceiling applied live by FEAT-003: 4096 at BOTH layers
+        # (this graph max_length + OMNIROUTE_EMBEDDING_SPLIT_MAX_ITEM_TOKENS=4096).
+        # 8192 failed the token sweep (GPU wedges on a single near-8192-token item);
+        # truncate=true clips the graph input but OVMS still hard-rejects over-cap.
+        - --truncate=true
+        - --max_length=4096
         - --target_device=GPU
         # Digest-pinned to match the ovms container image (task 8.1, Req 2.1).
         image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
