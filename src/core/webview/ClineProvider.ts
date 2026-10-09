@@ -4202,6 +4202,22 @@ export class ClineProvider
 			if (this.taskHistoryStore.get(awaitedChildId)?.status !== "interrupted") {
 				throw new Error("Cannot re-delegate while the awaited child is not interrupted")
 			}
+		} else if (authoritativeParent?.status === "interrupted" || authoritativeParent?.status === "completed") {
+			// Guard the illegal transition BEFORE any child is created (design Change 1).
+			// The lifecycle model only delegates from an `active` parent (an undefined status
+			// defaults to `active` per assertValidTransition), or from a `delegated` parent
+			// whose awaited child is interrupted (handled above).
+			// A parent whose own status is `interrupted` or `completed` has no modeled
+			// re-delegation path: `delegateTaskToChild` would hit
+			// `assertValidTransition("interrupted"|"completed", "delegated")` and throw.
+			// This happens when a stale `create_subtask` pending action is replayed on
+			// resume against a parent that is no longer delegatable. Reject here, before
+			// child creation and before step 5's rollback (which re-resumes the parent and
+			// re-fires the same stale action), so a single failure cannot fan out into
+			// hundreds of per-child attempts.
+			throw new Error(
+				`[delegateParentAndOpenChild] Parent ${parentTaskId} is not in a delegatable state (${authoritativeParent.status}); skipping stale delegation`,
+			)
 		}
 		if (pendingActionId) {
 			const parentHistory = this.taskHistoryStore.get(parentTaskId)
@@ -4321,6 +4337,13 @@ export class ClineProvider
 				}
 			}
 		} catch (err) {
+			// Bounded, single-attempt rollback (design Change 3). Change 1 now rejects a
+			// non-delegatable parent BEFORE any child is created, so this branch is reached
+			// only for a genuine persistence fault on an otherwise-delegatable parent. It
+			// pops/deletes the one child it created and restores the parent exactly once,
+			// then rethrows `err`. It MUST NOT retry: re-invoking delegation here (or letting
+			// the restored parent re-fire a stale `create_subtask` pending action) is what
+			// previously fanned a single failure out into hundreds of per-child attempts.
 			this.log(
 				`[delegateParentAndOpenChild] Failed to persist parent metadata for ${parentTaskId} -> ${child.taskId}: ${
 					(err as Error)?.message ?? String(err)

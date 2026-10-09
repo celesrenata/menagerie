@@ -612,6 +612,53 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		expect((provider as any).deleteTaskWithId).not.toHaveBeenCalled()
 	})
 
+	it.each([{ status: "interrupted" as const }, { status: "completed" as const }])(
+		"rejects a $status parent BEFORE creating a child (no fan-out) and without re-resuming it",
+		async ({ status }) => {
+			const parentTask = makeParentTask()
+			const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
+			const createTask = vi.fn()
+			const createTaskWithHistoryItem = vi.fn().mockResolvedValue(undefined)
+			const deleteTaskWithId = vi.fn().mockResolvedValue(undefined)
+			const taskHistoryStore = makeStoreStub({
+				get: vi.fn().mockReturnValue({ ...parentHistoryItem, status }),
+			})
+			const provider = {
+				taskScheduler: new TaskScheduler(),
+				emit: vi.fn(),
+				getCurrentTask: vi.fn(() => parentTask),
+				removeClineFromStack,
+				createTask,
+				createTaskWithHistoryItem,
+				deleteTaskWithId,
+				handleModeSwitch: vi.fn(),
+				log: vi.fn(),
+				isViewLaunched: false,
+				taskHistoryStore,
+			} as unknown as ClineProvider
+
+			await expect(
+				ClineProvider.prototype.delegateParentAndOpenChild.call(provider, {
+					parentTaskId: "parent-1",
+					message: "Do something",
+					initialTodos: [],
+					mode: "code",
+				}),
+			).rejects.toThrow(/is not in a delegatable state/)
+
+			// The guard fires before any child is created: a single failure must not fan out
+			// into child creation (the hot retry/fan-out loop originated here).
+			expect(createTask).not.toHaveBeenCalled()
+			expect(taskHistoryStore.atomicReadAndUpdate).not.toHaveBeenCalled()
+			// And it must not restore/re-resume the parent (that re-fired the stale action).
+			expect(createTaskWithHistoryItem).not.toHaveBeenCalled()
+			expect(deleteTaskWithId).not.toHaveBeenCalled()
+			// Guard runs before step 3 parent disposal.
+			expect(removeClineFromStack).not.toHaveBeenCalled()
+			expect(parentTask.flushPendingToolResultsToHistory).not.toHaveBeenCalled()
+		},
+	)
+
 	it("rejects a delegated parent whose awaited-child identity is missing", async () => {
 		const parentTask = makeParentTask()
 		const taskHistoryStore = makeStoreStub({

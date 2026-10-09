@@ -2895,34 +2895,51 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		if (response === "yesButtonClicked") {
 			if (action.kind === "create_subtask") {
-				await provider.delegateParentAndOpenChild({
-					parentTaskId: this.taskId,
-					message: action.message,
-					initialTodos: action.todos,
-					mode: action.mode,
+				// Do not replay a stale `create_subtask` pending action against a parent that
+				// is no longer delegatable (design Change 2). The lifecycle model only delegates
+				// from an `active` (or `delegated`-with-interrupted-child) parent. If this task's
+				// own persisted status is `interrupted` or `completed`, the original delegation
+				// already resolved or was superseded, so delegating again would throw
+				// `interrupted → delegated` in the reducer and — via the provider's rollback
+				// re-resume — loop forever, re-firing this same action with a new child id each
+				// time. Clear the stale action and fall through to the normal resume ask instead.
+				// Mirrors the ~2686 precedent that clears a pending action once its tool_result
+				// is already durable.
+				const persistedStatus = provider.taskHistoryStore.get(this.taskId)?.status
+				if (persistedStatus === "interrupted" || persistedStatus === "completed") {
+					await this.clearPendingActionAfterDurableResult(action.actionId)
+				} else {
+					// A single delegation attempt. On failure it surfaces once and stops; it must
+					// never re-enter this resume path (that re-entry is the fan-out loop).
+					await provider.delegateParentAndOpenChild({
+						parentTaskId: this.taskId,
+						message: action.message,
+						initialTodos: action.todos,
+						mode: action.mode,
+						pendingActionId: action.actionId,
+					})
+					return
+				}
+			} else {
+				const didReopen = await provider.reopenParentFromDelegation({
+					parentTaskId: action.parentTaskId,
+					childTaskId: this.taskId,
+					completionResultSummary: action.result,
 					pendingActionId: action.actionId,
 				})
-				return
-			}
+				if (didReopen) {
+					return
+				}
 
-			const didReopen = await provider.reopenParentFromDelegation({
-				parentTaskId: action.parentTaskId,
-				childTaskId: this.taskId,
-				completionResultSummary: action.result,
-				pendingActionId: action.actionId,
-			})
-			if (didReopen) {
-				return
-			}
-
-			await this.clearPendingActionAfterDurableResult(action.actionId)
-			if (this.pendingAction) {
-				await this.resumePendingTaskAction(this.pendingAction)
-				return
-			}
-			;({ response, text, images, queuedMessageId } = await this.ask("completion_result", "", false))
-			if (response === "yesButtonClicked") {
-				return
+				await this.clearPendingActionAfterDurableResult(action.actionId)
+				if (this.pendingAction) {
+					await this.resumePendingTaskAction(this.pendingAction)
+					return
+				}
+				;({ response, text, images, queuedMessageId } = await this.ask("completion_result", "", false))
+				if (response === "yesButtonClicked") {
+					return
+				}
 			}
 		}
 
