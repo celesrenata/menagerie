@@ -1,0 +1,161 @@
+# arc-embed-ceiling-boost / FEAT-001 — SUPERSEDED BY HOST-NATIVE SERVING.
+# The in-cluster SR-IOV-VF embedding path wedged under load (ccs0 "Unexpected
+# memirq status 0x0" + GPU fence timeouts). Embeddings now run HOST-NATIVE on
+# each gremlin's physical-function (PF) Arc device via the NixOS module
+# modules/ovms-embeddings-host.nix (podman, /dev/dri/renderD128, port 8000,
+# model max_length=4096 — FEAT-003 set this to MATCH the enforced OmniRoute
+# guard OMNIROUTE_EMBEDDING_SPLIT_MAX_ITEM_TOKENS=4096; 8192 failed the token
+# sweep because the GPU wedges on a single near-8192-token item).
+# OmniRoute reaches them via the ovms-embeddings
+# Service -> ovms-embeddings-proxy (nginx, hostNetwork, see
+# ovms-embeddings-proxy.yaml) -> the four host PF backends 10.1.1.12-15:8000.
+# This StatefulSet is SCALED TO 0 live (replicas:0) — kept for rollback only;
+# its container memory limit is moot while scaled to 0 (host-native podman OVMS
+# measures ~4.5-6.6Gi RSS, see live-verify.md). qdrant in this namespace is
+# OFF-LIMITS and untouched.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: ovms-embeddings
+  name: ovms-embeddings
+  namespace: omniroute-memory
+spec:
+  podManagementPolicy: Parallel
+  # Scaled to 0 live — serving moved host-native (see header). Was 4.
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ovms-embeddings
+  serviceName: ovms-embeddings
+  template:
+    metadata:
+      labels:
+        app: ovms-embeddings
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: ovms-embeddings
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - args:
+        - --rest_port=8000
+        - --model_name=qwen3-embedding-0.6b
+        - --model_path=/models/OpenVINO/Qwen3-Embedding-0.6B-int8-ov
+        # Digest-pinned to match the live deployment (task 8.1, Req 2). Never the
+        # mutable latest-gpu tag.
+        image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
+        imagePullPolicy: IfNotPresent
+        # HTTP liveness is retained so load-spreading is not destabilized while
+        # readiness moves to a real-inference exec probe (task 8.3, Req 5.4/22.9).
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /v2/health/live
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: ovms
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        # Real-inference readiness: issues a tiny real embedding request and
+        # reports not-ready on failure/timeout even when /v2/health/ready is
+        # green, catching a wedged GPU serving path (task 8.3, Req 5.1/5.2/5.4).
+        # Longer timeout than the HTTP probe; failureThreshold tolerates brief
+        # blips so a slow real-inference request does not flap a healthy replica.
+        readinessProbe:
+          exec:
+            command:
+            - /opt/readiness/embed-probe.sh
+          failureThreshold: 4
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: "4"
+            gpu.intel.com/i915: "1"
+            # Sized with the per-item serving ceiling (8192 tokens): base 8Gi +
+            # ceil(8192/4096) = 10Gi (task 8.4, Req 6.2/6.6). Measured usage is
+            # ~5.6Gi; 10Gi keeps headroom on the ~94GB-allocatable shared-RAM
+            # nodes. Raising the ceiling raises this in tandem.
+            memory: 10Gi
+          requests:
+            cpu: "1"
+            gpu.intel.com/i915: "1"
+            memory: 2Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /models
+          name: models
+        - mountPath: /opt/readiness
+          name: readiness-scripts
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - chown -R 5000:5000 /models
+        image: busybox:1.37
+        imagePullPolicy: IfNotPresent
+        name: model-volume-permissions
+        resources: {}
+        securityContext:
+          runAsUser: 0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /models
+          name: models
+      - args:
+        - --pull
+        - --model_repository_path=/models
+        - --source_model=OpenVINO/Qwen3-Embedding-0.6B-int8-ov
+        - --model_name=qwen3-embedding-0.6b
+        - --task=embeddings
+        - --pooling=LAST
+        - --target_device=GPU
+        # Digest-pinned to match the ovms container image (task 8.1, Req 2.1).
+        image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
+        imagePullPolicy: IfNotPresent
+        name: model-pull
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /models
+          name: models
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 5000
+        fsGroupChangePolicy: OnRootMismatch
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: readiness-scripts
+        configMap:
+          name: ovms-readiness-scripts
+          defaultMode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      name: models
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: longhorn
