@@ -1,5 +1,5 @@
 import { providerIdentifiers } from "@roo-code/types"
-import React, { createContext, useCallback, useEffect, useState } from "react"
+import React, { createContext, useCallback, useEffect, useRef, useState } from "react"
 
 import {
 	type ProviderSettings,
@@ -293,6 +293,17 @@ export const ExtensionStateContextProvider: React.FC<{
 
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
+	// Sticky welcome gate: once a sufficiently configured state has been seen this
+	// session, the gate has been "lowered". Intermediate "state" pushes during a task
+	// open (showTaskWithId -> createTaskWithHistoryItem) can momentarily carry a
+	// task-scoped, under-configured apiConfiguration (ClineProvider pushes
+	// `currentTaskApiConfiguration ?? apiConfiguration` alongside a `currentTaskId`),
+	// which would otherwise flip showWelcome back to true and bounce the user to the
+	// WelcomeView. We mirror the clineMessagesSeq "don't regress on stale pushes"
+	// approach: once lowered, a task-scoped push can never re-raise the gate. Only an
+	// authoritative, non-task-scoped push (e.g. a sign-out / config-reset reflected in
+	// the global apiConfiguration) is allowed to re-raise it.
+	const hasLoweredWelcomeGateRef = useRef(false)
 	const [theme, setTheme] = useState<any>(undefined)
 	const [filePaths, setFilePaths] = useState<string[]>([])
 	const [openedTabs, setOpenedTabs] = useState<Array<{ label: string; isActive: boolean; path?: string }>>([])
@@ -346,7 +357,24 @@ export const ExtensionStateContextProvider: React.FC<{
 				case "state": {
 					const newState = message.state ?? {}
 					setState((prevState) => mergeExtensionState(prevState, newState))
-					setShowWelcome(!checkExistKey(newState.apiConfiguration, newState.zooCodeIsAuthenticated))
+
+					const isConfigured = checkExistKey(newState.apiConfiguration, newState.zooCodeIsAuthenticated)
+					if (isConfigured) {
+						// A valid, configured state lowers the gate and latches it for the session.
+						hasLoweredWelcomeGateRef.current = true
+						setShowWelcome(false)
+					} else if (!hasLoweredWelcomeGateRef.current) {
+						// First run: never lowered yet, so honor the unconfigured state and gate setup.
+						setShowWelcome(true)
+					} else if (newState.currentTaskId === undefined) {
+						// Gate was already lowered. An under-configured, non-task-scoped push reflects the
+						// authoritative global apiConfiguration (e.g. sign-out / config reset), so re-raise.
+						hasLoweredWelcomeGateRef.current = false
+						setShowWelcome(true)
+					}
+					// Otherwise (gate lowered AND this is a task-scoped push), keep the gate down: this is
+					// the transient task-scoped apiConfiguration seen during a task open, not a real reset.
+
 					setDidHydrateState(true)
 					// Update alwaysAllowFollowupQuestions if present in state message
 					if ((newState as any).alwaysAllowFollowupQuestions !== undefined) {
