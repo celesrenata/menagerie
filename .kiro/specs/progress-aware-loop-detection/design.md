@@ -10,8 +10,8 @@ The detector preserves the existing `ToolRepetitionCheckResult` discriminated un
 
 ### Scope
 
-- In scope: the detector class, its per-task state model, the signal taxonomy and derivation, scoring and band evaluation with hysteresis, the preserved result contract, and nudge/stop metric emission.
-- Out of scope: task observatory, tier semantics, semantic retrieval, branding, parallelism. Metrics are described only as outputs of this detector (Requirement 9), not as a separate feature.
+- In scope: the detector class, its per-task state model, the signal taxonomy and derivation, scoring and band evaluation with hysteresis, the preserved result contract, the progress-independent Absolute_Backstop (Requirement 10), and nudge/stop metric emission.
+- Out of scope: task observatory, tier semantics, semantic retrieval, branding, parallelism. Metrics are described only as outputs of this detector (Requirements 9, 10.8), not as a separate feature. Context-window recovery (lane-independent condensing, convergent reduction) is the concern of the sibling spec `resilient-context-recovery`; this spec's Absolute_Backstop only fires a Hard_Stop (Requirement 10.10).
 
 ### Key Design Decisions
 
@@ -134,6 +134,8 @@ export interface ToolResultContext {
 	isPollingWorkflow?: boolean
 	/** Verification signal: observed success/failure that may contradict a claimed success. */
 	verifiedSucceeded?: boolean
+	/** Conversation transcript token size for this task, when derivable (Requirement 10.5). */
+	transcriptTokens?: number
 }
 
 export interface ToolExecutionResult {
@@ -149,6 +151,12 @@ export interface MetricsSink {
 export interface ProgressAwareLoopDetectorDeps {
 	metrics?: MetricsSink
 	now?: () => number
+	/** Requirement 10: per-task absolute ceilings; defaults to DEFAULT_ABSOLUTE_BOUND when omitted. */
+	absoluteBound?: AbsoluteBound
+	/** Requirement 10.3: the task's serving context window (from resolveOmniRouteContextWindow). */
+	servingContextWindow?: number
+	/** Alternative to servingContextWindow: a provider the host populates per task/lane. */
+	resolveContextWindow?: () => number
 }
 ```
 
@@ -183,6 +191,65 @@ function isIterativeCapable(block: ToolUse, context?: ToolResultContext): boolea
 ```
 
 Classification only changes *how repetition affects the score*: for iterative-capable tools, repetition with any progress signal never raises the score (Requirement 5.2), and repetition with no progress raises the score only through stagnation signals, never a raw count (Requirements 5.3, 5.4).
+
+### Absolute Backstop (Requirement 10)
+
+The score-based bands are necessary but not sufficient. A "productively spinning" task keeps emitting a `ProgressSignal` every turn (`result_changed`, `workspace_changed`, `cursor_advanced`) so its `noProgressScore` never climbs into the hard-stop band, yet its transcript grows without bound — the live incident reached ~539 messages / ~360K tokens on a 32,768-token `reader.fast` lane and never tripped the progress-based hard stop. The `Absolute_Backstop` closes this gap with a ceiling that is *independent of* the score and of every progress/stagnation signal.
+
+The backstop is an **additive short-circuit at the head of `evaluateProgress`**, before the signal-to-score conversion. It changes no scoring band and no existing signal derivation:
+
+```typescript
+/** Requirement 10: per-task absolute ceilings, independent of noProgressScore. */
+export interface AbsoluteBound {
+	/** Turn_Ceiling: max completed tool executions for a task (Req 10.2, 10.4). */
+	turnCeiling: number
+	/** Transcript_Ceiling as a fraction of the serving context window (Req 10.3, 10.5). */
+	transcriptWindowFraction: number
+}
+
+/** Default ceilings. transcriptWindowFraction is relative to the serving window, never a literal. */
+export const DEFAULT_ABSOLUTE_BOUND: AbsoluteBound = { turnCeiling: 400, transcriptWindowFraction: 0.9 }
+```
+
+`evaluateProgress` gains a guard at its head (the only change to the method body; the scoring tail is untouched):
+
+```typescript
+public evaluateProgress(taskId: string, captured: CapturedSignals): BandDecision {
+	const state = this.getState(taskId)
+	state.completedExecutions += 1
+
+	// Req 10: absolute backstop short-circuit, independent of score and signals.
+	if (this.absoluteBackstopExceeded(state, captured)) {
+		state.noProgressScore = clamp(state.noProgressScore, 0, 100) // score left intact; band forced
+		const result = bandToResult("hard_stop", captured.tool, state.completedExecutions)
+		this.emitStop(captured.tool, state.noProgressScore) // Req 10.8, consistent with Req 9.2
+		return { band: "hard_stop", noProgressScore: state.noProgressScore, result }
+	}
+
+	// ... unchanged: signal-to-score conversion, clamp, band derivation, nudge/stop metrics ...
+}
+
+private absoluteBackstopExceeded(state: IterationState, captured: CapturedSignals): boolean {
+	if (state.completedExecutions >= this.absoluteBound.turnCeiling) return true // Req 10.4
+	const window = this.servingContextWindow ?? 0 // resolveOmniRouteContextWindow, injected via deps
+	if (window > 0 && captured.transcriptTokens !== undefined) {
+		const ceiling = Math.floor(window * this.absoluteBound.transcriptWindowFraction) // Req 10.3
+		if (captured.transcriptTokens >= ceiling) return true // Req 10.5
+	}
+	return false
+}
+```
+
+Key properties of this seam:
+
+- **Independent of progress (Req 10.1, 10.6).** The guard runs before any signal is scored and ignores `captured.progress`/`captured.stagnation` entirely, so it fires even when every recent execution recorded a `ProgressSignal`.
+- **Does not alter scoring bands (Req 10.9).** When neither ceiling is reached, `absoluteBackstopExceeded` returns `false` and control falls through to the unchanged band evaluation; `deriveBand` and the 0–5/6–9/10–13/14+ boundaries are not touched.
+- **Preserved result contract (Req 10.7).** The forced result reuses `bandToResult("hard_stop", ...)`, so the Absolute_Backstop surfaces the identical `{ allowExecution: false, askUser: { messageKey: "mistake_limit_reached", messageDetail } }` shape as the Requirement 8 hard stop — the sole call site in `presentAssistantMessage.ts` needs no change (preserves the Requirement 8 compatible-result-contract invariant).
+- **Metric parity (Req 10.8).** The same `emitStop({ toolName, noProgressScore })` sink used by the Requirement 9 hard stop fires here, so backstop stops are observable through the existing metrics output.
+
+The serving window is supplied through `ProgressAwareLoopDetectorDeps` (a `servingContextWindow?: number` or a `resolveContextWindow?: () => number` provider that the host populates from `resolveOmniRouteContextWindow`); the detector itself does not import OmniRoute, keeping it a pure dependency and preserving lane-independence. The host already supplies `ToolResultContext` after each execution, so transcript size enters through a new optional `transcriptTokens?: number` context field, measured and passed by the host alongside the other post-execution signals.
+
+**Boundary (Non-Goal).** The Absolute_Backstop only fires a Hard_Stop; it does not attempt to recover the task. Lane-independent condensing and convergent context-window reduction are the concern of the sibling spec `resilient-context-recovery`, which consumes the same `Serving_Context_Window` relationship. The two specs interlock without overlapping: this spec is the safety net that bounds the loop, that spec is the mechanism that brings an over-window transcript back under the window.
 
 ## Data Models
 
@@ -266,6 +333,8 @@ export interface CapturedSignals {
 	todoChanged: boolean
 	resultChanged: boolean
 	cursorAdvanced: boolean
+	/** Conversation transcript token size, carried from ToolResultContext (Requirement 10.5). */
+	transcriptTokens?: number
 }
 
 export interface BandDecision {
@@ -390,6 +459,24 @@ The prework analysis showed that most of Requirement 3's twelve progress criteri
 
 **Validates: Requirements 2.1**
 
+### Property 11: The absolute backstop fires regardless of progress
+
+*For any* sequence of completed executions in which every execution records at least one progress signal (so the `noProgressScore` stays in the continue band), once the task's completed-execution count reaches the `Turn_Ceiling` or its `transcriptTokens` reaches `floor(servingContextWindow × transcriptWindowFraction)`, the gate returns a hard stop (`allowExecution: false`, `askUser` with `messageKey === "mistake_limit_reached"` and non-empty `messageDetail`), independent of the score.
+
+**Validates: Requirements 10.1, 10.4, 10.5, 10.6, 10.7**
+
+### Property 12: The transcript ceiling is relative to the serving context window
+
+*For any* positive serving context window `W` and fraction `f` in (0, 1], the transcript ceiling used by the backstop equals `floor(W × f)`; scaling `W` scales the firing threshold proportionally, so no fixed literal token count governs the ceiling.
+
+**Validates: Requirements 10.3**
+
+### Property 13: Below both ceilings the backstop does not alter band evaluation
+
+*For any* state whose completed-execution count is below the `Turn_Ceiling` and whose `transcriptTokens` is below the transcript ceiling, the `BandDecision` returned by `evaluateProgress` is identical to the decision produced by the unmodified score-based band evaluation for the same captured signals (the backstop is a pure pass-through below the bounds and changes no scoring band).
+
+**Validates: Requirements 10.9**
+
 ## Error Handling
 
 - **Missing or unobservable signals.** When a `ToolResultContext` field is `undefined` (the host could not derive it — e.g. no git status available, result text unparsable), the detector credits no progress for that dimension and does not fabricate a stagnation signal from it either. Conservatism means absence of evidence is treated as "no change observed," which cannot grant false progress (Requirement 7.3) but also will not, on its own, force an escalation.
@@ -399,6 +486,7 @@ The prework analysis showed that most of Requirement 3's twelve progress criteri
 - **Score clamping.** All score mutations pass through a `clamp(0, 100)` so no signal sequence can drive the score negative or past 100 (Property 8).
 - **Recovery after hard stop.** As in the current detector, after a hard stop is surfaced the detector resets the task's accumulated score and intervention state so the user can guide the model past the condition without being immediately re-blocked.
 - **Metrics sink failures.** Metric emission is wrapped so a throwing sink cannot break tool dispatch; a failed emission is swallowed (the detector's job is gating, not guaranteed delivery).
+- **Unresolvable serving window.** When neither `servingContextWindow` nor a `resolveContextWindow` provider yields a positive value, or `transcriptTokens` is `undefined` (the host could not measure the transcript), the transcript limb of the Absolute_Backstop is disabled for that execution — the detector does not fabricate a ceiling or divide by an unknown window. The Turn_Ceiling limb still applies, so a progressing-but-unbounded task is bounded by turn count even when transcript size cannot be measured (Requirement 10.4 remains in force).
 
 ## Testing Strategy
 
@@ -420,6 +508,9 @@ Format for each tag: `// Feature: progress-aware-loop-detection, Property N: <pr
 - Property 8 — arbitrary signal sequence ⇒ 0 ≤ score ≤ 100.
 - Property 9 — score ≥ 14 with `completedExecutions < 2` ⇒ no `askUser`.
 - Property 10 — interleaved executions across two task ids ⇒ independent scores.
+- Property 11 — every execution carries a progress signal (score stays in continue band), yet reaching the `Turn_Ceiling` or the transcript ceiling ⇒ hard stop, over arbitrary ceilings and run counts.
+- Property 12 — arbitrary positive serving window `W` and fraction `f` ⇒ transcript ceiling equals `floor(W × f)`; scaling `W` scales the threshold.
+- Property 13 — states below both ceilings ⇒ `evaluateProgress` returns the same `BandDecision` as the unmodified score-based evaluation for the same signals.
 
 ### Unit / Example / Edge Tests
 

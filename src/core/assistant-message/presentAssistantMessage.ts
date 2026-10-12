@@ -789,6 +789,12 @@ export async function executeAssistantMessageBlock(
 						// no-progress score. Consume-then-reset so a later tool in the same turn
 						// does not inherit a stale true.
 						todoChanged: cline.didTodoChange === true || undefined,
+						// Req 10.5: feed the current transcript token count so the detector's
+						// Transcript_Ceiling limb receives real data. Reuse the measure the host
+						// already tracks (getTokenUsage().contextTokens). Left undefined when the
+						// count is not yet derivable, which keeps the transcript limb disabled
+						// (the Turn_Ceiling limb still applies).
+						transcriptTokens: cline.getTokenUsage().contextTokens,
 					}
 					cline.didTodoChange = false
 					cline.toolRepetitionDetector.recordResult(

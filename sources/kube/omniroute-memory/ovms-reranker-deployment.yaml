@@ -6,10 +6,9 @@ metadata:
   name: ovms-reranker
   namespace: omniroute-memory
 spec:
-  # Initial desired topology: the reranker-0.6b runs on all four Intel GPU nodes
-  # alongside the embedding replica (task 8.5, Req 4.1). The fallback 3+1
-  # topology is adopted only after the benchmark-contention gate (Req 4.2/4.3).
-  replicas: 4
+  # Keep one proven BGE reranker replica. Embeddings retain all four Arc nodes;
+  # any topology change requires a separate contention benchmark.
+  replicas: 1
   selector:
     matchLabels:
       app: ovms-reranker
@@ -20,22 +19,23 @@ spec:
       labels:
         app: ovms-reranker
     spec:
-      # One reranker per Intel GPU node, mirroring the embedding topology so the
-      # four nodes each run embedding + reranker for the initial desired state.
+      # Prefer a node without an embedding pod when spare Intel GPU capacity exists.
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app: ovms-reranker
-            topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: ovms-embeddings
+              topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - --rest_port=8000
-        - --model_name=qwen3-reranker-0.6b
-        - --model_path=/models/OpenVINO/Qwen3-Reranker-0.6B-int8-ov
-        # Digest-pinned to match the embedding image (task 8.5, Req 21).
-        image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
+        - --model_name=bge-reranker-base
+        - --model_path=/models/OpenVINO/bge-reranker-base-int8-ov
+        # Digest resolved from the live image that passed native rerank inference.
+        image: docker.io/openvino/model_server@sha256:a928903fe429f1e3e27107cc45932d30d95febfd2d1159dc50869c3eac76fc58
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -56,6 +56,7 @@ spec:
         # not-ready on a wedged GPU rerank path even when /v2/health/ready is
         # green (task 8.5, Req 5.3/5.4).
         readinessProbe:
+          httpGet: null
           exec:
             command:
             - /opt/readiness/rerank-probe.sh
@@ -68,11 +69,7 @@ spec:
           limits:
             cpu: "4"
             gpu.intel.com/i915: "1"
-            # arc-embed-ceiling-boost / FEAT-001: +50% off the live 8Gi base = 12Gi.
-            # Applied LIVE as a value-only patch (the live reranker keeps its HTTP
-            # /v2/health/ready probe; the exec rerank-probe.sh below is NOT applied
-            # live because /v3/rerank 404s on the live reranker). Measured OVMS
-            # footprint is ~5-6.6Gi, so 12Gi carries headroom (see live-verify.md).
+            # 12Gi keeps headroom above the measured 5-6.6Gi OVMS footprint.
             memory: 12Gi
           requests:
             cpu: "1"
@@ -106,11 +103,11 @@ spec:
       - args:
         - --pull
         - --model_repository_path=/models
-        - --source_model=OpenVINO/Qwen3-Reranker-0.6B-int8-ov
-        - --model_name=qwen3-reranker-0.6b
+        - --source_model=OpenVINO/bge-reranker-base-int8-ov
+        - --model_name=bge-reranker-base
         - --task=rerank
         - --target_device=GPU
-        image: docker.io/openvino/model_server@sha256:e7a448ec4eb885cab232a5f5ff8b9f41fb3b6f69401633c2af83cac260c40e8e
+        image: docker.io/openvino/model_server@sha256:a928903fe429f1e3e27107cc45932d30d95febfd2d1159dc50869c3eac76fc58
         imagePullPolicy: IfNotPresent
         name: model-pull
         resources: {}

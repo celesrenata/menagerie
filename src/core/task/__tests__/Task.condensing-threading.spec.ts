@@ -209,7 +209,13 @@ describe("Task condensing-handler threading", () => {
 
 	it("handleContextWindowExceededError() passes the resolved condensing handler to manageContext (set case)", async () => {
 		const { task } = createTask()
-		const built = { getModel: () => ({ id: "reader" }) } as unknown as ApiHandler
+		// Recovery now reads the candidate handler's resolved model info to size it as a
+		// Large_Context_Recovery_Handler; give the configured profile a window-sufficient info so the
+		// resolver prefers it and the threading contract (manageContext receives it) still holds.
+		const built = {
+			getModel: () => ({ id: "reader", info: modelInfo }),
+			getCondenseContextWindow: undefined,
+		} as unknown as ApiHandler
 		const resolverSpy = spyCondensingResolver(task, built)
 
 		await callHandleContextWindowExceeded(task)

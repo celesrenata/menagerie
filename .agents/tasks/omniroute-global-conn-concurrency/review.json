@@ -1,0 +1,32 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "label": "Connection-only key collapses co-located models",
+      "severity": "non-blocking",
+      "confidence": "confirmed (keying) / likely (topology)",
+      "detail": "The gate keys conn:<id> with the connection's max_concurrent, so a connection hosting both a 27B and a 9B (4070 Ti b20e0770; 5090 e9bd13fb per plan.md) collapses the two models onto one shared ceiling instead of the per-model 1/4 and 2/2 splits the plan designed. This deviates from plan.md (which specified conn:<id>:<model>) but satisfies this review's gate criterion #1, which explicitly accepts conn:<connectionId> keying. It strictly improves on the pre-change state (no priority-path gate at all) and matches the existing connection-scoped isAccountSemaphoreFull pattern. Does not block. Revisit with conn:<id>:<model> if the per-model split must be enforced."
+    },
+    {
+      "label": "Missing per-model-independence test",
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "detail": "Plan items 5 and 6(b) required a test proving model A (cap 1) and model B (cap 4) on one shared connection enforce independently and simultaneously. It is absent because connection-only keying cannot express it. Direct symptom of the design deviation, not a coverage oversight. Add it only if the design moves to conn:<id>:<model>."
+    },
+    {
+      "label": "Verification doc understates the deviation",
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "detail": "verification.md records the connection-only key and the reconciliation but does not note that co-located models now share one ceiling, silently dropping the plan's 4070 Ti 27B/9B (1/4) and 5090 27B/9B (2/2) per-model splits. Document the trade-off so a later reader does not assume the per-model split holds."
+    }
+  ],
+  "confirmations": {
+    "globalCapAcrossCombos": "PASS — process-global semaphore keyed conn:<connectionId>, acquired at the handleSingleModelWithTimeout chokepoint in executeTargetAttempt; two different combos on the same connection share one ceiling (dispatch test: cap=2, third waits, never three). Criterion #1 explicitly accepts conn:<connectionId> keying.",
+    "releaseTimingForStreams": "PASS — streaming success hands slot ownership to a ReadableStream wrapper; release fires only on close/cancel/error after the body is fully drained; slotHandedToStream prevents the finally from freeing early. Spot-check re-ran dispatch suite: 5 pass.",
+    "failOpenPreserved": "PASS — no connectionId / cap===null / cap<=0 -> null; saturated queue / timeout -> warn + null; cap lookup wrapped in .catch(() => null). Matches acquireQuotaShareConcurrencySlot.",
+    "noDoubleAcquire": "PASS — round-robin never reaches the chokepoint (keeps combo:<name>:<step>); quota-share keeps qsconn:<id> and is skipped here; priority/weighted/fill-first/dispatchSequence/fallback share conn:<id>. Reconciliation and the qsconn-vs-conn caveat documented in the helper header.",
+    "noOtherLaneImpact": "PASS for routing/sequence/window — whitespace-insensitive diff of executeTargetAttempt.ts shows only gate plumbing added; no contextWindow/maxTokens/dispatchSequence/weight/cap/timeout literal changed; the dispatchSequence+combo schema changes belong to the separate prior commit 94ca490d8. Note: co-located models now share a connection ceiling (see finding 1), a consequence of the gate's keying, not a routing/sequence/window edit.",
+    "testsPresentAndMeaningful": "PASS — gate helper (9 tests) and dispatch integration (5 tests) exist with meaningful assertions covering five required cases; coder's recorded run passed (gate 9/0, dispatch 5/0, closest suites 23/0, typecheck clean, eslint 0 errors). Verification evidence present and internally consistent."
+  },
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-global-conn-concurrency/review.md"
+}

@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "label": "Default config seeds no mode definitions",
+      "detail": "home-manager module defaults modes.projects=[] and globalStorage=false, so the custom-mode definitions (roomodes.yaml) reach no discovery path out of the box; only ~/.roo rules/skills/commands are seeded. Matches the documented strategy but is a usability trap. Consider documenting prominently or defaulting globalStorage on for the chosen editor."
+    },
+    {
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "label": "Toolchain patch drift unpinned",
+      "detail": "nixpkgs ships node 22.23.3 (repo pins 22.23.1) and pnpm 10.34.5 (repo pins 10.8.1); not overridden. Justified and documented (non-fatal engine warning; lockfileVersion 9.0 reads under any pnpm 10.x). Residual risk is a future nixpkgs bump silently changing the toolchain. Acceptable."
+    },
+    {
+      "severity": "informational",
+      "confidence": "confirmed",
+      "label": "menagerie-cli deferred by design",
+      "detail": "apps/cli is intentionally not an output; documented as a known follow-up requiring ripgrep wiring, not a gap."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/menagerie-flake/review.md"
+}

@@ -26,6 +26,7 @@ import {
 import { laneToRouteCapability } from "./capabilityLanes"
 import { computeCapacityBounds, createStaticRouteCapacityProvider, mergeRouteCapacityMap } from "./routeCapacityMap"
 import { normalizeWorkerResult } from "./normalizeWorkerResult"
+import type { WorkerResultWithRecovery } from "./recoveryTelemetry"
 import { pruneParallelTaskBatches } from "./parallelTaskRetention"
 import { AUTO_READER_NAME } from "./ParallelTaskReader"
 import { snapshotWorkingTree, createParallelWorkspace, exportParallelPatch } from "./ParallelTaskWorkspace"
@@ -529,7 +530,17 @@ export async function runParallelTasks(
 								// structured result. No new parent-injection path (design §FEAT-007).
 								const rawCompletion = await waitForParallelTask(child, runtime.provider, workerSignal)
 								const workerResult = normalizeWorkerResult(rawCompletion, { workerName: spec.name })
-								result.result = JSON.stringify(workerResult)
+								// Resilient Context Recovery (Req 6.1, 6.5, 6.6): merge this worker's
+								// accumulated recovery telemetry onto the normalized WorkerResult as the
+								// additive-optional `recovery` field BEFORE serialization — every base
+								// WorkerResult field is preserved and the block is omitted when no recovery
+								// occurred. It rides the `result` channel only; the parent still receives
+								// just its compacted summary via compactParallelTasksResultForParent (Req 6.6).
+								const recovery = child.getRecoveryTelemetry()
+								const workerResultWithRecovery: WorkerResultWithRecovery = recovery
+									? { ...workerResult, recovery }
+									: workerResult
+								result.result = JSON.stringify(workerResultWithRecovery)
 								result.state = "completed"
 							} finally {
 								// The worker's loop has settled: its `task-complete` boundary

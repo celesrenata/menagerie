@@ -1481,13 +1481,15 @@ describe("Cline", () => {
 				// re-read along the prompt path would change the observed behavior.
 				.mockResolvedValue(providerStateWith({ disabledTools: ["read_file"] }))
 
-			// Overflow the 50k window so manageContext takes the condense branch
-			// (the module-mocked summarizeConversation returns a summary).
+			// Keep the transcript within the task handler's Servable_Input_Budget (50k − 1024 = 48976)
+			// so resilient recovery resolves to the large-context (summarize) path on this.api and
+			// manageContext — and therefore getSystemPrompt — still runs, exercising the snapshot
+			// threading. A transcript above the budget would instead take the deterministic path.
 			vi.spyOn(task, "getTokenUsage").mockReturnValue({
 				totalCost: 0,
 				totalTokensIn: 0,
 				totalTokensOut: 0,
-				contextTokens: 100_000,
+				contextTokens: 40_000,
 			})
 			const ctxModelInfo: ModelInfo = { contextWindow: 50_000, maxTokens: 1024, supportsPromptCache: false }
 			vi.spyOn(task.api, "getModel").mockReturnValue({
@@ -4328,7 +4330,10 @@ describe("Cline", () => {
 
 			it("forwards the caller's options to the context-window retry recursion", async () => {
 				const task = await createRetryForwardingTask()
-				vi.spyOn(getTaskTestAccess(task), "handleContextWindowExceededError").mockResolvedValue(undefined)
+				// Converged recovery resumes the request once (retry: true), so the branch recurses.
+				vi.spyOn(getTaskTestAccess(task), "handleContextWindowExceededError").mockResolvedValue({
+					retry: true,
+				})
 				vi.spyOn(task.api, "createMessage")
 					.mockImplementationOnce(() => failingStream({ status: 400, message: "context length exceeded" }))
 					.mockImplementationOnce(() =>
@@ -4401,7 +4406,10 @@ describe("Cline", () => {
 
 			it("carries the derived model snapshot into the retry recursion when the caller omitted one", async () => {
 				const task = await createRetryForwardingTask()
-				vi.spyOn(getTaskTestAccess(task), "handleContextWindowExceededError").mockResolvedValue(undefined)
+				// Converged recovery resumes the request once (retry: true), so the branch recurses.
+				vi.spyOn(getTaskTestAccess(task), "handleContextWindowExceededError").mockResolvedValue({
+					retry: true,
+				})
 				const safeEnsureModelFetchedSpy = vi
 					.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched")
 					.mockResolvedValue(stubModelInfo)

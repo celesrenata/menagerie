@@ -1,0 +1,13 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "LOW",
+      "confidence": "possible",
+      "title": "Capped-scan surfacing is log-only on a successful scan",
+      "detail": "The cap warning flows through onError -> batchErrors -> console.error, but validateFullScan only promotes it to a thrown, UI-visible error when indexing substantially fails (indexed===0 with found>0, >10% unindexed, or firstError with indexed===0). A successful-but-truncated scan logs the warning without raising a status error. This traverses the existing onError path and matches the recorded tradeoff and the brief's wording, so it is informational only and not blocking.",
+      "location": "src/services/code-index/code-index-scan-executor.ts (validateFullScan); src/services/code-index/processors/scanner.ts (onError at cap)"
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/index-default-excludes/review.md"
+}

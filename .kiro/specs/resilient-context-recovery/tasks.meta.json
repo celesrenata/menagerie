@@ -1,0 +1,322 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create `src/core/task/servableBudget.ts` with `ServableBudgetInput` and `computeServableInputBudget`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788206
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521797130
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521894904
+      }
+    ],
+    "2.1 Create `src/core/task/convergentReduction.ts` with the reduction input/result types and `convergentReduction`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788231
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521798580
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521896285
+      }
+    ],
+    "3.1 Create `src/core/task/recoveryHandlerResolver.ts` with the candidate/resolution types and `resolveRecoveryHandler`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788254
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521799988
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521897691
+      }
+    ],
+    "4.1 Create `src/core/task/contextRecoveryClassifier.ts` with the outcome/error types and `classifyRecoveryOutcome`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788277
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521800966
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521898799
+      }
+    ],
+    "5.1 Create `src/core/task/recoveryTelemetry.ts` with the telemetry types and `WorkerResultWithRecovery`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788294
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521903576
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521969175
+      }
+    ],
+    "6. Checkpoint - Ensure all pure-component tests pass": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788312
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522225439
+      }
+    ],
+    "7.1 Replace the fixed 75% target with a budget-derived target in `handleContextWindowExceededError`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788329
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522231996
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522373955
+      }
+    ],
+    "7.2 Insert the additive recovery-handler resolution step on top of `getCondensingApiHandler`": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788354
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522377859
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522694385
+      }
+    ],
+    "8.1 Short-circuit the context-window retry branch in `attemptApiRequest` on a terminal outcome": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788370
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522698977
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522976203
+      }
+    ],
+    "8.2 Attach RecoveryTelemetry additively to the worker result": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788387
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522979659
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523141013
+      }
+    ],
+    "10. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521788406
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523655574
+      }
+    ],
+    "1. Implement the pure servable-budget arithmetic": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521894928
+      }
+    ],
+    "2. Implement the model-free convergent (deterministic) reduction": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521896308
+      }
+    ],
+    "3. Implement the pure recovery-handler resolver and recovery-input bound": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521897722
+      }
+    ],
+    "4. Implement the terminal recovery classifier": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521898825
+      }
+    ],
+    "5. Define RecoveryTelemetry as an additive-optional extension of WorkerResult": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521969203
+      }
+    ],
+    "1.2 Write property tests for the servable-budget arithmetic": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521991254
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522215646
+      }
+    ],
+    "2.2 Write property tests for single-pass convergence and the irreducible-core terminal condition": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521992644
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522216534
+      }
+    ],
+    "3.2 Write property tests for window-sufficiency, lane-independence, profile preference, and the input bound": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521994050
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522218054
+      }
+    ],
+    "4.2 Write property tests for terminal classification and bounded halt": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521995001
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522218888
+      }
+    ],
+    "5.2 Write property tests for telemetry fidelity and the additive-optional round trip": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791521996062
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522220091
+      }
+    ],
+    "7. Wire the budget-derived target and recovery-handler resolution into handleContextWindowExceededError": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791522694413
+      }
+    ],
+    "8. Wire the terminal classification short-circuit and recovery telemetry": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523141035
+      }
+    ],
+    "9.1 Write integration test for recovery threading through handleContextWindowExceededError/manageContext": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523150580
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523343101
+      }
+    ],
+    "9. Integration tests for the two wiring boundaries": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523343126
+      }
+    ],
+    "9.2 Write integration test for the terminal → failParallelWorker self-fail short-circuit": [
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523348157
+      },
+      {
+        "executionId": "0657fae0-d011-4159-ab7f-608f485b06b6",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523641752
+      }
+    ]
+  }
+}

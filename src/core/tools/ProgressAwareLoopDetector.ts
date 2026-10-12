@@ -517,6 +517,8 @@ export interface CapturedSignals {
 	todoChanged: boolean
 	resultChanged: boolean
 	cursorAdvanced: boolean
+	/** Conversation transcript token size, carried from {@link ToolResultContext} (Requirement 10.5). */
+	transcriptTokens?: number
 }
 
 /** Result of `evaluateProgress`: the band, the updated score, and the gate result. */
@@ -546,6 +548,8 @@ export interface ToolResultContext {
 	isPollingWorkflow?: boolean
 	/** Verification signal: observed success/failure that may contradict a claimed success. */
 	verifiedSucceeded?: boolean
+	/** Conversation transcript token size for this task, when derivable (Requirement 10.5). */
+	transcriptTokens?: number
 }
 
 /** The raw outcome of a tool execution supplied to the detector post-execution. */
@@ -560,10 +564,39 @@ export interface MetricsSink {
 	emitStop(event: { toolName: string; noProgressScore: number }): void
 }
 
+/**
+ * Per-task absolute ceilings enforced by the Absolute_Backstop (Requirement 10),
+ * independent of the `noProgressScore` and of every progress/stagnation signal.
+ */
+export interface AbsoluteBound {
+	/** Turn_Ceiling: max completed tool executions for a task before the backstop fires (Req 10.2, 10.4). */
+	turnCeiling: number
+	/** Transcript_Ceiling as a fraction of the serving context window, never a literal token count (Req 10.3, 10.5). */
+	transcriptWindowFraction: number
+}
+
+/**
+ * Default Absolute_Bound. `transcriptWindowFraction` is relative to the task's
+ * serving context window (Requirement 10.3), never a fixed literal token count.
+ */
+export const DEFAULT_ABSOLUTE_BOUND: AbsoluteBound = { turnCeiling: 400, transcriptWindowFraction: 0.9 }
+
 /** Optional dependencies injected into the detector. */
 export interface ProgressAwareLoopDetectorDeps {
 	metrics?: MetricsSink
 	now?: () => number
+	/** Requirement 10: per-task absolute ceilings; defaults to {@link DEFAULT_ABSOLUTE_BOUND} when omitted. */
+	absoluteBound?: AbsoluteBound
+	/**
+	 * Requirement 10.3: the task's serving context window (sourced from
+	 * `resolveOmniRouteContextWindow`). Injected so the detector never imports OmniRoute.
+	 */
+	servingContextWindow?: number
+	/**
+	 * Alternative to {@link servingContextWindow}: a provider the host populates per
+	 * task/lane, resolved at construction time.
+	 */
+	resolveContextWindow?: () => number
 }
 
 /**
@@ -599,6 +632,20 @@ export class ProgressAwareLoopDetector {
 	/** Optional clock; wired into timing-sensitive logic in task 8.1. */
 	private readonly now?: () => number
 
+	/**
+	 * Resolved Absolute_Bound for the task (Requirement 10). Defaults to
+	 * {@link DEFAULT_ABSOLUTE_BOUND} when the dependency is omitted. Consumed by the
+	 * absolute-backstop guard added in task 12.2.
+	 */
+	private readonly absoluteBound: AbsoluteBound
+	/**
+	 * Resolved serving context window in tokens (Requirement 10.3), injected via deps so
+	 * the detector never imports OmniRoute. `undefined` when neither `servingContextWindow`
+	 * nor `resolveContextWindow` was supplied, in which case the transcript ceiling is
+	 * disabled while the turn ceiling still applies.
+	 */
+	private readonly servingContextWindow?: number
+
 	/** Per-task iteration state, created lazily on first use. */
 	private states: Map<string, IterationState> = new Map()
 
@@ -612,9 +659,15 @@ export class ProgressAwareLoopDetector {
 		this.limit = limit
 		this.metrics = deps?.metrics
 		this.now = deps?.now
+		// Requirement 10: resolve the absolute bound (default when omitted) and the serving
+		// context window (either supplied directly or via a provider), injected so the detector
+		// stays OmniRoute-independent. Consumed by the backstop guard added in task 12.2.
+		this.absoluteBound = deps?.absoluteBound ?? DEFAULT_ABSOLUTE_BOUND
+		this.servingContextWindow = deps?.servingContextWindow ?? deps?.resolveContextWindow?.()
 		// `limit` and `now` are stored for use in later tasks (6.2 messaging, timing-sensitive
-		// logic). Reference them here so the fields are not flagged as unused. `metrics` is now
-		// used by the emission helpers (task 8.1), so it no longer needs a `void` guard.
+		// logic). `absoluteBound`/`servingContextWindow` are consumed by the task 12.2
+		// absolute-backstop guard (`absoluteBackstopExceeded`).
+		// Reference the not-yet-consumed fields here so they are not flagged as unused.
 		void this.limit
 		void this.now
 	}
@@ -716,6 +769,8 @@ export class ProgressAwareLoopDetector {
 			todoChanged: flags.todoChanged,
 			resultChanged: flags.resultChanged,
 			cursorAdvanced: flags.cursorAdvanced,
+			// Carried verbatim so task 12.2's absolute backstop can read transcript size (Requirement 10.5).
+			transcriptTokens: context.transcriptTokens,
 		}
 	}
 
@@ -744,6 +799,28 @@ export class ProgressAwareLoopDetector {
 		context?: ToolResultContext,
 	): BandDecision {
 		const state = this.getState(taskId)
+		state.completedExecutions += 1
+
+		// Requirement 10: absolute-backstop short-circuit at the head of the method,
+		// after incrementing `completedExecutions` and before any signal-to-score
+		// conversion. Independent of `noProgressScore` and of every progress/stagnation
+		// signal, so it fires even when every recent execution recorded a Progress_Signal
+		// (Requirements 10.1, 10.6). When neither ceiling is reached the guard returns
+		// false and control falls through to the unchanged band evaluation below, so no
+		// scoring band is altered (Requirement 10.9).
+		if (this.absoluteBackstopExceeded(state, captured)) {
+			// Leave the accumulated score intact; the band is forced to hard_stop (Req 10.7).
+			state.noProgressScore = clamp(state.noProgressScore, 0, 100)
+			// Reuse the existing hard-stop contract so the surfaced result is identical to
+			// the Requirement 8 hard stop (Requirement 10.7).
+			const result = bandToResult("hard_stop", captured.tool, state.completedExecutions)
+			// Emit the stop metric with the same { toolName, noProgressScore } shape as the
+			// Requirement 9.2 hard stop so a backstop stop is observable identically
+			// (Requirement 10.8). `emitStop` guards an optional, possibly-throwing sink so
+			// metric emission can never break gating.
+			this.emitStop(captured.tool, state.noProgressScore)
+			return { band: "hard_stop", noProgressScore: state.noProgressScore, result }
+		}
 
 		// Synthetic fallback carries only the tool name; it is conservatively
 		// non-iterative when no command/polling context is supplied.
@@ -751,7 +828,6 @@ export class ProgressAwareLoopDetector {
 
 		const delta = computeScoreDelta(captured, state, scoringBlock, context)
 		state.noProgressScore = clamp(state.noProgressScore + delta, 0, 100)
-		state.completedExecutions += 1
 
 		// Reflect the most recent evaluated execution (Requirement 2.4).
 		state.tool = captured.tool
@@ -775,6 +851,39 @@ export class ProgressAwareLoopDetector {
 		const band = deriveBand(state.noProgressScore)
 		const result = bandToResult(band, captured.tool, state.completedExecutions)
 		return { band, noProgressScore: state.noProgressScore, result }
+	}
+
+	/**
+	 * Requirement 10 Absolute_Backstop guard. Returns true when a per-task
+	 * Absolute_Bound has been exceeded, independent of the `noProgressScore` and of
+	 * every progress/stagnation signal.
+	 *
+	 * - Turn limb (Requirement 10.4): fires when `completedExecutions` reaches the
+	 *   configured `turnCeiling`. Always active.
+	 * - Transcript limb (Requirements 10.3, 10.5): fires when a positive serving
+	 *   context window and a known `transcriptTokens` are both available and the
+	 *   transcript size reaches `floor(window × transcriptWindowFraction)`. When the
+	 *   serving window is unresolvable (`undefined`/non-positive) or the transcript
+	 *   size is unknown, this limb is disabled — no fabricated ceiling, no throw —
+	 *   while the turn limb still applies (per the design's Error Handling).
+	 */
+	private absoluteBackstopExceeded(state: IterationState, captured: CapturedSignals): boolean {
+		// Turn_Ceiling (Requirement 10.4): always active, independent of the window.
+		if (state.completedExecutions >= this.absoluteBound.turnCeiling) {
+			return true
+		}
+
+		// Transcript_Ceiling (Requirements 10.3, 10.5): disabled unless both the serving
+		// window and the transcript size are known.
+		const window = this.servingContextWindow ?? 0
+		if (window > 0 && captured.transcriptTokens !== undefined) {
+			const ceiling = Math.floor(window * this.absoluteBound.transcriptWindowFraction)
+			if (captured.transcriptTokens >= ceiling) {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	/**

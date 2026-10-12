@@ -117,7 +117,18 @@ import { extractKnownTargetPaths } from "../../services/glob/readDenylist"
 import { RooProtectedController } from "../protect/RooProtectedController"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
-import { manageContext, willManageContext } from "../context-management"
+import { manageContext, willManageContext, estimateTokenCount } from "../context-management"
+import { computeServableInputBudget } from "./servableBudget"
+import { convergentReduction, type ConvergentReductionResult } from "./convergentReduction"
+import { resolveRecoveryHandler, type RecoveryHandlerCandidate } from "./recoveryHandlerResolver"
+import {
+	classifyRecoveryOutcome,
+	CONTEXT_OVERFLOW_NON_RECOVERABLE,
+	type RecoveryOutcome,
+	type RetryDecision,
+	type TerminalContextError,
+} from "./contextRecoveryClassifier"
+import type { RecoveryAttemptTelemetry, RecoveryTelemetry } from "./recoveryTelemetry"
 import { ClineProvider } from "../webview/ClineProvider"
 import { MultiSearchReplaceDiffStrategy } from "../diff/strategies/multi-search-replace"
 import {
@@ -195,7 +206,6 @@ function queuedResponseForAsk(type: ClineAsk, text?: string): QueuedAskResolutio
 	return { response: "messageResponse", requiresDurableAck: type === "completion_result" }
 }
 
-const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
 // A parallel worker's 9th consecutive failed request (1 original + 8 retries) fails it.
 const PARALLEL_WORKER_MAX_API_RETRIES = 8
@@ -274,6 +284,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public composedSurfaceProvider?: () => AppliedComposedSurface | undefined
 	/** Consecutive failed API attempts for a parallel worker; reset when a request streams assistant content to completion. */
 	private parallelWorkerApiFailures = 0
+	/**
+	 * Resilient Context Recovery (Req 6.1–6.6). One `RecoveryAttemptTelemetry` per recovery
+	 * attempt during `handleContextWindowExceededError`, accumulated across attempts for this
+	 * Task. Purely additive telemetry: the `runParallelTasks` collection site reads it via
+	 * `getRecoveryTelemetry()` and merges it onto the normalized `WorkerResult` as the optional
+	 * `recovery` field, never injecting it verbatim into the parent's conversation history (Req 6.6).
+	 */
+	private recoveryAttempts: RecoveryAttemptTelemetry[] = []
 	private readonly lifetimeController = new AbortController()
 	get lifetimeSignal(): AbortSignal {
 		return this.lifetimeController.signal
@@ -839,7 +857,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Set up diff strategy
 		this.diffStrategy = new MultiSearchReplaceDiffStrategy(diffFuzzyThreshold)
 
-		this.toolRepetitionDetector = new ProgressAwareLoopDetector(this.consecutiveMistakeLimit)
+		this.toolRepetitionDetector = new ProgressAwareLoopDetector(this.consecutiveMistakeLimit, {
+			// Req 10.3: feed the serving context window so the Absolute_Backstop's Transcript_Ceiling
+			// (a fraction of the window) can engage. Mirror the window resolution the context-exceeded
+			// path uses (`getCondenseContextWindow?.() ?? modelInfo.contextWindow`); the detector resolves
+			// this provider at construction, keeping it OmniRoute-independent.
+			resolveContextWindow: () => this.api.getCondenseContextWindow?.() ?? this.api.getModel().info.contextWindow,
+		})
 
 		// Initialize todo list if provided
 		if (initialTodos && initialTodos.length > 0) {
@@ -3006,6 +3030,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
+	 * Resilient Context Recovery (Req 6.1, 6.5). Returns the accumulated recovery telemetry for
+	 * this Task, or `undefined` when no recovery attempt occurred so an absent block reads as
+	 * "no recovery" rather than an empty record. The `runParallelTasks` collection site merges
+	 * this onto the normalized `WorkerResult` as the additive-optional `recovery` field; it is
+	 * never injected verbatim into the parent's conversation history (Req 6.6).
+	 */
+	public getRecoveryTelemetry(): RecoveryTelemetry | undefined {
+		return this.recoveryAttempts.length > 0 ? { attempts: [...this.recoveryAttempts] } : undefined
+	}
+
+	/**
 	 * Terminates a parallel worker without asking anyone: nobody can answer a worker's ask.
 	 * Idempotent; the first reason wins. The failure is recorded before any await so
 	 * waitForParallelTask sees it when abortTask() aborts lifetimeSignal.
@@ -4871,7 +4906,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return this.api.getModel().info
 	}
 
-	private async handleContextWindowExceededError(requestModelInfo: ModelInfo): Promise<void> {
+	private async handleContextWindowExceededError(requestModelInfo: ModelInfo): Promise<RetryDecision> {
 		const state = await this.providerRef.deref()?.getState()
 		const { profileThresholds = {} } = state ?? {}
 		// Use task-local values, not provider state, to prevent cross-task configuration leaks.
@@ -4896,6 +4931,60 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const contextWindow = this.api.getCondenseContextWindow?.() ?? modelInfo.contextWindow
 		const useAvailableInputForContextPercent = typeof this.api.getCondenseContextWindow === "function"
 
+		// Resilient Context Recovery (Req 2.1, 2.2, 2.4, 2.5): derive the reduction target from the
+		// Servable_Input_Budget (Served_Context_Window − Output_Reserve) instead of the fixed 75% of
+		// current size. `contextWindow` is the OmniRoute-owned served window read above and `maxTokens`
+		// is the Output_Reserve from getModelMaxOutputTokens — the same values the method already reads;
+		// no window literal is introduced.
+		const servableInputBudget = computeServableInputBudget({
+			servedContextWindow: contextWindow,
+			outputReserve: maxTokens && maxTokens > 0 ? maxTokens : 0,
+		})
+		// Resilient Context Recovery (Req 5.1, 5.2, 5.4): map a convergentReduction result to a
+		// RetryDecision via the pure classifier. `converged: true` → resume once (retry: true);
+		// `converged: false` means the minimal irreducible transcript still exceeds `budget` — the
+		// terminal condition, classified as a non-recoverable context-window overflow distinct from a
+		// transient API failure. Both the deterministic path and the large-context path's pre-/post-
+		// reduction route through this one mapping so the terminal signal is surfaced uniformly.
+		const decisionFromReduction = (
+			reduction: ConvergentReductionResult,
+			budget: number,
+			telemetry: { path: "large-context" | "deterministic"; handlerId?: string },
+		): RetryDecision => {
+			const outcome: RecoveryOutcome = reduction.converged
+				? { kind: "converged", postTokens: reduction.resultTokens }
+				: { kind: "non-recoverable", irreducibleTokens: reduction.resultTokens, budget }
+			const decision = classifyRecoveryOutcome(outcome)
+			// Resilient Context Recovery (Req 6.1–6.4): record one attempt per reduction — `path`
+			// and `handlerId` from the resolution, pre-/post-reduction sizes from convergentReduction's
+			// prevTokens/resultTokens, and the terminal classification on the attempt that declares a
+			// Terminal_Non_Recoverable_Error. Accumulated on the Task; the worker-result collection
+			// site attaches it additively (never injected into parent history, Req 6.6).
+			const attempt: RecoveryAttemptTelemetry = {
+				path: telemetry.path,
+				...(telemetry.handlerId !== undefined ? { handlerId: telemetry.handlerId } : {}),
+				preTokens: reduction.prevTokens,
+				postTokens: reduction.resultTokens,
+				...(decision.terminalError
+					? { terminal: { classification: CONTEXT_OVERFLOW_NON_RECOVERABLE } }
+					: {}),
+			}
+			this.recoveryAttempts.push(attempt)
+			return decision
+		}
+		// manageContext's `autoCondenseContextPercent` is a THRESHOLD percent, not an absolute target:
+		// it condenses when `contextPercent = 100 * prevContextTokens / divisor >= threshold`, where the
+		// divisor matches `useAvailableInputForContextPercent` (available input = window − reserve when
+		// true, else the full window). To make the budget the effective target we map it to the percent
+		// of that same divisor the budget occupies, so condensation fires precisely to bring the
+		// transcript to the Servable_Input_Budget rather than to a fixed fraction of its current size.
+		const budgetDivisor = useAvailableInputForContextPercent
+			? Math.max(1, contextWindow - (maxTokens && maxTokens > 0 ? maxTokens : 0))
+			: Math.max(1, contextWindow)
+		// Clamp to [0, 100]; we only reach this path already over-window, so the derived threshold is
+		// crossed and condensation/truncation runs toward the budget.
+		const budgetDerivedReductionPercent = Math.max(0, Math.min(100, (100 * servableInputBudget) / budgetDivisor))
+
 		// Get the current profile ID using the helper method
 		const currentProfileId = this.getCurrentProfileId(state)
 
@@ -4903,7 +4992,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		console.warn(
 			`[Task#${this.taskId}] Context window exceeded for model ${this.api.getModel().id}. ` +
 				`Current tokens: ${contextTokens}, Context window: ${contextWindow}. ` +
-				`Forcing truncation to ${FORCED_CONTEXT_REDUCTION_PERCENT}% of current context.`,
+				`Reducing toward Servable_Input_Budget ${servableInputBudget} tokens ` +
+				`(≈${budgetDerivedReductionPercent.toFixed(1)}% threshold).`,
 		)
 		// Send condenseTaskContextStarted to show in-progress indicator
 		await this.providerRef.deref()?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.taskId })
@@ -4950,15 +5040,168 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			const condensingApiHandler = await this.getCondensingApiHandler()
 
-			// Force aggressive truncation by keeping only 75% of the conversation history
+			// Resilient Context Recovery — additive recovery-handler resolution (Req 1.1–1.5, 4.1–4.4).
+			//
+			// getCondensingApiHandler() keeps its single-ApiHandler return contract untouched; this
+			// step merely *consults* its result alongside the task's own handler to decide whether a
+			// summarize call can safely carry the oversized transcript, and on which handler. Candidate
+			// windows/reserves come from each handler's resolved route/model info — no window literal is
+			// introduced. A configured large-context condensing profile is the distinct handler
+			// getCondensingApiHandler() resolves when `condensingApiConfigId` names a dedicated profile
+			// (identity-distinct from the `this.api` fallback).
+			const resolveHandlerBudget = (handler: ApiHandler): { contextWindow: number; outputReserve: number } => {
+				const handlerModel = handler.getModel()
+				// An unknown window (no model info) resolves to 0, so an unresolved candidate can never
+				// be mistaken for a window-sufficient recovery handler (Req 1.4).
+				const resolvedWindow = handler.getCondenseContextWindow?.() ?? handlerModel.info?.contextWindow ?? 0
+				const resolvedReserve = handlerModel.info
+					? getModelMaxOutputTokens({
+							modelId: handlerModel.id,
+							model: handlerModel.info,
+							settings: this.apiConfiguration,
+						})
+					: 0
+				return {
+					contextWindow: resolvedWindow,
+					outputReserve: resolvedReserve && resolvedReserve > 0 ? resolvedReserve : 0,
+				}
+			}
+
+			// A countTokens adapter over ApiMessage[] for the deterministic/convergent reduction floor.
+			// It routes through the given handler's token counter (estimateTokenCount → countTokens) and
+			// is never itself an LLM call.
+			const countMessageTokens =
+				(handler: ApiHandler) =>
+				async (messages: ApiMessage[]): Promise<number> => {
+					let total = 0
+					for (const message of messages) {
+						const content = message.content
+						if (Array.isArray(content)) {
+							total += await estimateTokenCount(content, handler)
+						} else if (typeof content === "string") {
+							total += await estimateTokenCount([{ type: "text", text: content }], handler)
+						}
+					}
+					return total
+				}
+
+			const handlerById = new Map<string, ApiHandler>()
+			const candidates: RecoveryHandlerCandidate[] = []
+
+			// The task's own handler is always a candidate (configured profile = false).
+			const ownHandlerId = "task-handler"
+			handlerById.set(ownHandlerId, this.api)
+			candidates.push({
+				id: ownHandlerId,
+				contextWindow,
+				outputReserve: maxTokens && maxTokens > 0 ? maxTokens : 0,
+				configuredLargeContextProfile: false,
+			})
+
+			// A distinct dedicated condensing profile (not the this.api fallback) is a configured
+			// large-context profile candidate (Req 1.5).
+			if (condensingApiHandler !== this.api) {
+				const condensingHandlerId = "condensing-profile"
+				const condensingBudget = resolveHandlerBudget(condensingApiHandler)
+				handlerById.set(condensingHandlerId, condensingApiHandler)
+				candidates.push({
+					id: condensingHandlerId,
+					contextWindow: condensingBudget.contextWindow,
+					outputReserve: condensingBudget.outputReserve,
+					configuredLargeContextProfile: true,
+				})
+			}
+
+			// Resolve recovery independently of the failing lane's window (Req 1.2): the required
+			// recovery input is the current transcript token count.
+			const recoveryResolution = resolveRecoveryHandler({
+				requiredRecoveryInput: contextTokens || 0,
+				candidates,
+			})
+
+			let effectiveTotalTokens = contextTokens || 0
+
+			if (recoveryResolution.path === "deterministic") {
+				// No window-sufficient handler exists (Req 1.3): skip the summarize call entirely and
+				// reduce the transcript to the Servable_Input_Budget directly via Deterministic_Reduction.
+				const messagesBeforeReduction = this.apiConversationHistory.length
+				const reduction = await convergentReduction({
+					messages: this.apiConversationHistory,
+					currentTokens: effectiveTotalTokens,
+					targetTokens: servableInputBudget,
+					countTokens: countMessageTokens(this.api),
+				})
+
+				if (reduction.messages !== this.apiConversationHistory) {
+					await this.overwriteApiConversationHistory(reduction.messages)
+				}
+
+				if (reduction.prevTokens !== reduction.resultTokens) {
+					const contextTruncation: ContextTruncation = {
+						truncationId: crypto.randomUUID(),
+						messagesRemoved: Math.max(0, messagesBeforeReduction - reduction.messages.length),
+						prevContextTokens: reduction.prevTokens,
+						newContextTokens: reduction.resultTokens,
+					}
+					await this.say(
+						"sliding_window_truncation",
+						undefined /* text */,
+						undefined /* images */,
+						false /* partial */,
+						undefined /* checkpoint */,
+						undefined /* progressStatus */,
+						{ isNonInteractive: true } /* options */,
+						undefined /* contextCondense */,
+						contextTruncation,
+					)
+				}
+
+				// Surface the terminal/resume decision: convergentReduction targeted the
+				// Servable_Input_Budget directly, so its `converged` flag maps straight to the outcome.
+				return decisionFromReduction(reduction, servableInputBudget, { path: "deterministic" })
+			}
+
+			// large-context path (Req 1.1): run the summarize/condense via the resolved recovery handler
+			// — which may be the configured condensing profile or the task's own handler — pre-reducing
+			// the input to the handler's Recovery_Input_Bound first so the summarize call itself can
+			// never overflow the recovery handler's window (Req 4.1, 4.2, 4.4).
+			const resolvedRecoveryHandler =
+				(recoveryResolution.handlerId ? handlerById.get(recoveryResolution.handlerId) : undefined) ??
+				condensingApiHandler
+			const recoveryInputBound = recoveryResolution.recoveryInputBound ?? servableInputBudget
+
+			if (effectiveTotalTokens > recoveryInputBound) {
+				const preReduction = await convergentReduction({
+					messages: this.apiConversationHistory,
+					currentTokens: effectiveTotalTokens,
+					targetTokens: recoveryInputBound,
+					countTokens: countMessageTokens(resolvedRecoveryHandler),
+				})
+				if (preReduction.messages !== this.apiConversationHistory) {
+					await this.overwriteApiConversationHistory(preReduction.messages)
+				}
+				effectiveTotalTokens = preReduction.resultTokens
+
+				// If the irreducible core cannot fit even the recovery handler's Recovery_Input_Bound,
+				// the summarize call can never be issued safely (Req 4.4) and recovery is terminal — the
+				// decision is surfaced before attempting the LLM call.
+				const preReductionDecision = decisionFromReduction(preReduction, recoveryInputBound, {
+					path: "large-context",
+					handlerId: recoveryResolution.handlerId,
+				})
+				if (!preReductionDecision.retry) {
+					return preReductionDecision
+				}
+			}
+
 			const truncateResult = await manageContext({
 				messages: this.apiConversationHistory,
-				totalTokens: contextTokens || 0,
+				totalTokens: effectiveTotalTokens,
 				maxTokens,
 				contextWindow,
-				apiHandler: condensingApiHandler,
+				apiHandler: resolvedRecoveryHandler,
 				autoCondenseContext: true,
-				autoCondenseContextPercent: FORCED_CONTEXT_REDUCTION_PERCENT,
+				autoCondenseContextPercent: budgetDerivedReductionPercent,
 				systemPrompt: await this.getSystemPrompt(state, modelInfo),
 				taskId: this.taskId,
 				profileThresholds,
@@ -5005,6 +5248,25 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					contextTruncation,
 				)
 			}
+
+			// Deterministic floor (Req 2.5): summarization is tried first for quality, but a summarize
+			// that errored or did not reach the Servable_Input_Budget must still converge. Run the
+			// model-free reduction toward the budget and surface its outcome — converging resumes the
+			// request once, an irreducible core that still exceeds the budget is terminal (Req 5.1).
+			const postSummaryTokens = truncateResult.newContextTokens ?? effectiveTotalTokens
+			const floorReduction = await convergentReduction({
+				messages: this.apiConversationHistory,
+				currentTokens: postSummaryTokens,
+				targetTokens: servableInputBudget,
+				countTokens: countMessageTokens(this.api),
+			})
+			if (floorReduction.messages !== this.apiConversationHistory) {
+				await this.overwriteApiConversationHistory(floorReduction.messages)
+			}
+			return decisionFromReduction(floorReduction, servableInputBudget, {
+				path: "large-context",
+				handlerId: recoveryResolution.handlerId,
+			})
 		} finally {
 			// Notify webview that context management is complete (removes in-progress spinner)
 			// IMPORTANT: Must always be sent to dismiss the spinner, even on error
@@ -5455,8 +5717,28 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
 						`Attempting automatic truncation...`,
 				)
-				await this.handleContextWindowExceededError(requestModelInfo)
-				// Retry the request after handling the context window error
+				const recoveryDecision = await this.handleContextWindowExceededError(requestModelInfo)
+
+				// Resilient Context Recovery (Req 5.1–5.5): a non-recoverable outcome stops the retry
+				// loop instead of recursing forever. convergentReduction could not bring the irreducible
+				// core under the Servable_Input_Budget, so recovery is terminal.
+				if (!recoveryDecision.retry && recoveryDecision.terminalError) {
+					const terminalError: TerminalContextError = recoveryDecision.terminalError
+					if (this.parallelWorker) {
+						// Nobody can answer a worker's api_req_failed ask; self-fail cleanly with a
+						// context-overflow reason so the batch is unblocked rather than idling against
+						// PARALLEL_WORKER_MAX_API_RETRIES (Req 5.3). Mirrors the consecutive-mistake and
+						// output-token-limit worker-fail branches that end the generator.
+						await this.failParallelWorker(terminalError.message)
+						return
+					}
+					// A non-worker task throws the classified terminal error so auto-retry stops
+					// recursing (Req 5.2, 5.5). The thrown Error carries the non-recoverable
+					// context-window-overflow classification, distinct from a transient API failure.
+					throw Object.assign(new Error(terminalError.message), terminalError)
+				}
+
+				// Retry the request after handling the context window error (converged under budget).
 				yield* this.attemptApiRequest(retryAttempt + 1, retryOptions)
 				return
 			}

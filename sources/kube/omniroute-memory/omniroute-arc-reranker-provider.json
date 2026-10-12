@@ -1,0 +1,9 @@
+{
+  "name": "Arc Reranker",
+  "prefix": "arc-reranker",
+  "apiType": "rerank",
+  "type": "openai-compatible",
+  "baseUrl": "http://ovms-reranker.omniroute-memory.svc.cluster.local:8000",
+  "chatPath": "/v3/rerank",
+  "model": "arc-reranker/bge-reranker-base"
+}

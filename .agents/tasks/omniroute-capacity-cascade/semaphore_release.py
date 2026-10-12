@@ -818,7 +818,7 @@ def run_occupancy_scenario(name, models, affinity=False):
     try:
         direct_models = {"vllm": "vllm/qwen3.8-27b-nvfp4", "ollama-local": "ollama-local/qwen3.8:27b-iq3-code144k"}
         filler_index = 0
-        for provider in ("vllm", "ollama-local", "vllm"):
+        for provider in ("ollama-local", "vllm", "vllm"):
             if needed_by_provider[provider] <= 0:
                 continue
             acquire_one(direct_models[provider], filler_index, {provider})

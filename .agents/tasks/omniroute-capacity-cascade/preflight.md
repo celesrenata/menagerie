@@ -1,0 +1,12 @@
+# OmniRoute Capacity Cascade Preflight
+
+Verified read-only at `2026-10-10T23:26:48Z` against `verification.md`, `requirements.md`, `design.md`, and `plan.md`.
+
+- Candidate worktree `/home/celes/sources/omniroute-capacity-cascade-20261010T222530Z` exists on `celes@192.168.42.254`. Its HEAD remains `ad45d990c9f17e857f0bd03aacd1ff29b1825658`; every worktree blob, including the two untracked focused-test files, matches candidate tree `812c5586fcbeb611fc4feade85d251fe799366f0`, with no extra changed paths. The approved-revision-to-candidate-tree binary diff SHA-256 remains `70e4800c52a5cf74b8fff6d6a7c4c7bcadcb6b832baba3007113e0629d306020`.
+- The previously passed focused changed-test result remains 162/162 in the authoritative verification evidence, and all focused test artifacts in the unchanged candidate tree remain available. No rebuild or test rerun is needed.
+- `docker buildx imagetools inspect` resolves immutable candidate `registry.celestium.life/library/omniroute@sha256:388fa7e33a360bfa4d18b4414ed92af66b5a32eeba38db055d76da50651ae4aa`. Its labels remain `org.opencontainers.image.revision=ad45d990c9f17e857f0bd03aacd1ff29b1825658`, `life.celestium.omniroute.candidate-tree=812c5586fcbeb611fc4feade85d251fe799366f0`, and `life.celestium.omniroute.diff-sha256=70e4800c52a5cf74b8fff6d6a7c4c7bcadcb6b832baba3007113e0629d306020`.
+- Deployment `omniroute` and its ready application pod remain on the old healthy immutable image `registry.celestium.life/library/omniroute@sha256:41a9b0a6ecc1f2d9a333adea2af62ae5f90079ec4bb93c5ddf6f48e1f3dabd87`. Authenticated `GET /healthz` returned HTTP 200.
+- Writable durable policy `/home/celes/sources/celesrenata/nix-flakes-refactored/home/programs/omniroute-mode.py` remains byte-identical to backup `/home/celes/.local/state/omniroute-routing/20261010T231637Z-capacity-cascade/omniroute-mode.py`.
+- Authenticated combo readback still contains exactly 93 records, and every full combo record is byte-for-byte JSON-equivalent to `combos.full.json`. All three providers' durable/configuration fields match the backup; only runtime health/synchronization fields were excluded from that comparison. The rollback journal records the policy apply stopping before its first write and contains no successful provider/combo mutation, followed by completed and verified rollback.
+
+Conclusion: the candidate artifacts and live restored baseline still match the recorded evidence. Proceed from the existing tested candidate without rebuilding or rerunning tests.

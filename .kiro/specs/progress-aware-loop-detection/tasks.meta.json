@@ -352,6 +352,92 @@
         "chatSessionId": "sess_c5c737be-08c0-4159-901c-18703124d873",
         "timestamp": 1791280796342
       }
+    ],
+    "12.1 Add the Absolute_Bound types, default, and detector dependencies": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523725756
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523853643
+      }
+    ],
+    "12.2 Add the `absoluteBackstopExceeded` guard and short-circuit `evaluateProgress`": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523862148
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523976937
+      }
+    ],
+    "12.3 Emit the stop metric when the Absolute_Backstop fires": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523985180
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524141430
+      }
+    ],
+    "12.4 Supply transcript size and serving window from the host": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524156616
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524298488
+      }
+    ],
+    "12. Implement the progress-independent Absolute_Backstop": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524298529
+      }
+    ],
+    "12.5 Write property tests for the Absolute_Backstop": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524303283
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524449984
+      }
+    ],
+    "12.6 Write unit/edge tests for backstop boundaries and metric parity": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524451066
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524591404
+      }
+    ],
+    "13. Final checkpoint - Ensure all backstop tests pass": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524602688
+      }
     ]
   }
 }

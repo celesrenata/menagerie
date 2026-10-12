@@ -6,6 +6,8 @@ This plan implements the `ProgressAwareLoopDetector` that replaces the exact-rep
 
 All code is TypeScript in the VS Code extension (`src/`). The detector preserves the `ToolRepetitionCheckResult` discriminated union so the sole runtime call site (`src/core/assistant-message/presentAssistantMessage.ts`) keeps its `allowExecution`/`nudge`/`askUser` branching. The class is renamed with a compatibility export preserving `ToolRepetitionCheckResult` and a `ToolRepetitionDetector` alias.
 
+Tasks 12 onward (added additively) implement the Requirement 10 Absolute_Backstop: a progress-independent short-circuit at the head of `evaluateProgress` that forces the existing `hard_stop` result when a per-task Turn_Ceiling or a Transcript_Ceiling (relative to the serving context window) is exceeded. The backstop reuses `bandToResult("hard_stop", ...)` and the existing `emitStop` sink, so it changes no scoring band and no call-site contract; the serving window is injected via deps so the detector never imports OmniRoute.
+
 Property tests use `fast-check` at the package-local unit layer under `src/core/tools/__tests__/`, tagged `// Feature: progress-aware-loop-detection, Property N: ...`, with a minimum of 100 iterations each. No e2e is required — the logic depends on neither the extension host nor the webview.
 
 After editing any file, run the narrowest Vitest suite and `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 <file>` per AGENTS.md; suppression counts must not increase.
@@ -178,6 +180,48 @@ After editing any file, run the narrowest Vitest suite and `pnpm --dir src exec 
 - [x] 11. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
+- [x] 12. Implement the progress-independent Absolute_Backstop
+  - [x] 12.1 Add the Absolute_Bound types, default, and detector dependencies
+    - In `src/core/tools/ProgressAwareLoopDetector.ts`, add the exported `AbsoluteBound` interface (`turnCeiling`, `transcriptWindowFraction`) and the exported `DEFAULT_ABSOLUTE_BOUND` constant (`{ turnCeiling: 400, transcriptWindowFraction: 0.9 }`).
+    - Extend `ProgressAwareLoopDetectorDeps` with optional `absoluteBound`, `servingContextWindow`, and `resolveContextWindow`, and store the resolved bound/window on the detector in the constructor (defaulting to `DEFAULT_ABSOLUTE_BOUND` when omitted). The detector MUST NOT import OmniRoute; the serving window is injected.
+    - Add the optional `transcriptTokens?: number` field to `ToolResultContext` and to `CapturedSignals`, and carry it through `afterTool` into the captured signals.
+    - Run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 src/core/tools/ProgressAwareLoopDetector.ts`; confirm the suppression count did not increase.
+    - _Requirements: 10.1, 10.2, 10.3_
+
+  - [x] 12.2 Add the `absoluteBackstopExceeded` guard and short-circuit `evaluateProgress`
+    - Implement `private absoluteBackstopExceeded(state, captured)` returning true when `state.completedExecutions >= turnCeiling` (Req 10.4) or, when a positive serving window and `captured.transcriptTokens` are both available, when `transcriptTokens >= floor(window × transcriptWindowFraction)` (Req 10.5); return false when the window or transcript size is unavailable (transcript limb disabled, turn limb still applies).
+    - Add the short-circuit at the head of `evaluateProgress` (after incrementing `completedExecutions`, before signal-to-score conversion): when the guard is true, force a `hard_stop` `BandDecision` via `bandToResult("hard_stop", captured.tool, state.completedExecutions)` leaving `noProgressScore` intact, and do not touch any scoring band when the guard is false.
+    - Run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 src/core/tools/ProgressAwareLoopDetector.ts`.
+    - _Requirements: 10.1, 10.4, 10.5, 10.6, 10.7, 10.9_
+
+  - [x] 12.3 Emit the stop metric when the Absolute_Backstop fires
+    - Invoke the existing `emitStop(captured.tool, state.noProgressScore)` path on the backstop short-circuit so a backstop stop carries `toolName` and `noProgressScore` identically to the Requirement 9.2 hard stop, wrapped so a throwing sink cannot break gating.
+    - Run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 src/core/tools/ProgressAwareLoopDetector.ts`.
+    - _Requirements: 10.8_
+
+  - [x] 12.4 Supply transcript size and serving window from the host
+    - In `src/core/assistant-message/presentAssistantMessage.ts`, populate `ToolResultContext.transcriptTokens` from the transcript measure the host already tracks when calling `recordResult(block, result, context)`; keep the existing `check()` gate branching unchanged.
+    - In `src/core/task/Task.ts`, pass the task's serving context window into the detector construction via `ProgressAwareLoopDetectorDeps` (sourced from `resolveOmniRouteContextWindow` for the task's lane), without changing the field type or the compatibility alias.
+    - Run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 src/core/assistant-message/presentAssistantMessage.ts src/core/task/Task.ts`.
+    - _Requirements: 10.3, 10.7_
+
+  - [x]* 12.5 Write property tests for the Absolute_Backstop
+    - In `src/core/tools/__tests__/ProgressAwareLoopDetector.spec.ts`:
+    - **Property 11: The absolute backstop fires regardless of progress** — every execution records a progress signal (score stays in the continue band), yet reaching the `Turn_Ceiling` or the transcript ceiling returns an `askUser` hard stop with `messageKey === "mistake_limit_reached"` and non-empty `messageDetail` (`// Feature: progress-aware-loop-detection, Property 11: ...`, ≥100 runs).
+    - **Property 12: The transcript ceiling is relative to the serving context window** — arbitrary positive window `W` and fraction `f` in (0,1] ⇒ firing threshold equals `floor(W × f)` and scales with `W` (`// Feature: progress-aware-loop-detection, Property 12: ...`, ≥100 runs).
+    - **Property 13: Below both ceilings the backstop does not alter band evaluation** — states below both ceilings ⇒ `evaluateProgress` returns the same `BandDecision` as the unmodified score-based evaluation for the same captured signals (`// Feature: progress-aware-loop-detection, Property 13: ...`, ≥100 runs).
+    - Run `npx vitest run src/core/tools/__tests__/ProgressAwareLoopDetector.spec.ts` and `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 src/core/tools/__tests__/ProgressAwareLoopDetector.spec.ts`.
+    - _Requirements: 10.1, 10.3, 10.4, 10.5, 10.6, 10.7, 10.9_
+    - _Properties: 11, 12, 13_
+
+  - [x]* 12.6 Write unit/edge tests for backstop boundaries and metric parity
+    - Assert the turn limb fires exactly at `completedExecutions === turnCeiling` and not before; assert the transcript limb is disabled (no fabricated ceiling, no throw) when the serving window is unresolvable or `transcriptTokens` is `undefined`, while the turn limb still applies; assert a mocked `MetricsSink.emitStop` receives `toolName` and `noProgressScore` on a backstop stop and that a throwing sink does not break the gate.
+    - Run `npx vitest run src/core/tools/__tests__/ProgressAwareLoopDetector.spec.ts`.
+    - _Requirements: 10.4, 10.5, 10.8_
+
+- [x] 13. Final checkpoint - Ensure all backstop tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
 ## Notes
 
 - Tasks marked with `*` are optional test sub-tasks and can be skipped for a faster MVP; core implementation tasks are never optional.
@@ -201,7 +245,12 @@ After editing any file, run the narrowest Vitest suite and `pnpm --dir src exec 
     { "id": 6, "tasks": ["6.2"] },
     { "id": 7, "tasks": ["6.3", "6.4", "6.5", "8.1"] },
     { "id": 8, "tasks": ["8.2", "9.1", "9.2"] },
-    { "id": 9, "tasks": ["10.1"] }
+    { "id": 9, "tasks": ["10.1"] },
+    { "id": 10, "tasks": ["12.1"] },
+    { "id": 11, "tasks": ["12.2", "12.4"] },
+    { "id": 12, "tasks": ["12.3"] },
+    { "id": 13, "tasks": ["12.5"] },
+    { "id": 14, "tasks": ["12.6"] }
   ]
 }
 ```
