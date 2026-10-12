@@ -26,13 +26,15 @@ The governing principle is **the smallest model capable of obtaining reliable ev
 | `AttemptCompletionTool` | `src/core/tools/AttemptCompletionTool.ts` | Reader termination uses the existing short reader `attempt_completion` contract (Req 3.6). |
 | `Task.condenseContext` | `src/core/task/Task.ts` | Condensation of the parent conversation history; this design keeps reader execution strictly independent of it (Req 11). |
 | `ProgressAwareLoopDetector` (hard stop on no-progress across multiple completed executions) | `src/core/tools/ProgressAwareLoopDetector.ts` (`progress-aware-loop-detection`) | Its cyclic-behavior / hard-stop signal is one GLM adjudication trigger (Req 8.8). |
+| `Task.readInputBytesConsumed` (per-worker read-input "Lever 2" counter) updated by `ReadFileTool`; `OMNIROUTE_ROUTE_CONTEXT_WINDOWS` / `resolveOmniRouteContextWindow(routeId)` | `src/core/task/Task.ts`, `src/core/tools/ReadFileTool.ts`, `src/api/providers/omniroute.ts` | The reader read-budget coherence derives a reader's cumulative read-input bound **from the lane's `Served_Context_Window`** (resolved read-only via `resolveOmniRouteContextWindow`) and compares it against the existing `readInputBytesConsumed` signal; it reuses the Lever-2 counter and the OmniRoute window map rather than adding a new read-accounting path or a hard-coded size (Req 14). |
 
 ### Cross-spec contracts consumed (not redefined)
 
 - **elastic-parallel-execution**: `RouteCapability = "reader" | "reasoner" | "long-context" | "vision" | "general"`; `RouteCapacity { route, capacity, available, capability, pressure? }`; `RouteCapacityProvider`; `InferenceLeasePool.acquire(priority, signal)`; `BoundedElasticScheduler { admitPlan, dispatch, onWorkerSettled, snapshotStates }`; `SchedulingPriority`; `LogicalWorker`; `ExecutionPlan`; `ParallelismMetrics`. This spec adds a lane layer **above** the scheduler; the scheduler's mechanics and the `RouteCapability` enum are untouched.
 - **mastermind-execution-metadata**: `WorkerResult { status, summary, findings, evidence, changes, tests, blockers, artifacts, reasoning? }`; `WorkerReasoningPolicy`; `AdaptiveReasoningController`; `VerificationPolicy`; `AutonomousTaskState`; `ParallelTaskSpec.reasoning?/verification?`. This spec **additively** extends `WorkerResult` with optional `RoutingMetadata`; the base contract and the reasoning controller are unchanged.
 - **semantic-first-retrieval**: `RetrievalGatewayClient.retrieve`, `EvidencePacket`, `SemanticFinding`, `Worker_Bootstrap_Retrieval`, `Reader_Swarm_Packet`, `Shared_Retrieval_Memory`, `ExplorationPolicy`. The prepared-context work package consumes reader findings plus `Worker_Bootstrap_Retrieval` evidence; readers consume reader-swarm packets.
-- **progress-aware-loop-detection**: `ProgressAwareLoopDetector` cyclic-behavior hard stop is a GLM escalation/adjudication trigger.
+- **progress-aware-loop-detection**: `ProgressAwareLoopDetector` cyclic-behavior hard stop is a GLM escalation/adjudication trigger, and is the absolute backstop that complements (but does not replace) the reader read-budget coherence bound.
+- **resilient-context-recovery**: `Served_Context_Window` (as resolved via `resolveOmniRouteContextWindow` / the handler's model info) and the recovery/terminal behavior that runs *when* a transcript nonetheless exceeds its window. This spec consumes `Served_Context_Window` read-only to derive a reader's coherent read-input bound and prevents the overrun at the reader-ingestion boundary; it does **not** redefine the recovery or terminal classification that `resilient-context-recovery` owns. The `Task.readInputBytesConsumed` Lever-2 budget mechanism and reader-worker semantics are consumed from `elastic-parallel-execution`.
 
 ## Architecture
 
@@ -348,6 +350,49 @@ export interface WorkerResultWithRouting extends WorkerResult {
 
 `RoutingMetadata` is machine-readable and consumed by OmniRoute/NerveCenter (Req 12.3). It is **never** injected verbatim into the parent context: the parent continues to receive only the bounded, compacted `WorkerResult` summary through `compactParallelTasksResultForParent`, which does not carry the metadata block (Req 12.4).
 
+### `ReaderReadBudget` — read-input coherence with the lane window
+
+A reader worker already accumulates read-input bytes in `Task.readInputBytesConsumed` (the "Lever 2" per-worker budget signal owned by `elastic-parallel-execution`, incremented by `ReadFileTool` on each returned `nativeContent`). The defect this component fixes is that that budget was **not coherent with the reader lane's `Served_Context_Window`**: a `reader.fast` worker on `hybrid/fast` (served window 32768 per `OMNIROUTE_ROUTE_CONTEXT_WINDOWS`) could ingest ~360K tokens of read-input — ~10× its window — before a turn boundary forced condensation. `ReaderReadBudget` makes the reader's cumulative read-input bound **a pure function of the lane's `Served_Context_Window`**, resolved read-only from OmniRoute, so a reader can never be allowed to ingest far more than its lane can hold (Req 14).
+
+The component is pure, synchronous, and performs no I/O: the lane window and the cumulative read-input signal are passed in. It never reads a GPU, VRAM, or model identity — only the lane role and the OmniRoute-owned window value (Req 14.4, 14.5).
+
+```ts
+/** The lane's served window, resolved read-only from OmniRoute (resolveOmniRouteContextWindow). */
+export interface ReaderReadBudgetInput {
+	/** The Served_Context_Window for the reader's lane, in tokens. `undefined` ⇒ unknown route. */
+	servedContextWindow: number | undefined // Req 14.2, 14.6
+	/** Cumulative read-input already consumed by this reader worker (Task.readInputBytesConsumed). */
+	readInputConsumed: number // Lever-2 signal (elastic-parallel-execution)
+	/**
+	 * Fraction of the lane window a reader's cumulative read-input may occupy before the bound
+	 * engages. A role-level coherence coefficient (≤ 1 by construction), NOT a fixed per-lane size.
+	 */
+	windowFraction: number // Req 14.2
+	/** Approximate bytes-per-token used to express the token-denominated window as a read-input bound. */
+	bytesPerToken: number
+	/** The default per-worker read-input budget to fall back to when the window is unknown (Req 14.6). */
+	fallbackBudget: number // DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES (elastic-parallel-execution)
+}
+
+export type ReaderReadBudgetOutcome =
+	| { action: "within-budget"; bound: number; reasons: string[] }
+	| { action: "bound-reads"; bound: number; reasons: string[] } // Req 14.3
+	| { action: "summarize-and-conclude"; bound: number; reasons: string[] } // Req 14.3
+
+export interface ReaderReadBudget {
+	/**
+	 * Derives the coherent read-input bound from the lane window and reports whether the reader's
+	 * cumulative read-input is within it, must bound further reads, or should summarize-and-conclude.
+	 * The bound is `windowFraction * servedContextWindow * bytesPerToken` when the window is known,
+	 * and `fallbackBudget` when it is not (Req 14.2, 14.6). The function states the WHAT; it does not
+	 * choose or implement the stop/summarize mechanism (Req 14.3).
+	 */
+	evaluate(input: ReaderReadBudgetInput): ReaderReadBudgetOutcome
+}
+```
+
+The derived bound is a monotonic, non-decreasing function of the lane `Served_Context_Window`: a larger lane window yields a larger coherent read budget, and shrinking the window shrinks the budget — so the bound tracks the OmniRoute-owned window and never a hard-coded size (Req 14.1, 14.2). When `servedContextWindow` is `undefined` (an unknown route), the component yields the existing per-worker `fallbackBudget` behavior rather than treating the absence as an error (Req 14.6). The outcome names *what* must happen at the boundary — keep reading, bound further reads, or summarize-and-conclude — and leaves the mechanism to the Lever-2 read path in `ReadFileTool` and the reader lifecycle; it does **not** redefine the recovery or terminal behavior that `resilient-context-recovery` applies once a transcript nonetheless exceeds its window (Req 14.3, 14.7). Where this bound engages at the reader-ingestion boundary, `resilient-context-recovery` is the recovery/terminal fallback and `progress-aware-loop-detection` is the absolute backstop; the three are complementary, not duplicative.
+
 ### Scheduler and spec wiring (additive, no mechanics change)
 
 - Lane assignment rides on the existing `ParallelTaskSpec`: reader specs use `mode: "project-reader"` (unchanged); the chosen lane is carried as additive routing metadata and the resolved `RouteCapability` is what `BoundedElasticScheduler`/`InferenceLeasePool` already consume. The `.max(...)` cap and `.strip()` behavior are untouched.
@@ -463,6 +508,20 @@ interface RoutingMetadata {
 	hardware_lane?: string | null
 }
 interface WorkerResultWithRouting extends WorkerResult { routing?: RoutingMetadata }
+
+// ── Reader read-budget coherence with the lane window (additive, pure) ─────
+interface ReaderReadBudgetInput {
+	servedContextWindow: number | undefined // Served_Context_Window (OmniRoute-owned); undefined ⇒ unknown route
+	readInputConsumed: number // Task.readInputBytesConsumed (Lever-2 signal, elastic-parallel-execution)
+	windowFraction: number // role-level coherence coefficient, NOT a fixed per-lane size
+	bytesPerToken: number
+	fallbackBudget: number // DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES fallback for unknown routes
+}
+type ReaderReadBudgetOutcome =
+	| { action: "within-budget"; bound: number; reasons: string[] }
+	| { action: "bound-reads"; bound: number; reasons: string[] }
+	| { action: "summarize-and-conclude"; bound: number; reasons: string[] }
+// evaluate(input) -> ReaderReadBudgetOutcome  (pure; bound derived from the lane window, never hard-coded)
 ```
 
 **Reconciliation with sibling types.** `RouteCapability`, `RouteCapacity`, `RouteCapacityProvider`, and `InferenceLeasePool` are consumed from `elastic-parallel-execution` unchanged. `WorkerResult`, `EvidenceReference`, and `AutonomousTaskState` are consumed from `mastermind-execution-metadata`; `RoutingMetadata` is an additive optional extension that preserves every base `WorkerResult` field. `EvidencePacket`/`Worker_Bootstrap_Retrieval` are consumed from `semantic-first-retrieval`. The loop signal is consumed from `progress-aware-loop-detection`. Lane assignment reuses `ParallelTaskSpec.mode`/`route` additively; the `RouteCapability` enum, the scheduler mechanics, the `WorkerResult` base, the reasoning controller, and condensation are all unchanged.
@@ -533,6 +592,12 @@ Each entry below is universally quantified and names the acceptance criteria it 
 
 **Validates: Requirements 9.2, 9.4, 9.5, 9.6, 9.7, 13.2**
 
+### Property 11: A reader's read-input bound is derived from the lane window and is never a hard-coded size
+
+*For any* `ReaderReadBudgetInput` with a known `servedContextWindow`, the coherent read-input bound equals a function of the lane `Served_Context_Window` alone (holding `windowFraction` and `bytesPerToken` fixed) and is monotonically non-decreasing in that window — feeding two inputs that differ only in the lane window yields proportionally ordered bounds, and no fixed context-window literal participates in the computation; *for any* input whose `servedContextWindow` is `undefined`, the bound is exactly the per-worker `fallbackBudget` rather than an error; and *for any* `readInputConsumed` strictly exceeding the bound, the outcome is `bound-reads` or `summarize-and-conclude` (never `within-budget`), so a reader's cumulative read-input is never allowed to grow unbounded past a window-derived budget.
+
+**Validates: Requirements 14.1, 14.2, 14.3, 14.5, 14.6**
+
 ## Error Handling
 
 - **Absent `RoutingMetadata` field (Req 12.5).** Never an error. The consumer treats any missing field as unset (`undefined`); the escalation and GLM gates read missing triggers as "not present" and default to the non-escalating, non-invoking outcome.
@@ -543,6 +608,8 @@ Each entry below is universally quantified and names the acceptance criteria it 
 - **Builder inputs carrying raw source (Req 6.5).** Not an error; the `PreparedContextWorkPackageBuilder` copies only concise findings and evidence references and drops any raw source, so the package can never leak full file contents to `coder.primary`.
 - **Legacy specs / stray keys.** Lane assignment rides additively on `ParallelTaskSpec`; `.strip()` continues to drop unknown keys and specs without lane metadata validate and route under the default (`reader.fast` for reader tasks).
 - **Unknown `RouteCapability` from a remapped lane.** Impossible by construction: `laneToRouteCapability` is total and range-safe into the fixed enum; a lane never yields a value outside `RouteCapability`.
+- **Unknown lane `Served_Context_Window` (Req 14.6).** Not an error. When `resolveOmniRouteContextWindow` returns `undefined` for the reader's route, `ReaderReadBudget.evaluate` yields the existing per-worker `fallbackBudget` (`DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES`, owned by `elastic-parallel-execution`), so an unknown/new route degrades to the Lever-2 default rather than failing.
+- **Reader read-input crossing the window-derived bound (Req 14.3, 14.7).** Not an error at this layer; the component reports `bound-reads` or `summarize-and-conclude` and the Lever-2 read path / reader lifecycle acts on it. This bound prevents the overrun at the reader-ingestion boundary; if a transcript nonetheless exceeds its `Served_Context_Window`, the recovery/terminal classification owned by `resilient-context-recovery` applies, and `progress-aware-loop-detection` remains the absolute backstop.
 
 ## Testing Strategy
 
@@ -556,6 +623,7 @@ Per AGENTS.md, coverage sits at the **narrowest layer** that proves the behavior
 - **`PreparedContextWorkPackageBuilder.build`** — field-subset and no-raw-source over generated inputs including raw-source-bearing origins (Property 5).
 - **`GlmInvocationGate.evaluate`** — invoke-iff-trigger and scarcity (Property 6), with adjudication triggers generated from `RoutingMetadata`, failure counts, and loop signals.
 - **`RoutingMetadata` extension** — additive-optional round trip over generated base `WorkerResult`s; absent-field-is-unset; the compacted parent view excludes the verbatim metadata block (Property 9).
+- **`ReaderReadBudget.evaluate`** — window-derived, no-hard-coded-size, and monotonic-in-window bound over generated `ReaderReadBudgetInput`; `undefined` window falls back to the per-worker budget; read-input over the bound never returns `within-budget` (Property 11). The lane-window value is a passed-in number sourced from `resolveOmniRouteContextWindow`, so this stays a package-local unit/property test; the real `ReadFileTool` read path and reader lifecycle wiring are covered at the integration layer only where the reader-ingestion boundary genuinely needs it, and the recovery/terminal behavior is cross-referenced to `resilient-context-recovery` rather than re-tested here.
 
 **Integration tests (`src`), with faked collaborators from `src/test-utils`.**
 

@@ -1,0 +1,54 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "HIGH",
+      "title": "release(alias) in finally underflows the per-alias counter when acquire() raises",
+      "location": "The acquire/evict state machine (intro); Hazard 7",
+      "problem": "acquire increments record.generating only on success and raises (BackendUnavailable/ModelSwitchQueueTimeout) without incrementing on failure, yet the stated contract runs release(alias) in finally on every exit path INCLUDING 503. A 503 from acquire means no increment happened, so the unconditional release decrements a counter that was never incremented, driving generating negative, corrupting the drained predicate, and potentially spuriously decrementing a live OTHER backend's counter during an eviction timeout.",
+      "fix": "Bind the slot release to acquire SUCCESS, not to the handler finally. Have acquire return the record/sentinel on success and start the try/finally that owns release AFTER acquire returns, so a raising acquire never reaches the finally. Update Hazard 7 to remove 503 from the 'every exit path' list (or qualify it as 'every exit path after a successful acquire'). State explicitly: a finally:release must NOT run when acquire raised."
+    },
+    {
+      "id": 2,
+      "severity": "MEDIUM",
+      "title": "Coalesced-waiter ready.wait() timeout is shorter than the starter's worst-case cold start",
+      "location": "Class 2 STARTING branch; Class 3 inherited copy; finding-7 response",
+      "problem": "The starter's wall time is launchctl_start (up to ~15s) PLUS health_wait(timeout=startup_timeout), i.e. up to 15+startup_timeout before ready.set(). The coalesced waiter parks with timeout=startup_timeout, so its deadline can elapse ~15s before a legitimately slow-but-successful cold start completes, raising BackendUnavailable (503) on a request whose backend is seconds from RESIDENT. The design's claim that both 'share one bound and neither times out early' is false as specified.",
+      "fix": "Give the waiter headroom over the starter: waiter_timeout = LAUNCHCTL_START_TIMEOUT + startup_timeout (define LAUNCHCTL_START_TIMEOUT as a module constant reused for the kickstart bound), or make the waiter bound generously larger and rely on start_error/gone (not the timeout) as the authoritative give-up signal. State the chosen value and where it is defined."
+    },
+    {
+      "id": 3,
+      "severity": "MEDIUM",
+      "title": "/admin/select acquire-then-immediate-release leaves undefined pin semantics and an eviction race",
+      "location": "Admin and catchall paths — /admin/select",
+      "problem": "acquire increments then release decrements the slot immediately, producing a RESIDENT record with generating==0 that is instantly eligible for eviction by the next unrelated exclusive request. The design never defines whether /admin/select means 'pin until replaced' or 'warm up then release', so an operator select can be evicted a moment later. Given the stated intent (glm+uzu default), this is likely not the desired behavior and is left undefined.",
+      "fix": "Specify intended semantics explicitly: either (a) document /admin/select as warm-up-only (ensure started, return resident set, normal eviction rules apply), or (b) add an explicit pin mechanism distinct from the counter slot and state how it is cleared. Pick one and write it down."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "title": "Class 1 prose conflates base_url with ollama lifecycle fields",
+      "location": "Class 1 — ollama / non-launchctl",
+      "problem": "Prose says the handler forwards to ollama base_url (true for forwarding), but ollama activation elsewhere uses ollama_url/ollama_model (verified in source ollama_load_model/ollama_unload_model). Class 1 does no activation, so it is harmless, but the wording invites a misread that ollama_load_model is still called.",
+      "fix": "Reword: 'forwards to ollama base_url as today; Class 1 performs NO ollama_load_model/ollama_unload_model and no health_wait — ollama residency is entirely untracked.'"
+    },
+    {
+      "id": 5,
+      "severity": "NIT",
+      "title": "Stale models.json.new scratch file unaddressed in Files to modify",
+      "location": "Files to modify",
+      "problem": "A sibling models.json.new exists with entirely different aliases (ds4 :8080, evocua). The design never mentions it; an implementer could edit/deploy the wrong file.",
+      "fix": "Add a line: models.json.new is a stale scratch file (different aliases, not the deploy target) and must be left untouched; this change edits only models.json."
+    },
+    {
+      "id": 6,
+      "severity": "NIT",
+      "title": "/v1/models can now report multiple active:true entries — client contract change not called out",
+      "location": "Admin and catchall paths — /v1/models (handle_models)",
+      "problem": "Today exactly one alias reports active:true; after the change GLM and Uzu can both be active:true. Downstream consumers assuming single-active may misbehave. The design treats this as a mechanical flag change without flagging the semantic shift.",
+      "fix": "Note explicitly that /v1/models may report multiple active:true entries and confirm (at the integration layer) no consumer relies on single-active."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/proxy-coexistence/design-review.md"
+}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovms-reranker
+  namespace: omniroute-memory
+  labels:
+    app: ovms-reranker
+spec:
+  selector:
+    app: ovms-reranker
+  ports:
+  - name: http
+    port: 8000
+    protocol: TCP
+    targetPort: http

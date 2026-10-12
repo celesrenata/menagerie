@@ -444,7 +444,9 @@ describe("Task parallel worker failure (A4)", () => {
 		const { task, access, steps, counterAtCall, run } = await createLoopTask()
 		const handleContextWindowExceededError = vi
 			.spyOn(access, "handleContextWindowExceededError")
-			.mockResolvedValue(undefined)
+			// Converged recovery resumes the request once (retry: true); the retry branch recurses
+			// without counting against the worker API-retry cap.
+			.mockResolvedValue({ retry: true })
 		const contextWindowError = Object.assign(new Error("This model's maximum context length is 8192 tokens"), {
 			status: 400,
 		})

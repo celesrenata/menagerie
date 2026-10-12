@@ -1,0 +1,35 @@
+{
+  "verdict": "APPROVED",
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/arc-embed-ceiling-boost/design-review.md",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "title": "Fallback step-down is described as 'powers of two' but the enumerated sequence lists a non-power-of-two (6144).",
+      "where": "design.md RC3/F2 ('step down from 8192 by powers of two — 8192→6144→4096') and Out-of-scope.",
+      "problem": "6144 is 4096+2048, not a power of two, so the prose and the listed sequence disagree. Both interpretations are safe because every candidate is gated by the same measured sweep, so no wrong ceiling can ship — hence NIT — but it is an avoidable ambiguity in a live-cluster runbook.",
+      "fix": "Reword to a stepwise search between the proven 4096 and the target 8192 (e.g. '8192 → 6144 → 4096, picking the largest size that passes the gate') and drop the 'powers of two' phrasing, or keep strict powers of two (8192 → 4096) and drop 6144."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "title": "The 12k→8192 amendment's external record is the workflow step instruction itself; the design frames that as independent corroboration of a decision the instruction told it to preserve.",
+      "where": "design.md F1 ('provenance of the two recorded decisions') and 'User answers to open decisions (RECORDED 2026-10-09)'; original user request says 'boost to 12k'.",
+      "problem": "The only verbatim user statement in scope says 12k; the design sets 8192 and partly justifies provenance via 'this step's own instruction corroborates them,' which is self-referential. The residual risk is already mitigated: 8192 is hard-gated (F2), shortfall escalates to the user, and the design mandates re-confirming the target before mutating the live cluster. Because the mutation is gated and a re-confirm path exists, no operator is forced to guess — hence NIT, not HIGH.",
+      "fix": "State plainly that the authoritative record of the amendment is the transcribed 'User answers' decision block (answered 2026-10-09 in wf_2b89ae97189de82e), and that implementation re-confirms the 8192 target with the user as the first live step if any ambiguity remains, rather than framing the step instruction as independent corroboration of itself."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "title": "ovms --configure runtime behavior on this image is asserted from --help, not demonstrated end-to-end; relied on as the chosen non-destructive regeneration mechanism.",
+      "where": "design.md F4 ('ovms --help confirms --configure … Chosen mechanism').",
+      "problem": "The non-destructive graph regeneration depends on `ovms --configure` actually rewriting graph.pbtxt to max_length:8192 on the deployed 2026.4.0 build against the populated ReadWriteOnce PVC. --help proves the flag parses, not that it regenerates without side effects. The design provides an --overwrite_models fallback and a hard 'graph.pbtxt reads 8192' acceptance check that catches a failed/no-op configure before the guard is raised, which is why this is a NIT.",
+      "fix": "Make the first RC3 action a single-replica dry-run of `ovms --configure … --max_length 8192` with the graph.pbtxt-reads-8192 check BEFORE committing to the mechanism, falling back to --overwrite_models only if --configure no-ops."
+    }
+  ],
+  "counts": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "NIT": 3
+  }
+}

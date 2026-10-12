@@ -236,6 +236,56 @@
         "chatSessionId": "sess_c58729c5-cd5d-4ad0-8bf7-dba07128c8bc",
         "timestamp": 1791294947707
       }
+    ],
+    "11.1 Create `src/core/task/readerReadBudget.ts` with `ReaderReadBudgetInput`, `ReaderReadBudgetOutcome`, and `evaluate`": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523724858
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523854567
+      }
+    ],
+    "11. Make a reader's read-input budget coherent with its lane's served context window": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523854591
+      }
+    ],
+    "11.2 Write property test for window-derived, no-hard-coded, monotonic read-budget coherence": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523863195
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523977892
+      }
+    ],
+    "11.3 Write integration test for the reader-ingestion boundary wiring": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791523986046
+      },
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524140402
+      }
+    ],
+    "12. Final checkpoint - Ensure the read-budget-coherence tests pass": [
+      {
+        "executionId": "6f37c7b8-1cac-492b-a6a9-4e43df87dfe4",
+        "chatSessionId": "sess_3bf3520b-f1a7-4966-85be-8c89f0b0e3bd",
+        "timestamp": 1791524155542
+      }
     ]
   }
 }

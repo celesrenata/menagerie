@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/celes</string>
+		<key>OMNIROUTE_DATA_DIR</key>
+		<string>/Users/celes/.omniroute</string>
+		<key>OMNIROUTE_DIRECT_HEADERS_TIMEOUT_MS</key>
+		<string>1200000</string>
+		<key>OMNIROUTE_SERVER_HOST</key>
+		<string>127.0.0.1</string>
+		<key>OMNIROUTE_STRICT_SYSTEM_PROVIDERS</key>
+		<string>vllm,llama-cpp</string>
+		<key>PATH</key>
+		<string>/nix/store/7cr3l1m9yyng2hscs8lj4x4bj0hm7908-nodejs-24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>RATE_LIMIT_MAX_WAIT_MS</key>
+		<string>300000</string>
+		<key>REQUIRE_API_KEY</key>
+		<string>false</string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>30</integer>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.celes.omniroute</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>-c</string>
+		<string>/bin/wait4path /nix/store &amp;&amp; exec /nix/store/3gx3gn8zrvpav8hdsj9za7rq12cahjbn-omniroute-server</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/celes/ai/logs/omniroute.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/celes/ai/logs/omniroute.log</string>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+</dict>
+</plist>

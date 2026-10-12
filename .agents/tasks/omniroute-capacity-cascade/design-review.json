@@ -1,0 +1,24 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "number": 1,
+      "severity": "HIGH",
+      "problem": "The design requires a six-file OmniRoute runtime/API patch and immutable-image deployment even though the governing requirements explicitly place OmniRoute application-source edits out of scope; listing a future requirements amendment as Phase 0 does not provide current authorization.",
+      "fix": "Separately amend and approve the requirements to authorize the exact files, tests, image build, immutable-digest deployment, and rollback before accepting this design; otherwise terminate the configuration-only approach as infeasible."
+    },
+    {
+      "number": 2,
+      "severity": "HIGH",
+      "problem": "The queueDepth=0 semantic proof cites schema acceptance, semaphore behavior, and the round-robin caller, but omits the config resolver that must preserve persisted numeric zero rather than replace it with a default. This leaves immediate 4070 and GLM failover unverified.",
+      "fix": "Add the exact comboConfig resolver citation proving nullish/default-safe preservation of zero and an end-to-end persistence/dispatch test asserting readback zero, queued=0, and immediate member/tier advancement at both combo-local and account gates."
+    },
+    {
+      "number": 3,
+      "severity": "MEDIUM",
+      "problem": "The rollout says backup must precede editing either source tree but also requires developing and testing the runtime patch before the production backup, which is impossible and leaves the backup boundary ambiguous.",
+      "fix": "Specify one order: isolated candidate development/test first; timestamped backup as the first production-host mutation before durable-source, deployment, API, or canary changes; then candidate deployment, canaries, and policy reconciliation."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/omniroute-capacity-cascade/design-review.md"
+}

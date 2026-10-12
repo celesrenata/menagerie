@@ -1,0 +1,7 @@
+{
+  "task_id": "task-arc-embed-ceiling-boost",
+  "task_description": "Apply the APPROVED design to the LIVE k3s cluster over SSH: fix the ovms-embeddings readiness/serving outage first, correct the wrong model id (qwen3-embedded -> qwen3-embedding-0.6b), raise the per-item context ceiling to 8192 across both the OmniRoute app guard and the OVMS graph (hard-gated on a measured sweep), raise memory limits +50% off the live 8Gi/8192 base (embeddings 12Gi, reranker 12Gi value-only patch, OMNIROUTE_MEMORY_MB 12288), then sync the stale local workspace manifests. qdrant is never touched. One surface at a time with live verification between each.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

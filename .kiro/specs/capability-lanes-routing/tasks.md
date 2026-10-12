@@ -174,10 +174,34 @@ counts must not increase. Do not create `.changeset` files or edit `CHANGELOG.md
 - [x] 10. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
+- [x] 11. Make a reader's read-input budget coherent with its lane's served context window
+  - [x] 11.1 Create `src/core/task/readerReadBudget.ts` with `ReaderReadBudgetInput`, `ReaderReadBudgetOutcome`, and `evaluate`
+    - Import nothing that encodes model/GPU/VRAM identity. Define `ReaderReadBudgetInput` (`servedContextWindow: number | undefined`, `readInputConsumed: number`, `windowFraction: number`, `bytesPerToken: number`, `fallbackBudget: number`) and `ReaderReadBudgetOutcome` (`within-budget` | `bound-reads` | `summarize-and-conclude`, each with `bound` and `reasons`).
+    - Implement a pure, synchronous `evaluate(input)`: when `servedContextWindow` is a known number, derive `bound = windowFraction * servedContextWindow * bytesPerToken` (a function of the OmniRoute-owned lane window alone — embed NO fixed context-window or per-lane byte/token literal as the bound); when `servedContextWindow` is `undefined`, set `bound = fallbackBudget` (the per-worker `DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES` from `elastic-parallel-execution`). The bound MUST be monotonically non-decreasing in `servedContextWindow`.
+    - Report `within-budget` when `readInputConsumed <= bound`; otherwise report `bound-reads` or `summarize-and-conclude` (state the WHAT only — do NOT choose or implement the stop/summarize mechanism, which lives in the Lever-2 read path and reader lifecycle). Set `reasons` to coherence tags only (lane role, window-known/unknown) — never model/GPU identity. Perform no I/O; `servedContextWindow` is passed in by the caller from `resolveOmniRouteContextWindow`.
+    - Run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0 src/core/task/readerReadBudget.ts`; confirm the suppression count did not increase.
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7_
+
+  - [x]* 11.2 Write property test for window-derived, no-hard-coded, monotonic read-budget coherence
+    - Create `src/core/task/__tests__/readerReadBudget.spec.ts` with the `fast-check` import.
+    - **Property 11: A reader's read-input bound is derived from the lane window and is never a hard-coded size** — over generated inputs with a known `servedContextWindow`, the bound equals a function of the lane window alone (holding `windowFraction`/`bytesPerToken` fixed) and is monotonically non-decreasing in the window; two inputs differing only in the window yield proportionally ordered bounds and no fixed context-window literal participates; an `undefined` window yields exactly `fallbackBudget`; and any `readInputConsumed` strictly over the bound returns `bound-reads` or `summarize-and-conclude`, never `within-budget` (`// Feature: capability-lanes-routing, Property 11: ...`, ≥100 runs).
+    - Run `npx vitest run src/core/task/__tests__/readerReadBudget.spec.ts`.
+    - _Requirements: 14.1, 14.2, 14.3, 14.5, 14.6_
+    - _Properties: 11_
+
+  - [x]* 11.3 Write integration test for the reader-ingestion boundary wiring
+    - In `src/core/task/__tests__/capabilityLaneRouting.integration.spec.ts`, drive a faked reader `Task` whose `readInputBytesConsumed` crosses a window-derived bound for a reader lane resolved to `hybrid/fast` (served window 32768 via a faked `resolveOmniRouteContextWindow`). Assert that `evaluate` reports `bound-reads`/`summarize-and-conclude` at the boundary (not `within-budget`), that an unknown route falls back to the per-worker `DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES` behavior, and that the lane-window value flows read-only from the OmniRoute resolver. Cross-reference `resilient-context-recovery` for the recovery/terminal behavior once a transcript exceeds its window and `progress-aware-loop-detection` for the absolute backstop instead of re-testing them.
+    - Run `npx vitest run src/core/task/__tests__/capabilityLaneRouting.integration.spec.ts`.
+    - _Requirements: 14.3, 14.6, 14.7_
+    - _Properties: 11_
+
+- [x] 12. Final checkpoint - Ensure the read-budget-coherence tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
 ## Notes
 
 - Tasks marked with `*` are optional test sub-tasks and can be skipped for a faster MVP; core implementation tasks are never optional.
-- Each task references specific requirement sub-clauses (`_Requirements:_`) and, where applicable, the design correctness properties (`_Properties:_`) for traceability. All 13 requirements and all 10 correctness properties are covered.
+- Each task references specific requirement sub-clauses (`_Requirements:_`) and, where applicable, the design correctness properties (`_Properties:_`) for traceability. All 14 requirements and all 11 correctness properties are covered.
 - Every addition is additive TypeScript above the scheduler and worker-result contracts: no scheduler mechanics, `WorkerResult` base, `RouteCapability` enum, reasoning controller, or condensation behavior changes. Sibling-spec types are consumed read-only.
 - The three decision components (`RoutingPolicy`, `ReaderEscalationDecision`, `GlmInvocationGate`) and the `PreparedContextWorkPackageBuilder` are pure (no I/O) so they are unit- and property-testable; capacity, failure history, and loop signals are passed in.
 - Property tests use `fast-check` at the package-local unit layer under `src/core/task/__tests__/`, each tagged `// Feature: capability-lanes-routing, Property N: ...` with ≥100 iterations. Integration tests use faked collaborators; scheduler interleavings and the `WorkerResult` base contract are cross-referenced to the sibling specs, not re-tested.
@@ -193,8 +217,8 @@ counts must not increase. Do not create `.changeset` files or edit `CHANGELOG.md
     { "id": 2, "tasks": ["2.2", "3.1", "4.1", "5.1", "6.1"] },
     { "id": 3, "tasks": ["3.2", "4.2", "5.2", "6.2", "8.1"] },
     { "id": 4, "tasks": ["8.2", "8.3"] },
-    { "id": 5, "tasks": ["8.4", "9.1"] },
-    { "id": 6, "tasks": ["9.2"] }
+    { "id": 5, "tasks": ["8.4", "9.1", "11.1"] },
+    { "id": 6, "tasks": ["9.2", "11.2", "11.3"] }
   ]
 }
 ```

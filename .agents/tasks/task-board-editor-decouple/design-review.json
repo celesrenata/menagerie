@@ -1,0 +1,46 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MEDIUM",
+      "title": "taskRegistry.getCurrentTaskId() does not exist on TaskRegistry",
+      "where": "Decision A reap seam; Affected files taskCreationCallback bullet",
+      "problem": "The reap guard uses taskRegistry.getCurrentTaskId(), but TaskRegistry exposes only `current` (getter), length, taskIds, getById, getAll, getRunning, hasRunning. No getCurrentTaskId() or getCurrentTask() exists; it would not compile.",
+      "fix": "Use this.getCurrentTask()?.taskId === terminatedTaskId or this.taskRegistry.current?.taskId === terminatedTaskId in the reap guard, and update both the Decision A and Affected-files bullets to name a real accessor."
+    },
+    {
+      "id": 2,
+      "severity": "MEDIUM",
+      "title": "onTaskAborted is a synchronous listener with no status write; symmetric 'after status write + emit' phrasing is inaccurate",
+      "where": "Decision A reap bullet; Affected files taskCreationCallback bullet; Error handling",
+      "problem": "onTaskCompleted is async and writes 'completed' status before emit; onTaskAborted is a synchronous arrow (() => this.emit(TaskAborted)) with no status write. The design describes both symmetrically, and the assumption that 'aborted' is already persisted before the reap is unstated/unverified.",
+      "fix": "Describe the two listeners separately: onTaskCompleted appends reap after its await status write + emit; onTaskAborted appends void this.dispose() after emit (no status write there). Add and verify the assumption that 'aborted' is persisted by the abort flow before this listener fires."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "title": "detachTabView() reverses dispose()'s view-dispose/clearWebviewResources order; 'mirrors' overstates it",
+      "where": "Decision A step 3; Affected files detachTabView() description",
+      "problem": "dispose() disposes this.view then calls clearWebviewResources(); detachTabView() nulls this.view, calls clearWebviewResources(), then disposes the captured panel. The reversed order is intentional and correct for re-entrancy, but 'mirrors the panel dispose that dispose() would have done' is imprecise.",
+      "fix": "Reword to: performs the same panel disposal dispose() performs, but ordered after clearWebviewResources() and after nulling this.view so the re-entrant onDidDispose short-circuits."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "title": "bindWebview must select exactly one of onDidChangeViewState / onDidChangeVisibility by view shape",
+      "where": "Affected files bindWebview(view); Decision C rebindView",
+      "problem": "bindWebview is described as registering 'the onDidChangeViewState/onDidChangeVisibility repost listener', which could read as registering both. resolveWebviewView branches on 'onDidChangeViewState' in view (panel) vs 'onDidChangeVisibility' in view (sidebar). A re-bound popout is always a WebviewPanel.",
+      "fix": "State that bindWebview keeps the existing in-operator discriminator and registers exactly the one listener matching the view shape (panel -> onDidChangeViewState)."
+    },
+    {
+      "id": 5,
+      "severity": "NIT",
+      "title": "Only the /8 summary literal is hardcoded; no second count assertion exists",
+      "where": "Decision D; Affected files check-task-cleanup-protocol.ts bullet",
+      "problem": "The design hedges 'bump /8 -> /9 and any count assertion against the landmark total'. In check-task-cleanup-protocol.ts the only hardcoded total is the /8 summary literal; the actions line uses expectedActions.length and the landmark check compares against the expectedLandmarks array, both dynamic.",
+      "fix": "Tighten to: the only hardcoded total is the /8 summary literal; bump to /9 and add the new entry to expectedLandmarks (and view-detach to expectedActions). No other count assertion needs editing."
+    }
+  ],
+  "reviewDoc": "/Users/celes/sources/celesrenata/menagerie/.agents/tasks/task-board-editor-decouple/design-review.md"
+}

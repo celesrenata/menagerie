@@ -10,6 +10,8 @@ The detector preserves a result contract compatible with the existing `ToolRepet
 
 This spec is scoped only to loop detection. Task observatory, tier semantics, semantic retrieval, branding, parallelism, and metrics-as-features are separate specs. Metrics emitted for nudge and stop events are described only as outputs of this detector.
 
+The No_Progress_Score Hard_Stop (Requirements 6 and 7) is necessary but not sufficient: a task can keep producing Progress_Signals every turn (`resultChanged`, `workspaceChanged`, `cursorAdvanced`) and thus never accumulate enough No_Progress_Score to Hard_Stop, while its conversation transcript grows without bound — a "productively spinning" loop observed in a live production incident, in which a parallel reader worker reached 539 messages and roughly 360,000 tokens without ever tripping the progress-based Hard_Stop. Requirement 10 adds an Absolute_Backstop: a hard ceiling independent of progress signals that fires a Hard_Stop when a single task exceeds an absolute bound on completed tool executions or on transcript size relative to its serving context window. The Absolute_Backstop is the loop-detection safety net only; actual context-window recovery (lane-independent condensing and convergent reduction) is the concern of the sibling spec `resilient-context-recovery` and is a Non-Goal here, so the two specs do not overlap.
+
 ## Glossary
 
 - **Progress_Aware_Loop_Detector**: The replacement detector class that evaluates progress across four phases per tool execution and produces an escalation decision. Successor to `ToolRepetitionDetector`.
@@ -24,6 +26,11 @@ This spec is scoped only to loop detection. Task observatory, tier semantics, se
 - **normalizedArgsHash**: A stable hash of the tool's arguments after normalization (canonical key ordering and relevant field selection), used to compare argument identity across executions independent of serialization order.
 - **resultHash**: A stable hash of the tool execution result, used to detect whether result contents changed between executions.
 - **cursor**: A string or numeric position (for example a read offset, pagination token, or line range) extracted from a tool's arguments or result that advances when iterative progress is made.
+- **Absolute_Backstop**: A hard ceiling, independent of the No_Progress_Score and of all Progress_Signals and Stagnation_Signals, that fires a Hard_Stop when a single task exceeds a per-task Absolute_Bound. The Absolute_Backstop closes the "productively spinning" gap in which a task keeps producing Progress_Signals every turn and therefore never accumulates enough No_Progress_Score to Hard_Stop, while its conversation transcript grows without bound.
+- **Absolute_Bound**: The pair of per-task ceilings the Absolute_Backstop enforces: the Turn_Ceiling on completed tool executions and the Transcript_Ceiling on conversation transcript size. Exceeding either ceiling fires the Absolute_Backstop.
+- **Turn_Ceiling**: The maximum number of completed tool executions a single task may accumulate before the Absolute_Backstop fires, independent of progress.
+- **Transcript_Ceiling**: The maximum conversation transcript token size a single task may reach before the Absolute_Backstop fires, expressed as a configurable fraction of the task's Serving_Context_Window rather than as a fixed literal.
+- **Serving_Context_Window**: The context-window token capacity of the model serving the task's Capability_Lane, as exposed by OmniRoute (`resolveOmniRouteContextWindow` over `OMNIROUTE_ROUTE_CONTEXT_WINDOWS` in `src/api/providers/omniroute.ts`). The Transcript_Ceiling is defined relative to this value.
 
 ## Requirements
 
@@ -143,3 +150,20 @@ This spec is scoped only to loop detection. Task observatory, tier semantics, se
 
 1. WHEN the Progress_Aware_Loop_Detector issues a Nudge, THE Progress_Aware_Loop_Detector SHALL emit a nudge metric output that includes the tool name and the No_Progress_Score.
 2. WHEN the Progress_Aware_Loop_Detector issues a Hard_Stop, THE Progress_Aware_Loop_Detector SHALL emit a stop metric output that includes the tool name and the No_Progress_Score.
+
+### Requirement 10: Absolute Backstop Independent of Progress
+
+**User Story:** As a Menagerie maintainer, I want an absolute per-task ceiling that fires a hard stop regardless of progress signals, so that a "productively spinning" task whose transcript grows without bound is still stopped even when every turn records a Progress_Signal.
+
+#### Acceptance Criteria
+
+1. THE Progress_Aware_Loop_Detector SHALL maintain an Absolute_Backstop that fires a Hard_Stop regardless of the No_Progress_Score when a per-task Absolute_Bound is exceeded.
+2. THE Absolute_Bound SHALL comprise a Turn_Ceiling on the count of completed tool executions for a task and a Transcript_Ceiling on the conversation transcript size for that task.
+3. THE Transcript_Ceiling SHALL be expressed as a configurable fraction of the task's Serving_Context_Window rather than as a fixed literal token count.
+4. WHEN the count of completed tool executions for a task reaches the Turn_Ceiling, THE Progress_Aware_Loop_Detector SHALL fire the Absolute_Backstop and issue a Hard_Stop.
+5. WHEN the conversation transcript size for a task reaches the Transcript_Ceiling, THE Progress_Aware_Loop_Detector SHALL fire the Absolute_Backstop and issue a Hard_Stop.
+6. WHILE every recent completed tool execution recorded a Progress_Signal, THE Progress_Aware_Loop_Detector SHALL still fire the Absolute_Backstop when an Absolute_Bound is exceeded.
+7. WHEN the Absolute_Backstop fires, THE Progress_Aware_Loop_Detector SHALL return a result compatible with `ToolRepetitionCheckResult` having `allowExecution` set to false and an `askUser` payload with `messageKey` equal to `mistake_limit_reached` and a populated `messageDetail`, so that existing call sites in `presentAssistantMessage.ts` require no change.
+8. WHEN the Absolute_Backstop fires, THE Progress_Aware_Loop_Detector SHALL emit a stop metric output that includes the tool name and the No_Progress_Score, consistent with the stop metric output of Requirement 9.
+9. IF neither the Turn_Ceiling nor the Transcript_Ceiling has been reached, THEN THE Progress_Aware_Loop_Detector SHALL defer entirely to the No_Progress_Score band evaluation of Requirements 6 and 7 without altering any scoring band.
+10. THE Progress_Aware_Loop_Detector SHALL treat context-window recovery (lane-independent condensing and convergent reduction) as out of scope, deferring that concern to the sibling spec `resilient-context-recovery`, and SHALL limit the Absolute_Backstop to firing a Hard_Stop.
