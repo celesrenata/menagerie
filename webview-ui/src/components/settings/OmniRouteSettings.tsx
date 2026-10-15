@@ -19,6 +19,13 @@ import type { ExtensionStateContextType } from "@src/context/ExtensionStateConte
 
 import { inputEventTransform } from "./transforms"
 import { SetCachedStateField } from "./types"
+import {
+	computeRouteReferenceFlags,
+	hasPublishedPublicRoute,
+	sameOrigin,
+	type RouteReferenceFlag,
+	type RouteReferenceInput,
+} from "./omniRouteRouteFlags"
 
 /** A single custom-route entry as persisted on `openAiOmniRouteCustomRoutes`. */
 type OmniRouteCustomRoute = NonNullable<ProviderSettings["openAiOmniRouteCustomRoutes"]>[number]
@@ -79,12 +86,31 @@ type OmniRouteSettingsProps = {
 		value: ProviderSettings[K],
 		isUserAction?: boolean,
 	) => void
+	/**
+	 * The persisted opt-in published-lane-routing toggle, read from `cachedState`
+	 * (never live state). When on, a routeless parallel worker resolves to its
+	 * lane's published Public_Route (Requirement 14.6); default off.
+	 */
+	publishedLaneRouting?: boolean
 	/** The persisted global parallel-capacity map, read from `cachedState` (never live state). */
 	parallelCapacityMap?: ParallelCapacityMap
 	/** The persisted read-exclusion denylist, read from `cachedState` (never live state). */
 	parallelReadDenylist?: ParallelReadDenylist
 	/** Writes the capacity map / denylist back to the SettingsView `cachedState`. */
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
+	/**
+	 * The saved codebase-index embedder model id, read from `cachedState` (never
+	 * live state). Flagged alongside the profile route references when its base URL
+	 * shares the catalog's origin and it is not a published route (Requirement 15.3).
+	 */
+	codebaseIndexEmbedderModelId?: string
+	/**
+	 * The saved codebase-index embedder base URL, read from `cachedState`. Only its
+	 * origin is used, for the Requirement 15.3 same-origin gate.
+	 */
+	codebaseIndexEmbedderBaseUrl?: string
+	/** The saved profile's display name, shown as the flag source (Requirement 15.4). */
+	profileName?: string
 }
 
 /**
@@ -99,15 +125,25 @@ type OmniRouteSettingsProps = {
 export const OmniRouteSettings = ({
 	apiConfiguration,
 	setApiConfigurationField,
+	publishedLaneRouting,
 	parallelCapacityMap,
 	parallelReadDenylist,
 	setCachedStateField,
+	codebaseIndexEmbedderModelId,
+	codebaseIndexEmbedderBaseUrl,
+	profileName,
 }: OmniRouteSettingsProps) => {
 	const { t } = useAppTranslation()
 
 	const [status, setStatus] = useState<OmniRouteConnectionStatus>("unknown")
 	const [statusError, setStatusError] = useState<string | undefined>(undefined)
 	const [catalog, setCatalog] = useState<OmniRouteCatalogEntry[]>([])
+	// Display-only route-reference flags (Requirement 15). Updated ONLY on a
+	// successful refresh that returned at least one Public_Route (Requirement 15.1,
+	// 15.7); kept unchanged on a failed/empty refresh (Requirement 15.6). The
+	// `validated` flag records whether the last refresh for this origin validated.
+	const [routeFlags, setRouteFlags] = useState<RouteReferenceFlag[]>([])
+	const [referencesValidated, setReferencesValidated] = useState(false)
 	const [search, setSearch] = useState("")
 	const [newRouteName, setNewRouteName] = useState("")
 	const [newRouteModelId, setNewRouteModelId] = useState("")
@@ -118,6 +154,56 @@ export const OmniRouteSettings = ({
 		() => apiConfiguration.openAiOmniRouteCustomRoutes ?? [],
 		[apiConfiguration.openAiOmniRouteCustomRoutes],
 	)
+
+	/**
+	 * The saved OmniRoute route references of the current profile to validate on a
+	 * successful refresh (Requirement 15.1): the chat model id, the reader/reasoner
+	 * role route ids, and each custom route's model id. The codebase-index embedder
+	 * model id is included only when its base URL shares the catalog's origin
+	 * (Requirement 15.3). Empty references are filtered out downstream. These are
+	 * read from the saved `apiConfiguration`/`cachedState`, never rewritten.
+	 */
+	const profileLabel = profileName ?? t("settings:omniroute.routeFlags.thisProfile")
+	const routeReferences = useMemo<RouteReferenceInput[]>(() => {
+		const refs: RouteReferenceInput[] = [
+			{ source: profileLabel, setting: "openAiModelId", id: apiConfiguration.openAiModelId },
+			{
+				source: profileLabel,
+				setting: "openAiOmniRouteReaderRouteId",
+				id: apiConfiguration.openAiOmniRouteReaderRouteId,
+			},
+			{
+				source: profileLabel,
+				setting: "openAiOmniRouteReasonerRouteId",
+				id: apiConfiguration.openAiOmniRouteReasonerRouteId,
+			},
+			...customRoutes.map((route) => ({
+				source: profileLabel,
+				setting: `openAiOmniRouteCustomRoutes[${route.name}]`,
+				id: route.modelId,
+			})),
+		]
+		// The codebase-index embedder id is validated only when its base URL shares
+		// the profile server URL origin (Requirement 15.3).
+		if (sameOrigin(codebaseIndexEmbedderBaseUrl, apiConfiguration.openAiBaseUrl)) {
+			refs.push({
+				source: t("settings:omniroute.routeFlags.codebaseIndexEmbedder"),
+				setting: "codebaseIndexEmbedderModelId",
+				id: codebaseIndexEmbedderModelId,
+			})
+		}
+		return refs
+	}, [
+		profileLabel,
+		apiConfiguration.openAiModelId,
+		apiConfiguration.openAiOmniRouteReaderRouteId,
+		apiConfiguration.openAiOmniRouteReasonerRouteId,
+		apiConfiguration.openAiBaseUrl,
+		customRoutes,
+		codebaseIndexEmbedderBaseUrl,
+		codebaseIndexEmbedderModelId,
+		t,
+	])
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -130,14 +216,32 @@ export const OmniRouteSettings = ({
 		[setApiConfigurationField],
 	)
 
-	const onMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-		if (message.type === OmniRouteCatalogMessageType.omniRouteCatalog && message.omniRouteCatalog) {
-			setStatus(message.omniRouteCatalog.status)
-			setStatusError(message.omniRouteCatalog.error)
-			setCatalog(message.omniRouteCatalog.entries)
-		}
-	}, [])
+	const onMessage = useCallback(
+		(event: MessageEvent) => {
+			const message: ExtensionMessage = event.data
+			if (message.type !== OmniRouteCatalogMessageType.omniRouteCatalog || !message.omniRouteCatalog) {
+				return
+			}
+			const response = message.omniRouteCatalog
+			setStatus(response.status)
+			setStatusError(response.error)
+			setCatalog(response.entries)
+
+			// Recompute the display-only route-reference flags ONLY on a successful
+			// refresh that returned at least one published Public_Route (Requirement
+			// 15.1). This replaces any flags from an earlier refresh synchronously,
+			// well within the 1 s bound (Requirement 15.7). A failed or
+			// Public_Route-less refresh leaves the existing flags unchanged and marks
+			// the references as not validated for this origin (Requirement 15.6).
+			if (response.status === "connected" && hasPublishedPublicRoute(response.entries)) {
+				setRouteFlags(computeRouteReferenceFlags(routeReferences, response.entries))
+				setReferencesValidated(true)
+			} else {
+				setReferencesValidated(false)
+			}
+		},
+		[routeReferences],
+	)
 
 	useEvent("message", onMessage)
 
@@ -302,6 +406,25 @@ export const OmniRouteSettings = ({
 				</div>
 			</div>
 
+			{/* Block 0a: Published lane routing (opt-in, default off; Requirement 14.6).
+			    When enabled, a routeless parallel worker resolves its model id to the
+			    published Public_Route of its Capability_Lane instead of today's
+			    lane→role-route fallback. Bound to `cachedState` via `setCachedStateField`,
+			    never live state (AGENTS.md Settings-View rule). */}
+			<div className="flex flex-col gap-1">
+				<Checkbox
+					data-testid="omniroute-published-lane-routing"
+					checked={publishedLaneRouting ?? false}
+					onChange={(checked: boolean) =>
+						setCachedStateField("openAiOmniRoutePublishedLaneRouting", checked)
+					}>
+					{t("settings:omniroute.publishedLaneRouting.label")}
+				</Checkbox>
+				<div className="text-sm text-vscode-descriptionForeground">
+					{t("settings:omniroute.publishedLaneRouting.hint")}
+				</div>
+			</div>
+
 			{/* Block 0b: Parallel read exclusions (fleet-wide; always visible, not gated on
 			    `isOmniRoute`). Each textarea edits one denylist category (newline-delimited
 			    entries) that the parallel-worker read path uses to skip vendored/generated
@@ -387,6 +510,42 @@ export const OmniRouteSettings = ({
 						role="status"
 						data-testid="omniroute-status">
 						{statusLabel}
+					</div>
+
+					{/* Block 2b: Route-reference flags (Requirement 15). Display-only: a saved
+					    reference (model id, reader/reasoner route id, custom route id, or the
+					    codebase-index embedder id) that is not a published Public_Route/alias for
+					    this origin is flagged with its one reason (internal / direct-model /
+					    missing). The saved value is NEVER rewritten and the request is NEVER
+					    blocked (Requirement 15.5/15.8). On a failed or Public_Route-less refresh,
+					    prior flags are kept and a "not validated" note is shown (Requirement 15.6). */}
+					<div className="flex flex-col gap-1" data-testid="omniroute-route-flags">
+						{routeFlags.length > 0 ? (
+							<ul className="flex flex-col gap-1 m-0 p-0 list-none">
+								{routeFlags.map((flag) => (
+									<li
+										key={`${flag.source}:${flag.setting}:${flag.id}`}
+										className="text-sm text-vscode-errorForeground"
+										data-testid={`omniroute-route-flag-${flag.setting}`}
+										data-flag-id={flag.id}
+										data-flag-reason={flag.reason}>
+										{t("settings:omniroute.routeFlags.flag", {
+											source: flag.source,
+											setting: flag.setting,
+											id: flag.id,
+											reason: t(`settings:omniroute.routeFlags.reason.${flag.reason}`),
+										})}
+									</li>
+								))}
+							</ul>
+						) : null}
+						{!referencesValidated ? (
+							<div
+								className="text-sm text-vscode-descriptionForeground"
+								data-testid="omniroute-route-flags-not-validated">
+								{t("settings:omniroute.routeFlags.notValidated")}
+							</div>
+						) : null}
 					</div>
 
 					{/* Block 3: Catalog */}

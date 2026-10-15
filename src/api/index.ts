@@ -117,6 +117,16 @@ export interface ApiHandlerCreateMessageMetadata {
 	 * when the user clicks stop, preventing wasted API tokens/compute on the provider side.
 	 */
 	abortSignal?: AbortSignal
+	/**
+	 * The Capability_Lane this request's task/worker was assigned at send time, if
+	 * any (omniroute-fleet-topology Requirement 17.4). It is one of the four exact
+	 * capability-lanes-routing names: `reader.fast`, `reader.deep`, `coder.primary`,
+	 * or `reasoning.escalation`. Typed as `string` so the api layer stays free of a
+	 * core/task dependency; the caller supplies a `CapabilityLane` (a string subtype).
+	 * When set, the OmniRoute provider path attaches it verbatim as request metadata
+	 * (the `user`/session channel OmniRoute reads); it is attached to no other request.
+	 */
+	capabilityLane?: string
 }
 
 export interface ApiHandler {

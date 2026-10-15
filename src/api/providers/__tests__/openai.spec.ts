@@ -396,6 +396,96 @@ describe("OpenAiHandler", () => {
 			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "hybrid/code" }), {})
 		})
 
+		// omniroute-fleet-topology Requirement 17.4: a request made for a task/worker
+		// that HAS an assigned Capability_Lane carries the lane name, spelled exactly,
+		// as request metadata (the OpenAI `user` field OmniRoute reads). A request with
+		// no assigned lane, or a non-OmniRoute profile, carries NO lane metadata.
+		describe("Capability_Lane request metadata (Requirement 17.4)", () => {
+			it("attaches the assigned lane name as the `user` field for an OmniRoute request (streaming)", async () => {
+				const omniRouteHandler = new OpenAiHandler({
+					...mockOptions,
+					openAiIsOmniRoute: true,
+					openAiModelId: "hybrid/code",
+				})
+
+				await collectStream(
+					omniRouteHandler.createMessage(systemPrompt, messages, {
+						taskId: "t",
+						capabilityLane: "coder.primary",
+					}),
+				)
+
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({ user: "coder.primary" }),
+					expect.anything(),
+				)
+			})
+
+			it("attaches the assigned lane name for an OmniRoute request (non-streaming)", async () => {
+				const omniRouteHandler = new OpenAiHandler({
+					...mockOptions,
+					openAiIsOmniRoute: true,
+					openAiModelId: "hybrid/code",
+					openAiStreamingEnabled: false,
+				})
+
+				await collectStream(
+					omniRouteHandler.createMessage(systemPrompt, messages, {
+						taskId: "t",
+						capabilityLane: "reader.fast",
+					}),
+				)
+
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({ user: "reader.fast" }),
+					expect.anything(),
+				)
+			})
+
+			it("spells the lane name exactly (reasoning.escalation)", async () => {
+				const omniRouteHandler = new OpenAiHandler({
+					...mockOptions,
+					openAiIsOmniRoute: true,
+					openAiModelId: "hybrid/long",
+				})
+
+				await collectStream(
+					omniRouteHandler.createMessage(systemPrompt, messages, {
+						taskId: "t",
+						capabilityLane: "reasoning.escalation",
+					}),
+				)
+
+				expect(mockCreate.mock.calls[0][0].user).toBe("reasoning.escalation")
+			})
+
+			it("attaches NO lane metadata when the request carries no assigned lane", async () => {
+				const omniRouteHandler = new OpenAiHandler({
+					...mockOptions,
+					openAiIsOmniRoute: true,
+					openAiModelId: "hybrid/code",
+				})
+
+				await collectStream(
+					omniRouteHandler.createMessage(systemPrompt, messages, { taskId: "t" }),
+				)
+
+				expect(mockCreate.mock.calls[0][0]).not.toHaveProperty("user")
+			})
+
+			it("attaches NO lane metadata for a non-OmniRoute profile even when a lane is passed", async () => {
+				// Default mockOptions is a plain OpenAI profile (openAiIsOmniRoute unset).
+				await collectStream(
+					handler.createMessage(systemPrompt, messages, {
+						taskId: "t",
+						capabilityLane: "coder.primary",
+					}),
+				)
+
+				expect(mockCreate.mock.calls[0][0]).not.toHaveProperty("user")
+			})
+		})
+
 		it("streams reasoning chunks from delta.reasoning_content", async () => {
 			mockCreate.mockImplementationOnce(async () =>
 				asyncStreamFrom([

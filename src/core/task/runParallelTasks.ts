@@ -22,9 +22,17 @@ import {
 	collectCodeCapableRouteIds,
 	defaultLaneTaskType,
 	resolveLaneRouteId,
+	resolvePublishedLaneRoute,
 } from "./parallelWorkerRouting"
 import { laneToRouteCapability } from "./capabilityLanes"
-import { computeCapacityBounds, createStaticRouteCapacityProvider, mergeRouteCapacityMap } from "./routeCapacityMap"
+import {
+	computeCapacityBounds,
+	createPublishedRouteCapacityProvider,
+	createStaticRouteCapacityProvider,
+	extractPublishedRouteMetadata,
+	mergeRouteCapacityMap,
+} from "./routeCapacityMap"
+import { getPublishedCatalogEntries, isOmniRoute, refreshPublishedCatalogIfStale } from "../../api/providers/omniroute"
 import { normalizeWorkerResult } from "./normalizeWorkerResult"
 import type { WorkerResultWithRecovery } from "./recoveryTelemetry"
 import { pruneParallelTaskBatches } from "./parallelTaskRetention"
@@ -301,8 +309,35 @@ export async function runParallelTasks(
 	// user did not override (so unset/empty is a byte-for-byte no-op), and
 	// `createStaticRouteCapacityProvider` still floors every value to `>= 1`, so a
 	// user map can tune capacity but never reintroduce the 0-lease deadlock.
-	const { parallelCapacityMap } = await provider.getState()
-	const routeCapacity = createStaticRouteCapacityProvider(mergeRouteCapacityMap(parallelCapacityMap))
+	const { parallelCapacityMap, openAiOmniRoutePublishedLaneRouting } = await provider.getState()
+	const staticCapacityMap = mergeRouteCapacityMap(parallelCapacityMap)
+	// omniroute-fleet-topology 13.3: when this batch runs on an OmniRoute profile,
+	// prefer the published RouteCapacity/Capability_Lane metadata the Route_Compiler
+	// publishes over the hand-maintained static map (Requirements 14.4, 14.5, 14.7,
+	// 14.8). The published catalog is kept warm by a background refresh keyed on the
+	// profile's saved server URL; we read the already-cached snapshot (no blocking
+	// fetch) and kick a refresh when it is stale, so the first batch is never delayed.
+	// An empty/incomplete snapshot — including no cache yet within the batch window —
+	// falls through to the static map inside createPublishedRouteCapacityProvider.
+	const parentIsOmniRoute = isOmniRoute(parent.apiConfiguration)
+	const omniRouteServerUrl = parentIsOmniRoute ? parent.apiConfiguration.openAiBaseUrl : undefined
+	if (parentIsOmniRoute) {
+		refreshPublishedCatalogIfStale(omniRouteServerUrl, parent.apiConfiguration.openAiApiKey)
+	}
+	const publishedExtraction = parentIsOmniRoute
+		? extractPublishedRouteMetadata(getPublishedCatalogEntries(omniRouteServerUrl))
+		: undefined
+	const routeCapacity = publishedExtraction
+		? createPublishedRouteCapacityProvider(publishedExtraction, staticCapacityMap, parallelCapacityMap)
+		: createStaticRouteCapacityProvider(staticCapacityMap)
+	// The published Capability_Lane → Public_Route map for the opt-in lane-routing
+	// resolution below (Requirement 14.6/14.9). Only a COMPLETE snapshot is used; an
+	// incomplete one leaves this undefined so every worker falls back to today's
+	// lane→role-route resolution.
+	const publishedLaneRoutes =
+		openAiOmniRoutePublishedLaneRouting && publishedExtraction?.complete
+			? publishedExtraction.metadata?.capabilityLane
+			: undefined
 	const scheduler = new BoundedElasticScheduler(computeCapacityBounds(routeCapacity), policy, routeCapacity)
 	const plan: ExecutionPlan = { tasks: specs }
 	// Admitting the plan compiles the DAG and registers one Logical_Worker per
@@ -364,16 +399,35 @@ export async function runParallelTasks(
 			specs.map(async (spec) => {
 				const context = await provider.getTaskHandoffContext(parent, spec.mode, true)
 				const lane = laneByName.get(spec.name)!
+				// Carry the assigned Capability_Lane on the worker's handoff context so
+				// the worker's Task attaches it as request metadata on every request it
+				// makes, and on nothing else (omniroute-fleet-topology Req 17.4). The
+				// lane is a `CapabilityLane`, assignable to the context's `string` field.
+				context.capabilityLane = lane
 				const codeCapableRouteIds = collectCodeCapableRouteIds(context.apiConfiguration, parentModelId)
-				context.apiConfiguration.openAiModelId = resolveLaneRouteId({
+				// omniroute-fleet-topology 14.6: when published lane routing is enabled and
+				// this routeless worker's lane maps to a published Public_Route, resolve the
+				// model id to that route; otherwise fall through to today's lane→role-route
+				// resolution (Requirement 14.9).
+				const publishedRoute = resolvePublishedLaneRoute({
+					enabled: openAiOmniRoutePublishedLaneRouting ?? false,
 					lane,
-					taskType: defaultLaneTaskType(spec.mode),
-					profile: context.apiConfiguration,
 					route: spec.route,
+					profile: context.apiConfiguration,
 					parentModelId,
-					coderOrdinal: coderOrdinalByName.get(spec.name),
-					codeCapableRouteIds,
+					publishedLaneRoutes,
 				})
+				context.apiConfiguration.openAiModelId =
+					publishedRoute ??
+					resolveLaneRouteId({
+						lane,
+						taskType: defaultLaneTaskType(spec.mode),
+						profile: context.apiConfiguration,
+						route: spec.route,
+						parentModelId,
+						coderOrdinal: coderOrdinalByName.get(spec.name),
+						codeCapableRouteIds,
+					})
 				return context
 			}),
 		)

@@ -143,26 +143,212 @@ export const OMNIROUTE_ROUTE_CONTEXT_WINDOWS: Readonly<Record<string, number>> =
 }
 
 /**
+ * Final fallback window when nothing else resolves a route (Requirement 13.4).
+ * Matches the OpenAI-compatible sane default so an unknown route on an unseen
+ * server behaves exactly as it did before published metadata existed.
+ */
+export const OMNIROUTE_DEFAULT_CONTEXT_WINDOW = 128_000
+
+/**
+ * How long a cached published catalog is considered fresh before a task-start
+ * read triggers a background refresh (Requirement 13.5). The cached copy keeps
+ * serving the resolver during and after a stale window; only a refresh that
+ * SUCCEEDS replaces it, so a failed refresh keeps the last successful catalog
+ * (Requirement 13.8).
+ */
+export const OMNIROUTE_CATALOG_STALE_MS = 60 * 60 * 1000
+
+/** One cached, last-successful published catalog for a single server URL. */
+interface PublishedCatalogCacheEntry {
+	/** Published context window per route id, extracted from the catalog entries. */
+	readonly contextWindows: Readonly<Record<string, number>>
+	/**
+	 * The raw parsed catalog entries from the last successful fetch, kept so the
+	 * capacity/lane reader (task 13.3) can derive published RouteCapacity and the
+	 * Capability_Lane→Public_Route map without a second parse. Body-free; only the
+	 * additive published fields are consumed by downstream readers.
+	 */
+	readonly entries: readonly OmniRouteCatalogEntry[]
+	/** Wall-clock ms (from the injected clock) when this catalog was fetched. */
+	readonly fetchedAt: number
+}
+
+/**
+ * Last-successful published catalog per profile server URL (Requirement 13.7).
+ *
+ * Keyed by the profile's SAVED server URL — not the tokenized URL — so two
+ * profiles pointing at the same OmniRoute share one cache entry and a per-URL
+ * refresh never leaks a window from a different fleet. Only a `connected` fetch
+ * writes here; a failed fetch leaves the prior entry untouched (Requirement 13.8).
+ *
+ * Lifetime: process-lifetime, module-scoped. There is no expiry/eviction — a
+ * stale entry still answers reads (so the first request is never delayed,
+ * Requirement 13.5) and is simply overwritten by the next successful refresh.
+ */
+const publishedCatalogCache = new Map<string, PublishedCatalogCacheEntry>()
+
+/** In-flight background refreshes, keyed by server URL, so we never stack them. */
+const inFlightRefreshes = new Set<string>()
+
+/**
+ * Injectable clock + fetcher so tests can drive the >60 min stale boundary and the
+ * no-delay background refresh deterministically without real time or network.
+ */
+interface PublishedCatalogDeps {
+	now: () => number
+	fetchCatalog: (serverRoot: string | undefined, apiKey?: string) => Promise<OmniRouteCatalogResponse>
+}
+
+const defaultPublishedCatalogDeps: PublishedCatalogDeps = {
+	now: () => Date.now(),
+	fetchCatalog: fetchOmniRouteCatalog,
+}
+
+let publishedCatalogDeps: PublishedCatalogDeps = defaultPublishedCatalogDeps
+
+/**
+ * TEST SEAM: override the clock/fetcher used by the published-catalog cache.
+ * Pass `undefined` to restore the real `Date.now` + `fetchOmniRouteCatalog`.
+ * Not used in production code.
+ */
+export function __setPublishedCatalogDeps(deps?: Partial<PublishedCatalogDeps>): void {
+	publishedCatalogDeps = { ...defaultPublishedCatalogDeps, ...deps }
+}
+
+/** TEST SEAM: clear the per-server-URL cache and any in-flight refresh tracking. */
+export function __resetPublishedCatalogCache(): void {
+	publishedCatalogCache.clear()
+	inFlightRefreshes.clear()
+}
+
+/** Build a route-id → contextWindow map from a connected catalog's entries. */
+function extractContextWindows(response: OmniRouteCatalogResponse): Record<string, number> {
+	const windows: Record<string, number> = {}
+	for (const entry of response.entries) {
+		if (typeof entry.contextWindow === "number") {
+			windows[entry.id] = entry.contextWindow
+		}
+	}
+	return windows
+}
+
+/**
+ * Refresh the published catalog for `serverUrl` in the BACKGROUND (Requirement 13.5).
+ *
+ * Fire-and-forget: the caller never awaits this, so the first request after a
+ * task start uses whatever is already cached (possibly nothing) and a later
+ * request picks up the fresh window. Only a `connected` response overwrites the
+ * cache; an `error` response (or a thrown fetch) leaves the last successful
+ * catalog in place (Requirement 13.8). A single in-flight refresh per URL is
+ * tracked so repeated task starts do not stack concurrent fetches.
+ */
+function refreshPublishedCatalogInBackground(serverUrl: string, apiKey?: string): void {
+	if (inFlightRefreshes.has(serverUrl)) {
+		return
+	}
+	inFlightRefreshes.add(serverUrl)
+	publishedCatalogDeps
+		.fetchCatalog(serverUrl, apiKey)
+		.then((response) => {
+			if (response.status === "connected") {
+				publishedCatalogCache.set(serverUrl, {
+					contextWindows: extractContextWindows(response),
+					entries: response.entries,
+					fetchedAt: publishedCatalogDeps.now(),
+				})
+			}
+		})
+		.catch(() => {
+			// A failed refresh keeps the last successful published catalog (Requirement 13.8).
+		})
+		.finally(() => {
+			inFlightRefreshes.delete(serverUrl)
+		})
+}
+
+/**
+ * Kick a background catalog refresh for a profile's saved server URL when the
+ * cached copy is missing or stale (>60 min). Call this at TASK START. It never
+ * blocks: the resolver keeps answering from the current cache / static map while
+ * the refresh runs, so the first request is not delayed (Requirement 13.5).
+ */
+export function refreshPublishedCatalogIfStale(serverUrl: string | undefined, apiKey?: string): void {
+	const key = serverUrl?.trim()
+	if (!key) {
+		return
+	}
+	const cached = publishedCatalogCache.get(key)
+	const isStale = cached === undefined || publishedCatalogDeps.now() - cached.fetchedAt > OMNIROUTE_CATALOG_STALE_MS
+	if (isStale) {
+		refreshPublishedCatalogInBackground(key, apiKey)
+	}
+}
+
+/**
  * Resolve the effective context window for an OmniRoute route id.
  *
- * For a KNOWN route the served window is authoritative: the route *is* the model, so
- * the real `--max-model-len` / `num_ctx` must drive auto-condense. A profile's
- * `openAiCustomModelInfo.contextWindow` here is almost always a boilerplate default
- * (the OpenAI-compatible sane default is 128k) that does not reflect the backend, so
- * trusting it would silently over-fill a 32k reader. We therefore return the mapped
- * window regardless of `customContextWindow`.
+ * Precedence (Requirements 13.2-13.5, 13.7, 13.8), highest wins:
+ *   1. the route's `contextWindow` from the LAST SUCCESSFUL published catalog for
+ *      the profile's saved `serverUrl` (the served value is authoritative — the
+ *      route *is* the model, so the real `--max-model-len` / `num_ctx` drives
+ *      auto-condense);
+ *   2. else the built-in constant map `OMNIROUTE_ROUTE_CONTEXT_WINDOWS` (kept only
+ *      as a fallback for a route not yet seen in a published catalog, Req 13.3);
+ *   3. else the profile's own `customContextWindow`;
+ *   4. else `OMNIROUTE_DEFAULT_CONTEXT_WINDOW` (128k, Req 13.4).
  *
- * An UNKNOWN route returns `undefined` so the caller keeps its existing
- * `openAiCustomModelInfo` / sane-default behavior unchanged — a new route is never
- * given a wrong window. (`customContextWindow` is accepted for call-site symmetry and
- * future per-route opt-outs; it is intentionally not consulted for known routes.)
+ * `serverUrl` is the profile's saved server root; it keys the per-URL cache
+ * (Requirement 13.7). When omitted (older call sites), only the static-map/profile/
+ * default fallback is consulted — behavior identical to before published metadata.
+ *
+ * This read NEVER performs I/O and never awaits — refreshing is the separate,
+ * non-blocking `refreshPublishedCatalogIfStale`, so resolving a window cannot
+ * delay a request (Requirement 13.5).
  */
 export function resolveOmniRouteContextWindow(
 	routeId: string,
 	customContextWindow?: number,
+	serverUrl?: string,
 ): number | undefined {
-	void customContextWindow
-	return OMNIROUTE_ROUTE_CONTEXT_WINDOWS[routeId]
+	const key = serverUrl?.trim()
+	if (key) {
+		const published = publishedCatalogCache.get(key)?.contextWindows[routeId]
+		if (typeof published === "number") {
+			return published
+		}
+	}
+
+	const mapped = OMNIROUTE_ROUTE_CONTEXT_WINDOWS[routeId]
+	if (typeof mapped === "number") {
+		return mapped
+	}
+
+	if (typeof customContextWindow === "number") {
+		return customContextWindow
+	}
+
+	return OMNIROUTE_DEFAULT_CONTEXT_WINDOW
+}
+
+/**
+ * Return the last successful published catalog entries for a profile's saved
+ * server URL, or an empty array when none is cached (task 13.3).
+ *
+ * This NEVER performs I/O: it reads the same process-lifetime cache that
+ * {@link refreshPublishedCatalogIfStale} populates in the background. The
+ * capacity/lane reader uses the returned entries to build the published
+ * RouteCapacity map and the Capability_Lane→Public_Route map; an empty array
+ * (no cache yet, or a profile with no server URL) drives the static fallback
+ * (Requirement 14.5). `serverUrl` keys the per-URL cache exactly as the
+ * context-window resolver does, so two profiles on the same OmniRoute share one
+ * entry and a reader never sees a different fleet's metadata (Requirement 13.7).
+ */
+export function getPublishedCatalogEntries(serverUrl: string | undefined): readonly OmniRouteCatalogEntry[] {
+	const key = serverUrl?.trim()
+	if (!key) {
+		return []
+	}
+	return publishedCatalogCache.get(key)?.entries ?? []
 }
 
 /**

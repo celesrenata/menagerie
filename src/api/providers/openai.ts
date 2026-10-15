@@ -24,7 +24,12 @@ import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
 import { DEFAULT_HEADERS, NOT_PROVIDED } from "./constants"
-import { isOmniRoute, omniRouteRequestHeaders, resolveOmniRouteContextWindow } from "./omniroute"
+import {
+	isOmniRoute,
+	omniRouteRequestHeaders,
+	refreshPublishedCatalogIfStale,
+	resolveOmniRouteContextWindow,
+} from "./omniroute"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata, CompletePromptOptions } from "../index"
 import { handleOpenAIError } from "./utils/error-handler"
@@ -184,6 +189,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
+			requestOptions = this.withOmniRouteLaneMetadata(requestOptions, metadata)
 
 			let stream
 			try {
@@ -252,6 +258,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
+			requestOptions = this.withOmniRouteLaneMetadata(requestOptions, metadata)
 
 			let response
 			try {
@@ -309,12 +316,17 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			isOmni && baseInfo.preserveReasoning === undefined
 				? { ...baseInfo, preserveReasoning: true }
 				: baseInfo
-		// Route-aware context window: when this is an OmniRoute profile and the model id is a
-		// known route, measure auto-condense against the route's real served window
-		// (vLLM --max-model-len / ollama num_ctx) instead of the flat sane default. A profile
-		// that explicitly set a LARGER window still wins (resolveOmniRouteContextWindow honors it).
+		// Route-aware context window: when this is an OmniRoute profile, measure auto-condense
+		// against the route's real served window instead of the flat sane default. Precedence is
+		// the LAST SUCCESSFUL published catalog for this profile's server URL, then the built-in
+		// constant map, then the profile's own window, then 128k (resolveOmniRouteContextWindow).
+		// A task-start read also kicks a background catalog refresh when the cached copy is stale
+		// (>60 min); it never delays this request — the first request uses whatever is cached and a
+		// later request picks up the fresh window.
 		if (isOmni) {
-			const routeWindow = resolveOmniRouteContextWindow(id, baseInfo.contextWindow)
+			const serverUrl = this.options.openAiBaseUrl
+			refreshPublishedCatalogIfStale(serverUrl, this.options.openAiApiKey)
+			const routeWindow = resolveOmniRouteContextWindow(id, baseInfo.contextWindow, serverUrl)
 			if (routeWindow !== undefined && routeWindow !== info.contextWindow) {
 				info = { ...info, contextWindow: routeWindow }
 			}
@@ -409,6 +421,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
+			requestOptions = this.withOmniRouteLaneMetadata(requestOptions, metadata)
 
 			let stream
 			try {
@@ -444,6 +457,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo, metadata?.maxOutputTokens)
 			requestOptions = this.withExtraBody(requestOptions)
+			requestOptions = this.withOmniRouteLaneMetadata(requestOptions, metadata)
 
 			let response
 			try {
@@ -600,6 +614,29 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	private withExtraBody<T extends object>(requestOptions: T): T {
 		return { ...this.extraBody, ...requestOptions }
+	}
+
+	/**
+	 * Attach the Capability_Lane name as request metadata on the OpenAI `user`
+	 * field — the channel OmniRoute reads and persists on the call-log row
+	 * (omniroute-fleet-topology Requirement 17.4, task 12.2). The lane is attached
+	 * ONLY when (a) this is an OmniRoute profile and (b) the request's task/worker
+	 * carried an assigned lane at send time (`metadata.capabilityLane`); every
+	 * other request (no lane, or non-OmniRoute profile) is returned unchanged, so
+	 * no lane name is attached to any other request. The name is sent verbatim —
+	 * the caller supplies one of the four exact capability-lanes-routing names.
+	 */
+	private withOmniRouteLaneMetadata<
+		T extends { user?: string },
+	>(requestOptions: T, metadata?: ApiHandlerCreateMessageMetadata): T {
+		const lane = metadata?.capabilityLane
+		if (!lane) {
+			return requestOptions
+		}
+		if (!isOmniRoute({ ...this.options, apiProvider: providerIdentifiers.openai })) {
+			return requestOptions
+		}
+		return { ...requestOptions, user: lane }
 	}
 }
 

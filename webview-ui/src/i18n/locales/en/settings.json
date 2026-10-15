@@ -76,6 +76,10 @@
 		"routeModelId": "Model id",
 		"routeCapability": "Capability",
 		"capabilityUnclassified": "Unclassified",
+		"publishedLaneRouting": {
+			"label": "Use published lane routes",
+			"hint": "When enabled, a routeless parallel worker resolves to its capability lane's published OmniRoute route. Falls back to the default routing when published metadata is unavailable."
+		},
 		"parallelCapacity": {
 			"label": "Parallel backend capacity (slots per capability)",
 			"hint": "Set how many parallel inference slots each capability admits. Leave a capability blank to use its default; values are floored to at least 1.",
@@ -90,6 +94,17 @@
 				"rootDirs": "Build-output directories (matched at the workspace root; a trailing * is a prefix match)",
 				"files": "Exact file names",
 				"globs": "Glob patterns"
+			}
+		},
+		"routeFlags": {
+			"thisProfile": "this profile",
+			"codebaseIndexEmbedder": "codebase index embedder",
+			"flag": "{{source}}: {{setting}} \"{{id}}\" is {{reason}}",
+			"notValidated": "Route references for this server were not validated. Refresh the catalog to validate them.",
+			"reason": {
+				"internal": "an internal or diagnostic route, not a selectable public route",
+				"direct-model": "a direct provider model id, not a published route",
+				"missing": "not a published route or alias"
 			}
 		}
 	},

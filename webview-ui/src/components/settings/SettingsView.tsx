@@ -225,6 +225,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCloseZooOpenedFiles,
 		autoCloseZooOpenedFilesAfterUserEdited,
 		autoCloseZooOpenedNewFiles,
+		openAiOmniRoutePublishedLaneRouting,
 		parallelismMode,
 		parallelCapacityMap,
 		parallelReadDenylist,
@@ -458,6 +459,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 					autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 					parallelismMode: parallelismMode ?? DEFAULT_PARALLELISM_MODE,
+					// omniroute-fleet-topology 14.6: persist the opt-in published-lane-routing
+					// toggle. `undefined`/false both resolve to the disabled default downstream.
+					openAiOmniRoutePublishedLaneRouting: openAiOmniRoutePublishedLaneRouting ?? false,
 					// Persist the user-adjustable parallel-capacity map. `undefined` keeps the
 					// no-op default (merges to STATIC_ROUTE_CAPACITY); an empty object is also a no-op.
 					parallelCapacityMap: parallelCapacityMap ?? {},
@@ -837,9 +841,18 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 									<OmniRouteSettings
 										apiConfiguration={apiConfiguration}
 										setApiConfigurationField={setApiConfigurationField}
+										publishedLaneRouting={openAiOmniRoutePublishedLaneRouting}
 										parallelCapacityMap={parallelCapacityMap}
 										parallelReadDenylist={parallelReadDenylist}
 										setCachedStateField={setCachedStateField}
+										profileName={currentApiConfigName}
+										codebaseIndexEmbedderModelId={
+											cachedState.codebaseIndexConfig?.codebaseIndexEmbedderModelId
+										}
+										codebaseIndexEmbedderBaseUrl={
+											cachedState.codebaseIndexConfig?.codebaseIndexEmbedderBaseUrl ??
+											cachedState.codebaseIndexConfig?.codebaseIndexOpenAiCompatibleBaseUrl
+										}
 									/>
 								</Section>
 							</div>

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, within } from "@testing-library/react"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 
 import type { OmniRouteCatalogResponse, ProviderSettings } from "@roo-code/types"
@@ -37,6 +37,7 @@ const renderSettings = (
 	options: {
 		parallelCapacityMap?: Partial<Record<string, number>>
 		parallelReadDenylist?: Partial<Record<string, string[]>>
+		publishedLaneRouting?: boolean
 		setCachedStateField?: (...args: unknown[]) => void
 	} = {},
 ) =>
@@ -47,6 +48,7 @@ const renderSettings = (
 				setApiConfigurationField={setApiConfigurationField as never}
 				parallelCapacityMap={options.parallelCapacityMap as never}
 				parallelReadDenylist={options.parallelReadDenylist as never}
+				publishedLaneRouting={options.publishedLaneRouting}
 				setCachedStateField={(options.setCachedStateField ?? vi.fn()) as never}
 			/>
 		</TooltipProvider>,
@@ -157,6 +159,181 @@ describe("OmniRouteSettings", () => {
 	})
 })
 
+describe("OmniRouteSettings — route-reference flags (Requirement 15)", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	it("does not validate references until a successful refresh with a published Public_Route", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "pool/tier2/reader" })
+		// No catalog yet ⇒ references not validated, no flags.
+		expect(screen.getByTestId("omniroute-route-flags-not-validated")).toBeInTheDocument()
+		expect(screen.queryByTestId("omniroute-route-flag-openAiModelId")).not.toBeInTheDocument()
+	})
+
+	it("flags a missing route reference after a successful refresh", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "auto/gemma" })
+		postCatalog({
+			status: "connected",
+			entries: [{ id: "hybrid/code", kind: "public" }],
+		})
+		const flag = screen.getByTestId("omniroute-route-flag-openAiModelId")
+		expect(flag).toHaveAttribute("data-flag-id", "auto/gemma")
+		expect(flag).toHaveAttribute("data-flag-reason", "missing")
+		// References were validated ⇒ the "not validated" note is gone.
+		expect(screen.queryByTestId("omniroute-route-flags-not-validated")).not.toBeInTheDocument()
+	})
+
+	it("flags an internal/diagnostic route reference as internal", () => {
+		renderSettings({ ...baseConfig, openAiOmniRouteReaderRouteId: "pool/tier2/reader" })
+		postCatalog({
+			status: "connected",
+			entries: [
+				{ id: "hybrid/code", kind: "public" },
+				{ id: "pool/tier2/reader", kind: "internal" },
+			],
+		})
+		const flag = screen.getByTestId("omniroute-route-flag-openAiOmniRouteReaderRouteId")
+		expect(flag).toHaveAttribute("data-flag-id", "pool/tier2/reader")
+		expect(flag).toHaveAttribute("data-flag-reason", "internal")
+	})
+
+	it("flags a direct provider model id as direct-model", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "ollama/code" })
+		postCatalog({
+			status: "connected",
+			entries: [
+				{ id: "hybrid/code", kind: "public" },
+				// A model-shaped entry (carries model metadata, no route kind) = direct model id.
+				{ id: "ollama/code", name: "Ollama Code", family: "ollama" },
+			],
+		})
+		const flag = screen.getByTestId("omniroute-route-flag-openAiModelId")
+		expect(flag).toHaveAttribute("data-flag-id", "ollama/code")
+		expect(flag).toHaveAttribute("data-flag-reason", "direct-model")
+	})
+
+	it("does not flag a reference that matches a published public route or alias (case-sensitive)", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "hybrid/code", openAiOmniRouteReasonerRouteId: "code" })
+		postCatalog({
+			status: "connected",
+			entries: [
+				{ id: "hybrid/code", kind: "public" },
+				{ id: "code", kind: "alias" },
+			],
+		})
+		expect(screen.queryByTestId("omniroute-route-flag-openAiModelId")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("omniroute-route-flag-openAiOmniRouteReasonerRouteId")).not.toBeInTheDocument()
+	})
+
+	it("flags a case-mismatched reference as missing (exact-match including case)", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "Hybrid/Code" })
+		postCatalog({
+			status: "connected",
+			entries: [{ id: "hybrid/code", kind: "public" }],
+		})
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toHaveAttribute(
+			"data-flag-reason",
+			"missing",
+		)
+	})
+
+	it("flags each flagged custom route id", () => {
+		renderSettings({
+			...baseConfig,
+			openAiOmniRouteCustomRoutes: [{ name: "overflow", modelId: "pool/dead" }],
+		})
+		postCatalog({
+			status: "connected",
+			entries: [
+				{ id: "hybrid/code", kind: "public" },
+				{ id: "pool/dead", kind: "diagnostic" },
+			],
+		})
+		const flag = screen.getByTestId("omniroute-route-flag-openAiOmniRouteCustomRoutes[overflow]")
+		expect(flag).toHaveAttribute("data-flag-id", "pool/dead")
+		expect(flag).toHaveAttribute("data-flag-reason", "internal")
+	})
+
+	it("replaces prior flags on a later successful refresh", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "auto/gemma" })
+		postCatalog({ status: "connected", entries: [{ id: "hybrid/code", kind: "public" }] })
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toBeInTheDocument()
+		// A later refresh that now publishes the route clears the flag.
+		postCatalog({
+			status: "connected",
+			entries: [
+				{ id: "hybrid/code", kind: "public" },
+				{ id: "auto/gemma", kind: "public" },
+			],
+		})
+		expect(screen.queryByTestId("omniroute-route-flag-openAiModelId")).not.toBeInTheDocument()
+	})
+
+	it("keeps the existing flags on a failed refresh and marks references not validated", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "auto/gemma" })
+		postCatalog({ status: "connected", entries: [{ id: "hybrid/code", kind: "public" }] })
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toBeInTheDocument()
+		// A failed refresh keeps the prior flag and shows the not-validated note.
+		postCatalog({ status: "error", entries: [], error: "unreachable" })
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toBeInTheDocument()
+		expect(screen.getByTestId("omniroute-route-flags-not-validated")).toBeInTheDocument()
+	})
+
+	it("keeps the existing flags on a refresh that returns no Public_Route", () => {
+		renderSettings({ ...baseConfig, openAiModelId: "auto/gemma" })
+		postCatalog({ status: "connected", entries: [{ id: "hybrid/code", kind: "public" }] })
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toBeInTheDocument()
+		// A connected refresh with only non-public entries does not re-validate.
+		postCatalog({ status: "connected", entries: [{ id: "pool/x", kind: "internal" }] })
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toBeInTheDocument()
+		expect(screen.getByTestId("omniroute-route-flags-not-validated")).toBeInTheDocument()
+	})
+
+	it("flags the codebase-index embedder id only when its base URL shares the catalog origin", () => {
+		const { rerender } = render(
+			<TooltipProvider>
+				<OmniRouteSettings
+					apiConfiguration={baseConfig}
+					setApiConfigurationField={vi.fn() as never}
+					setCachedStateField={vi.fn() as never}
+					codebaseIndexEmbedderModelId={"nomic-embed"}
+					codebaseIndexEmbedderBaseUrl={"https://omniroute.example"}
+				/>
+			</TooltipProvider>,
+		)
+		postCatalog({ status: "connected", entries: [{ id: "hybrid/code", kind: "public" }] })
+		expect(screen.getByTestId("omniroute-route-flag-codebaseIndexEmbedderModelId")).toHaveAttribute(
+			"data-flag-id",
+			"nomic-embed",
+		)
+
+		// A different-origin embedder base URL is not validated against this catalog.
+		rerender(
+			<TooltipProvider>
+				<OmniRouteSettings
+					apiConfiguration={baseConfig}
+					setApiConfigurationField={vi.fn() as never}
+					setCachedStateField={vi.fn() as never}
+					codebaseIndexEmbedderModelId={"nomic-embed"}
+					codebaseIndexEmbedderBaseUrl={"https://other.example"}
+				/>
+			</TooltipProvider>,
+		)
+		postCatalog({ status: "connected", entries: [{ id: "hybrid/code", kind: "public" }] })
+		expect(screen.queryByTestId("omniroute-route-flag-codebaseIndexEmbedderModelId")).not.toBeInTheDocument()
+	})
+
+	it("never rewrites a saved reference or posts a message when flagging (display-only)", () => {
+		const setApiConfigurationField = vi.fn()
+		renderSettings({ ...baseConfig, openAiModelId: "auto/gemma" }, setApiConfigurationField)
+		mockPostMessage.mockClear()
+		postCatalog({ status: "connected", entries: [{ id: "hybrid/code", kind: "public" }] })
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toBeInTheDocument()
+		// Flagging must not rewrite the saved value nor send any message (Req 15.5/15.8).
+		expect(setApiConfigurationField).not.toHaveBeenCalled()
+		expect(mockPostMessage).not.toHaveBeenCalled()
+	})
+})
+
 describe("OmniRouteSettings parallel capacity map", () => {
 	beforeEach(() => vi.clearAllMocks())
 
@@ -249,5 +426,52 @@ describe("OmniRouteSettings — parallel read exclusions (FEAT-003)", () => {
 		fireEvent.input(screen.getByTestId("parallel-read-exclusions-globs"), { target: { value: "" } })
 
 		expect(setCachedStateField).toHaveBeenCalledWith("parallelReadDenylist", { globs: [] })
+	})
+})
+
+describe("OmniRouteSettings — published lane routing (Requirement 14.6)", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	// The published-lane-routing control toggles the number of distinct inputs the
+	// vscrui Checkbox renders inside the labelled wrapper; the real checkbox input
+	// lives inside the `data-testid` label element.
+	const laneRoutingInput = () =>
+		within(screen.getByTestId("omniroute-published-lane-routing")).getByRole("checkbox") as HTMLInputElement
+
+	it("binds the checkbox to cachedState via setCachedStateField, not live state", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), { publishedLaneRouting: false, setCachedStateField })
+		// Default off (unset case): the control reads the cachedState prop, not live state.
+		expect(laneRoutingInput().checked).toBe(false)
+
+		fireEvent.click(laneRoutingInput())
+		// Toggling writes the enabled value to cachedState (buffered until Save).
+		expect(setCachedStateField).toHaveBeenCalledWith("openAiOmniRoutePublishedLaneRouting", true)
+	})
+
+	it("renders the enabled (true) case from the cachedState prop", () => {
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, vi.fn(), { publishedLaneRouting: true, setCachedStateField })
+		expect(laneRoutingInput().checked).toBe(true)
+
+		// Toggling an enabled control off writes false to cachedState.
+		fireEvent.click(laneRoutingInput())
+		expect(setCachedStateField).toHaveBeenCalledWith("openAiOmniRoutePublishedLaneRouting", false)
+	})
+
+	it("defaults to off when the cachedState prop is unset (undefined)", () => {
+		renderSettings(baseConfig, vi.fn(), {})
+		expect(laneRoutingInput().checked).toBe(false)
+	})
+
+	it("never writes the setting through setApiConfigurationField (it is a global cachedState setting)", () => {
+		const setApiConfigurationField = vi.fn()
+		const setCachedStateField = vi.fn()
+		renderSettings(baseConfig, setApiConfigurationField, { publishedLaneRouting: false, setCachedStateField })
+		fireEvent.click(laneRoutingInput())
+		expect(setApiConfigurationField).not.toHaveBeenCalledWith(
+			"openAiOmniRoutePublishedLaneRouting",
+			expect.anything(),
+		)
 	})
 })

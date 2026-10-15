@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import axios from "axios"
 
@@ -9,11 +9,15 @@ import {
 	isOmniRoute,
 	omniRouteRequestHeaders,
 	omniRouteTokenizedBaseUrl,
+	refreshPublishedCatalogIfStale,
 	resolveOmniRouteContextWindow,
+	OMNIROUTE_DEFAULT_CONTEXT_WINDOW,
 	OMNIROUTE_ROUTE_CONTEXT_WINDOWS,
 	OMNIROUTE_PUBLIC_TOKEN,
 	OMNIROUTE_TIER_HEADER,
 	withOmniRouteTier,
+	__resetPublishedCatalogCache,
+	__setPublishedCatalogDeps,
 } from "../omniroute"
 
 vi.mock("axios", () => ({
@@ -212,6 +216,45 @@ describe("omniRouteComboEntrySchema", () => {
 		expect((result as Record<string, unknown>).models).toBeUndefined()
 		expect((result as Record<string, unknown>).strategy).toBeUndefined()
 	})
+
+	it("carries the published route metadata through the transform", () => {
+		const raw = {
+			name: "hybrid/code",
+			strategy: "priority",
+			models: [{ kind: "model", model: "vllm/qwen3.8-27b-nvfp4", providerId: "vllm" }],
+			kind: "public",
+			contextWindow: 163840,
+			routeCapacity: { route: "hybrid/code", capacity: 2 },
+			capabilityLane: { "coder.primary": "hybrid/code" },
+		}
+		const result = omniRouteComboEntrySchema.parse(raw)
+		expect(result.id).toBe("hybrid/code")
+		expect(result.kind).toBe("public")
+		expect(result.contextWindow).toBe(163840)
+		expect(result.routeCapacity).toEqual({ route: "hybrid/code", capacity: 2 })
+		expect(result.capabilityLane).toEqual({ "coder.primary": "hybrid/code" })
+		// Combo-shape fields still stripped alongside the carried published fields.
+		expect((result as Record<string, unknown>).models).toBeUndefined()
+		expect((result as Record<string, unknown>).strategy).toBeUndefined()
+	})
+
+	it("still parses a combo that publishes no metadata (older OmniRoute)", () => {
+		const result = omniRouteComboEntrySchema.parse({ name: "local/long" })
+		expect(result.id).toBe("local/long")
+		expect(result.name).toBe("local/long")
+		expect(result.kind).toBeUndefined()
+		expect(result.contextWindow).toBeUndefined()
+		expect(result.routeCapacity).toBeUndefined()
+		expect(result.capabilityLane).toBeUndefined()
+	})
+
+	it("rejects an out-of-range contextWindow and an unknown kind", () => {
+		expect(omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", contextWindow: 0 }).success).toBe(false)
+		expect(
+			omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", contextWindow: 16_777_217 }).success,
+		).toBe(false)
+		expect(omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", kind: "mystery" }).success).toBe(false)
+	})
 })
 
 describe("fetchOmniRouteCatalog", () => {
@@ -257,32 +300,232 @@ describe("fetchOmniRouteCatalog", () => {
 		expect(result.entries).toEqual([])
 		expect(mockedAxiosGet).not.toHaveBeenCalled()
 	})
+
+	it("round-trips published route metadata into the returned entries", async () => {
+		mockedAxiosGet.mockResolvedValueOnce({
+			data: {
+				object: "list",
+				data: [
+					{
+						name: "hybrid/code",
+						strategy: "priority",
+						kind: "public",
+						contextWindow: 163840,
+						routeCapacity: { route: "hybrid/code", capacity: 2 },
+						capabilityLane: { "coder.primary": "hybrid/code" },
+					},
+					// A combo without the new fields still parses (fields optional).
+					{ name: "local/long" },
+				],
+			},
+		})
+
+		const result = await fetchOmniRouteCatalog("https://omniroute.example", "secret")
+
+		expect(result.status).toBe("connected")
+		expect(result.entries).toHaveLength(2)
+		const [code, long] = result.entries
+		expect(code.id).toBe("hybrid/code")
+		expect(code.kind).toBe("public")
+		expect(code.contextWindow).toBe(163840)
+		expect(code.routeCapacity).toEqual({ route: "hybrid/code", capacity: 2 })
+		expect(code.capabilityLane).toEqual({ "coder.primary": "hybrid/code" })
+		expect(long.id).toBe("local/long")
+		expect(long.kind).toBeUndefined()
+		expect(long.contextWindow).toBeUndefined()
+	})
 })
 
 
 describe("resolveOmniRouteContextWindow", () => {
-	it("returns the mapped served window for a known route", () => {
+	afterEach(() => {
+		__resetPublishedCatalogCache()
+		__setPublishedCatalogDeps()
+	})
+
+	it("returns the mapped served window for a known route (constant fallback)", () => {
 		expect(resolveOmniRouteContextWindow("hybrid/code")).toBe(163840)
 		expect(resolveOmniRouteContextWindow("hybrid/planner")).toBe(262144)
 		expect(resolveOmniRouteContextWindow("hybrid/reader")).toBe(32768)
 	})
 
-	it("returns undefined for an unknown route so the caller keeps its default", () => {
-		expect(resolveOmniRouteContextWindow("hybrid/nope")).toBeUndefined()
-		expect(resolveOmniRouteContextWindow("")).toBeUndefined()
+	it("falls back to the profile window for an unknown route when one is given", () => {
+		expect(resolveOmniRouteContextWindow("hybrid/nope", 200000)).toBe(200000)
 	})
 
-	it("uses the served window for a known route regardless of a custom window", () => {
-		// The served window is authoritative; a boilerplate profile default must not
-		// over-fill a small route or shrink a large one.
+	it("falls back to 128k for an unknown route with no profile window", () => {
+		expect(resolveOmniRouteContextWindow("hybrid/nope")).toBe(OMNIROUTE_DEFAULT_CONTEXT_WINDOW)
+		expect(resolveOmniRouteContextWindow("")).toBe(OMNIROUTE_DEFAULT_CONTEXT_WINDOW)
+	})
+
+	it("prefers the constant map over the profile window and the 128k default", () => {
+		// A boilerplate profile default must not over-fill a small route or shrink a large one.
 		expect(resolveOmniRouteContextWindow("hybrid/reader", 131072)).toBe(32768)
 		expect(resolveOmniRouteContextWindow("hybrid/code", 32768)).toBe(163840)
-		expect(resolveOmniRouteContextWindow("hybrid/code", 163840)).toBe(163840)
 	})
 
 	it("maps every coder route to the vLLM served max-model-len", () => {
 		for (const route of ["hybrid/code", "pool/tier1/code", "pool/tier2/code"]) {
 			expect(OMNIROUTE_ROUTE_CONTEXT_WINDOWS[route]).toBe(163840)
 		}
+	})
+
+	describe("precedence with a published catalog", () => {
+		const serverUrl = "https://omniroute.example"
+
+		it("prefers the published window over the constant, profile, and 128k", async () => {
+			__setPublishedCatalogDeps({
+				now: () => 1_000_000,
+				fetchCatalog: vi.fn().mockResolvedValue({
+					status: "connected",
+					// hybrid/code is 163840 in the static map; the published catalog overrides it.
+					entries: [{ id: "hybrid/code", contextWindow: 32768 }],
+				}),
+			})
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", 999, serverUrl)).toBe(32768))
+		})
+
+		it("falls through to the constant when the published catalog lacks the route", async () => {
+			__setPublishedCatalogDeps({
+				now: () => 1_000_000,
+				fetchCatalog: vi.fn().mockResolvedValue({
+					status: "connected",
+					entries: [{ id: "hybrid/planner", contextWindow: 32768 }],
+				}),
+			})
+			refreshPublishedCatalogIfStale(serverUrl)
+			// hybrid/code is absent from the published catalog -> constant map (163840).
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(163840),
+			)
+		})
+
+		it("keys the cache by server URL so a different URL does not see the window", async () => {
+			__setPublishedCatalogDeps({
+				now: () => 1_000_000,
+				fetchCatalog: vi.fn().mockResolvedValue({
+					status: "connected",
+					entries: [{ id: "hybrid/nope", contextWindow: 7777 }],
+				}),
+			})
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/nope", undefined, serverUrl)).toBe(7777))
+			// A different server URL has no cached catalog -> 128k default for the unknown route.
+			expect(resolveOmniRouteContextWindow("hybrid/nope", undefined, "https://other.example")).toBe(
+				OMNIROUTE_DEFAULT_CONTEXT_WINDOW,
+			)
+		})
+	})
+
+	describe("stale refresh without delaying the first request", () => {
+		const serverUrl = "https://omniroute.example"
+
+		it("does not fetch while the cache is fresh (<=60 min)", async () => {
+			let clock = 1_000_000
+			const fetchCatalog = vi.fn().mockResolvedValue({
+				status: "connected",
+				entries: [{ id: "hybrid/code", contextWindow: 50000 }],
+			})
+			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
+
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(fetchCatalog).toHaveBeenCalledTimes(1))
+
+			// Advance 59 minutes — still fresh, so no second fetch.
+			clock += 59 * 60 * 1000
+			refreshPublishedCatalogIfStale(serverUrl)
+			expect(fetchCatalog).toHaveBeenCalledTimes(1)
+		})
+
+		it("refreshes in the background when stale >60 min and the first read uses the old value", async () => {
+			let clock = 1_000_000
+			const fetchCatalog = vi
+				.fn()
+				.mockResolvedValueOnce({ status: "connected", entries: [{ id: "hybrid/code", contextWindow: 50000 }] })
+				.mockResolvedValueOnce({ status: "connected", entries: [{ id: "hybrid/code", contextWindow: 60000 }] })
+			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
+
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+
+			// Advance 61 minutes: now stale. The refresh is fire-and-forget, so the read
+			// taken on this same tick still returns the OLD cached value (no first-request delay).
+			clock += 61 * 60 * 1000
+			refreshPublishedCatalogIfStale(serverUrl)
+			expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000)
+
+			// A later read, after the background fetch resolves, gets the fresh value.
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(60000))
+			expect(fetchCatalog).toHaveBeenCalledTimes(2)
+		})
+
+		it("does not stack concurrent refreshes for the same server URL", async () => {
+			const clock = 1_000_000
+			let resolveFetch: ((value: unknown) => void) | undefined
+			const fetchCatalog = vi.fn().mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveFetch = resolve
+					}),
+			)
+			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
+
+			refreshPublishedCatalogIfStale(serverUrl)
+			refreshPublishedCatalogIfStale(serverUrl)
+			expect(fetchCatalog).toHaveBeenCalledTimes(1)
+
+			resolveFetch?.({ status: "connected", entries: [{ id: "hybrid/code", contextWindow: 50000 }] })
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+		})
+	})
+
+	describe("a failed refresh keeps the last successful published catalog", () => {
+		const serverUrl = "https://omniroute.example"
+
+		it("retains the prior window when a stale refresh errors", async () => {
+			let clock = 1_000_000
+			const fetchCatalog = vi
+				.fn()
+				.mockResolvedValueOnce({ status: "connected", entries: [{ id: "hybrid/code", contextWindow: 50000 }] })
+				.mockResolvedValueOnce({ status: "error", entries: [], error: "boom" })
+			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
+
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+
+			clock += 61 * 60 * 1000
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(fetchCatalog).toHaveBeenCalledTimes(2))
+
+			// The error response did not overwrite the cache: the last successful window stands.
+			expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000)
+		})
+
+		it("retains the prior window when a stale refresh throws", async () => {
+			let clock = 1_000_000
+			const fetchCatalog = vi
+				.fn()
+				.mockResolvedValueOnce({ status: "connected", entries: [{ id: "hybrid/code", contextWindow: 50000 }] })
+				.mockRejectedValueOnce(new Error("network down"))
+			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
+
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+
+			clock += 61 * 60 * 1000
+			refreshPublishedCatalogIfStale(serverUrl)
+			await vi.waitFor(() => expect(fetchCatalog).toHaveBeenCalledTimes(2))
+
+			expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000)
+		})
+
+		it("ignores an empty-key server URL and never fetches", () => {
+			const fetchCatalog = vi.fn()
+			__setPublishedCatalogDeps({ now: () => 1_000_000, fetchCatalog })
+			refreshPublishedCatalogIfStale(undefined)
+			refreshPublishedCatalogIfStale("   ")
+			expect(fetchCatalog).not.toHaveBeenCalled()
+		})
 	})
 })

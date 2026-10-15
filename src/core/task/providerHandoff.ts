@@ -4,6 +4,16 @@ export type TaskExecutionContext = {
 	mode: string
 	apiConfigName: string | undefined
 	apiConfiguration: ProviderSettings
+	/**
+	 * The Capability_Lane this delegated worker was assigned at dispatch, if any
+	 * (omniroute-fleet-topology Requirement 17.4). One of the four exact
+	 * capability-lanes-routing names (`reader.fast`, `reader.deep`,
+	 * `coder.primary`, `reasoning.escalation`). The Task attaches it as request
+	 * metadata on every request it makes on behalf of this worker, and on nothing
+	 * else. Typed as `string` here so this handoff type stays free of a
+	 * core/task/capabilityLanes dependency; the caller supplies a `CapabilityLane`.
+	 */
+	capabilityLane?: string
 }
 
 export type SavedModeProfile = {

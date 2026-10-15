@@ -51,6 +51,7 @@ import {
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+	DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_READ_DENYLIST,
 	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
@@ -2814,6 +2815,7 @@ export class ClineProvider
 			destructiveCommandGuardEnabled,
 			yoloModeEnabled,
 			omniRouteTier,
+			openAiOmniRoutePublishedLaneRouting,
 			parallelismMode,
 			parallelCapacityMap,
 			parallelReadDenylist,
@@ -2982,6 +2984,10 @@ export class ClineProvider
 			yoloModeEnabled: yoloModeEnabled ?? false,
 			// FEAT-005: round-trip the saved cost tier back to the webview (undefined = server default).
 			omniRouteTier,
+			// omniroute-fleet-topology 14.6: round-trip the opt-in published-lane-routing
+			// toggle (default off) so a saved control re-renders instead of reverting.
+			openAiOmniRoutePublishedLaneRouting:
+				openAiOmniRoutePublishedLaneRouting ?? DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 			// FEAT-011: round-trip the saved parallelism default back to the webview.
 			parallelismMode,
 			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
@@ -3230,6 +3236,10 @@ export class ClineProvider
 			yoloModeEnabled: stateValues.yoloModeEnabled ?? false,
 			// FEAT-005: undefined means "use the OmniRoute server default" (no X-OmniRoute-Tier header).
 			omniRouteTier: stateValues.omniRouteTier,
+			// omniroute-fleet-topology 14.6: opt-in published lane routing, default OFF so an
+			// unset value never changes resolution for a user who did not enable it.
+			openAiOmniRoutePublishedLaneRouting:
+				stateValues.openAiOmniRoutePublishedLaneRouting ?? DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 			// FEAT-011: default the saved parallelism appetite to "auto" so runtime consumers read a mode.
 			parallelismMode: stateValues.parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 			// User-adjustable parallel-task capacity map. Default is left `undefined`:

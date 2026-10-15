@@ -12,6 +12,38 @@ export const OpenAiModelsMessageType = openAiModelsMessageTypeSchema.enum
 export type OpenAiModelsMessageType = z.infer<typeof openAiModelsMessageTypeSchema>
 
 /**
+ * Route kind published by the OmniRoute route compiler (omniroute-fleet-topology
+ * Requirement 4.11): a selectable `public` route, a `public`-route `alias`, an
+ * `internal` pool route, or a `diagnostic` route. Menagerie uses it to flag saved
+ * profile route references (Requirement 15.2).
+ */
+export const omniRouteKindSchema = z.enum(["public", "alias", "internal", "diagnostic"])
+
+export type OmniRouteKind = z.infer<typeof omniRouteKindSchema>
+
+/**
+ * One published RouteCapacity record (omniroute-fleet-topology Requirement 14.1):
+ * a Public_Route name and the number of distinct local Slots compiled as its
+ * targets on the primary OmniRoute_Instance. `capacity` is a non-negative integer.
+ */
+export const omniRouteRouteCapacitySchema = z.object({
+	route: z.string(),
+	capacity: z.number().int().min(0),
+})
+
+export type OmniRouteRouteCapacity = z.infer<typeof omniRouteRouteCapacitySchema>
+
+/**
+ * Published Capability_Lane → Public_Route map (omniroute-fleet-topology
+ * Requirement 14.2): each lane name maps to exactly one Public_Route name. Kept as
+ * an open `Record<string, string>` so a lane added by a newer OmniRoute build still
+ * round-trips; the fleet lane enum lives with the compiler, not the client reader.
+ */
+export const omniRouteCapabilityLaneSchema = z.record(z.string(), z.string())
+
+export type OmniRouteCapabilityLane = z.infer<typeof omniRouteCapabilityLaneSchema>
+
+/**
  * OmniRoute catalog entry as published by the OmniRoute tokenized VS Code models
  * route (`enrichModelForVscode`). Unknown/extra fields are stripped rather than
  * rejected so a newer OmniRoute build does not break the client. The per-model
@@ -31,6 +63,13 @@ export const omniRouteCatalogEntrySchema = z.object({
 	supportedReasoningEfforts: z.array(z.string()).optional(),
 	defaultReasoningEffort: z.string().optional(),
 	configurationSchema: z.unknown().optional(),
+	// Published route metadata (omniroute-fleet-topology Requirements 13.1, 14.1,
+	// 14.2). All optional: an older OmniRoute build that does not publish them
+	// degrades to today's static-map behavior (Requirements 13.3, 14.5).
+	kind: omniRouteKindSchema.optional(),
+	contextWindow: z.number().int().min(1).max(16_777_216).optional(),
+	routeCapacity: omniRouteRouteCapacitySchema.optional(),
+	capabilityLane: omniRouteCapabilityLaneSchema.optional(),
 })
 
 export type OmniRouteCatalogEntry = z.infer<typeof omniRouteCatalogEntrySchema>
@@ -51,11 +90,25 @@ export type OmniRouteCatalogEntry = z.infer<typeof omniRouteCatalogEntrySchema>
 export const omniRouteComboEntrySchema = z
 	.object({
 		name: z.string(),
+		// Published route metadata the compiler now attaches per combo
+		// (omniroute-fleet-topology Requirements 13.1, 14.1, 14.2). Optional, so a
+		// combo without them still parses; unknown/extra combo fields (strategy,
+		// models, capabilities, ...) continue to be stripped by the safe-parse.
+		kind: omniRouteKindSchema.optional(),
+		contextWindow: z.number().int().min(1).max(16_777_216).optional(),
+		routeCapacity: omniRouteRouteCapacitySchema.optional(),
+		capabilityLane: omniRouteCapabilityLaneSchema.optional(),
 	})
 	.transform(
 		(combo): OmniRouteCatalogEntry => ({
 			id: combo.name,
 			name: combo.name,
+			// Carry the published fields through so a parsed entry keeps them for the
+			// context-window (13.2), capacity/lane (14.4), and route-flag (15.2) readers.
+			kind: combo.kind,
+			contextWindow: combo.contextWindow,
+			routeCapacity: combo.routeCapacity,
+			capabilityLane: combo.capabilityLane,
 		}),
 	)
 
