@@ -414,24 +414,22 @@ function diffComboFields(desired: Combo, live: Combo): FieldDifference[] {
 	if (desired.context_length !== live.context_length) {
 		fields.push({ field: "context_length", desired: desired.context_length, live: live.context_length })
 	}
-	if (desired.isHidden !== live.isHidden) {
-		fields.push({ field: "isHidden", desired: desired.isHidden, live: live.isHidden })
-	}
-	// `models[]` order matters: compare as an ordered, normalized list. The
-	// per-ref `connectionId` is live-resolved provenance (plan.ts fills it from
-	// `GET /api/providers` at apply time; the compiler leaves it empty), so it is
-	// normalized out of BOTH sides before the comparison — the inventory never
-	// declares a live connection UUID, and a resolved connection id is not Drift
-	// (consistent with Requirement 8.2's "ignore OmniRoute-owned bookkeeping").
-	// This is what makes an onboarding apply inventory-only with no drift after
-	// (Requirement 11.2): the live combos carry resolved connection ids the
-	// compiled desired state does not.
-	if (!deepEqual(normalizeModelRefs(desired.models), normalizeModelRefs(live.models))) {
+	// `isHidden` is NOT compared: OmniRoute release/v3.8.52 does not persist it
+	// (omniroute-fleet-write-conformance F7, Option A), so it is a server-owned
+	// field; comparing it would report perpetual drift on every applied combo.
+	// `models[]`: compare by ROUTING IDENTITY and order, tolerating OmniRoute's
+	// write-time normalization (fills `weight`, defaults `providerId`/
+	// `connectionId` to null, prefixes a cloud step's `model` with `<providerId>/`
+	// — F4/F5). This keeps a successfully-applied inventory drift-free. Order is
+	// still significant (a reordered list is drift, Requirement 8.1).
+	if (!modelRefsMatch(desired.models, live.models)) {
 		// Redact both sides: a model ref value could carry a tokenized URL path
 		// segment, which must never enter the report (Requirement 22.5).
 		fields.push({ field: "models", desired: redactUnknown(desired.models), live: redactUnknown(live.models) })
 	}
-	// `config`: compare key-by-key, ignoring bookkeeping and the provenance key.
+	// `config`: only the keys the inventory AUTHORED must match; server-added
+	// defaults are not drift (subset comparison), consistent with the apply
+	// readback. Bookkeeping and the provenance key are ignored.
 	const configDiff = diffConfig(desired.config, live.config)
 	fields.push(...configDiff)
 
@@ -439,19 +437,26 @@ function diffComboFields(desired: Combo, live: Combo): FieldDifference[] {
 }
 
 /**
- * Normalize a combo's `models[]` for the comparison by dropping the live-resolved
- * `connectionId` from every ref (it is OmniRoute-resolved provenance, not an
- * inventory-declared value; see `diffComboFields`). Order is preserved — a
- * reordered list is still a difference (Requirement 8.1).
+ * Compare desired vs live combo model refs by routing identity and order,
+ * tolerating OmniRoute's write-time normalization (F4/F5): a combo-ref matches
+ * on `comboName`; a model step matches on `model` OR the server-prefixed
+ * `<providerId>/<model>`; `weight`/`providerId`/`connectionId` are ignored.
  */
-function normalizeModelRefs(models: readonly ComboModelRef[]): ComboModelRef[] {
-	return models.map((ref) => {
-		if (ref.connectionId === undefined) {
-			return ref
+function modelRefsMatch(desired: readonly ComboModelRef[], live: readonly ComboModelRef[]): boolean {
+	if (desired.length !== live.length) return false
+	for (let i = 0; i < desired.length; i++) {
+		const d = desired[i]!
+		const l = live[i]!
+		if (d.kind !== l.kind) return false
+		if (d.kind === "combo-ref") {
+			if (d.comboName !== l.comboName) return false
+			continue
 		}
-		const { connectionId: _dropped, ...rest } = ref
-		return rest
-	})
+		if (l.model === d.model) continue
+		if (typeof d.providerId === "string" && l.model === `${d.providerId}/${d.model}`) continue
+		return false
+	}
+	return true
 }
 
 /** Compare two combo config maps, ignoring bookkeeping and `fleetRevision`. */
@@ -460,7 +465,10 @@ function diffConfig(
 	live: Readonly<Record<string, unknown>>,
 ): FieldDifference[] {
 	const out: FieldDifference[] = []
-	const keys = new Set<string>([...Object.keys(desired), ...Object.keys(live)])
+	// Only compare keys the inventory AUTHORED (the desired config). OmniRoute
+	// adds its own config defaults on write; a server-added key is not drift
+	// (consistent with the apply readback's subset comparison).
+	const keys = new Set<string>(Object.keys(desired))
 	for (const key of keys) {
 		if (key === FLEET_REVISION_KEY || COMBO_BOOKKEEPING_FIELDS.has(key)) {
 			continue
