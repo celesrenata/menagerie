@@ -337,6 +337,7 @@ export type ExtensionState = Pick<
 	| "autoApprovalEnabled"
 	| "yoloModeEnabled"
 	| "omniRouteTier"
+	| "openAiOmniRoutePublishedLaneRouting"
 	| "parallelismMode"
 	| "parallelCapacityMap"
 	| "parallelReadDenylist"

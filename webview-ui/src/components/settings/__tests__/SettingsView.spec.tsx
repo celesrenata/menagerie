@@ -896,4 +896,50 @@ describe("SettingsView - condensingApiConfigId", () => {
 			}),
 		)
 	})
+
+	// omniroute-fleet-topology Requirement 14.6: the opt-in published-lane-routing
+	// toggle binds to local cachedState and is forwarded to the host only on Save.
+	// Cover BOTH enabling it from the default-off state and persisting the explicit
+	// off case, so a defaulting omission in handleSubmit cannot hide a bug.
+	it("includes an enabled published-lane-routing toggle in the updateSettings Save payload (Req 14.6)", () => {
+		const { activateTab } = renderSettingsView({ openAiOmniRoutePublishedLaneRouting: false })
+
+		activateTab("omniroute")
+		// The vscrui checkbox input lives inside the labelled testid wrapper.
+		const toggle = within(screen.getByTestId("omniroute-published-lane-routing")).getByRole("checkbox")
+		expect(toggle).not.toBeChecked()
+
+		// Toggling writes cachedState; nothing reaches the host before Save.
+		fireEvent.click(toggle)
+		expect(vscode.postMessage).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ openAiOmniRoutePublishedLaneRouting: true }),
+			}),
+		)
+
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ openAiOmniRoutePublishedLaneRouting: true }),
+			}),
+		)
+	})
+
+	it("persists the explicit off (unset) published-lane-routing case through Save (Req 14.6)", () => {
+		// A user who never enables the toggle still Saves it as `false`, so the
+		// disabled default round-trips rather than being silently omitted.
+		const { activateTab } = renderSettingsView()
+
+		activateTab("omniroute")
+		fireEvent.click(screen.getByTestId("save-button"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ openAiOmniRoutePublishedLaneRouting: false }),
+			}),
+		)
+	})
 })

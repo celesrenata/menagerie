@@ -36,6 +36,14 @@ export const omniRouteTierSchema = z.number().int().min(1).max(5)
 export const OMNIROUTE_TIER_COUNT = 5
 
 /**
+ * Default for the opt-in `openAiOmniRoutePublishedLaneRouting` setting
+ * (omniroute-fleet-topology Requirement 14.6): OFF. Shared so the webview control,
+ * `ClineProvider.getState()`, and the runtime routing path (`runParallelTasks`)
+ * all resolve an unset value to the same disabled behavior.
+ */
+export const DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING = false
+
+/**
  * The five user-selectable parallelism appetite modes (FEAT-011), stored as their
  * internal enum values (never the user-visible labels). The persisted internal value
  * for the "MAXIMUM CHAOS" label is `"max"`. This expresses a concurrency *ceiling*
@@ -268,6 +276,16 @@ export const globalSettingsSchema = z.object({
 	 * Integer 1-5; `undefined` means "use the server default" and emits no header.
 	 */
 	omniRouteTier: omniRouteTierSchema.optional(),
+	/**
+	 * Opt-in published-lane-routing toggle for the OmniRoute settings section
+	 * (omniroute-fleet-topology Requirement 14.6, 14.9). When enabled, a routeless
+	 * parallel worker that uses an OmniRoute profile resolves its model id to the
+	 * published Public_Route of its Capability_Lane; when disabled (the default)
+	 * the client falls back to today's lane→role-route resolution. `undefined`
+	 * means unset, which resolves to the {@link DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING}
+	 * (off) default downstream, so a user who never set it is unaffected.
+	 */
+	openAiOmniRoutePublishedLaneRouting: z.boolean().optional(),
 	/**
 	 * Persisted default parallelism appetite (FEAT-011). One of the five
 	 * `ParallelismMode` values; `undefined` means "unset" and resolves to the

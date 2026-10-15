@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import type { OmniRouteCatalogEntry } from "@roo-code/types"
+
 import {
 	DEFAULT_SCHEDULER_BOUNDS,
 	ROUTE_CAPABILITIES,
@@ -8,6 +10,7 @@ import {
 	type RouteCapacityProvider,
 	type SchedulerBounds,
 } from "./elasticTypes"
+import { CAPABILITY_LANES, laneToRouteCapability, type CapabilityLane, type LaneTaskType } from "./capabilityLanes"
 
 /**
  * Static per-capability real inference-slot counts for the parallel-task batch
@@ -216,4 +219,264 @@ export function computeCapacityBounds(provider: RouteCapacityProvider): Schedule
 		maxDispatched: Math.max(capacitySum, maxPerCapability, SMALL_FLOOR),
 		maxInferenceLeases: Math.max(1, capacitySum),
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Published-metadata-backed RouteCapacityProvider (omniroute-fleet-topology,
+// task 13.3; Requirements 14.4, 14.5, 14.7, 14.8).
+//
+// OmniRoute's Route_Compiler publishes, per Public_Route, a RouteCapacity record
+// (distinct local Slot count) and a Capability_Lane→Public_Route map. This
+// provider folds those published records through the SAME `laneToRouteCapability`
+// mapping the scheduler already uses, so the per-`RouteCapability` capacity the
+// lease pools admit against is derived from real compiled slots instead of the
+// hand-maintained `STATIC_ROUTE_CAPACITY`.
+//
+// Everything here is PURE: it consumes an already-fetched published catalog
+// snapshot (the caller is responsible for the 5 s retrieval window and the
+// background refresh; see `refreshPublishedCatalogIfStale`). It performs no I/O
+// and derives no GPU/VRAM/node identity — only the capability/capacity
+// abstraction (PAR-013), consistent with the static provider above.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The full `LaneTaskType` space, enumerated so the capability→lanes reverse index
+ * can be derived from the authoritative `laneToRouteCapability` function rather
+ * than duplicating its branch table. Requirement 14.4 maps a RouteCapability to
+ * the lanes that `laneToRouteCapability` sends to it "for at least one task
+ * type", so every task type must be probed.
+ */
+const ALL_LANE_TASK_TYPES: readonly LaneTaskType[] = [
+	"lookup",
+	"implementation",
+	"debugging",
+	"refactor",
+	"test",
+	"architecture",
+	"adjudication",
+	"long-horizon",
+]
+
+/**
+ * Reverse index: for each {@link RouteCapability}, the set of {@link CapabilityLane}s
+ * that {@link laneToRouteCapability} maps to it for AT LEAST ONE task type
+ * (Requirement 14.4). Derived once from the authoritative mapping so it can never
+ * drift from `laneToRouteCapability`'s branch table. `vision` maps from no lane,
+ * so its set is empty — its published capacity is always 0 and it therefore falls
+ * back to the static map (Requirement 14.7).
+ */
+export const CAPABILITY_TO_LANES: Readonly<Record<RouteCapability, readonly CapabilityLane[]>> = (() => {
+	const index = {} as Record<RouteCapability, CapabilityLane[]>
+	for (const capability of ROUTE_CAPABILITIES) {
+		index[capability] = []
+	}
+	for (const lane of CAPABILITY_LANES) {
+		const capabilities = new Set<RouteCapability>()
+		for (const type of ALL_LANE_TASK_TYPES) {
+			capabilities.add(laneToRouteCapability(lane, type))
+		}
+		for (const capability of capabilities) {
+			index[capability].push(lane)
+		}
+	}
+	return index
+})()
+
+/**
+ * The published metadata a parallel batch snapshots at start, flattened from the
+ * last successful catalog for the batch's OmniRoute server URL. The two maps are
+ * the client-side view of OmniRoute's Published_Route_Metadata (Requirement 14.1,
+ * 14.2):
+ *   - `capabilityLane`: Capability_Lane name → the lane's own Public_Route name
+ *     (never a Route_Alias).
+ *   - `routeCapacity`: Public_Route name → distinct local Slot count.
+ *
+ * Both are plain string-keyed records so an older OmniRoute build that publishes
+ * neither simply yields empty maps and the provider falls back (Requirement 14.5).
+ */
+export interface PublishedRouteMetadata {
+	/** Capability_Lane name → the lane's own Public_Route name. */
+	readonly capabilityLane: Readonly<Record<string, string>>
+	/** Public_Route name → distinct local Slot count (non-negative integer). */
+	readonly routeCapacity: Readonly<Record<string, number>>
+}
+
+/** The two outcomes of folding a catalog snapshot into {@link PublishedRouteMetadata}. */
+export interface PublishedMetadataExtraction {
+	/** The flattened published metadata, or `undefined` when the catalog carried none. */
+	readonly metadata: PublishedRouteMetadata | undefined
+	/**
+	 * True when EVERY {@link CapabilityLane} is mapped to a Public_Route that has a
+	 * non-negative-integer RouteCapacity record. When false, the published provider
+	 * must fall back to the static map for the whole batch (Requirement 14.5).
+	 */
+	readonly complete: boolean
+}
+
+/**
+ * Flatten an OmniRoute catalog snapshot into {@link PublishedRouteMetadata}.
+ *
+ * Each catalog entry may carry its own `capabilityLane` map and a single
+ * `routeCapacity` record keyed by its own route name; this merges them across
+ * entries into the two batch-wide maps. The result is marked `complete` only when
+ * every one of the four {@link CapabilityLane}s resolves to a Public_Route that
+ * also has a non-negative-integer RouteCapacity record — the exact precondition
+ * Requirement 14.5 requires before the published map may be used.
+ */
+export function extractPublishedRouteMetadata(
+	entries: readonly OmniRouteCatalogEntry[],
+): PublishedMetadataExtraction {
+	const capabilityLane: Record<string, string> = {}
+	const routeCapacity: Record<string, number> = {}
+	let sawAny = false
+
+	for (const entry of entries) {
+		if (entry.capabilityLane) {
+			for (const [lane, route] of Object.entries(entry.capabilityLane)) {
+				capabilityLane[lane] = route
+				sawAny = true
+			}
+		}
+		if (entry.routeCapacity) {
+			routeCapacity[entry.routeCapacity.route] = entry.routeCapacity.capacity
+			sawAny = true
+		}
+	}
+
+	if (!sawAny) {
+		return { metadata: undefined, complete: false }
+	}
+
+	// Complete iff every lane maps to a route that carries a non-negative-integer
+	// capacity record (Requirement 14.5).
+	const complete = CAPABILITY_LANES.every((lane) => {
+		const route = capabilityLane[lane]
+		if (route === undefined) return false
+		const capacity = routeCapacity[route]
+		return typeof capacity === "number" && Number.isInteger(capacity) && capacity >= 0
+	})
+
+	return { metadata: { capabilityLane, routeCapacity }, complete }
+}
+
+/**
+ * Compute the published distinct-local-Slot count for one {@link RouteCapability}
+ * from the flattened {@link PublishedRouteMetadata} (Requirement 14.4).
+ *
+ * The capacity is the number of distinct local Slots across the Public_Routes the
+ * published Capability_Lane map assigns to the lanes that {@link CAPABILITY_TO_LANES}
+ * resolves to this capability. A Slot shared by two Public_Routes is counted once;
+ * since the published RouteCapacity is already a per-route distinct-Slot count and
+ * two lanes may share a route, routes are de-duplicated by name before summing so
+ * a shared route is not double-counted. A capability no lane maps to (e.g.
+ * `vision`) yields 0, which the provider replaces with the static value
+ * (Requirement 14.7).
+ */
+export function publishedCapacityForCapability(
+	capability: RouteCapability,
+	metadata: PublishedRouteMetadata,
+): number {
+	const lanes = CAPABILITY_TO_LANES[capability]
+	const countedRoutes = new Set<string>()
+	let total = 0
+	for (const lane of lanes) {
+		const route = metadata.capabilityLane[lane]
+		if (route === undefined || countedRoutes.has(route)) continue
+		const capacity = metadata.routeCapacity[route]
+		if (typeof capacity === "number" && Number.isInteger(capacity) && capacity >= 0) {
+			countedRoutes.add(route)
+			total += capacity
+		}
+	}
+	return total
+}
+
+/**
+ * Build the full per-{@link RouteCapability} slot map from published metadata,
+ * applying the two static/override fallbacks (Requirements 14.4, 14.7, 14.8).
+ *
+ * For each capability:
+ *   1. Compute the published distinct-local-Slot count (above).
+ *   2. If that count is 0 — including `vision`, which no lane maps to — use the
+ *      static map value instead, honoring any operator per-capability override
+ *      (Requirement 14.7).
+ *   3. Otherwise, when the operator set a per-capability override LOWER than the
+ *      published count, use the override (Requirement 14.8). A higher or absent
+ *      override leaves the published count untouched.
+ *
+ * The returned map is a full `Record<RouteCapability, number>` ready for
+ * {@link createStaticRouteCapacityProvider}, which still floors every value to
+ * `>= 1`, so no published 0 can ever reach the lease pools as a deadlock.
+ *
+ * `staticMap` is the merged static+override map (from {@link mergeRouteCapacityMap}),
+ * so a value in it already reflects the operator override folded over
+ * `STATIC_ROUTE_CAPACITY`. `override` is the raw per-capability override the
+ * operator set, consulted only for the lower-than-published rule (14.8).
+ */
+export function buildPublishedCapacityMap(
+	metadata: PublishedRouteMetadata,
+	staticMap: Readonly<Record<RouteCapability, number>>,
+	override: Partial<Record<RouteCapability, number>> | undefined,
+): Record<RouteCapability, number> {
+	const result = {} as Record<RouteCapability, number>
+	for (const capability of ROUTE_CAPABILITIES) {
+		const published = publishedCapacityForCapability(capability, metadata)
+		if (published <= 0) {
+			// No published slots for this capability (0, or a capability no lane
+			// maps to): fall back to the static value, which already folds the
+			// operator override (Requirement 14.7).
+			result[capability] = staticMap[capability]
+			continue
+		}
+		const operatorOverride = override?.[capability]
+		if (
+			operatorOverride !== undefined &&
+			Number.isInteger(operatorOverride) &&
+			operatorOverride > 0 &&
+			operatorOverride < published
+		) {
+			// A lower operator override wins over the published count (Requirement 14.8).
+			result[capability] = operatorOverride
+		} else {
+			result[capability] = published
+		}
+	}
+	return result
+}
+
+/**
+ * Build a {@link RouteCapacityProvider} from published OmniRoute metadata, with a
+ * full fall-through to the static map (Requirements 14.4, 14.5, 14.7, 14.8).
+ *
+ * When `extraction.complete` is false — the catalog carried no published metadata,
+ * did not map every Capability_Lane to a Public_Route, or a mapped route lacked a
+ * valid RouteCapacity record — this logs one warning naming which condition fired
+ * and returns the plain static provider over `staticMap` (Requirement 14.5). The
+ * caller enforces the 5 s retrieval window and passes an empty/incomplete
+ * extraction when the window elapses, so the same fall-through covers the timeout.
+ *
+ * Otherwise it builds the published per-capability map (with the 14.7/14.8
+ * fallbacks folded in) and hands it to {@link createStaticRouteCapacityProvider},
+ * so the floor-of-1 and bounded-unknown safety still apply unchanged.
+ *
+ * @param staticMap the merged static+override map (from {@link mergeRouteCapacityMap}).
+ * @param override the raw per-capability operator override (for the 14.8 rule).
+ */
+export function createPublishedRouteCapacityProvider(
+	extraction: PublishedMetadataExtraction,
+	staticMap: Readonly<Record<RouteCapability, number>> = STATIC_ROUTE_CAPACITY,
+	override?: Partial<Record<RouteCapability, number>>,
+): RouteCapacityProvider {
+	if (!extraction.complete || extraction.metadata === undefined) {
+		const reason =
+			extraction.metadata === undefined
+				? "no published route metadata was retrieved within the batch window"
+				: "the published metadata did not map every capability lane to a public route with a valid capacity record"
+		console.warn(
+			`[RouteCapacityMap] falling back to the static capacity map: ${reason} ` +
+				`(omniroute-fleet-topology Requirement 14.5).`,
+		)
+		return createStaticRouteCapacityProvider(staticMap)
+	}
+	return createStaticRouteCapacityProvider(buildPublishedCapacityMap(extraction.metadata, staticMap, override))
 }

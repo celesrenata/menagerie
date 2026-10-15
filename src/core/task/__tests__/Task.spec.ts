@@ -1038,6 +1038,56 @@ describe("Cline", () => {
 			},
 		)
 
+		// omniroute-fleet-topology Requirement 17.4: a parallel worker's assigned
+		// Capability_Lane rides on the handoff context and the worker Task carries it
+		// so it is attached as request metadata on every request the worker makes —
+		// and ONLY a worker with an assigned lane carries one (a top-level or
+		// non-laned task leaves `capabilityLane` undefined, so no other request is
+		// tagged). The provider-layer serialization of the lane onto the request
+		// `user` field is covered in api/providers/__tests__/openai.spec.ts.
+		it("carries the handoff-context Capability_Lane on the worker Task (Req 17.4)", () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "laned worker",
+				startTask: false,
+				handoffExecutionContext: {
+					mode: "code",
+					apiConfigName: "worker-profile",
+					apiConfiguration: mockApiConfig,
+					capabilityLane: "coder.primary",
+				},
+			})
+			// The lane name is carried verbatim (spelled exactly) so the request
+			// metadata matches the published Capability_Lane name.
+			expect(task.capabilityLane).toBe("coder.primary")
+		})
+
+		it("leaves capabilityLane undefined for a worker handed off without a lane (Req 17.4)", () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "laneless worker",
+				startTask: false,
+				handoffExecutionContext: {
+					mode: "ask",
+					apiConfigName: "worker-profile",
+					apiConfiguration: mockApiConfig,
+				},
+			})
+			expect(task.capabilityLane).toBeUndefined()
+		})
+
+		it("leaves capabilityLane undefined for a top-level task (and on nothing else, Req 17.4)", () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "top-level task",
+				startTask: false,
+			})
+			expect(task.capabilityLane).toBeUndefined()
+		})
+
 		it("keeps history-task initialization distinct from delegated-child initialization", async () => {
 			const captureTaskRestarted = vi.spyOn(TelemetryService.instance, "captureTaskRestarted")
 			const historyItem = {

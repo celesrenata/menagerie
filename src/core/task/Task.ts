@@ -453,6 +453,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// API
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
+	/**
+	 * The Capability_Lane this task/worker was assigned at creation, if any
+	 * (omniroute-fleet-topology Requirement 17.4). Set from the parallel-worker
+	 * handoff context ({@link TaskExecutionContext.capabilityLane}); a top-level
+	 * or non-laned task leaves it `undefined`. When set, it is attached as request
+	 * metadata on every request this task makes (and on nothing else) via the
+	 * `capabilityLane` field of `ApiHandlerCreateMessageMetadata`.
+	 */
+	readonly capabilityLane?: string
 	private rateLimitClock: RateLimitClock
 	private autoApprovalHandler: AutoApprovalHandler
 
@@ -797,6 +806,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		})
 
 		this.apiConfiguration = handoffExecutionContext?.apiConfiguration ?? apiConfiguration
+		// A parallel worker carries its assigned Capability_Lane on the handoff
+		// context; a top-level/non-laned task leaves this undefined (Req 17.4).
+		this.capabilityLane = handoffExecutionContext?.capabilityLane
 		this.api = buildApiHandler(this.apiConfiguration)
 		this.rateLimitClock = rateLimitClock ?? createRateLimitClock()
 		this.autoApprovalHandler = new AutoApprovalHandler()
@@ -2219,6 +2231,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode,
 			taskId: this.taskId,
+			// Carry the assigned Capability_Lane (if any) on the condense/summary
+			// request too, since it is a request made on behalf of this task (Req 17.4).
+			...(this.capabilityLane ? { capabilityLane: this.capabilityLane } : {}),
 			...(this.currentRequestAbortController?.signal
 				? {
 						abortSignal: this.currentRequestAbortController.signal,
@@ -5020,6 +5035,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode,
 			taskId: this.taskId,
+			// Carry the assigned Capability_Lane (if any) on the condense/summary
+			// request too, since it is a request made on behalf of this task (Req 17.4).
+			...(this.capabilityLane ? { capabilityLane: this.capabilityLane } : {}),
 			...(this.currentRequestAbortController?.signal
 				? {
 						abortSignal: this.currentRequestAbortController.signal,
@@ -5444,6 +5462,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const contextMgmtMetadata: ApiHandlerCreateMessageMetadata = {
 				mode,
 				taskId: this.taskId,
+				// Carry the assigned Capability_Lane (if any) on the context-management
+				// request too, since it is a request made on behalf of this task (Req 17.4).
+				...(this.capabilityLane ? { capabilityLane: this.capabilityLane } : {}),
 				...(this.currentRequestAbortController?.signal
 					? {
 							abortSignal: this.currentRequestAbortController.signal,
@@ -5646,6 +5667,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			taskId: this.taskId,
 			suppressPreviousResponseId: this.skipPrevResponseIdOnce,
 			abortSignal,
+			// Attach the assigned Capability_Lane (if any) so every request this
+			// task/worker makes — including each retry — carries the lane name as
+			// request metadata, and no other request does (Req 17.4).
+			...(this.capabilityLane ? { capabilityLane: this.capabilityLane } : {}),
 			// Include tools whenever they are present.
 			...(shouldIncludeTools
 				? {

@@ -78,4 +78,23 @@ describe("provider handoff decisions", () => {
 		expect(selected.apiConfigName).toBe("code-profile")
 		expect(selected.apiConfiguration).toEqual(savedConfiguration)
 	})
+
+	// omniroute-fleet-topology Requirement 17.4: the handoff context carries the
+	// worker's assigned Capability_Lane additively, exactly as `runParallelTasks`
+	// sets it (`context.capabilityLane = lane`) and `Task` reads it. The field is a
+	// plain assignable `string` so the handoff type stays free of a capabilityLanes
+	// dependency, and a context with no lane simply leaves it undefined.
+	it("carries an assigned Capability_Lane on the selected handoff context (Req 17.4)", () => {
+		const selected = selectHandoffExecutionContext(parent, "code", "code", false, {
+			name: "code-profile",
+			apiConfiguration: savedConfiguration,
+		})
+		// A fresh selection has no lane until the caller assigns one (readers/coders
+		// get a lane from assignLanes; a non-laned handoff never gets one).
+		expect(selected.capabilityLane).toBeUndefined()
+		// Assigning the lane additively leaves the resolved configuration untouched.
+		selected.capabilityLane = "reader.fast"
+		expect(selected.capabilityLane).toBe("reader.fast")
+		expect(selected.apiConfiguration).toEqual(parentConfiguration)
+	})
 })

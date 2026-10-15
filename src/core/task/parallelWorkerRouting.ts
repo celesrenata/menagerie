@@ -285,6 +285,74 @@ export interface ResolveLaneRouteIdArgs {
  *
  * Pure — no side effects, no tier/GPU math.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// Published-lane-routing resolution (omniroute-fleet-topology, task 13.3;
+// Requirement 14.6, 14.9).
+//
+// This is the OPT-IN layer that sits in FRONT of {@link resolveLaneRouteId} when
+// the operator enables `openAiOmniRoutePublishedLaneRouting`. When enabled, a
+// routeless parallel worker whose mode has no distinct own saved profile model
+// resolves its model id to the published Public_Route of its Capability_Lane,
+// instead of today's lane→role-route resolution. When the setting is off, or any
+// precondition fails, or the published map does not resolve the lane to a route,
+// the caller falls back to {@link resolveLaneRouteId} unchanged (Requirement 14.9).
+// Pure — no I/O; the published map is a snapshot passed in by the caller.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Inputs to {@link resolvePublishedLaneRoute}. */
+export interface ResolvePublishedLaneRouteArgs {
+	/** Whether the opt-in `openAiOmniRoutePublishedLaneRouting` setting is enabled. */
+	readonly enabled: boolean
+	/** The lane this worker was assigned by {@link assignLanes}. */
+	readonly lane: CapabilityLane
+	/** An explicit per-worker route; when set, published routing does NOT apply (Req 14.6). */
+	readonly route: string | null | undefined
+	/** The worker's resolved profile. Published routing applies only to an OmniRoute profile. */
+	readonly profile: ProviderSettings
+	/** The parent orchestrator's model id (used for the "own saved model" gate, Req 14.6). */
+	readonly parentModelId: string | undefined
+	/**
+	 * The published Capability_Lane → Public_Route map snapshot for the batch's
+	 * server URL, or `undefined` when no complete published metadata was retrieved
+	 * within the batch window (Requirement 14.9). Keyed by the exact lane name.
+	 */
+	readonly publishedLaneRoutes: Readonly<Record<string, string>> | undefined
+}
+
+/**
+ * Resolve a worker's model id to its lane's published Public_Route, or `undefined`
+ * when published routing does not apply and the caller must fall back to
+ * {@link resolveLaneRouteId} (Requirement 14.6, 14.9).
+ *
+ * Published routing applies iff ALL of the Requirement 14.6 preconditions hold:
+ *   - the setting is enabled;
+ *   - the worker uses an OmniRoute profile (`openAiIsOmniRoute`);
+ *   - the worker has no explicit per-worker `route`;
+ *   - the worker's mode has no saved profile model id different from the parent's
+ *     (so a worker with its own distinct role model keeps it — matching the
+ *     own-model tier of `resolveLaneRouteId`);
+ *   - the published map resolves the worker's lane to a non-empty Public_Route.
+ *
+ * When any precondition fails this returns `undefined`; the caller then resolves
+ * the id exactly as it does while published routing is disabled (Requirement 14.9).
+ */
+export function resolvePublishedLaneRoute(args: ResolvePublishedLaneRouteArgs): string | undefined {
+	const { enabled, lane, route, profile, parentModelId, publishedLaneRoutes } = args
+	if (!enabled) return undefined
+	if (profile.openAiIsOmniRoute !== true) return undefined
+	// An explicit route wins verbatim; published routing never overrides it (Req 14.6).
+	if (route) return undefined
+	// A mode with its own distinct saved profile model keeps that model (Req 14.6),
+	// mirroring the own-model tier of resolveLaneRouteId.
+	const ownModelId = profile.openAiModelId
+	if (ownModelId && ownModelId !== parentModelId) return undefined
+	const published = publishedLaneRoutes?.[lane]
+	if (typeof published === "string" && published.length > 0) {
+		return published
+	}
+	return undefined
+}
+
 export function resolveLaneRouteId(args: ResolveLaneRouteIdArgs): string | undefined {
 	const { lane, taskType, profile, route, parentModelId, coderOrdinal, codeCapableRouteIds } = args
 	// 1) Explicit route wins verbatim.
