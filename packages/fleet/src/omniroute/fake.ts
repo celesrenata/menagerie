@@ -222,7 +222,12 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 		return this.run("createCombo", undefined, () => {
 			if (this.strictComboSchema) assertValidComboPayload(combo)
 			const id = `${this.comboIdPrefix}${this.nextComboIdSeq++}`
-			const created: Combo = deepFreeze({ ...clone(combo), id })
+			// The live OmniRoute `createComboSchema` strips `isHidden`, so a create
+			// always lands visible regardless of the requested value; the UPDATE
+			// schema accepts it. Model that in strict mode so the client's
+			// create-then-update workaround for hidden combos is exercised.
+			const payload = this.strictComboSchema ? { ...clone(combo), isHidden: false } : clone(combo)
+			const created: Combo = deepFreeze({ ...payload, id })
 			this.combos.set(id, created)
 			return clone(created)
 		})
