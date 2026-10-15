@@ -918,3 +918,66 @@ describe("Reconciler integration — decommission removes dead targets (12.1)", 
 		expect(deadReferencedAfterApply).toEqual([])
 	})
 })
+
+
+// ---------------------------------------------------------------------------
+// Live combo-schema conformance (regression for the live apply HTTP 400).
+//
+// The live OmniRoute /api/combos endpoint rejected the compiler's payloads with
+// 400s: context_length < 1000, config.concurrencyPerModel NaN (it emitted a
+// per-model MAP, not a scalar), and a missing config.tierRouting.defaultTier.
+// The in-memory fake had accepted anything, so no test caught it. These tests
+// turn on the fake's `strictComboSchema` (which mirrors the live 400 rules) and
+// drive a REAL compiled inventory through plan → apply, proving every generated
+// combo payload is live-valid — and that the strict fake would have caught the
+// original bug.
+// ---------------------------------------------------------------------------
+
+describe("Reconciler integration — compiler payloads conform to the live combo schema", () => {
+	it("applies a fully compiled inventory through a strict-schema fake (every create/update accepted)", async () => {
+		const model = fc.sample(inventoryArb, { numRuns: 1, seed: 7 })[0]!
+		// Strict fake: createCombo/updateCombo reject a payload the live server
+		// would 400 (context_length >= 1000, numeric concurrencyPerModel, numeric
+		// tierRouting.defaultTier).
+		const fake = new FakeOmniRouteClient({
+			connections: liveConnections(),
+			advertisedModels: advertisedModelsFor(model),
+			strictComboSchema: true,
+		})
+		const built = await plan(model, REV, INSTANCE, fake, { clock: clockSeq() })
+		expect(built.errors).toEqual([])
+		const applied = await apply(built, confirmFor(built), applyDeps(fake))
+		// A single non-conforming payload would make apply fail-and-restore.
+		expect(applied.outcome).toBe("succeeded")
+
+		// Every live combo now satisfies the schema the strict fake enforced.
+		for (const combo of await fake.listCombos()) {
+			expect(combo.context_length).toBeGreaterThanOrEqual(1000)
+			const config = combo.config as Record<string, unknown>
+			if ("concurrencyPerModel" in config) {
+				expect(typeof config.concurrencyPerModel).toBe("number")
+				expect(Number.isFinite(config.concurrencyPerModel as number)).toBe(true)
+			}
+			const tierRouting = config.tierRouting as Record<string, unknown> | undefined
+			if (tierRouting !== undefined) {
+				expect(typeof tierRouting.defaultTier).toBe("number")
+			}
+		}
+	})
+
+	it("strict fake rejects the pre-fix payload shapes (the original 400 is now caught at the unit layer)", async () => {
+		const fake = new FakeOmniRouteClient({ strictComboSchema: true })
+		// context_length below the floor (the internal-pool/diagnostic bug).
+		await expect(
+			fake.createCombo({ name: "pool/x", strategy: "priority", models: [], config: { tierRouting: { defaultTier: 1 } }, context_length: 0, isHidden: true }),
+		).rejects.toThrow(/context_length/)
+		// Missing tierRouting.defaultTier.
+		await expect(
+			fake.createCombo({ name: "hybrid/x", strategy: "priority", models: [], config: { tierRouting: { maximumTier: 3 } }, context_length: 262144, isHidden: false }),
+		).rejects.toThrow(/defaultTier/)
+		// NaN concurrencyPerModel.
+		await expect(
+			fake.createCombo({ name: "pool/y", strategy: "priority", models: [], config: { concurrencyPerModel: Number.NaN, tierRouting: { defaultTier: 1 } }, context_length: 163840, isHidden: true }),
+		).rejects.toThrow(/concurrencyPerModel/)
+	})
+})
