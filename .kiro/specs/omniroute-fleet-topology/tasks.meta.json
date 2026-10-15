@@ -1,0 +1,786 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create the `packages/fleet` workspace package": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988188
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976996684
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977145719
+      }
+    ],
+    "1.2 Define the Fleet_Inventory Zod schema in `packages/types/src/fleet/inventory.ts`": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988216
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976997758
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977146569
+      }
+    ],
+    "2.1 Implement the Inventory_Parser (`packages/fleet/src/inventory/parser.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988256
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977152690
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977672458
+      }
+    ],
+    "2.2 Implement the Inventory_Printer (`packages/fleet/src/inventory/printer.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988278
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977154061
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977673687
+      }
+    ],
+    "2.3 Implement the Inventory_Validator (`packages/fleet/src/inventory/validator.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988300
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977154962
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977674761
+      }
+    ],
+    "2.4 Property tests for parser/printer/validator": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988326
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977679613
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978035680
+      }
+    ],
+    "3.1 Target identity and eligibility (`packages/fleet/src/compile/targets.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988345
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977681064
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978038059
+      }
+    ],
+    "3.2 Ordering, spill tiers, and internal-pool dedup (`packages/fleet/src/compile/order.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988365
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978044925
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978301845
+      }
+    ],
+    "3.3 Capacity, concurrency, and tier ceiling (`packages/fleet/src/compile/capacity.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988384
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978043885
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978302898
+      }
+    ],
+    "3.4 Assemble Desired_Route_State and published metadata (`packages/fleet/src/compile/compiler.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988404
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978309494
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978801768
+      }
+    ],
+    "3.5 Property tests for the compiler": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988424
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791979315825
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992254237
+      }
+    ],
+    "4.1 Define the management-API client interface and HTTP implementation (`packages/fleet/src/omniroute/client.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988443
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977681953
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978037107
+      }
+    ],
+    "4.2 Build the in-memory OmniRoute fake (`packages/fleet/src/omniroute/fake.ts`, test util)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988462
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978042574
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978300463
+      }
+    ],
+    "5.1 Implement drift detection (`packages/fleet/src/reconcile/drift.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988483
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978814984
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791979311704
+      }
+    ],
+    "5.2 Implement the scheduled drift run and alert write (`packages/fleet/src/reconcile/schedule.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988502
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791979317258
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992258413
+      }
+    ],
+    "6.1 Change_Plan builder and connection-id resolution (`packages/fleet/src/reconcile/plan.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988523
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791979318655
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992255536
+      }
+    ],
+    "6.2 Apply with backup, readback, and restore-on-failure (`packages/fleet/src/reconcile/apply.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988554
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992263251
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992893228
+      }
+    ],
+    "6.3 Rollback (`packages/fleet/src/reconcile/rollback.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988577
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992901827
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993839492
+      }
+    ],
+    "6.4 Secret resolution and missing-secret handling (`packages/fleet/src/omniroute/secrets.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988597
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992264643
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992895548
+      }
+    ],
+    "7.1 Preflight_Check and onboarding plan (`packages/fleet/src/reconcile/onboard.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988617
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992903224
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993842332
+      }
+    ],
+    "7.2 Decommission and model-replacement plan (`packages/fleet/src/reconcile/decommission.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988637
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992904206
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993838096
+      }
+    ],
+    "7.3 Reconciler property and integration tests (against the fake)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988658
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993847794
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994388952
+      }
+    ],
+    "8.1 Attribution and the 90-day metrics copy (`packages/fleet/src/observe/attribution.ts`, `packages/fleet/src/observe/copy.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988678
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791979319920
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992257386
+      }
+    ],
+    "8.2 Metrics computation (`packages/fleet/src/observe/metrics.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988699
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992265611
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992894146
+      }
+    ],
+    "8.3 Runtime anomaly detection (`packages/fleet/src/observe/anomalies.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988717
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992905577
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993840882
+      }
+    ],
+    "8.4 Observer tests": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988737
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993849491
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994389894
+      }
+    ],
+    "9.1 Port the pre-deployment estimate replay (`packages/fleet/src/evaluate/estimate.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988758
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992266801
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992896735
+      }
+    ],
+    "9.2 Evaluation window, floors, objectives, ranking (`packages/fleet/src/evaluate/evaluate.ts`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988777
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992906746
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993843275
+      }
+    ],
+    "9.3 Evaluator tests": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988799
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993850108
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994391270
+      }
+    ],
+    "10.1 Implement the CLI commands": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988819
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993850870
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994391992
+      }
+    ],
+    "10.2 CLI smoke tests": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988842
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994399355
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995428649
+      }
+    ],
+    "11. Author the initial `fleet/fleet.kdl` for today's fleet": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988864
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994400747
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995433239
+      }
+    ],
+    "12.1 Publish route metadata on the VS Code combos endpoint": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988886
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994398406
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995430039
+      }
+    ],
+    "12.2 Populate admission wait and record the Capability_Lane": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988907
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994401701
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995430999
+      }
+    ],
+    "12.3 Emit a structured busy-slot-skip signal": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988927
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994402730
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995432396
+      }
+    ],
+    "13.1 Carry published route metadata through the catalog fetch": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988949
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995438720
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995661122
+      }
+    ],
+    "13.2 Published route context windows feed auto-condense": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988971
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995678206
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791996473590
+      }
+    ],
+    "13.3 Published capacity and lane routing for the scheduler": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976988994
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791996544494
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791997058912
+      }
+    ],
+    "13.4 Route-reference validation and lane attribution": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976989033
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995678974
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791996472512
+      }
+    ],
+    "13.5 Menagerie client tests": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976989054
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791997066353
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791997566414
+      }
+    ],
+    "14. Final checkpoint": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791976989078
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791997573605
+      },
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1792004766855
+      }
+    ],
+    "1. Scaffold `packages/fleet` and the shared Fleet_Inventory schema": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791977146600
+      }
+    ],
+    "2. Inventory parser, printer, and validator": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978035715
+      }
+    ],
+    "4. OmniRoute management client and in-memory fake": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791978300486
+      }
+    ],
+    "3. Route_Compiler": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992254279
+      }
+    ],
+    "5. Reconciler: drift detection": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791992258446
+      }
+    ],
+    "6. Reconciler: plan, apply, backup, rollback": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791993839530
+      }
+    ],
+    "7. Reconciler: onboarding and decommissioning": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994388998
+      }
+    ],
+    "8. Fleet_Observer": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994389918
+      }
+    ],
+    "9. Arrangement_Evaluator": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791994391296
+      }
+    ],
+    "10. `fleetctl` CLI (`packages/fleet/src/cli/`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995428682
+      }
+    ],
+    "12. OmniRoute additive changes (fork, branch off `release/v3.8.52`)": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791995432434
+      }
+    ],
+    "13. Menagerie_Client reads and flags": [
+      {
+        "executionId": "8ae560a8-8ffe-4bf8-965f-9e2036b71c64",
+        "chatSessionId": "sess_c1835ef6-9145-4c82-9750-564ee723643f",
+        "timestamp": 1791997566471
+      }
+    ]
+  }
+}

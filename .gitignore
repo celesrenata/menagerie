@@ -75,3 +75,9 @@ roo-cli-*.tar.gz*
 
 # Fleet inventory backups
 fleet/*.bak-*
+
+# Vendored AAR working project (self-contained, has its own git metadata)
+/Menagerie-Modes-v2-AAR/
+
+# Live cluster operational scripts and combo backups
+/omniroute/

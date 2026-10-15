@@ -1,0 +1,95 @@
+// fleet/fleet.kdl — single source of truth for OmniRoute routing.
+//
+// Authored for today's fleet (2026-10-14 findings): the RTX 5090 (vLLM), the
+// RTX 4070 Ti Super (Ollama, one resident model), the M5 Max (GLM + Uzu behind
+// one proxy), and four Intel Arc iGPUs (OVMS embeddings + rerank). The cluster
+// OmniRoute is the primary; the idle Mac-local instance is retired (no slots).
+//
+// This document is the hand-authored inventory; the Inventory_Printer defines
+// the canonical emitted shape and this file matches it so the parser accepts it.
+
+alert-destination url="https://alerts.celestium.life/omniroute" secret="alert_webhook_token"
+
+instance "cluster" role="primary" address="https://omniroute.celestium.life" secret="omniroute_management_api_key" {
+  backup-retention 20
+}
+instance "mac-local" role="retired" address="http://127.0.0.1:20128" no-credential=#true {
+  backup-retention 20
+}
+
+device "rtx5090" slot-ceiling=2 host-preemption=#true
+device "rtx4070ti" slot-ceiling=4 host-preemption=#false
+device "m5max" slot-ceiling=2 host-preemption=#false
+
+endpoint "esnixi-vllm" provider="vllm" devices="rtx5090" {
+  address instance="cluster" url="http://192.168.133.3:2701"
+  secret "vllm_switcher_key"
+}
+endpoint "gremlin-ollama" provider="ollama-local" devices="rtx4070ti" {
+  address instance="cluster" url="http://10.1.1.12:2701"
+  no-credential #true
+}
+endpoint "m5-proxy" provider="llama-cpp" devices="m5max" {
+  address instance="cluster" url="http://192.168.133.2:7777"
+  no-credential #true
+}
+
+residency "r-5090" swap-latency-ms=0
+residency "r-4070" swap-latency-ms=8500
+residency "r-m5" swap-latency-ms=0
+
+model "coder-5090" endpoint="esnixi-vllm" device="rtx5090" id="qwen3.8-27b-nvfp4" context=163840 slots=2 residency="r-5090" tags="chat code research fast reviewer frontier tester reasoning tools" {
+  rank 1
+  rank 6
+}
+model "coder-4070" endpoint="gremlin-ollama" device="rtx4070ti" id="qwen3.8:27b-iq3-code144k" context=147456 slots=1 residency="r-4070" tags="chat code research reasoning tools" {
+  rank 3
+}
+model "reader-4070" endpoint="gremlin-ollama" device="rtx4070ti" id="qwen3.5-reader:9b" context=131072 slots=3 residency="r-4070" tags="chat read" {
+  rank 2
+  rank 4
+  rank 4
+}
+model "uzu-m5" endpoint="m5-proxy" device="m5max" id="qwen3.8-27b-uzu" context=128000 slots=1 residency="r-m5" tags="chat code research reasoning tools" {
+  rank 8
+}
+model "glm-m5" endpoint="m5-proxy" device="m5max" id="ds4-glm53" context=32768 slots=1 residency="r-m5" tags="chat planner reasoning long-horizon tools" {
+  rank 7
+}
+
+cloud "bedrock-luna" provider="bedrock" id="global.openai.gpt-5.6-luna" spend="low-budget" context=400000 tags="chat code research fast reviewer frontier tester reasoning tools"
+cloud "codestral" provider="mistral" id="codestral-latest" spend="free" context=256000 tags="chat code research fast read"
+cloud "bedrock-planner" provider="bedrock" id="global.anthropic.claude-opus" spend="low-budget" context=200000 tags="chat planner reasoning long-horizon tools"
+
+lane "code" names="hybrid/code" capabilities="chat code" min-context=60000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=1000 capability-lanes="coder.primary" {
+  spill "free"
+  spill "low-budget"
+}
+lane "research" names="hybrid/research" capabilities="chat research" min-context=60000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=1000 capability-lanes="" {
+  spill "free"
+  spill "low-budget"
+}
+lane "fast" names="hybrid/fast" capabilities="chat fast" min-context=20000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=1000 capability-lanes="" {
+  spill "low-budget"
+}
+lane "planner" names="hybrid/planner" capabilities="chat planner" min-context=30000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=30000 capability-lanes="reasoning.escalation" {
+  spill "low-budget"
+}
+lane "reader" names="hybrid/reader" capabilities="chat read" min-context=32768 order="fill-first" max-spend="free" fail-closed=#false max-queue-ms=1000 capability-lanes="reader.fast reader.deep" {
+  spill "free"
+}
+lane "reviewer" names="hybrid/reviewer" capabilities="chat reviewer" min-context=60000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=1000 capability-lanes="" {
+  spill "low-budget"
+}
+lane "frontier" names="hybrid/frontier" capabilities="chat frontier" min-context=60000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=1000 capability-lanes="" {
+  spill "low-budget"
+}
+lane "tester" names="hybrid/tester" capabilities="chat tester" min-context=60000 order="fill-first" max-spend="low-budget" fail-closed=#false max-queue-ms=1000 capability-lanes="" {
+  spill "low-budget"
+}
+
+diagnostic "diag/5090" device="rtx5090"
+diagnostic "diag/4070" device="rtx4070ti"
+diagnostic "diag/m5" device="m5max"
+
+improvement-objective-order "planner-cloud-share planner-multi-attempt code-p50 reader-cloud-share reader-multi-attempt cloud-input-tokens capacity-rejections embeddings-success model-switches"
