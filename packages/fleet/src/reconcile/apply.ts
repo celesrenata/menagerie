@@ -603,6 +603,15 @@ async function applyOneOp(
 		let created: Combo
 		try {
 			created = await ctx.writeDeadline(deps.client.createCombo(input))
+			// The live OmniRoute create schema strips `isHidden`, so an internal
+			// pool / diagnostic lands VISIBLE even when the plan marks it hidden.
+			// The update schema accepts `isHidden`, so issue a single follow-up
+			// update to hide it. This keeps internal pools out of the client-
+			// selectable catalog without an OmniRoute server change; it is a no-op
+			// for a client that already honored the flag.
+			if (input.isHidden === true && created.isHidden !== true) {
+				created = await ctx.writeDeadline(deps.client.updateCombo(created.id, { ...input, isHidden: true }))
+			}
 		} catch (error) {
 			throw new WriteAttempted(written, error)
 		}
@@ -710,8 +719,15 @@ function modelStepIdentityMatches(live: unknown, after: unknown): boolean {
 	if (l.kind !== a.kind) return false
 	if (a.kind === "combo-ref") return l.comboName === a.comboName
 	if (a.kind === "provider-wildcard") return l.providerId === a.providerId && l.modelPattern === a.modelPattern
-	// model step: the resolved model id is the identity.
-	return l.model === a.model
+	// model step: the resolved model id is the identity. OmniRoute prefixes a
+	// cloud target's model with its provider on write (`codestral-latest` ->
+	// `mistral/codestral-latest`), so accept either the exact id or the
+	// `<providerId>/<model>` normalized form.
+	if (l.model === a.model) return true
+	if (typeof a.providerId === "string" && typeof a.model === "string" && l.model === `${a.providerId}/${a.model}`) {
+		return true
+	}
+	return false
 }
 
 

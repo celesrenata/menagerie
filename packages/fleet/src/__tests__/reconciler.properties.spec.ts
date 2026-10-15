@@ -950,6 +950,16 @@ describe("Reconciler integration — compiler payloads conform to the live combo
 		// A single non-conforming payload would make apply fail-and-restore.
 		expect(applied.outcome).toBe("succeeded")
 
+		// Internal pools and diagnostics must end HIDDEN even though the strict
+		// fake strips isHidden on create (mirroring the live create schema): the
+		// apply's create-then-update workaround must have hidden them.
+		const liveByName = new Map((await fake.listCombos()).map((c) => [c.name, c]))
+		for (const [name, combo] of liveByName) {
+			if (name.startsWith("pool/") || name.startsWith("diag/")) {
+				expect(combo.isHidden).toBe(true)
+			}
+		}
+
 		// Every live combo now satisfies the schema the strict fake enforced.
 		for (const combo of await fake.listCombos()) {
 			expect(combo.context_length).toBeGreaterThanOrEqual(1000)
