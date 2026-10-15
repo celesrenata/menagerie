@@ -651,28 +651,69 @@ async function readCombo(client: OmniRouteClient, omniRouteId: string): Promise<
 	return combos.find((c) => c.id === omniRouteId)
 }
 
-/** Does a combo readback equal the Change_Plan `after` combo, ignoring the live id? */
+/**
+ * Does a combo readback match the Change_Plan `after` combo?
+ *
+ * OmniRoute NORMALIZES a combo on write (design: live-apply conformance): it
+ * rewrites each model step (filling `weight`, defaulting `providerId`/
+ * `connectionId` to null via `normalizeComboModels`), strips dead config keys,
+ * and the list read even adds a derived `computed_context_length`. A whole-object
+ * `deepEqual` against the sent payload therefore can NEVER match a normalizing
+ * server. Compare only the CLIENT-OWNED, semantically meaningful fields the apply
+ * actually intends to set, so a real corruption (wrong name/strategy/context/
+ * hidden flag, a changed authored config value, or a different set/order of model
+ * targets) is still caught, while server-added/normalized fields are ignored.
+ */
 function comboReadbackMatches(readback: unknown, after: Combo): boolean {
-	if (readback === null || typeof readback !== "object") {
+	if (readback === null || typeof readback !== "object" || Array.isArray(readback)) {
 		return false
 	}
-	return deepEqual(stripId(redactUnknown(readback)), stripId(redactUnknown(after)))
+	const live = readback as Record<string, unknown>
+
+	// Identity scalars must match exactly.
+	if (live.name !== after.name) return false
+	if (live.strategy !== after.strategy) return false
+	if (live.context_length !== after.context_length) return false
+	if (Boolean(live.isHidden) !== Boolean(after.isHidden)) return false
+
+	// Every config key the compiler AUTHORED must survive with the same value.
+	// Server-added config keys are ignored (the server owns its own defaults); a
+	// key we set being dropped or changed is a real mismatch.
+	const liveConfig = (live.config ?? {}) as Record<string, unknown>
+	for (const [key, value] of Object.entries(after.config ?? {})) {
+		if (!deepEqual(redactUnknown(liveConfig[key]), redactUnknown(value))) {
+			return false
+		}
+	}
+
+	// Model targets must match by identity and order, ignoring server-normalized
+	// fields (weight, null providerId/connectionId). A combo-ref is identified by
+	// its `comboName`; a model/wildcard step by its `model`/`modelPattern`.
+	const liveModels = Array.isArray(live.models) ? (live.models as unknown[]) : []
+	const afterModels = after.models ?? []
+	if (liveModels.length !== afterModels.length) return false
+	for (let i = 0; i < afterModels.length; i++) {
+		if (!modelStepIdentityMatches(liveModels[i], afterModels[i] as unknown)) {
+			return false
+		}
+	}
+	return true
 }
 
-/** A combo value without its OmniRoute-assigned id (ids differ create vs after). */
-function stripId(value: unknown): unknown {
-	if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-		const out: Record<string, unknown> = {}
-		for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-			if (key === "id") {
-				continue
-			}
-			out[key] = entry
-		}
-		return out
+/** Compare two combo model steps by their routing identity, ignoring normalized fields. */
+function modelStepIdentityMatches(live: unknown, after: unknown): boolean {
+	if (live === null || typeof live !== "object" || after === null || typeof after !== "object") {
+		return false
 	}
-	return value
+	const l = live as Record<string, unknown>
+	const a = after as Record<string, unknown>
+	if (l.kind !== a.kind) return false
+	if (a.kind === "combo-ref") return l.comboName === a.comboName
+	if (a.kind === "provider-wildcard") return l.providerId === a.providerId && l.modelPattern === a.modelPattern
+	// model step: the resolved model id is the identity.
+	return l.model === a.model
 }
+
 
 /** Drop the OmniRoute-assigned id to form a create/update payload (ComboInput). */
 function toComboInput(combo: Combo): ComboInput {

@@ -433,3 +433,52 @@ function stripId(c: Combo): Omit<Combo, "id"> {
 	void _ignored
 	return rest
 }
+
+
+describe("apply — readback tolerates OmniRoute server-side normalization", () => {
+	// OmniRoute normalizes a combo on write: it fills model-step `weight`, defaults
+	// `providerId`/`connectionId` to null, adds config defaults, and the list read
+	// adds `computed_context_length`. The readback comparison must treat these as a
+	// MATCH (compare only client-owned identity fields), or every live apply would
+	// false-fail on the first write (the production symptom).
+	const normalizeLikeOmniRoute = (real: unknown): unknown =>
+		(real as Combo[]).map((c) => ({
+			...c,
+			computed_context_length: c.context_length,
+			config: { ...c.config, serverDefault: true },
+			models: c.models.map((m) => ({ ...m, weight: 1, providerId: null, connectionId: null })),
+		}))
+
+	it("counts a create as completed when the readback differs ONLY by normalized fields", async () => {
+		const fake = new FakeOmniRouteClient({})
+		fake.scriptFailure({ operation: "listCombos", kind: "readbackMismatch", mutate: normalizeLikeOmniRoute })
+
+		const plan = changePlan([
+			{ kind: "combo", op: "create", id: "pool/x", after: combo({ name: "pool/x", context_length: 163_840 }) },
+		])
+		const result = await apply(plan, confirm(), deps(fake))
+
+		expect(result.outcome).toBe("succeeded")
+		expect(result.counts.completed).toBe(1)
+	})
+
+	it("still fails-and-restores when the readback changes a CLIENT-OWNED field", async () => {
+		const corrupt = (real: unknown): unknown =>
+			(real as Combo[]).map((c) => ({ ...c, context_length: (c.context_length ?? 0) + 7 }))
+		const existing = combo({ id: "cmb-upd", name: "hybrid/upd", context_length: 100_000 })
+		const fake = new FakeOmniRouteClient({ combos: [existing] })
+		fake.scriptFailure({ operation: "listCombos", kind: "readbackMismatch", mutate: corrupt })
+
+		const plan = changePlan([
+			{
+				kind: "combo",
+				op: "update",
+				id: "hybrid/upd",
+				before: existing,
+				after: combo({ id: "cmb-upd", name: "hybrid/upd", context_length: 120_000 }),
+			},
+		])
+		const result = await apply(plan, confirm(), deps(fake))
+		expect(result.outcome).not.toBe("succeeded")
+	})
+})
