@@ -339,7 +339,7 @@ function compileInstance(
 
 	// Emit the reachable Internal_Pool combos.
 	for (const pool of reachable) {
-		combos.push(internalPoolCombo(pool, rev))
+		combos.push(internalPoolCombo(pool, rev, model))
 		kinds[pool.name] = "internal"
 	}
 
@@ -353,12 +353,12 @@ function compileInstance(
 		// distinct from the Public_Route name).
 		combos.push(publicRouteCombo(publicName!, pName, lane, rev))
 		kinds[publicName!] = "public"
-		contextWindows[publicName!] = lane.minContext
+		contextWindows[publicName!] = Math.max(COMBO_MIN_CONTEXT, lane.minContext)
 		// Route_Aliases: each further name is an alias combo that refs the SAME pool.
 		for (const alias of aliasNames) {
 			combos.push(aliasCombo(alias, pName, lane, rev))
 			kinds[alias] = "alias"
-			contextWindows[alias] = lane.minContext
+			contextWindows[alias] = Math.max(COMBO_MIN_CONTEXT, lane.minContext)
 		}
 	}
 
@@ -370,7 +370,7 @@ function compileInstance(
 			continue
 		}
 		const pName = poolName(identity)
-		combos.push(diagnosticCombo(diagnostic.id, pName, rev))
+		combos.push(diagnosticCombo(diagnostic.id, pName, rev, diagnostic.deviceId, model))
 		kinds[diagnostic.id] = "diagnostic"
 	}
 
@@ -458,7 +458,11 @@ function poolIdentityForLane(
 	const concurrency = buildConcurrencyPerModel(ordered.localSlots, instance, allocationLookup)
 	const config: DispatchConfig = {
 		tierRouting: tierRoutingConfig(tier.maximumTier),
-		concurrencyPerModel: concurrency,
+		// The live OmniRoute combo schema expects `concurrencyPerModel` to be a
+		// SINGLE positive integer (the per-model admit bound), not a per-model map.
+		// Collapse the per-model bounds to their max, floored to >= 1, so a pool
+		// fronting several equal-bound models admits the intended per-model count.
+		concurrencyPerModel: scalarConcurrency(concurrency),
 		nestedComboMode: "execute",
 		failClosedWhenExhausted: ordered.spill.tiers.some((t) => t.failClosedWhenExhausted),
 	}
@@ -485,15 +489,37 @@ function buildConcurrencyPerModel(
 	return byModel
 }
 
-/** Serialize a MaximumTier to the tierRouting config block (omit when undefined). */
+/**
+ * Collapse the per-model concurrency map to the single positive integer the live
+ * OmniRoute combo schema requires. The pool admits at most this many concurrent
+ * requests per model; using the max of the per-model bounds (floored to >= 1)
+ * preserves the intended admit for the hottest member and never emits 0/NaN
+ * (an empty map — a cloud-only pool — floors to 1).
+ */
+function scalarConcurrency(byModel: Readonly<Record<string, number>>): number {
+	let max = 0
+	for (const value of Object.values(byModel)) {
+		if (Number.isFinite(value) && value > max) {
+			max = value
+		}
+	}
+	return Math.max(1, max)
+}
+
+/**
+ * Serialize a MaximumTier to the tierRouting config block. The live OmniRoute
+ * schema requires a numeric `defaultTier` (the base tier a route dispatches to
+ * first); it is always 1 here. `maximumTier` is included only when the lane
+ * declares a ceiling (omitted when undefined, matching the live hybrid combos).
+ */
 function tierRoutingConfig(maximumTier: MaximumTier): Readonly<Record<string, unknown>> {
-	return maximumTier === undefined ? {} : { maximumTier }
+	return maximumTier === undefined ? { defaultTier: 1 } : { defaultTier: 1, maximumTier }
 }
 
 /** The dispatch config of a Diagnostic_Route's Internal_Pool (local-only, tier 1). */
 function diagnosticDispatchConfig(): DispatchConfig {
 	return {
-		tierRouting: { maximumTier: 1 },
+		tierRouting: { defaultTier: 1, maximumTier: 1 },
 		nestedComboMode: "execute",
 	}
 }
@@ -554,15 +580,56 @@ function targetRef(targetId: string): ComboModelRef {
 	return { id: targetId, kind: "model", model: modelId }
 }
 
+/** Live OmniRoute combo schema minimum for `context_length`. */
+const COMBO_MIN_CONTEXT = 1000
+
+/**
+ * Resolve the `context_length` for a pool from its target slots: the max `context`
+ * of the member offerings (matched by model id out of the slot Target_Identifier),
+ * floored to {@link COMBO_MIN_CONTEXT}. A pool with no resolvable local member
+ * (e.g. cloud-only) still satisfies the schema via the floor.
+ */
+function poolContextLength(targetIds: readonly string[], model: FleetInventory): number {
+	let max = 0
+	for (const targetId of targetIds) {
+		if (!targetId.startsWith("t:")) continue
+		const rest = targetId.slice(2)
+		const lastColon = rest.lastIndexOf(":")
+		const withoutSlot = lastColon >= 0 ? rest.slice(0, lastColon) : rest
+		const modelColon = withoutSlot.lastIndexOf(":")
+		const modelId = modelColon >= 0 ? withoutSlot.slice(modelColon + 1) : withoutSlot
+		for (const offering of model.offerings) {
+			if (offering.modelId === modelId && offering.context > max) {
+				max = offering.context
+			}
+		}
+	}
+	return Math.max(COMBO_MIN_CONTEXT, max)
+}
+
+/** The max model context served on a device, floored to {@link COMBO_MIN_CONTEXT}. */
+function deviceContextLength(deviceId: string, model: FleetInventory): number {
+	let max = 0
+	for (const offering of model.offerings) {
+		if (offering.deviceId === deviceId && offering.context > max) {
+			max = offering.context
+		}
+	}
+	return Math.max(COMBO_MIN_CONTEXT, max)
+}
+
 /** An Internal_Pool combo (strategy priority, hidden, model refs = its targets). */
-function internalPoolCombo(pool: InternalPool, rev: string): Combo {
+function internalPoolCombo(pool: InternalPool, rev: string, model: FleetInventory): Combo {
 	return {
 		id: pool.name,
 		name: pool.name,
 		strategy: "priority",
 		models: poolModelRefs(pool),
 		config: comboConfig(pool.config, rev),
-		context_length: 0, // internal pools carry no published context window
+		// The live schema requires context_length >= 1000. A pool serves at the
+		// context of its largest member model; floor to COMBO_MIN_CONTEXT so a pool
+		// whose targets are all cloud/unknown still satisfies the schema.
+		context_length: poolContextLength(pool.targetIds, model),
 		isHidden: true,
 	}
 }
@@ -575,7 +642,9 @@ function publicRouteCombo(name: string, poolRefName: string, lane: Lane, rev: st
 		strategy: "priority",
 		models: [{ id: `${name}->${poolRefName}`, kind: "combo-ref", comboName: poolRefName }],
 		config: comboConfig(laneDispatchConfig(lane), rev),
-		context_length: lane.minContext,
+		// Published route window = lane minimum, floored to the live schema minimum
+		// (the floor only ever raises a sub-1000 lane minimum; real lanes are far above it).
+		context_length: Math.max(COMBO_MIN_CONTEXT, lane.minContext),
 		isHidden: false,
 	}
 }
@@ -588,20 +657,22 @@ function aliasCombo(name: string, poolRefName: string, lane: Lane, rev: string):
 		strategy: "priority",
 		models: [{ id: `${name}->${poolRefName}`, kind: "combo-ref", comboName: poolRefName }],
 		config: comboConfig(laneDispatchConfig(lane), rev),
-		context_length: lane.minContext,
+		context_length: Math.max(COMBO_MIN_CONTEXT, lane.minContext),
 		isHidden: false,
 	}
 }
 
 /** A Diagnostic_Route combo: a combo-ref to the device-pinned Internal_Pool. */
-function diagnosticCombo(name: string, poolRefName: string, rev: string): Combo {
+function diagnosticCombo(name: string, poolRefName: string, rev: string, deviceId: string, model: FleetInventory): Combo {
 	return {
 		id: name,
 		name,
 		strategy: "priority",
 		models: [{ id: `${name}->${poolRefName}`, kind: "combo-ref", comboName: poolRefName }],
 		config: comboConfig(diagnosticDispatchConfig(), rev),
-		context_length: 0,
+		// Diagnostics serve at their device's largest model context; floor to the
+		// schema minimum so the create is accepted.
+		context_length: deviceContextLength(deviceId, model),
 		isHidden: true,
 	}
 }

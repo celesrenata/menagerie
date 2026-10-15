@@ -105,6 +105,14 @@ export interface FakeSeed {
 	readonly nextComboIdSeq?: number
 	// Prefix for assigned combo ids (default "cmb-fake-").
 	readonly comboIdPrefix?: string
+	// When true, createCombo/updateCombo validate the payload against the LIVE
+	// OmniRoute combo schema (context_length >= 1000, numeric
+	// config.concurrencyPerModel, numeric config.tierRouting.defaultTier) and
+	// reject a non-conforming payload exactly as the real server does (HTTP 400).
+	// Default OFF so write-mechanics tests may use small sentinel context values;
+	// the compiler-conformance test turns it ON to prove the compiler emits
+	// live-valid payloads. (default false)
+	readonly strictComboSchema?: boolean
 }
 
 // A recorded invocation, for tests that assert the fake was driven as expected
@@ -133,6 +141,7 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 
 	private nextComboIdSeq: number
 	private readonly comboIdPrefix: string
+	private readonly strictComboSchema: boolean
 
 	constructor(seed: FakeSeed = {}) {
 		for (const combo of seed.combos ?? []) this.combos.set(combo.id, deepFreeze(clone(combo)))
@@ -148,6 +157,7 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 
 		this.nextComboIdSeq = seed.nextComboIdSeq ?? 1
 		this.comboIdPrefix = seed.comboIdPrefix ?? "cmb-fake-"
+		this.strictComboSchema = seed.strictComboSchema ?? false
 	}
 
 	// --- scripted-failure control -------------------------------------------
@@ -210,6 +220,7 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 
 	createCombo(combo: ComboInput): Promise<Combo> {
 		return this.run("createCombo", undefined, () => {
+			if (this.strictComboSchema) assertValidComboPayload(combo)
 			const id = `${this.comboIdPrefix}${this.nextComboIdSeq++}`
 			const created: Combo = deepFreeze({ ...clone(combo), id })
 			this.combos.set(id, created)
@@ -220,6 +231,7 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 	updateCombo(id: string, combo: ComboInput): Promise<Combo> {
 		return this.run("updateCombo", id, () => {
 			if (!this.combos.has(id)) throw this.notFound("updateCombo", id)
+			if (this.strictComboSchema) assertValidComboPayload(combo)
 			const updated: Combo = deepFreeze({ ...clone(combo), id })
 			this.combos.set(id, updated)
 			return clone(updated)
@@ -361,6 +373,38 @@ const deepFreeze = <T>(value: T): T => {
 
 // The HTTP method the real client uses for an operation, so a scripted error
 // carries a representative method for assertions/log parity.
+/**
+ * Validate a combo payload the way the LIVE OmniRoute `/api/combos` endpoint does,
+ * so the in-memory fake rejects exactly what the real server rejects (it returned
+ * HTTP 400 for `context_length < 1000`, a non-numeric `config.concurrencyPerModel`,
+ * and a missing `config.tierRouting.defaultTier`). Keeping the fake in lockstep
+ * with the live schema is what makes the compiler's payload-shape fixes
+ * regression-testable without a live cluster. Throws a plain Error (surfaced as a
+ * failed write) listing the offending fields; a valid payload passes silently.
+ */
+function assertValidComboPayload(combo: ComboInput): void {
+	const problems: string[] = []
+	if (typeof combo.context_length !== "number" || combo.context_length < 1000) {
+		problems.push(`context_length: expected number >= 1000, got ${String(combo.context_length)}`)
+	}
+	const config = (combo.config ?? {}) as Record<string, unknown>
+	if ("concurrencyPerModel" in config) {
+		const c = config.concurrencyPerModel
+		if (typeof c !== "number" || !Number.isFinite(c)) {
+			problems.push(`config.concurrencyPerModel: expected number, got ${String(c)}`)
+		}
+	}
+	const tierRouting = config.tierRouting as Record<string, unknown> | undefined
+	if (tierRouting !== undefined) {
+		if (typeof tierRouting.defaultTier !== "number") {
+			problems.push(`config.tierRouting.defaultTier: expected number, got ${String(tierRouting.defaultTier)}`)
+		}
+	}
+	if (problems.length > 0) {
+		throw new Error(`Invalid combo payload '${combo.name}': ${problems.join("; ")}`)
+	}
+}
+
 const writeMethod = (operation: FakeOperation): string => {
 	switch (operation) {
 		case "createCombo":
