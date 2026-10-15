@@ -30,6 +30,15 @@ These are DONE and must not be re-litigated; they are listed so this spec builds
   - Therefore internal pools (7) and diagnostics (3) — which the toolkit models as HIDDEN combos — cannot be hidden through the management API on OmniRoute `release/v3.8.52`.
   - A create-then-update workaround was committed (`bc7ea26da`) on the assumption the update path would honor `isHidden`; the later probe proved it does NOT. **That workaround is therefore ineffective dead code and this spec must remove or replace it.**
 
+### The blocking architectural finding (discovered by live routing smoke test)
+
+- **F8 — The compiler's Internal_Pool model does not match OmniRoute's tiered routing, so applied routes DO NOT SERVE.** After a "successful" apply (19/19 writes, drift-clean on combos), a live `POST /v1/chat/completions` to every `hybrid/*` route returned **HTTP 503 "No eligible provider pool for tier 1 under the active routing preset."** Root cause, confirmed against the live DB + the pre-apply backup:
+  - A WORKING `hybrid/<cap>` route on this OmniRoute references a CHAIN of per-tier pool combos: `pool/tier1/<cap>` -> `pool/tier2/<cap>` -> ... -> `pool/tier5/<cap>` (one combo-ref per tier; the tier IS the pool). The tier-routing preset dispatches by walking that chain.
+  - The fleet compiler instead emits ONE content-hashed pool per lane (e.g. `pool/34972714bbed`) with a single `tierRouting` block and NO per-tier pool structure. The preset finds no "tier 1 pool" and 503s.
+  - This is a fundamental modeling mismatch, NOT a field fix: the toolkit's "one Internal_Pool per lane" abstraction is incompatible with "one pool per tier per capability." Making applied routes serve requires redesigning the compiler's pool/route emission to generate per-tier pool chains.
+  - IMPACT: applying the current toolkit output REGRESSES live routing (all `hybrid/*` routes went down). The change was rolled back by restoring the 8 modified hybrids from `omniroute/backups/all-combos-20261004T064619Z.json` and deleting the 10 created orphan combos; a live smoke test confirmed routing recovered. The cluster is back to its pre-apply working state.
+  - CONCLUSION: `fleetctl apply` MUST NOT be run against this OmniRoute until F8 is resolved. This is the primary blocking requirement; F1-F7 are necessary but not sufficient.
+
 ### Non-Goals
 
 - This spec MUST NOT change OmniRoute combo-scheduling semantics.
@@ -84,6 +93,16 @@ Exactly ONE option is chosen and implemented:
 2. The apply SHALL require the per-invocation operator confirmation (parent spec Requirement 22.7) and SHALL NOT delete unmanaged combos without `--confirm-deletions`.
 3. AFTER a successful apply, `fleetctl drift -i cluster` SHALL report zero missing/extra/changed for the managed combos.
 4. The apply SHALL remain safe-by-rollback: any failed write SHALL restore to the pre-apply state (parent spec Requirement 9.6).
+
+### Requirement 5: Per-tier pool structure (resolve F8 before any apply)
+
+**User Story:** As the fleet operator, I want applied routes to actually serve requests, so a deploy does not take routing down.
+
+#### Acceptance Criteria
+1. The compiler SHALL emit, for each capability lane, the per-tier pool chain OmniRoute's tier-routing preset dispatches over (`pool/tier{1..N}/<cap>`), with each Public_Route referencing that chain, matching the working live structure.
+2. A live routing smoke test (one `POST /v1/chat/completions` per `hybrid/*` route) SHALL return HTTP 200 served by the intended backend BEFORE any apply is considered successful. A 503 "no eligible provider pool" SHALL be treated as a failed deploy and trigger rollback.
+3. `fleetctl apply` SHALL NOT be run against the live cluster until Requirement 5.1 is implemented and 5.2 passes against a dry-run/staging path.
+4. The post-apply verification SHALL include the routing smoke test, not only combo drift, because combo drift being clean does NOT prove the routes serve (F8).
 
 ## Evidence Appendix (live probes, 2026-10-15)
 
