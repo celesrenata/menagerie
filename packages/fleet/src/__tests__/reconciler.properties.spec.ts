@@ -950,13 +950,15 @@ describe("Reconciler integration — compiler payloads conform to the live combo
 		// A single non-conforming payload would make apply fail-and-restore.
 		expect(applied.outcome).toBe("succeeded")
 
-		// Internal pools and diagnostics must end HIDDEN even though the strict
-		// fake strips isHidden on create (mirroring the live create schema): the
-		// apply's create-then-update workaround must have hidden them.
+		// F7 / Option A: OmniRoute does not persist isHidden, so internal pools and
+		// diagnostics land VISIBLE (isHidden=false). The apply must still SUCCEED
+		// (no false-fail on the server-owned flag), and the compiler emits them
+		// visible. The internal/diagnostic route-kind lives in the published
+		// metadata, not the live isHidden flag.
 		const liveByName = new Map((await fake.listCombos()).map((c) => [c.name, c]))
 		for (const [name, combo] of liveByName) {
 			if (name.startsWith("pool/") || name.startsWith("diag/")) {
-				expect(combo.isHidden).toBe(true)
+				expect(combo.isHidden).toBe(false)
 			}
 		}
 

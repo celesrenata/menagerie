@@ -602,16 +602,13 @@ async function applyOneOp(
 		const written: WrittenObject = { kind: "combo", id: op.id, op: "create", created: true }
 		let created: Combo
 		try {
+			// NOTE: OmniRoute release/v3.8.52 does NOT persist `isHidden` on create
+			// OR update (proven by live probe; omniroute-fleet-write-conformance
+			// F7). Internal pools / diagnostics therefore land VISIBLE in the
+			// client-selectable catalog, by design decision Option A (accept
+			// visible). The compiler emits `isHidden: false` and the readback does
+			// not compare `isHidden`, so no follow-up hide is attempted.
 			created = await ctx.writeDeadline(deps.client.createCombo(input))
-			// The live OmniRoute create schema strips `isHidden`, so an internal
-			// pool / diagnostic lands VISIBLE even when the plan marks it hidden.
-			// The update schema accepts `isHidden`, so issue a single follow-up
-			// update to hide it. This keeps internal pools out of the client-
-			// selectable catalog without an OmniRoute server change; it is a no-op
-			// for a client that already honored the flag.
-			if (input.isHidden === true && created.isHidden !== true) {
-				created = await ctx.writeDeadline(deps.client.updateCombo(created.id, { ...input, isHidden: true }))
-			}
 		} catch (error) {
 			throw new WriteAttempted(written, error)
 		}
@@ -679,11 +676,12 @@ function comboReadbackMatches(readback: unknown, after: Combo): boolean {
 	}
 	const live = readback as Record<string, unknown>
 
-	// Identity scalars must match exactly.
+	// Identity scalars must match exactly. `isHidden` is NOT compared: OmniRoute
+	// release/v3.8.52 does not persist it (F7), so it is a server-owned field the
+	// client cannot control; comparing it would false-fail every create.
 	if (live.name !== after.name) return false
 	if (live.strategy !== after.strategy) return false
 	if (live.context_length !== after.context_length) return false
-	if (Boolean(live.isHidden) !== Boolean(after.isHidden)) return false
 
 	// Every config key the compiler AUTHORED must survive with the same value.
 	// Server-added config keys are ignored (the server owns its own defaults); a

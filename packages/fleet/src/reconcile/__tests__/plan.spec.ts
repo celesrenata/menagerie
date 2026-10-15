@@ -145,9 +145,11 @@ function connection(overrides: Partial<Connection> = {}): Connection {
 	}
 }
 
-/** The combo names of a kind helper: the Internal_Pool is the hidden combo. */
+/** The Internal_Pool combo, identified by its `pool/` name prefix (its stable
+ * identity; isHidden is not reliable under Option A / F7 since OmniRoute does not
+ * persist it and the compiler emits pools visible). */
 function poolName(inv: FleetInventory): string {
-	const pool = desiredState(inv).combos.find((c) => c.isHidden && c.name !== "diag/gpu0")
+	const pool = desiredState(inv).combos.find((c) => c.name.startsWith("pool/"))
 	if (!pool) {
 		throw new Error("fixture produced no Internal_Pool combo")
 	}
