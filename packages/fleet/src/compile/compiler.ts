@@ -630,7 +630,10 @@ function internalPoolCombo(pool: InternalPool, rev: string, model: FleetInventor
 		// context of its largest member model; floor to COMBO_MIN_CONTEXT so a pool
 		// whose targets are all cloud/unknown still satisfies the schema.
 		context_length: poolContextLength(pool.targetIds, model),
-		isHidden: true,
+		// OmniRoute release/v3.8.52 does not persist `isHidden` (F7, decision
+		// Option A: accept visible internal pools). The route-kind `internal` is
+		// still published in PublishedRouteMetadata.kinds for client-side use.
+		isHidden: false,
 	}
 }
 
@@ -673,7 +676,9 @@ function diagnosticCombo(name: string, poolRefName: string, rev: string, deviceI
 		// Diagnostics serve at their device's largest model context; floor to the
 		// schema minimum so the create is accepted.
 		context_length: deviceContextLength(deviceId, model),
-		isHidden: true,
+		// OmniRoute does not persist `isHidden` (F7, Option A). The `diagnostic`
+		// route-kind is still published client-side.
+		isHidden: false,
 	}
 }
 

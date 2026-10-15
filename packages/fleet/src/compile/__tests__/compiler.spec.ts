@@ -215,7 +215,9 @@ describe("compile — Public_Route names, aliases, retired aliases, diagnostics 
 		const state = states.get("cluster")!
 		expect(state.publishedMetadata.kinds["diag/gpu0"]).toBe("diagnostic")
 		const diag = combosByName(state).get("diag/gpu0")!
-		expect(diag.isHidden).toBe(true)
+		// Option A (F7): OmniRoute does not persist isHidden, so diagnostics are
+		// emitted visible; the `diagnostic` route-kind is the identity (asserted above).
+		expect(diag.isHidden).toBe(false)
 	})
 })
 

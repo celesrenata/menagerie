@@ -23,6 +23,7 @@ import type {
 	CallLogRecord,
 	Combo,
 	ComboInput,
+	ComboModelRef,
 	ComboTrace,
 	Connection,
 	ConnectionPatch,
@@ -220,14 +221,9 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 
 	createCombo(combo: ComboInput): Promise<Combo> {
 		return this.run("createCombo", undefined, () => {
-			if (this.strictComboSchema) assertValidComboPayload(combo)
+			const payload = this.strictComboSchema ? (assertValidComboPayload(combo), normalizeComboOnWrite(combo)) : combo
 			const id = `${this.comboIdPrefix}${this.nextComboIdSeq++}`
-			// The live OmniRoute `createComboSchema` strips `isHidden`, so a create
-			// always lands visible regardless of the requested value; the UPDATE
-			// schema accepts it. Model that in strict mode so the client's
-			// create-then-update workaround for hidden combos is exercised.
-			const payload = this.strictComboSchema ? { ...clone(combo), isHidden: false } : clone(combo)
-			const created: Combo = deepFreeze({ ...payload, id })
+			const created: Combo = deepFreeze({ ...clone(payload), id })
 			this.combos.set(id, created)
 			return clone(created)
 		})
@@ -236,8 +232,10 @@ export class FakeOmniRouteClient implements OmniRouteClient {
 	updateCombo(id: string, combo: ComboInput): Promise<Combo> {
 		return this.run("updateCombo", id, () => {
 			if (!this.combos.has(id)) throw this.notFound("updateCombo", id)
-			if (this.strictComboSchema) assertValidComboPayload(combo)
-			const updated: Combo = deepFreeze({ ...clone(combo), id })
+			// F7: update also does not persist isHidden on the live build; strict
+			// mode normalizes identically so no test can imply otherwise.
+			const payload = this.strictComboSchema ? (assertValidComboPayload(combo), normalizeComboOnWrite(combo)) : combo
+			const updated: Combo = deepFreeze({ ...clone(payload), id })
 			this.combos.set(id, updated)
 			return clone(updated)
 		})
@@ -401,13 +399,50 @@ function assertValidComboPayload(combo: ComboInput): void {
 	}
 	const tierRouting = config.tierRouting as Record<string, unknown> | undefined
 	if (tierRouting !== undefined) {
+		// Live rule F6: when tierRouting is present, BOTH defaultTier and
+		// maximumTier are required numbers.
 		if (typeof tierRouting.defaultTier !== "number") {
 			problems.push(`config.tierRouting.defaultTier: expected number, got ${String(tierRouting.defaultTier)}`)
+		}
+		if (typeof tierRouting.maximumTier !== "number") {
+			problems.push(`config.tierRouting.maximumTier: expected number, got ${String(tierRouting.maximumTier)}`)
 		}
 	}
 	if (problems.length > 0) {
 		throw new Error(`Invalid combo payload '${combo.name}': ${problems.join("; ")}`)
 	}
+}
+
+/**
+ * Normalize a combo payload the way the LIVE OmniRoute server does on write, so a
+ * strict-mode readback equals what the real cluster would return
+ * (omniroute-fleet-write-conformance, Requirement 3). Mirrors the observed
+ * normalization: fill model-step `weight`, default `providerId`/`connectionId` to
+ * null, prefix a cloud step's `model` with `<providerId>/`, and force
+ * `isHidden: false` (F7 — never persisted on this build). Server-added bookkeeping
+ * fields (`sortOrder`/`version`/timestamps/`computed_context_length`) are not
+ * added here because the apply readback comparison ignores them anyway; adding
+ * them would only risk a brittle test. Pure; returns a new object.
+ */
+function normalizeComboOnWrite(combo: ComboInput): ComboInput {
+	const models = (combo.models ?? []).map((step): ComboModelRef => {
+		if (step.kind === "combo-ref") {
+			return { ...step, weight: typeof step.weight === "number" ? step.weight : 0 }
+		}
+		const providerId = typeof step.providerId === "string" ? step.providerId : null
+		const model =
+			providerId !== null && typeof step.model === "string" && !step.model.startsWith(`${providerId}/`)
+				? `${providerId}/${step.model}`
+				: step.model
+		return {
+			...step,
+			model,
+			providerId: providerId ?? undefined,
+			connectionId: typeof step.connectionId === "string" ? step.connectionId : undefined,
+			weight: typeof step.weight === "number" ? step.weight : 0,
+		}
+	})
+	return { ...combo, models, isHidden: false }
 }
 
 const writeMethod = (operation: FakeOperation): string => {
