@@ -59,3 +59,19 @@ qdrant_storage/
 plans/
 
 roo-cli-*.tar.gz*
+
+# Nix build output symlink
+/result
+
+# Local build artifacts
+/zoo-modes-skills-agents.zip
+/2000
+
+# Git worktrees (separate working copies — never commit)
+/.worktrees/
+
+# Agent task working directories
+/.agents/
+
+# Fleet inventory backups
+fleet/*.bak-*
