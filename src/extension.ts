@@ -42,6 +42,7 @@ import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 import { registerTaskBoard } from "./activate/taskBoard"
 import { registerObservatory } from "./activate/observatory"
+import { TaskSessionRegistry } from "./core/task/session/TaskSessionRegistry"
 
 import {
 	handleUri,
@@ -282,6 +283,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	registerCommands({ context, outputChannel, provider })
 	registerTaskBoard(context)
 	registerObservatory(context, provider)
+	const taskSessionRegistry = new TaskSessionRegistry()
+	taskSessionRegistry.bindStorage({
+		get: (key) => context.globalState.get(key),
+		update: (key, value) => context.globalState.update(key, value),
+	})
+	taskSessionRegistry.restorePersisted()
 
 	/**
 	 * We use the text document content provider API to show the left side for diff

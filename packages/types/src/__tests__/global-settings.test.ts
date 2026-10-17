@@ -1,5 +1,10 @@
 import {
+	DEFAULT_AUTO_REVEAL_ATTENTION,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+	DEFAULT_OPEN_FILES_ON_AGENT_EDIT,
+	DEFAULT_REMEMBER_TASK_NAVIGATION,
+	DEFAULT_TASK_HOME,
+	DEFAULT_WORKER_PRESENTATION,
 	GLOBAL_SETTINGS_KEYS,
 	globalSettingsSchema,
 	parallelCapacityMapSchema,
@@ -59,5 +64,40 @@ describe("parallelCapacityMap global setting", () => {
 	it("rejects an invalid map through globalSettingsSchema", () => {
 		expect(globalSettingsSchema.safeParse({ parallelCapacityMap: { reader: 0 } }).success).toBe(false)
 		expect(globalSettingsSchema.safeParse({ parallelCapacityMap: { nope: 2 } }).success).toBe(false)
+	})
+})
+
+describe("menagerie presentation settings", () => {
+	it("defaults to a calm headless workbench", () => {
+		expect(DEFAULT_WORKER_PRESENTATION).toBe("headless")
+		expect(DEFAULT_TASK_HOME).toBe("sidebar")
+		expect(DEFAULT_OPEN_FILES_ON_AGENT_EDIT).toBe(false)
+		expect(DEFAULT_AUTO_REVEAL_ATTENTION).toBe(false)
+		expect(DEFAULT_REMEMBER_TASK_NAVIGATION).toBe(true)
+	})
+
+	it("round-trips set and unset values through the global schema", () => {
+		expect(GLOBAL_SETTINGS_KEYS).toContain("workerPresentation")
+		expect(GLOBAL_SETTINGS_KEYS).toContain("rememberTaskNavigation")
+		expect(globalSettingsSchema.parse({})).toEqual({})
+		expect(
+			globalSettingsSchema.parse({
+				workerPresentation: "editor-tabs",
+				taskHome: "sidebar",
+				openFilesOnAgentEdit: true,
+				autoRevealAttention: true,
+				rememberTaskNavigation: false,
+			}),
+		).toEqual({
+			workerPresentation: "editor-tabs",
+			taskHome: "sidebar",
+			openFilesOnAgentEdit: true,
+			autoRevealAttention: true,
+			rememberTaskNavigation: false,
+		})
+	})
+
+	it("rejects unknown presentation values", () => {
+		expect(globalSettingsSchema.safeParse({ workerPresentation: "tabs" }).success).toBe(false)
 	})
 })
