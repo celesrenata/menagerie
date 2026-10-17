@@ -20,12 +20,14 @@ import { providerIdentifiers } from "@roo-code/types"
  * (parallel-capacity-routing design §Testability).
  *
  * These exercise the REAL {@link BoundedElasticScheduler} + {@link import("../InferenceLeasePool").InferenceLeasePool}
- * with an injected {@link RouteCapacityProvider}, driving the SAME permit→lease→
- * finally wiring `runParallelTasks` installs in its `scheduler.dispatch` run body:
+ * with an injected {@link RouteCapacityProvider}. These tests still drive the
+ * lease pool by acquiring inside `scheduler.dispatch` so they can observe
+ * concurrent `generating` occupancy. Production wiring (P5) now acquires at
+ * the Task generation boundary instead of for the worker's lifetime:
  *
  *   await scheduler.dispatch(name, async (handle) => {
- *     const release = isAutoReader ? () => {} : await handle.acquireLease(capability, signal)
- *     try { ...worker body... } finally { release() }
+ *     child.inferenceLeaseProvider = { acquire: (signal) => handle.acquireLease(capability, signal) }
+ *     // attemptApiRequest acquires just before createMessage and releases in finally
  *   })
  *
  * Reproducing just that wiring (rather than the full Task/ClineProvider runtime)
