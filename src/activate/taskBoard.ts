@@ -4,6 +4,68 @@ import path from "node:path"
 import crypto from "node:crypto"
 import type { TodoItem } from "@roo-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { openTaskInNewTab } from "./registerCommands"
+import {
+	HOST_ID_KEY,
+	LAST_SELECTED_TASK_ID_KEY,
+	TaskCommandRouter,
+	type TaskOwnerHandle,
+} from "./taskCommandRouter"
+import type { TaskCommand, TaskRef } from "../core/task/session/types"
+
+const OPEN_TASK_COMMAND = "zoo-code.openTask"
+
+export function resolveHostId(context: vscode.ExtensionContext): string {
+	const existing = context.globalState.get<string>(HOST_ID_KEY)
+	if (existing) return existing
+	const created = crypto.randomUUID()
+	void context.globalState.update(HOST_ID_KEY, created)
+	return created
+}
+
+export function workspaceUriFromCwd(cwd: string): string {
+	return vscode.Uri.file(cwd).toString()
+}
+
+export function listLiveTaskOwners(hostId: string, context: vscode.ExtensionContext): TaskOwnerHandle[] {
+	return ClineProvider.getAllInstances().flatMap((provider) => {
+		const task = provider.getCurrentTask()
+		if (!task) return []
+		const ref: TaskRef = {
+			hostId,
+			workspaceUri: workspaceUriFromCwd(task.cwd),
+			taskId: task.taskId,
+		}
+		return [
+			{
+				ref,
+				revealChat: () => {
+					provider.revealChat()
+				},
+				showInHub: () => provider.postMessageToWebview({ type: "action", action: "chatButtonClicked" }),
+				openInEditor: () => openTaskInNewTab(task.taskId, { context }),
+			} satisfies TaskOwnerHandle,
+		]
+	})
+}
+
+export function createTaskCommandRouter(context: vscode.ExtensionContext, hostId: string): TaskCommandRouter {
+	return new TaskCommandRouter({
+		hostId,
+		listOwners: () => listLiveTaskOwners(hostId, context),
+		rememberNavigation: () =>
+			vscode.workspace.getConfiguration("zoo-code").get<boolean>("rememberTaskNavigation") !== false,
+		persistSelection: (taskId) => {
+			void context.globalState.update(LAST_SELECTED_TASK_ID_KEY, taskId)
+		},
+		restoreSelection: () => context.globalState.get<string>(LAST_SELECTED_TASK_ID_KEY),
+		notifyForeignHost: (ref) => {
+			void vscode.window.showInformationMessage(
+				`That task is running in another window (${ref.workspaceUri || ref.taskId})`,
+			)
+		},
+	})
+}
 
 export interface TaskBoardRow {
 	id: string
@@ -13,6 +75,7 @@ export interface TaskBoardRow {
 	model: string
 	status: string
 	workspace: string
+	workspaceUri: string
 	updatedAt?: number
 	todos: TodoItem[]
 	parentTaskId?: string
@@ -45,6 +108,7 @@ export async function collectTaskBoard(): Promise<TaskBoardRow[]> {
 									? "streaming"
 									: "working",
 				workspace: task.cwd,
+				workspaceUri: workspaceUriFromCwd(task.cwd),
 				updatedAt: last?.ts,
 				todos: structuredClone(task.todoList ?? []),
 				parentTaskId: task.parallelParentTaskId ?? task.parentTaskId,
@@ -67,6 +131,8 @@ type Node = { row: TaskBoardRow } | { text: string; status?: string }
  * detail panel have been removed.
  */
 export function registerTaskBoard(context: vscode.ExtensionContext): void {
+	const hostId = resolveHostId(context)
+	const router = createTaskCommandRouter(context, hostId)
 	const events = new vscode.EventEmitter<Node | undefined>()
 	let rows: TaskBoardRow[] = []
 	let refreshing = false
@@ -124,7 +190,13 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 			item.id = row.id
 			const completedTodos = row.todos.filter((todo) => todo.status === "completed").length
 			item.description = `${row.mode} · ${row.status} · ${completedTodos}/${row.todos.length}`
-			item.tooltip = `${row.title}\nStatus: ${row.status}\nChecklist: ${completedTodos}/${row.todos.length} complete\nInspect tasks in the Menagerie Task Observatory.`
+			item.tooltip = `${row.title}\nStatus: ${row.status}\nChecklist: ${completedTodos}/${row.todos.length} complete\nClick to open this task. Never creates or evicts a chat.`
+			const command: TaskCommand = {
+				kind: "open",
+				ref: { hostId, workspaceUri: row.workspaceUri, taskId: row.id },
+				destination: "task-hub",
+			}
+			item.command = { command: OPEN_TASK_COMMAND, title: "Open Task", arguments: [command] }
 			return item
 		},
 	}
@@ -162,6 +234,7 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(new vscode.Disposable(stopPolling))
 	void refresh()
 	if (view.visible) startPolling()
+	void router.restoreLastSelection()
 	context.subscriptions.push(
 		vscode.commands.registerCommand("zoo-code.getTaskBoard", snapshot),
 		vscode.commands.registerCommand("zoo-code.taskBoardShowDetails", () => {
@@ -176,6 +249,17 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand("zoo-code.exportTaskBoard", async () => {
 			await refresh()
 			await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(vscode.Uri.file(snapshotPath)))
+		}),
+		vscode.commands.registerCommand(OPEN_TASK_COMMAND, async (command?: TaskCommand) => {
+			if (!command || command.kind !== "open") return
+			const result = await router.execute(command)
+			if (!result.ok) {
+				void vscode.window.showInformationMessage(
+					result.foreignHost
+						? `That task is running in another window (${result.workspaceUri ?? command.ref.taskId})`
+						: result.error,
+				)
+			}
 		}),
 	)
 }

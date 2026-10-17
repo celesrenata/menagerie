@@ -30,9 +30,14 @@ vi.mock("vscode", () => ({
 			dispose: vi.fn(),
 		})),
 		showTextDocument: vi.fn(),
+		showInformationMessage: vi.fn(),
 	},
 	workspace: {
 		openTextDocument: vi.fn(),
+		getConfiguration: vi.fn(() => ({ get: vi.fn(() => true) })),
+	},
+	Uri: {
+		file: (fsPath: string) => ({ fsPath, toString: () => `file://${fsPath}` }),
 	},
 	commands: {
 		registerCommand: vi.fn((command: string, handler: (...args: string[]) => unknown) => {
@@ -59,6 +64,9 @@ vi.mock("node:fs/promises", () => ({
 }))
 vi.mock("../../core/webview/ClineProvider", () => ({
 	ClineProvider: { getAllInstances: () => mockProviders.all },
+}))
+vi.mock("../registerCommands", () => ({
+	openTaskInNewTab: vi.fn(),
 }))
 
 describe("Task Board registration", () => {
@@ -146,6 +154,7 @@ describe("Task Board registration", () => {
 		const context = {
 			subscriptions,
 			globalStorageUri: { fsPath: "/mock/zoo" },
+			globalState: { get: vi.fn(() => "host-test"), update: vi.fn() },
 		} as unknown as vscode.ExtensionContext
 
 		registerTaskBoard(context)
@@ -175,7 +184,7 @@ describe("Task Board registration", () => {
 		for (const subscription of subscriptions) subscription.dispose()
 	})
 
-	it("retains the four compat/debug commands and tree item has no command property", async () => {
+	it("retains compat commands and wires click-to-open by TaskRef", async () => {
 		vi.useFakeTimers()
 		const task = {
 			taskId: "active-task",
@@ -198,21 +207,22 @@ describe("Task Board registration", () => {
 			},
 		]
 		const subscriptions: { dispose(): unknown }[] = []
+		const persist = vi.fn()
 		const context = {
 			subscriptions,
 			globalStorageUri: { fsPath: "/mock/zoo" },
+			globalState: { get: vi.fn(() => "host-test"), update: persist },
 		} as unknown as vscode.ExtensionContext
 
 		registerTaskBoard(context)
 		await vi.advanceTimersByTimeAsync(0)
 
-		// All four compat commands should be registered
 		expect(mockProviders.commandHandlers.has("zoo-code.getTaskBoard")).toBe(true)
 		expect(mockProviders.commandHandlers.has("zoo-code.taskBoardShowDetails")).toBe(true)
 		expect(mockProviders.commandHandlers.has("zoo-code.showTaskBoard")).toBe(true)
 		expect(mockProviders.commandHandlers.has("zoo-code.exportTaskBoard")).toBe(true)
+		expect(mockProviders.commandHandlers.has("zoo-code.openTask")).toBe(true)
 
-		// Tree item should NOT have a command property (no focus-on-selection)
 		const treeViewCall = vi.mocked(vscode.window.createTreeView).mock.calls[0]
 		if (!treeViewCall) throw new Error("Task Board view was not created")
 		const children = await treeViewCall[1].treeDataProvider.getChildren()
@@ -220,8 +230,39 @@ describe("Task Board registration", () => {
 		if (!firstTask) throw new Error("Active task was not added to the Task Board")
 		const item = await Promise.resolve(treeViewCall[1].treeDataProvider.getTreeItem(firstTask))
 		expect(item.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None)
-		expect(item.command).toBeUndefined()
-		expect(item.tooltip).toContain("Menagerie Task Observatory")
+		expect(item.command).toEqual({
+			command: "zoo-code.openTask",
+			title: "Open Task",
+			arguments: [
+				{
+					kind: "open",
+					ref: { hostId: "host-test", workspaceUri: "file:///repo", taskId: "active-task" },
+					destination: "task-hub",
+				},
+			],
+		})
+		expect(item.tooltip).toContain("Click to open this task")
+
+		const revealChat = vi.fn()
+		const postMessageToWebview = vi.fn()
+		const createTask = vi.fn()
+		const evictCurrentTask = vi.fn()
+		mockProviders.all = [
+			{
+				getCurrentTask: vi.fn(() => task),
+				taskHistoryStore: { get: () => ({ task: "Task title", status: "active" }) },
+				revealChat,
+				postMessageToWebview,
+				createTask,
+				evictCurrentTask,
+			},
+		]
+		await mockProviders.commandHandlers.get("zoo-code.openTask")?.(item.command.arguments[0])
+		expect(revealChat).toHaveBeenCalledOnce()
+		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
+		expect(createTask).not.toHaveBeenCalled()
+		expect(evictCurrentTask).not.toHaveBeenCalled()
+		expect(persist).toHaveBeenCalledWith("menagerie.lastSelectedTaskId", "active-task")
 
 		for (const subscription of subscriptions) subscription.dispose()
 	})
