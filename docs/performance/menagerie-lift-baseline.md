@@ -39,8 +39,16 @@ generalized to workers behind the new presentation setting.
 | Board update latency | 5 s poll, only while visible (finding 2) |
 | Task lifetime ↔ view coupling | Worker panel close ⇒ `dispose()` ⇒ task abort (finding 1); sidebar close clears webview resources only |
 
-Full `pnpm test` baseline results: see commit that adds this report (recorded on
-`d841deb10`). Benchmark suite (8 pinned tasks, wall time, lease occupancy) lands with Phase 6.
+Tooling baseline on `d841deb10`:
+
+| Check | Result |
+|---|---|
+| `pnpm test` (turbo) | 10223 tests: 9958 pass, 226 fail (20 files), 39 skip. All 226 share one environmental root cause: `src/integrations/editor/DecorationController.ts:3,9` calls `vscode.window.createTextEditorDecorationType` at module scope, and the inline `vi.mock("vscode")` in the affected files lacks it. Every test that transitively imports `DiffViewProvider`/`Task`/`ClineProvider` is affected. Pre-existing at HEAD; not caused by any pending work. |
+| `pnpm check-types` | 5 pre-existing errors, all in `src/core/task/__tests__` (`contextRecoveryClassifier.spec.ts` imports missing `../task-persistence/apiMessages`; `recoveryTelemetry.spec.ts` fast-check `Arbitrary` mismatch; 3× `Task*.spec.ts` `{ retry: boolean }` vs `void` mock signatures). No production-path type errors. |
+| `pnpm lifecycle:model-check` | Passes (all sub-checks green). |
+
+Phase work must not increase any failure count. Benchmark suite (8 pinned tasks, wall time,
+lease occupancy) lands with Phase 6.
 
 ## 3. Validation gates per spec §7
 
