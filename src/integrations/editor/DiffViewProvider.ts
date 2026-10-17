@@ -20,6 +20,7 @@ import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
 import { Task } from "../../core/task/Task"
 
 import { DecorationController } from "./DecorationController"
+import { applyFileWrite, EditConflictError } from "./EditTransactionService"
 
 export const DIFF_VIEW_URI_SCHEME = "cline-diff"
 export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Zoo's Changes"
@@ -1154,9 +1155,29 @@ export class DiffViewProvider {
 		// Get diagnostics before editing the file
 		this.preDiagnostics = vscode.languages.getDiagnostics()
 
-		// Write the content directly to the file
 		await createDirectoriesForFile(absolutePath)
-		await fs.writeFile(absolutePath, content, "utf-8")
+		try {
+			await applyFileWrite({
+				cwd: this.cwd,
+				relPath,
+				content,
+				taskId: this.taskRef.deref()?.taskId,
+				writeFile: (filePath, next) => fs.writeFile(filePath, next, "utf-8"),
+			})
+		} catch (error) {
+			if (error instanceof EditConflictError) {
+				this.newProblemsMessage = `\n\n${error.message}`
+				this.userEdits = error.code === "dirty-buffer" ? "unsaved-user-edits" : undefined
+				this.relPath = relPath
+				this.newContent = content
+				return {
+					newProblemsMessage: this.newProblemsMessage,
+					userEdits: this.userEdits,
+					finalContent: undefined,
+				}
+			}
+			throw error
+		}
 
 		// Open the document to ensure diagnostics are loaded
 		// When openFile is false (PREVENT_FOCUS_DISRUPTION enabled), we only open in memory
@@ -1174,9 +1195,6 @@ export class DiffViewProvider {
 			if (doc.isDirty) {
 				await doc.save()
 			}
-
-			// Force a small delay to ensure diagnostics are triggered
-			await new Promise((resolve) => setTimeout(resolve, 100))
 		}
 
 		let newProblemsMessage = ""
