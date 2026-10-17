@@ -20,6 +20,7 @@ import { parseMarkdownChecklist } from "./UpdateTodoListTool"
 import { formatResponse } from "../prompts/responses"
 import { ParallelTasksArgumentError } from "./parallelTasksErrors"
 import type { ToolCapabilityId } from "../capability/toolCapability"
+import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
 
 /**
  * A DAG node's declared tool-capability requirement for the Dynamic Capability
@@ -366,21 +367,35 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 	readonly name = "parallel_tasks" as const
 
 	/**
-	 * The per-request `User_Parallelism_Policy` ceiling (FEAT-011). Absent until
-	 * that feature wires the policy source, in which case the scheduler default
-	 * live ceiling applies. A supplied policy only tightens the batch bound.
+	 * Optional DI/test override. Production uses the per-request snapshot from
+	 * `task.resolvedParallelismPolicy` (FEAT-011). Precedence: this field, when
+	 * present, wins over the Task snapshot so unit tests can inject a policy
+	 * without constructing a full Task. A supplied policy only tightens the
+	 * batch bound; absent fields fall through to scheduler defaults.
 	 */
 	readonly parallelismPolicy?: UserParallelismPolicy
+
+	/**
+	 * Snapshot the effective policy once per execute() call. Follow-up
+	 * messageResponses that rewrite `task.resolvedParallelismPolicy` are
+	 * therefore picked up automatically — there is no cached policy on the
+	 * singleton tool instance.
+	 */
+	private resolveRequestPolicy(task: Task): UserParallelismPolicy {
+		if (this.parallelismPolicy) return this.parallelismPolicy
+		return toUserParallelismPolicy(task.resolvedParallelismPolicy)
+	}
 
 	async execute(input: { tasks: ParallelTaskSpec[] }, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		try {
 			// Guard before validation: `.strip()` would drop placement keys, so inspect the raw
 			// input to reject mastermind-originated physical placement without a user route override.
 			rejectMastermindPhysicalPlacement((input as { tasks?: unknown })?.tasks)
-			// Bound the batch by the elastic live ceiling, clamped by the User_Parallelism_Policy for
-			// this exact request (PAR-014.1). The policy source (FEAT-011) is absent for now, so the
-			// scheduler default live ceiling (12) applies; a policy ceiling only tightens it.
-			const requestSchema = makeParallelTasksSchema(resolveParallelTasksMax(this.parallelismPolicy))
+			const policy = this.resolveRequestPolicy(task)
+			// Bound the batch by the elastic live ceiling, clamped by this request's
+			// User_Parallelism_Policy (PAR-014.1). The same snapshot drives schema,
+			// reader fan-out, admission, and dispatch so those ceilings cannot drift.
+			const requestSchema = makeParallelTasksSchema(resolveParallelTasksMax(policy))
 			const parsed = requestSchema.safeParse(input)
 			if (!parsed.success) throw parsed.error
 			const { tasks: requestedTasks } = parsed.data
@@ -400,6 +415,7 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 				task.cwd,
 				Boolean(getModeBySlug("project-reader", state.customModes)),
 				requireTodos,
+				policy,
 			)
 			for (const spec of tasks) {
 				if (!getModeBySlug(spec.mode, state.customModes))
@@ -426,7 +442,6 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			// instead of discarded, and the real RouteCapacityProvider wired in place of
 			// ADMISSION_ONLY_ROUTES.
 			const plan = buildExecutionPlan(tasks)
-			const policy = this.parallelismPolicy ?? {}
 			const scheduler = new BoundedElasticScheduler(
 				{ ...DEFAULT_SCHEDULER_BOUNDS, maxInferenceLeases: DEFAULT_SCHEDULER_BOUNDS.maxDispatched },
 				policy,
@@ -447,7 +462,7 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 				}),
 			)
 			if (!approved) return
-			const result = await runParallelTasks(task, provider, tasks)
+			const result = await runParallelTasks(task, provider, tasks, policy)
 			callbacks.pushToolResult(JSON.stringify(compactParallelTasksResultForParent(result)))
 		} catch (error) {
 			// Argument problems are recoverable: report them to the model as a tool error so it can
