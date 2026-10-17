@@ -181,6 +181,10 @@
 			{
 				"command": "zoo-code.exportTaskBoard",
 				"title": "Menagerie: Export Task Board JSON"
+			},
+			{
+				"command": "zoo-code.openTask",
+				"title": "Menagerie: Open Task"
 			}
 		],
 		"menus": {

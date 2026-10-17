@@ -8,6 +8,7 @@ import {
 	type GetAllInstances,
 } from "../services/observatory/TaskObservationService"
 import { ObservatoryMessageRouter } from "../services/observatory/ObservatoryMessageRouter"
+import { createTaskCommandRouter, resolveHostId, workspaceUriFromCwd } from "./taskBoard"
 
 /** Module-scoped router — set during activation, checked during message dispatch. */
 let activeRouter: ObservatoryMessageRouter | undefined
@@ -37,6 +38,21 @@ export function registerObservatory(
 		provider: observableProvider,
 		getAllInstances,
 		parallelTasksDir,
+	})
+	const hostId = resolveHostId(context)
+	const commandRouter = createTaskCommandRouter(context, hostId)
+	activeRouter.setCommandDispatch(async (taskId) => {
+		const owner = ClineProvider.getAllInstances().find((instance) => instance.getCurrentTask()?.taskId === taskId)
+		const cwd = owner?.getCurrentTask()?.cwd
+		await commandRouter.execute({
+			kind: "open",
+			ref: {
+				hostId,
+				workspaceUri: cwd ? workspaceUriFromCwd(cwd) : "",
+				taskId,
+			},
+			destination: "task-hub",
+		})
 	})
 }
 

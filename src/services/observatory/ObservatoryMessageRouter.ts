@@ -16,6 +16,7 @@ export class ObservatoryMessageRouter {
 	private readonly getAllInstances: GetAllInstances
 	private readonly reader: PersistedTaskStoreReader
 	private readonly parallelTasksDir: string
+	private openTask?: (taskId: string) => Promise<void> | void
 
 	constructor(options: {
 		service: TaskObservationService
@@ -28,6 +29,20 @@ export class ObservatoryMessageRouter {
 		this.getAllInstances = options.getAllInstances
 		this.reader = new PersistedTaskStoreReader()
 		this.parallelTasksDir = options.parallelTasksDir
+	}
+
+	/**
+	 * P2 command-dispatch hook. The observer stays read-only; navigation is
+	 * forwarded to TaskCommandRouter and never createTask/evictCurrentTask.
+	 */
+	setCommandDispatch(openTask: (taskId: string) => Promise<void> | void): void {
+		this.openTask = openTask
+	}
+
+	async openObservedTask(taskId: string): Promise<boolean> {
+		if (!this.openTask) return false
+		await this.openTask(taskId)
+		return true
 	}
 
 	/**
