@@ -1,7 +1,10 @@
+import { DEFAULT_PARALLELISM_POLICY_TABLE, type ParallelismPolicy } from "@roo-code/types"
 import type { ToolCallbacks } from "../BaseTool"
 import type { Task } from "../../task/Task"
 import { ParallelTaskArgumentRecovery } from "../../task/ParallelTaskArgumentRecovery"
 import { runParallelTasks } from "../../task/runParallelTasks"
+import { addSharedDocumentReader } from "../../task/ParallelTaskReader"
+import { BoundedElasticScheduler } from "../../task/BoundedElasticScheduler"
 import {
 	compactParallelTasksResultForParent,
 	makeParallelTasksSchema,
@@ -9,6 +12,7 @@ import {
 	MAX_WORKER_PARENT_RESULT_CHARS,
 	parallelTaskSpecSchema,
 	parallelTasksSchema,
+	ParallelTasksTool,
 	parallelTasksTool,
 	resolveParallelTasksMax,
 	type ParallelTaskSpec,
@@ -16,6 +20,10 @@ import {
 
 vi.mock("../../task/runParallelTasks", () => ({
 	runParallelTasks: vi.fn().mockResolvedValue({ batchId: "b", tasks: [] }),
+}))
+
+vi.mock("../../task/ParallelTaskReader", () => ({
+	addSharedDocumentReader: vi.fn(async (specs: ParallelTaskSpec[]) => specs),
 }))
 
 const worker = (index: number) => ({
@@ -115,6 +123,7 @@ describe("ParallelTasksTool.execute", () => {
 			recordToolError: vi.fn(),
 			didToolFailInCurrentTurn: false,
 			parallelTaskArgumentRecovery: new ParallelTaskArgumentRecovery(),
+			resolvedParallelismPolicy: undefined as ParallelismPolicy | undefined,
 		}
 		// execute() only touches these members; a full Task needs a provider, API handler and
 		// filesystem, so the double is asserted through unknown.
@@ -135,6 +144,8 @@ describe("ParallelTasksTool.execute", () => {
 
 	beforeEach(() => {
 		vi.mocked(runParallelTasks).mockClear()
+		vi.mocked(addSharedDocumentReader).mockClear()
+		vi.mocked(addSharedDocumentReader).mockImplementation(async (specs: ParallelTaskSpec[]) => specs)
 	})
 
 	it("runs a single task as one worker through the normal path", async () => {
@@ -144,7 +155,7 @@ describe("ParallelTasksTool.execute", () => {
 		await expect(run({ tasks: [worker(1)] }, task, callbacks)).resolves.toBeUndefined()
 
 		expect(askApproval).toHaveBeenCalledOnce()
-		expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [worker(1)])
+		expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [worker(1)], {})
 		expect(pushToolResult).toHaveBeenCalledWith(JSON.stringify({ batchId: "b", tasks: [] }))
 		expect(handleError).not.toHaveBeenCalled()
 	})
@@ -202,6 +213,78 @@ describe("ParallelTasksTool.execute", () => {
 		expect(handleError).toHaveBeenCalledWith("running parallel tasks", expect.any(Error))
 		expect(pushToolResult).not.toHaveBeenCalled()
 		expect(runParallelTasks).not.toHaveBeenCalled()
+	})
+
+	it("threads the task's resolved parallelism policy into schema, readers, admission, and dispatch", async () => {
+		const { double, task, provider } = makeTask()
+		double.resolvedParallelismPolicy = DEFAULT_PARALLELISM_POLICY_TABLE.balanced
+		const { handleError, pushToolResult, callbacks } = makeCallbacks()
+		const admitSpy = vi.spyOn(BoundedElasticScheduler.prototype, "admitPlan")
+
+		const six = Array.from({ length: 6 }, (_, index) => ({
+			...worker(index + 10),
+			mode: "code",
+		}))
+		await run({ tasks: six }, task, callbacks)
+
+		const expectedPolicy = { maxLive: 6, maxDispatched: 4, maxReaderSwarm: 4 }
+		expect(addSharedDocumentReader).toHaveBeenCalledWith(
+			expect.any(Array),
+			"/test/workspace",
+			expect.any(Boolean),
+			expect.any(Boolean),
+			expectedPolicy,
+		)
+		expect(runParallelTasks).toHaveBeenCalledWith(task, provider, six, expectedPolicy)
+		expect(admitSpy).toHaveBeenCalledOnce()
+		expect(handleError).not.toHaveBeenCalled()
+		admitSpy.mockRestore()
+
+		vi.mocked(runParallelTasks).mockClear()
+		vi.mocked(addSharedDocumentReader).mockClear()
+		const seven = Array.from({ length: 7 }, (_, index) => ({
+			...worker(index + 10),
+			mode: "code",
+		}))
+		await run({ tasks: seven }, task, callbacks)
+		expect(JSON.parse(pushToolResult.mock.calls.at(-1)![0])).toMatchObject({ status: "error" })
+		expect(runParallelTasks).not.toHaveBeenCalled()
+	})
+
+	it("uses a fresh snapshot after the task policy is rewritten", async () => {
+		const { double, task, provider } = makeTask()
+		double.resolvedParallelismPolicy = DEFAULT_PARALLELISM_POLICY_TABLE.conservative
+		const { callbacks } = makeCallbacks()
+
+		await run({ tasks: [worker(1), worker(2)] }, task, callbacks)
+		expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [worker(1), worker(2)], {
+			maxLive: 3,
+			maxDispatched: 2,
+			maxReaderSwarm: 2,
+		})
+
+		vi.mocked(runParallelTasks).mockClear()
+		double.resolvedParallelismPolicy = DEFAULT_PARALLELISM_POLICY_TABLE.aggressive
+		await run({ tasks: [worker(1), worker(2)] }, task, callbacks)
+		expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [worker(1), worker(2)], {
+			maxLive: 10,
+			maxDispatched: 8,
+			maxReaderSwarm: 4,
+		})
+	})
+
+	it("lets an injected instance policy override the task snapshot", async () => {
+		const { double, task, provider } = makeTask()
+		double.resolvedParallelismPolicy = DEFAULT_PARALLELISM_POLICY_TABLE.balanced as ParallelismPolicy
+		const injected = new ParallelTasksTool()
+		Object.assign(injected, { parallelismPolicy: { maxLive: 2, maxReaderSwarm: 1 } })
+		const { callbacks } = makeCallbacks()
+
+		await injected.execute({ tasks: [worker(1), worker(2)] }, task, callbacks)
+		expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [worker(1), worker(2)], {
+			maxLive: 2,
+			maxReaderSwarm: 1,
+		})
 	})
 })
 

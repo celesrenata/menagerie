@@ -100,6 +100,18 @@ describe("addSharedDocumentReader", () => {
 		expect(readers.map(({ name }) => name)).toEqual(["m5-contract-audit", "m5-contract-audit-2"])
 	})
 
+	it("honors a reader-swarm ceiling of 4 when four useful documents exist", async () => {
+		await fs.writeFile(path.join(root, "docs", "contract.md"), "# Second contract\n")
+		await fs.writeFile(path.join(root, "docs", "api.md"), "# Third contract\n")
+		await fs.writeFile(path.join(root, "docs", "schema.md"), "# Fourth contract\n")
+		const specs = workers("docs/design.md", ["code", "code"])
+		specs[0]!.message =
+			"Implement scope 1 per docs/design.md, docs/contract.md, docs/api.md and docs/schema.md."
+		specs[1]!.message = "Implement scope 2 per docs/design.md, docs/contract.md, docs/api.md and docs/schema.md."
+		const tasks = await addSharedDocumentReader(specs, root, true, false, { maxReaderSwarm: 4 })
+		expect(tasks.filter(({ mode }) => mode === "project-reader")).toHaveLength(4)
+	})
+
 	it("creates no readers beyond useful scopes even when the ceiling is higher", async () => {
 		// Only one shared document exists; a ceiling of 5 must not manufacture filler
 		// readers to match available capacity (PAR-005.5, PAR-005.6).
