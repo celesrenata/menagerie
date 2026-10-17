@@ -3261,6 +3261,40 @@ describe("ClineProvider", () => {
 			expect(disposedOf(worker)).toBe(true)
 		})
 
+		test("headless worker tab-close detaches without aborting the task", async () => {
+			const worker = makePopout()
+			worker.setEditorViewRole("worker")
+			;(worker as unknown as { workerDetachOnClose: boolean }).workerDetachOnClose = true
+			const h = makePanel()
+			await worker.resolveWebviewView(h.panel)
+			const task = await addTask(worker, "headless-worker")
+
+			await h.fireDispose()
+
+			expect(task.abortTask).not.toHaveBeenCalled()
+			expect(ClineProvider.getAllInstances()).toContain(worker)
+			expect(disposedOf(worker)).toBe(false)
+			expect(viewOf(worker)).toBeUndefined()
+
+			await worker.dispose()
+		})
+
+		test("explicit cancel (dispose) on a headless worker still aborts the task", async () => {
+			const worker = makePopout()
+			worker.setEditorViewRole("worker")
+			;(worker as unknown as { workerDetachOnClose: boolean }).workerDetachOnClose = true
+			const h = makePanel()
+			await worker.resolveWebviewView(h.panel)
+			const task = await addTask(worker, "headless-cancel")
+
+			// No tab-close; user explicitly cancels the worker.
+			await worker.dispose()
+
+			expect(task.abortTask).toHaveBeenCalled()
+			expect(ClineProvider.getAllInstances()).not.toContain(worker)
+			expect(disposedOf(worker)).toBe(true)
+		})
+
 		test("genuine dispose() still aborts even for a popout provider", async () => {
 			const popout = makePopout()
 			popout.setEditorViewRole("popout")

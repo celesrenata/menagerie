@@ -53,6 +53,11 @@ import {
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
 	DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 	DEFAULT_PARALLELISM_MODE,
+	DEFAULT_WORKER_PRESENTATION,
+	DEFAULT_TASK_HOME,
+	DEFAULT_OPEN_FILES_ON_AGENT_EDIT,
+	DEFAULT_AUTO_REVEAL_ATTENTION,
+	DEFAULT_REMEMBER_TASK_NAVIGATION,
 	DEFAULT_READ_DENYLIST,
 	DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
@@ -68,6 +73,12 @@ import {
 import { RateLimitClock, createRateLimitClock } from "../task/RateLimitClock"
 import { TaskRegistry } from "../task/TaskRegistry"
 import { TaskScheduler } from "../task/TaskScheduler"
+import {
+	createOnDemandWorkerPanel,
+	createWorkerPanelIfNeeded,
+	resolveWorkerPresentationFromState,
+} from "../task/session/HeadlessWorkerRuntime"
+import { isDetachableWorkerPresentation } from "../task/session/workerPresentation"
 import type { ParallelTaskSpec } from "../tools/ParallelTasksTool"
 import { parseMarkdownChecklist } from "../tools/UpdateTodoListTool"
 import {
@@ -224,6 +235,8 @@ export class ClineProvider
 	//   "worker" — parallel worker tab; closing the tab ABORTS the worker (intended lifecycle).
 	// undefined — sidebar (or any editor provider whose role was never set) falls back to dispose() on close.
 	private editorViewRole?: "popout" | "worker"
+	/** When true, a worker tab-close detaches instead of aborting (headless/task-hub). */
+	private workerDetachOnClose = false
 	private taskRegistry = new TaskRegistry()
 	private taskScheduler = new TaskScheduler()
 	private static readonly delegationTransitionLocks = new Map<string, Promise<void>>()
@@ -2818,6 +2831,11 @@ export class ClineProvider
 			openAiOmniRoutePublishedLaneRouting,
 			parallelismMode,
 			parallelCapacityMap,
+			workerPresentation,
+			taskHome,
+			openFilesOnAgentEdit,
+			autoRevealAttention,
+			rememberTaskNavigation,
 			parallelReadDenylist,
 			allowedCommands,
 			deniedCommands,
@@ -2993,6 +3011,11 @@ export class ClineProvider
 			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
 			// STATIC_ROUTE_CAPACITY) so a saved control re-renders instead of reverting.
 			parallelCapacityMap,
+			workerPresentation: workerPresentation ?? DEFAULT_WORKER_PRESENTATION,
+			taskHome: taskHome ?? DEFAULT_TASK_HOME,
+			openFilesOnAgentEdit: openFilesOnAgentEdit ?? DEFAULT_OPEN_FILES_ON_AGENT_EDIT,
+			autoRevealAttention: autoRevealAttention ?? DEFAULT_AUTO_REVEAL_ATTENTION,
+			rememberTaskNavigation: rememberTaskNavigation ?? DEFAULT_REMEMBER_TASK_NAVIGATION,
 			// FEAT-003: round-trip the EFFECTIVE read denylist so the "Parallel read
 			// exclusions" control renders the current exclusions. Unset merges to the
 			// hardcoded DEFAULT_READ_DENYLIST and a cleared category ([]) survives the
@@ -3246,6 +3269,11 @@ export class ClineProvider
 			// an unset map merges to exactly `STATIC_ROUTE_CAPACITY` downstream, so the
 			// no-op semantics hold and runtime consumers never see a concrete default here.
 			parallelCapacityMap: stateValues.parallelCapacityMap,
+			workerPresentation: stateValues.workerPresentation ?? DEFAULT_WORKER_PRESENTATION,
+			taskHome: stateValues.taskHome ?? DEFAULT_TASK_HOME,
+			openFilesOnAgentEdit: stateValues.openFilesOnAgentEdit ?? DEFAULT_OPEN_FILES_ON_AGENT_EDIT,
+			autoRevealAttention: stateValues.autoRevealAttention ?? DEFAULT_AUTO_REVEAL_ATTENTION,
+			rememberTaskNavigation: stateValues.rememberTaskNavigation ?? DEFAULT_REMEMBER_TASK_NAVIGATION,
 			// FEAT-003: expose the RAW stored read denylist (undefined when unset). Runtime
 			// consumers (ReadFileTool) resolve the effective config via
 			// getEffectiveReadDenylist(), which merges over DEFAULT_READ_DENYLIST per field.
@@ -3531,9 +3559,9 @@ export class ClineProvider
 		this.editorViewRole = role
 	}
 
-	/** True only for interactive popout tabs: their tab-close detaches the view instead of aborting the task. */
+	/** True for popouts and for headless/task-hub workers: tab-close detaches, task stays alive. */
 	private isDetachableView(): boolean {
-		return this.editorViewRole === "popout"
+		return this.editorViewRole === "popout" || (this.editorViewRole === "worker" && this.workerDetachOnClose)
 	}
 
 	private logWebviewHiddenDiagnostics(): void {
@@ -3616,16 +3644,17 @@ export class ClineProvider
 			this.contextProxy,
 			this.mdmService,
 		)
-		// Parallel workers keep abort-on-close: closing a worker tab ends the worker (intended).
 		provider.setEditorViewRole("worker")
+		const presentation = resolveWorkerPresentationFromState(await this.getState())
+		provider.workerDetachOnClose = isDetachableWorkerPresentation(presentation)
 		try {
-			const panel = vscode.window.createWebviewPanel(
-				ClineProvider.tabPanelId,
+			const panel = createWorkerPanelIfNeeded(
+				presentation,
 				`Zoo: ${spec.name}`,
-				{ viewColumn: vscode.ViewColumn.Active, preserveFocus: true },
-				{ enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [this.context.extensionUri] },
+				this.context.extensionUri,
+				ClineProvider.tabPanelId,
 			)
-			await provider.resolveWebviewView(panel)
+			if (panel) await provider.resolveWebviewView(panel)
 			const task = await provider.createTask(
 				`${spec.message}\n\nYou are an independent parallel worker for task ${parent.taskId}. ` +
 					`Work only in ${workspacePath}; it contains a snapshot of the parent's current changes. ` +
@@ -3650,6 +3679,18 @@ export class ClineProvider
 			await provider.dispose()
 			throw error
 		}
+	}
+
+	/**
+	 * Explicit user action: attach an editor panel to an already-running headless
+	 * worker. Closing that panel detaches; it does not abort the task.
+	 */
+	public async openWorkerInEditor(title: string): Promise<void> {
+		if (this.view !== undefined) return
+		this.workerDetachOnClose = true
+		this.setEditorViewRole("worker")
+		const panel = createOnDemandWorkerPanel(title, this.context.extensionUri, ClineProvider.tabPanelId)
+		await this.rebindView(panel)
 	}
 
 	public async getTaskHandoffContext(

@@ -67,6 +67,20 @@ export const DEFAULT_PARALLELISM_MODE: ParallelismMode = "auto"
  */
 export const parallelismModeSchema = z.enum(PARALLELISM_MODES)
 
+export const WORKER_PRESENTATION_VALUES = ["headless", "task-hub", "editor-tabs"] as const
+export type WorkerPresentation = (typeof WORKER_PRESENTATION_VALUES)[number]
+export const workerPresentationSchema = z.enum(WORKER_PRESENTATION_VALUES)
+export const DEFAULT_WORKER_PRESENTATION: WorkerPresentation = "headless"
+
+export const TASK_HOME_VALUES = ["sidebar", "secondary-sidebar-when-user-moved", "panel-when-user-moved"] as const
+export type TaskHome = (typeof TASK_HOME_VALUES)[number]
+export const taskHomeSchema = z.enum(TASK_HOME_VALUES)
+export const DEFAULT_TASK_HOME: TaskHome = "sidebar"
+
+export const DEFAULT_OPEN_FILES_ON_AGENT_EDIT = false
+export const DEFAULT_AUTO_REVEAL_ATTENTION = false
+export const DEFAULT_REMEMBER_TASK_NAVIGATION = true
+
 /**
  * User-adjustable per-capability parallel-task capacity map (replaces the
  * previously hardcoded `STATIC_ROUTE_CAPACITY` as the operator-tunable source).
@@ -303,6 +317,20 @@ export const globalSettingsSchema = z.object({
 	 * entries are rejected at this schema boundary.
 	 */
 	parallelCapacityMap: parallelCapacityMapSchema.optional(),
+	/**
+	 * How parallel workers present themselves. `headless` (default) never auto-opens
+	 * an editor tab; `task-hub` routes workers through the shared hub; `editor-tabs`
+	 * restores the legacy abort-on-close tab per worker.
+	 */
+	workerPresentation: workerPresentationSchema.optional(),
+	/** Preferred Menagerie home container. Preference only — not a placement promise. */
+	taskHome: taskHomeSchema.optional(),
+	/** When false (default), approved agent writes apply without opening a tab. */
+	openFilesOnAgentEdit: z.boolean().optional(),
+	/** When false (default), attention never moves the UI on its own. */
+	autoRevealAttention: z.boolean().optional(),
+	/** When true (default), persist lastSelectedTaskId and restore on reload. */
+	rememberTaskNavigation: z.boolean().optional(),
 	/**
 	 * Persisted user-adjustable read denylist for the parallel-worker read path
 	 * (design §B/§F). Four OPTIONAL string-array fields; an OMITTED field inherits
