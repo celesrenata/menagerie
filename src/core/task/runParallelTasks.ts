@@ -499,30 +499,15 @@ export async function runParallelTasks(
 					// ownership, and the finally that disposes the child — is unchanged.
 					await scheduler.dispatch(spec.name, async (handle) => {
 						signal.throwIfAborted()
-						// Acquire a per-worker inference lease for the worker's whole active
-						// lifetime (design §B). The worker already holds the dispatch permit
-						// (acquired by scheduler.dispatch); acquiring the lease strictly INSIDE
-						// that permit fixes the global order permit≺lease with no reverse edge,
-						// so the wait-for graph is acyclic and the batch cannot deadlock. The
-						// per-capability lease pools throttle generations inside Menagerie:
-						// over-capacity workers for a hot capability queue in `waiting-for-
-						// inference` here instead of all being handed to OmniRoute at once.
-						//
-						// Auto-reader workers are EXEMPT (design §B, finding #4): they are
-						// read-only, individually bounded by their own 90s wall-clock deadline,
-						// hit the 9B reader lane rather than the 27B bottleneck, and must keep
-						// today's immediate-dispatch behavior so a reader-swarm wider than the
-						// reader capacity never times out purely from lease-queue wait. An
-						// exempt worker holds no lease, so it adds no edge to the wait graph.
+						// Dispatch permit covers the worker's whole run. Inference leases
+						// are acquired per generation inside Task.attemptApiRequest (P5),
+						// never for the worker's lifetime. Auto-readers stay exempt from
+						// Menagerie lease queuing (design §B, finding #4).
 						const isAutoReader = spec.mode === "project-reader" && spec.name.startsWith(AUTO_READER_NAME)
-						const releaseLease = isAutoReader
-							? () => {}
-							: await handle.acquireLease(capabilityByName.get(spec.name)!, signal)
-						try {
-							await createParallelWorkspace(snapshot.root, snapshot.commit, workspace)
-							result.workspace = workspace
-							signal.throwIfAborted()
-							const runtime = await provider.createParallelTaskRuntime(
+						await createParallelWorkspace(snapshot.root, snapshot.commit, workspace)
+						result.workspace = workspace
+						signal.throwIfAborted()
+						const runtime = await provider.createParallelTaskRuntime(
 								parent,
 								spec,
 								path.join(workspace, relativeCwd),
@@ -563,6 +548,20 @@ export async function runParallelTasks(
 							// successful composition, which the Task side treats as the
 							// live-hub default.
 							child.composedSurfaceProvider = () => workerBroker.currentSurface()
+							// Per-generation inference lease (P5): the child acquires just
+							// before network dispatch and releases on stream end/error/abort
+							// or as soon as it stops consuming model output (tool wait).
+							// Auto-readers stay exempt from Menagerie lease queuing.
+							if (!isAutoReader) {
+								const capability = capabilityByName.get(spec.name)!
+								child.inferenceLeaseProvider = {
+									acquire: (leaseSignal) =>
+										handle.acquireLease(
+											capability,
+											AbortSignal.any([signal, leaseSignal]),
+										),
+								}
+							}
 							try {
 								result.taskId = child.taskId
 								result.profile = await child.getTaskApiConfigName()
@@ -603,6 +602,9 @@ export async function runParallelTasks(
 								// (Req 1.3, 10.1); the core set remains resident. Release is
 								// per-worker and never touches a sibling's lease set (Req 7.1).
 								workerBroker.releaseAtBoundary("task-complete")
+								// Drop any in-flight generation lease before abort/dispose so a
+								// cancelled or failed worker never starves the lane (P5).
+								child.releaseGenerationLease()
 								// Stop the agent loop after completion as well as on cancellation. Keep the
 								// panel/history and worktree available for inspection and explicit resume.
 								child.cancelCurrentRequest()
@@ -612,16 +614,6 @@ export async function runParallelTasks(
 									await child.dispose()
 								}
 							}
-						} finally {
-							// Release the per-worker inference lease AFTER the child-dispose
-							// finally above, so the lease is held for the worker's whole active
-							// lifetime and freed the instant it settles — success, failure, or
-							// abort (design §B). The release is idempotent (makeHandle /
-							// InferenceLeasePool.makeRelease), so this is a no-op for an exempt
-							// auto-reader and safe even if invoked twice. Freeing it admits the
-							// next queued waiter for this capability via the pool's pump().
-							releaseLease()
-						}
 					})
 				} catch (error) {
 					result.state = signal.aborted ? "cancelled" : "failed"

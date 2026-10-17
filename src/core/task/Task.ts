@@ -8,6 +8,7 @@ import { Mutex } from "async-mutex"
 
 import { AskIgnoredError } from "./AskIgnoredError"
 import { RateLimitClock, createRateLimitClock } from "./RateLimitClock"
+import { acquireGenerationLease, type InferenceLeaseProvider } from "./generationLease"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
@@ -282,6 +283,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * non-parallel tasks, in which case the prompt resolves from the live hub.
 	 */
 	public composedSurfaceProvider?: () => AppliedComposedSurface | undefined
+	/**
+	 * Per-generation inference lease (P5). Set by `runParallelTasks` after the
+	 * worker is admitted. Absent for non-parallel tasks and exempt auto-readers,
+	 * in which case `attemptApiRequest` holds no Menagerie lease.
+	 */
+	public inferenceLeaseProvider?: InferenceLeaseProvider
+	private releaseCurrentGenerationLease?: () => void
 	/** Consecutive failed API attempts for a parallel worker; reset when a request streams assistant content to completion. */
 	private parallelWorkerApiFailures = 0
 	/**
@@ -4111,7 +4119,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					).catch((error) => {
 						console.error("Background usage collection failed:", error)
 					})
+					// Generation is done from the scheduler's point of view: tools,
+					// approvals, and background usage drain must not occupy the lane.
+					this.releaseGenerationLease()
 				} catch (error) {
+					this.releaseGenerationLease()
 					if (error instanceof StreamIdleTimeoutError) {
 						// Close the stalled socket and the provider generator, then let the
 						// generic mid-stream path retry. Tools already executed this turn may
@@ -5689,11 +5701,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.skipPrevResponseIdOnce = false
 
 		// The provider accepts reasoning items alongside standard messages; cast to the expected parameter type.
-		const stream = this.api.createMessage(
-			systemPrompt,
-			cleanConversationHistory as unknown as Anthropic.Messages.MessageParam[],
-			metadata,
-		)
+		// Acquire the inference lease AFTER prompt/tool construction and just
+		// BEFORE network dispatch. Never held during backoff, approvals, or
+		// prompt build. Recursion (retry) reacquires on the nested call.
+		const leaseSignal = abortSignal
+		const releaseLease = await acquireGenerationLease(this.inferenceLeaseProvider, leaseSignal)
+		this.releaseCurrentGenerationLease = releaseLease
+		let stream: ApiStream
+		try {
+			stream = this.api.createMessage(
+				systemPrompt,
+				cleanConversationHistory as unknown as Anthropic.Messages.MessageParam[],
+				metadata,
+			)
+		} catch (error) {
+			this.releaseGenerationLease()
+			throw error
+		}
 		const iterator = stream[Symbol.asyncIterator]()
 
 		// Set up abort handling - when the signal is aborted, clean up the controller reference
@@ -5707,125 +5731,145 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		)
 
 		try {
-			// Awaiting first chunk to see if it will throw an error.
-			this.isWaitingForFirstChunk = true
+			try {
+				// Awaiting first chunk to see if it will throw an error.
+				this.isWaitingForFirstChunk = true
 
-			// Race the first chunk with the abort signal and the API request timeout. The
-			// SDK's own timeout stops at response headers, so a stalled body needs this bound.
-			const firstChunkPromise = iterator.next()
-			const firstChunk = await awaitWithStreamTimeout(firstChunkPromise, {
-				signal: abortSignal,
-				timeoutMs: getApiRequestTimeout(),
-				phase: "first_chunk",
-			})
-			yield firstChunk.value
-			this.isWaitingForFirstChunk = false
-		} catch (error) {
-			if (error instanceof StreamIdleTimeoutError) {
-				// Close the stalled request and provider generator, then fall through to the
-				// normal first-chunk retry handling below.
-				requestAbortController.abort(error)
-				void iterator.return?.(undefined)?.catch(() => {})
-			}
-
-			this.isWaitingForFirstChunk = false
-			const isContextWindowExceededError = checkContextWindowExceededError(error)
-
-			if (!isContextWindowExceededError) {
-				this.currentRequestAbortController = undefined
-			}
-
-			// If it's a context window error and we haven't exceeded max retries for this error type
-			if (isContextWindowExceededError && retryAttempt < MAX_CONTEXT_WINDOW_RETRIES) {
-				console.warn(
-					`[Task#${this.taskId}] Context window exceeded for model ${this.api.getModel().id}. ` +
-						`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
-						`Attempting automatic truncation...`,
-				)
-				const recoveryDecision = await this.handleContextWindowExceededError(requestModelInfo)
-
-				// Resilient Context Recovery (Req 5.1–5.5): a non-recoverable outcome stops the retry
-				// loop instead of recursing forever. convergentReduction could not bring the irreducible
-				// core under the Servable_Input_Budget, so recovery is terminal.
-				if (!recoveryDecision.retry && recoveryDecision.terminalError) {
-					const terminalError: TerminalContextError = recoveryDecision.terminalError
-					if (this.parallelWorker) {
-						// Nobody can answer a worker's api_req_failed ask; self-fail cleanly with a
-						// context-overflow reason so the batch is unblocked rather than idling against
-						// PARALLEL_WORKER_MAX_API_RETRIES (Req 5.3). Mirrors the consecutive-mistake and
-						// output-token-limit worker-fail branches that end the generator.
-						await this.failParallelWorker(terminalError.message)
-						return
-					}
-					// A non-worker task throws the classified terminal error so auto-retry stops
-					// recursing (Req 5.2, 5.5). The thrown Error carries the non-recoverable
-					// context-window-overflow classification, distinct from a transient API failure.
-					throw Object.assign(new Error(terminalError.message), terminalError)
+				// Race the first chunk with the abort signal and the API request timeout. The
+				// SDK's own timeout stops at response headers, so a stalled body needs this bound.
+				const firstChunkPromise = iterator.next()
+				const firstChunk = await awaitWithStreamTimeout(firstChunkPromise, {
+					signal: abortSignal,
+					timeoutMs: getApiRequestTimeout(),
+					phase: "first_chunk",
+				})
+				yield firstChunk.value
+				this.isWaitingForFirstChunk = false
+			} catch (error) {
+				if (error instanceof StreamIdleTimeoutError) {
+					// Close the stalled request and provider generator, then fall through to the
+					// normal first-chunk retry handling below.
+					requestAbortController.abort(error)
+					void iterator.return?.(undefined)?.catch(() => {})
 				}
 
-				// Retry the request after handling the context window error (converged under budget).
-				yield* this.attemptApiRequest(retryAttempt + 1, retryOptions)
-				return
-			}
+				this.isWaitingForFirstChunk = false
+				const isContextWindowExceededError = checkContextWindowExceededError(error)
 
-			// The worker retry cap counts on the Task because retryAttempt resets between the
-			// first-chunk and mid-stream retry layers. failParallelWorker has aborted the task,
-			// so this propagates to recursivelyMakeClineRequests' abort path.
-			if (await this.failWorkerIfRetriesExhausted(error)) {
-				throw new Error(
-					`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted after worker retry cap`,
-				)
-			}
+				if (!isContextWindowExceededError) {
+					this.currentRequestAbortController = undefined
+				}
 
-			// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
-			// Parallel workers always auto-retry: nobody can answer api_req_failed.
-			if (autoApprovalEnabled || this.parallelWorker) {
-				// Apply shared exponential backoff and countdown UX
-				await this.backoffAndAnnounce(retryAttempt, error)
+				// Drop this generation's lease before recovery, backoff, user ask, or
+				// a nested retry so the slot is free while we wait (P5).
+				this.releaseGenerationLease()
 
-				// CRITICAL: Check if task was aborted during the backoff countdown
-				// This prevents infinite loops when users cancel during auto-retry
-				// Without this check, the recursive call below would continue even after abort
-				if (this.abort) {
+				// If it's a context window error and we haven't exceeded max retries for this error type
+				if (isContextWindowExceededError && retryAttempt < MAX_CONTEXT_WINDOW_RETRIES) {
+					console.warn(
+						`[Task#${this.taskId}] Context window exceeded for model ${this.api.getModel().id}. ` +
+							`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
+							`Attempting automatic truncation...`,
+					)
+					const recoveryDecision = await this.handleContextWindowExceededError(requestModelInfo)
+
+					// Resilient Context Recovery (Req 5.1–5.5): a non-recoverable outcome stops the retry
+					// loop instead of recursing forever. convergentReduction could not bring the irreducible
+					// core under the Servable_Input_Budget, so recovery is terminal.
+					if (!recoveryDecision.retry && recoveryDecision.terminalError) {
+						const terminalError: TerminalContextError = recoveryDecision.terminalError
+						if (this.parallelWorker) {
+							// Nobody can answer a worker's api_req_failed ask; self-fail cleanly with a
+							// context-overflow reason so the batch is unblocked rather than idling against
+							// PARALLEL_WORKER_MAX_API_RETRIES (Req 5.3). Mirrors the consecutive-mistake and
+							// output-token-limit worker-fail branches that end the generator.
+							await this.failParallelWorker(terminalError.message)
+							return
+						}
+						// A non-worker task throws the classified terminal error so auto-retry stops
+						// recursing (Req 5.2, 5.5). The thrown Error carries the non-recoverable
+						// context-window-overflow classification, distinct from a transient API failure.
+						throw Object.assign(new Error(terminalError.message), terminalError)
+					}
+
+					// Retry the request after handling the context window error (converged under budget).
+					yield* this.attemptApiRequest(retryAttempt + 1, retryOptions)
+					return
+				}
+
+				// The worker retry cap counts on the Task because retryAttempt resets between the
+				// first-chunk and mid-stream retry layers. failParallelWorker has aborted the task,
+				// so this propagates to recursivelyMakeClineRequests' abort path.
+				if (await this.failWorkerIfRetriesExhausted(error)) {
 					throw new Error(
-						`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted during retry`,
+						`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted after worker retry cap`,
 					)
 				}
 
-				// Delegate generator output from the recursive call with
-				// incremented retry count.
-				yield* this.attemptApiRequest(retryAttempt + 1, retryOptions)
+				// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
+				// Parallel workers always auto-retry: nobody can answer api_req_failed.
+				if (autoApprovalEnabled || this.parallelWorker) {
+					// Apply shared exponential backoff and countdown UX
+					await this.backoffAndAnnounce(retryAttempt, error)
 
-				return
-			} else {
-				const { response } = await this.ask(
-					"api_req_failed",
-					error.message ?? JSON.stringify(serializeError(error), null, 2),
-				)
+					// CRITICAL: Check if task was aborted during the backoff countdown
+					// This prevents infinite loops when users cancel during auto-retry
+					// Without this check, the recursive call below would continue even after abort
+					if (this.abort) {
+						throw new Error(
+							`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted during retry`,
+						)
+					}
 
-				if (response !== "yesButtonClicked") {
-					// This will never happen since if noButtonClicked, we will
-					// clear current task, aborting this instance.
-					throw new Error("API request failed")
+					// Delegate generator output from the recursive call with
+					// incremented retry count.
+					yield* this.attemptApiRequest(retryAttempt + 1, retryOptions)
+
+					return
+				} else {
+					const { response } = await this.ask(
+						"api_req_failed",
+						error.message ?? JSON.stringify(serializeError(error), null, 2),
+					)
+
+					if (response !== "yesButtonClicked") {
+						// This will never happen since if noButtonClicked, we will
+						// clear current task, aborting this instance.
+						throw new Error("API request failed")
+					}
+
+					await this.say("api_req_retried")
+
+					// Delegate generator output from the recursive call.
+					yield* this.attemptApiRequest(0, retryOptions)
+					return
 				}
-
-				await this.say("api_req_retried")
-
-				// Delegate generator output from the recursive call.
-				yield* this.attemptApiRequest(0, retryOptions)
-				return
 			}
-		}
 
-		// No error, so we can continue to yield all remaining chunks.
-		// (Needs to be placed outside of try/catch since it we want caller to
-		// handle errors not with api_req_failed as that is reserved for first
-		// chunk failures only.)
-		// This delegates to another generator or iterable object. In this case,
-		// it's saying "yield all remaining values from this iterator". This
-		// effectively passes along all subsequent chunks from the original
-		// stream.
-		yield* iterator
+			// No error, so we can continue to yield all remaining chunks.
+			// (Needs to be placed outside of try/catch since it we want caller to
+			// handle errors not with api_req_failed as that is reserved for first
+			// chunk failures only.)
+			// This delegates to another generator or iterable object. In this case,
+			// it's saying "yield all remaining values from this iterator". This
+			// effectively passes along all subsequent chunks from the original
+			// stream.
+			yield* iterator
+		} finally {
+			this.releaseGenerationLease()
+		}
+	}
+
+	/**
+	 * Idempotent release of the current generation's inference lease. The
+	 * streaming consumer calls this as soon as it stops consuming model output
+	 * (tool wait, abort, stream end) so the slot is free even if the generator
+	 * is kept alive for background usage drain.
+	 */
+	public releaseGenerationLease(): void {
+		const release = this.releaseCurrentGenerationLease
+		this.releaseCurrentGenerationLease = undefined
+		release?.()
 	}
 
 	// Shared exponential backoff for retries (first-chunk and mid-stream)
