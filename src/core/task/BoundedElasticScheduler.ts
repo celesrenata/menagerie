@@ -239,10 +239,13 @@ export class BoundedElasticScheduler {
 			const runnable = this.dag.isRunnable(task.name)
 			const onCriticalPath = criticalPath.has(task.name)
 			const initialState: LogicalWorkerState = runnable ? "runnable" : "waiting-on-dependency"
+			// Honor the spec's nominal priority (lift C4 additive field); a legacy spec
+			// without one stays `normal`, so rank-based lease admission is unchanged.
+			const priority: SchedulingPriority = task.priority ?? "normal"
 			this.workers.set(task.name, {
 				id: task.name,
 				state: initialState,
-				priority: "normal",
+				priority,
 				criticalPath: onCriticalPath,
 				deps,
 				speculative: false,
@@ -461,7 +464,12 @@ export class BoundedElasticScheduler {
 		// sustained OmniRoute pressure admit no children (PAR-012.1, PAR-012.3).
 		// The parent is read above but never paused or mutated here — throttling
 		// new fan-out never disturbs the in-flight worker (PAR-012.3).
-		if (!this.shouldAdmitNewFanOut()) return []
+		if (!this.shouldAdmitNewFanOut()) {
+			// C5: this is a scheduler backpressure decision, counted separately from
+			// provider/network latency (lift C5).
+			this.metricsCollector.onNewFanOutDeniedByBackpressure()
+			return []
+		}
 
 		// Preserve the parent's provenance across the split (PAR-006.3). Synthesize
 		// one owning its own evidence if the parent carried none, so children still
@@ -556,7 +564,12 @@ export class BoundedElasticScheduler {
 		// Backpressure: a speculative branch is NEW logical fan-out, so admit none
 		// under sustained OmniRoute pressure (PAR-012.1, PAR-012.3). No in-flight
 		// worker is read or mutated here, so throttling never disturbs live work.
-		if (!this.shouldAdmitNewFanOut()) return undefined
+		if (!this.shouldAdmitNewFanOut()) {
+			// C5: scheduler backpressure decision, counted separately from provider
+			// latency (lift C5).
+			this.metricsCollector.onNewFanOutDeniedByBackpressure()
+			return undefined
+		}
 
 		const abort = new AbortController()
 		const worker: LogicalWorker = {
@@ -732,6 +745,12 @@ export class BoundedElasticScheduler {
 				if (worker.state === "runnable") {
 					worker.state = "waiting-for-inference"
 					this.metricsCollector.onStateChanged(worker.id, "waiting-for-inference")
+					// C5: a worker only enters `waiting-for-inference` because it had to
+					// block — if the pool also reported no lease, that is a genuine lease
+					// starvation event, counted separately from fan-out backpressure
+					// (lift C5). If a lease is immediately free, the acquire below resolves
+					// without a real block, so it is not starvation.
+					if (pool.available <= 0) this.metricsCollector.onLeaseStarvation()
 				}
 
 				let release: () => void

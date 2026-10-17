@@ -104,6 +104,27 @@ export const parallelTaskSpecSchema = z
 		// `readNodeCapabilityRequirement` finds it and `setUpWorkerBroker` provisions the
 		// required set before the worker's first generation. Absent for legacy/reader specs.
 		capabilities: nodeCapabilityRequirementSchema.optional(),
+		// --- Additive DAG discipline (lift C4) ---------------------------------------------
+		// Optional, legacy-tolerant scheduling metadata. Absent on legacy specs, which still
+		// run as a flat batch (`.strip()` leaves them out; the plan omits the fields).
+		// `dependsOn` names task(s) that must complete before this one becomes runnable; the
+		// DAG validator rejects cycles/unknowns, so a malformed graph is recoverable, not fatal.
+		dependsOn: z.array(z.string().min(1)).optional(),
+		// Exclusive write ownership: file paths this worker may mutate. The integrator uses
+		// the normalized union to reject overlapping writers; read-only tasks omit it so many
+		// readers can share a snapshot (lift C4 "exclusive write ownership").
+		filesWrite: z.array(z.string().min(1)).optional(),
+		filesRead: z.array(z.string().min(1)).optional(),
+		// A short, machine-checkable description of the artifact this worker must produce;
+		// the integrator validates dependents against it before unlocking (lift C4 "validated
+		// upstream artifacts"). Bounded so it never balloons the plan payload.
+		expectedOutput: z.string().min(1).max(2_000).optional(),
+		// Absolute wall-clock deadline (epoch ms). A worker past its deadline is failed and
+		// its dependents escalate rather than run on a stale artifact (lift C4).
+		deadlineMs: z.number().int().nonnegative().optional(),
+		// Nominal priority; `normal` is the legacy default. The scheduler ranks lease
+		// admission by this, so a coordinator can keep critical-path work ahead of fan-out.
+		priority: z.enum(["critical", "high", "normal", "background", "speculative"]).optional(),
 	})
 	// `.strip()` (not `.strict()`) for the transition release so a stray legacy
 	// `routing_tier`/`routing_reason` on a worker spec is dropped rather than rejected (design §7).
@@ -216,13 +237,17 @@ const ADMISSION_ONLY_ROUTES: RouteCapacityProvider = {
 
 /**
  * Build the `ExecutionPlan` the scheduler admits from a validated, reader-fanned
- * task list. The `parallel_tasks` schema currently supplies only a flat task
- * list, so `parallelGroups`/`dependencies` are omitted (they are optional); when
- * the tool carries dependency info, this is where it is attached (design
- * §"ParallelTasksTool and runParallelTasks").
+ * task list. The task list may now carry per-spec `dependsOn`; this collects the
+ * resulting edges into `plan.dependencies` so `admitPlan` compiles a real DAG and
+ * admits dependents as `waiting-on-dependency` (lift C4). Specs with no
+ * `dependsOn` still produce a flat, fully-concurrent batch, so legacy plans are
+ * behaviorally identical. `parallelGroups` is still omitted (optional).
  */
 export function buildExecutionPlan(tasks: ParallelTaskSpec[]): ExecutionPlan {
-	return { tasks }
+	const dependencies = tasks
+		.filter((task) => task.dependsOn && task.dependsOn.length > 0)
+		.map((task) => ({ dependent: task.name, dependsOn: task.dependsOn ?? [] }))
+	return dependencies.length > 0 ? { tasks, dependencies } : { tasks }
 }
 
 // A project-reader is the mastermind's information channel: it exists to return

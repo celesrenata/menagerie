@@ -43,7 +43,9 @@ export function listLiveTaskOwners(hostId: string, context: vscode.ExtensionCont
 					provider.revealChat()
 				},
 				showInHub: () => provider.postMessageToWebview({ type: "action", action: "chatButtonClicked" }),
-				openInEditor: () => openTaskInNewTab(task.taskId, { context }),
+				openInEditor: async () => {
+					await openTaskInNewTab(task.taskId, { context })
+				},
 			} satisfies TaskOwnerHandle,
 		]
 	})

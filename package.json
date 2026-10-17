@@ -18,6 +18,7 @@
 		"fanout-protocol:model-check": "tsx scripts/check-task-fanout-protocol.ts",
 		"cleanup-protocol:model-check": "tsx scripts/check-task-cleanup-protocol.ts",
 		"parser-scope:model-check": "node scripts/run-native-tool-call-parser-scoping.mjs",
+		"menagerie-lift:bench": "tsx scripts/bench-menagerie-lift.ts",
 		"mcp:integration-check": "tsx scripts/check-mcp-oauth-integration.ts",
 		"test:coverage": "turbo test:coverage --log-order grouped --output-logs new-only",
 		"format": "turbo format --log-order grouped --output-logs new-only",

@@ -70,6 +70,18 @@ export interface ParallelismMetrics {
 	usefulParallelismRatio: number
 	// Req 18
 	speculation: SpeculationRecord[]
+	// C5 — scheduler backpressure, counted SEPARATELY from provider/network latency
+	// (lift C5). `newFanOutDeniedByBackpressure` is the number of times admission of
+	// NEW logical fan-out (steal/speculation) was refused because OmniRoute reported
+	// sustained pressure at/above the threshold. It is a scheduler decision, not a
+	// provider-latency measurement: the scheduler never models physical capacity.
+	newFanOutDeniedByBackpressure: number
+	// C5 — lease starvation, also separate from backpressure. The number of times a
+	// worker transitioned into `waiting-for-inference` while its lease pool reported
+	// zero available leases for the moment (it had to block on inference capacity).
+	// This is the "runnable but no lease" event that per-generation leasing (C2) is
+	// designed to minimize, and it is distinct from the fan-out backpressure gate.
+	leaseStarvationEvents: number
 }
 
 /** A monotonic clock injectable for deterministic tests (defaults to `Date.now`). */
@@ -136,6 +148,15 @@ export class ParallelismMetricsCollector {
 	}> = []
 	private _timeToFirstUsefulResultMs?: number
 	private _timeToFinalResultMs?: number
+
+	/**
+	 * C5 counters, kept SEPARATE from provider/network latency by design.
+	 * `newFanOutDeniedByBackpressure` counts scheduler backpressure decisions
+	 * (new fan-out refused under sustained pressure); `leaseStarvationEvents`
+	 * counts workers that had to block for an inference lease that was unavailable.
+	 */
+	private _newFanOutDeniedByBackpressure = 0
+	private _leaseStarvationEvents = 0
 
 	/** The execution start instant, set on the first worker created. */
 	private executionStart?: number
@@ -262,6 +283,24 @@ export class ParallelismMetricsCollector {
 	}
 
 	/**
+	 * Record a scheduler backpressure decision: admission of NEW logical fan-out
+	 * (steal or speculation) was refused because OmniRoute reported sustained
+	 * pressure. Counted separately from provider/network latency by design (C5).
+	 */
+	onNewFanOutDeniedByBackpressure(): void {
+		this._newFanOutDeniedByBackpressure++
+	}
+
+	/**
+	 * Record a lease starvation event: a worker entered `waiting-for-inference`
+	 * while its pool reported no available lease, so it had to block. Distinct
+	 * from fan-out backpressure and from provider latency (C5).
+	 */
+	onLeaseStarvation(): void {
+		this._leaseStarvationEvents++
+	}
+
+	/**
 	 * Open a speculation record for a speculative branch as it starts running
 	 * (Req 18.1). `hypothesis` is the hypothesis under test; `durationMs`/
 	 * `tokenCount` accrue through {@link addSpeculationUsage} and the settle hook.
@@ -373,6 +412,8 @@ export class ParallelismMetricsCollector {
 			timeToFirstUsefulResultMs: this._timeToFirstUsefulResultMs,
 			timeToFinalResultMs: this._timeToFinalResultMs,
 			usefulParallelismRatio,
+			newFanOutDeniedByBackpressure: this._newFanOutDeniedByBackpressure,
+			leaseStarvationEvents: this._leaseStarvationEvents,
 			speculation: [...this.speculation.values()].map((record) => ({
 				workerId: record.workerId,
 				hypothesis: record.hypothesis,

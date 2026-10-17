@@ -257,7 +257,8 @@ describe("Task Board registration", () => {
 				evictCurrentTask,
 			},
 		]
-		await mockProviders.commandHandlers.get("zoo-code.openTask")?.(item.command.arguments[0])
+		const taskIdArg = item.command?.arguments?.[0]
+		await mockProviders.commandHandlers.get("zoo-code.openTask")?.(taskIdArg)
 		expect(revealChat).toHaveBeenCalledOnce()
 		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
 		expect(createTask).not.toHaveBeenCalled()

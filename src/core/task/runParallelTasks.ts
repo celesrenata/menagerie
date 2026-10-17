@@ -5,7 +5,7 @@ import { RooCodeEventName } from "@roo-code/types"
 import type { Task } from "./Task"
 import type { ClineProvider } from "../webview/ClineProvider"
 import type { ParallelTaskSpec, NodeCapabilityRequirement } from "../tools/ParallelTasksTool"
-import { readNodeCapabilityRequirement } from "../tools/ParallelTasksTool"
+import { buildExecutionPlan, readNodeCapabilityRequirement } from "../tools/ParallelTasksTool"
 import type { CapabilityBroker, GrantOutcome } from "../capability/capabilityBroker"
 import { createCapabilityBroker } from "../capability/capabilityBroker"
 import type { ToolCapabilityId } from "../capability/toolCapability"
@@ -339,11 +339,13 @@ export async function runParallelTasks(
 			? publishedExtraction.metadata?.capabilityLane
 			: undefined
 	const scheduler = new BoundedElasticScheduler(computeCapacityBounds(routeCapacity), policy, routeCapacity)
-	const plan: ExecutionPlan = { tasks: specs }
-	// Admitting the plan compiles the DAG and registers one Logical_Worker per
-	// spec. The tool already admitted an equivalent plan for recoverable
-	// validation; this flat task list carries no dependencies, so admission here
-	// cannot throw for a cycle/duplicate that validation did not already catch.
+	// Build the plan through the shared builder so per-spec `dependsOn` becomes real
+	// DAG edges; dependents are admitted `waiting-on-dependency` and unlock the
+	// instant their prerequisites settle (lift C4). A spec list with no `dependsOn`
+	// yields a flat `{ tasks }` plan, so legacy behavior is unchanged. The tool
+	// already admitted an equivalent plan for recoverable validation, so admission
+	// here cannot throw a cycle/duplicate that validation did not already catch.
+	const plan: ExecutionPlan = buildExecutionPlan(specs)
 	scheduler.admitPlan(plan)
 	const cancel = () => {
 		controller.abort(new Error("Parent task stopped"))
