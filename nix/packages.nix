@@ -30,8 +30,11 @@ let
   nodejs = pkgs.nodejs_22;
   pnpm = pkgs.pnpm_10;
 
-  # The whole workspace is the fetchDeps / build source.
-  src = ../.;
+  # The whole workspace is the fetchDeps / build source. cleanSource drops
+  # .git, .worktrees, node_modules, and every gitignored file so evaluation
+  # and the pnpm-fetch clone stay fast and reproducible regardless of local
+  # checkout state.
+  src = lib.cleanSource ../.;
 
   # Environment that keeps every install/build phase hermetic and silences
   # opportunistic binary downloads and telemetry. The vsix path needs none of
