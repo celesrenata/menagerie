@@ -70,6 +70,11 @@ roo-cli-*.tar.gz*
 # Git worktrees (separate working copies — never commit)
 /.worktrees/
 
+# Machine-local backups (never commit — bloats clones and nix flake fetches)
+.agents/tasks/*/mac-backup/
+*.sqlite
+
+
 # Agent task working directories
 /.agents/
 
