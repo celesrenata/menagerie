@@ -30,11 +30,82 @@ let
   nodejs = pkgs.nodejs_22;
   pnpm = pkgs.pnpm_10;
 
-  # The whole workspace is the fetchDeps / build source. cleanSource drops
-  # .git, .worktrees, node_modules, and every gitignored file so evaluation
-  # and the pnpm-fetch clone stay fast and reproducible regardless of local
-  # checkout state.
-  src = lib.cleanSource ../.;
+  # The whole workspace is the fetchDeps / build source.
+  #
+  # lib.cleanSource only strips .git and editor/compiled junk — it does NOT
+  # drop gitignored build artifacts. On a working checkout that means the
+  # source nar drags in .worktrees (~8 GB), node_modules (~1 GB), dist/,
+  # bin/, .turbo, and machine-local .agents backups, and any `pnpm install`
+  # invalidates the whole nar. This filter additionally excludes the
+  # gitignored, non-source directories (mirrors .gitignore) so the nar stays
+  # small and stable across local installs. When the flake is fetched from
+  # git those dirs are already absent, so the filter is a harmless no-op.
+  #
+  # NOTE: exclusion is by directory basename. We verified no *tracked* file
+  # uses any of these basenames, so nothing build-required is dropped. The
+  # one collision (root `webview-ui/` is a real build input; `src/webview-ui/`
+  # is the ignored output) is handled by the path check below, which matches
+  # only the nested build dir, not the top-level source.
+  buildArtifactDirs = [
+    "node_modules"
+    "dist"
+    "out"
+    "out-*"
+    "coverage"
+    ".turbo"
+    "bin"
+    ".worktrees"
+    "2000"
+    "mock"
+    "reports"
+    "plans"
+    "logs"
+    "qdrant_storage"
+    ".qodo"
+    ".vercel"
+    ".pnpm-store"
+    ".idea"
+    ".vscode-test"
+    ".stryker-tmp"
+    ".test_env"
+    "Menagerie-Modes-v2-AAR"
+    "omniroute"
+    ".agents"        # tracked docs live here; but its machine-local backups
+                     # (mac-backup/*.sqlite, ~42 MB) are gitignored. Dropping
+                     # the whole dir from the nar is safe: nothing the build
+                     # reads lives in .agents, and it keeps the sqlite out.
+  ];
+  src = lib.cleanSourceWith {
+    src = ../.;
+    name = "menagerie-source";
+    filter = name: type:
+      let
+        base = lib.baseNameOf name;
+        isArtifactDir =
+          type == "directory"
+          && (
+            builtins.elem base buildArtifactDirs
+            || lib.hasPrefix "out-" base
+            # the nested webview build output (NOT the root webview-ui source)
+            || lib.hasSuffix "/src/webview-ui" name
+          );
+        isIgnoredFile =
+          builtins.elem base [
+            "package-lock.json"
+            "AGENTS.local.md"
+            ".DS_Store"
+            ".vite-port"
+            "result"
+          ]
+          || lib.hasSuffix ".vsix" base
+          || lib.hasSuffix ".log" base
+          || lib.hasSuffix ".sqlite" base
+          || (lib.hasPrefix ".env" base && !(lib.hasSuffix ".sample" base))
+          || lib.match "roo-cli-*.tar.gz*" base != null
+          || lib.match "fleet/*.bak-*" name != null;
+      in
+      lib.cleanSourceFilter name type && !isArtifactDir && !isIgnoredFile;
+  };
 
   # Environment that keeps every install/build phase hermetic and silences
   # opportunistic binary downloads and telemetry. The vsix path needs none of
