@@ -70,7 +70,7 @@ let
     inherit version src pnpm;
     # fetcherVersion 2 was removed in the 26.11 nixpkgs release; use 4.
     fetcherVersion = 4;
-    hash = "sha256-rtzbckiEopDddl/AIXrpPOvGKvTd9iHfAunU0Twl8DA=";
+    hash = "sha256-im8siah4VSmgDj96clng5i1GrI0pwAiGqEUSVfntO0c=";
   };
 
   # ---------------------------------------------------------------------------
