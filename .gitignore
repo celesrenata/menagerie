@@ -84,5 +84,10 @@ fleet/*.bak-*
 # Vendored AAR working project (self-contained, has its own git metadata)
 /Menagerie-Modes-v2-AAR/
 
+# Release banners stripped from history in 2026-10 to shrink the flake/git
+# pack (was ~116 MB of incompressible PNGs, ~half the clone). Local copies are
+# fine; keep them out of commits so they never bloat clones or nix fetches.
+/releases/
+
 # Live cluster operational scripts and combo backups
 /omniroute/
