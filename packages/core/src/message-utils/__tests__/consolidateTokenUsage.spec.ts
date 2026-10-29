@@ -96,6 +96,83 @@ describe("consolidateTokenUsage", () => {
 			expect(result.contextTokens).toBe(5000)
 			expect(result.totalCost).toBeCloseTo(0.05)
 		})
+
+		it("should slide contextTokens to the post-truncation size after a sliding window truncation", () => {
+			// Regression: after a sliding window truncation the reported context must reflect the
+			// post-truncation size, not the stale pre-truncation size from the last api_req_started.
+			const messages: ClineMessage[] = [
+				createApiReqMessage(1000, { tokensIn: 190_000, tokensOut: 5_000 }),
+				{
+					ts: 1001,
+					type: "say",
+					say: "sliding_window_truncation",
+					contextTruncation: {
+						truncationId: "t1",
+						messagesRemoved: 12,
+						prevContextTokens: 195_000,
+						newContextTokens: 120_000,
+					},
+				} as ClineMessage,
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.contextTokens).toBe(120_000)
+		})
+
+		it("should prefer the later api_req_started over an earlier sliding window truncation", () => {
+			const messages: ClineMessage[] = [
+				{
+					ts: 1000,
+					type: "say",
+					say: "sliding_window_truncation",
+					contextTruncation: {
+						truncationId: "t1",
+						messagesRemoved: 4,
+						prevContextTokens: 150_000,
+						newContextTokens: 90_000,
+					},
+				} as ClineMessage,
+				createApiReqMessage(1001, { tokensIn: 95_000, tokensOut: 2_000 }),
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			// The request after the truncation is the most recent size report.
+			expect(result.contextTokens).toBe(97_000)
+		})
+
+		it("should fall through a zero-size sliding window truncation to the last real count", () => {
+			const messages: ClineMessage[] = [
+				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50 }),
+				{
+					ts: 1001,
+					type: "say",
+					say: "sliding_window_truncation",
+					contextTruncation: {
+						truncationId: "t1",
+						messagesRemoved: 0,
+						prevContextTokens: 150,
+						newContextTokens: 0,
+					},
+				} as ClineMessage,
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.contextTokens).toBe(150)
+		})
+
+		it("should fall through a sliding window truncation without context data to the last real count", () => {
+			const messages: ClineMessage[] = [
+				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50 }),
+				{ ts: 1001, type: "say", say: "sliding_window_truncation" } as ClineMessage,
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.contextTokens).toBe(150)
+		})
 	})
 
 	describe("invalid data handling", () => {

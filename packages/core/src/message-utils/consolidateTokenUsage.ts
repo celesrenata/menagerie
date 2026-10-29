@@ -12,8 +12,9 @@ export type ParsedApiReqStartedTextType = {
 /**
  * Consolidates token usage metrics from an array of ClineMessages.
  *
- * This function processes 'condense_context' messages and 'api_req_started' messages that have been
- * consolidated with their corresponding 'api_req_finished' messages by the consolidateApiRequests function.
+ * This function processes 'condense_context' and 'sliding_window_truncation' messages as well as
+ * 'api_req_started' messages that have been consolidated with their corresponding 'api_req_finished'
+ * messages by the consolidateApiRequests function.
  * It extracts and sums up the tokensIn, tokensOut, cacheWrites, cacheReads, and cost from these messages.
  *
  * @param messages - An array of ClineMessage objects to process.
@@ -93,7 +94,17 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 			}
 		} else if (message.type === "say" && message.say === "condense_context") {
 			result.contextTokens = message.contextCondense?.newContextTokens ?? 0
+		} else if (message.type === "say" && message.say === "sliding_window_truncation") {
+			// A sliding window truncation slides the context to the post-truncation size.
+			// Without this, contextTokens keeps reporting the pre-truncation (over-budget)
+			// size from the last api_req_started until the next request lands — the reported
+			// context window stays stuck at/near full after a truncation, and the consumers
+			// (context gate, recovery sizing, UI indicator) size off the stale value.
+			result.contextTokens = message.contextTruncation?.newContextTokens ?? 0
 		}
+		// Only stop at a message that actually reported a non-zero context size. A
+		// zero (e.g. an in-flight placeholder api_req_started that only carries
+		// apiProtocol) must fall through to the most recent real count.
 		if (result.contextTokens) {
 			break
 		}

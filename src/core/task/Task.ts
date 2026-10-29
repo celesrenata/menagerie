@@ -4958,6 +4958,26 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const contextWindow = this.api.getCondenseContextWindow?.() ?? modelInfo.contextWindow
 		const useAvailableInputForContextPercent = typeof this.api.getCondenseContextWindow === "function"
 
+		// Recovery must size off the history it is actually reducing, not the last
+		// reported request size: `getTokenUsage().contextTokens` lags the live
+		// effective history and is 0 for usage-less providers, so sizing the
+		// reduction off it under-shoots (the retry overflows again, and the task
+		// spins against the retry cap) or is skipped entirely. Count the effective
+		// (condense/truncation-aware) history with the task's own handler — this is
+		// the same transcript `convergentReduction` and `manageContext` operate on
+		// below, so the sizing matches the reduction's own counting.
+		const effectiveHistoryForSizing = getEffectiveApiHistory(this.apiConversationHistory)
+		let freshContextTokens = contextTokens || 0
+		if (freshContextTokens <= 0) {
+			for (const message of effectiveHistoryForSizing) {
+				if (Array.isArray(message.content)) {
+					freshContextTokens += await estimateTokenCount(message.content, this.api)
+				} else if (typeof message.content === "string") {
+					freshContextTokens += await estimateTokenCount([{ type: "text", text: message.content }], this.api)
+				}
+			}
+		}
+
 		// Resilient Context Recovery (Req 2.1, 2.2, 2.4, 2.5): derive the reduction target from the
 		// Servable_Input_Budget (Served_Context_Window − Output_Reserve) instead of the fixed 75% of
 		// current size. `contextWindow` is the OmniRoute-owned served window read above and `maxTokens`
@@ -5145,11 +5165,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Resolve recovery independently of the failing lane's window (Req 1.2): the required
 			// recovery input is the current transcript token count.
 			const recoveryResolution = resolveRecoveryHandler({
-				requiredRecoveryInput: contextTokens || 0,
+				requiredRecoveryInput: freshContextTokens,
 				candidates,
 			})
 
-			let effectiveTotalTokens = contextTokens || 0
+			let effectiveTotalTokens = freshContextTokens
 
 			if (recoveryResolution.path === "deterministic") {
 				// No window-sufficient handler exists (Req 1.3): skip the summarize call entirely and
@@ -5397,8 +5417,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		const { contextTokens } = this.getTokenUsage()
-
-		if (contextTokens) {
+		{
 			// Context sizing resolves from the same model-info snapshot as the prompt and
 			// every tool array of this request, not from a fresh getModel() re-read.
 			const modelInfo = requestModelInfo
@@ -5416,10 +5435,27 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Get the current profile ID using the helper method
 			const currentProfileId = this.getCurrentProfileId(state)
+
+			// The gate must measure the same prompt size that the request below actually sends:
+			// `contextTokens` (last request's reported size) lags the live history after tool
+			// turns and is 0 for usage-less providers, so the stale gate under-fires and the
+			// request overflows. Count the effective (condense/truncation-aware) history plus
+			// the system prompt — the same inputs the outgoing request is built from.
+			const effectiveHistoryForGating = getEffectiveApiHistory(this.apiConversationHistory)
+			let prevContextTokens = 0
+			for (const message of effectiveHistoryForGating) {
+				if (Array.isArray(message.content)) {
+					prevContextTokens += await estimateTokenCount(message.content, this.api)
+				} else if (typeof message.content === "string") {
+					prevContextTokens += await estimateTokenCount([{ type: "text", text: message.content }], this.api)
+				}
+			}
+			prevContextTokens += await estimateTokenCount([{ type: "text", text: systemPrompt }], this.api)
+
 			// Check if context management will likely run (threshold check)
 			// This allows us to show an in-progress indicator to the user
 			// We use the centralized willManageContext helper to avoid duplicating threshold logic
-			const lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
+			const lastMessage = effectiveHistoryForGating[effectiveHistoryForGating.length - 1]
 			const lastMessageContent = lastMessage?.content
 			let lastMessageTokens = 0
 			if (lastMessageContent) {
@@ -5429,7 +5465,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 
 			const contextManagementWillRun = willManageContext({
-				totalTokens: contextTokens,
+				totalTokens: prevContextTokens,
 				contextWindow,
 				maxTokens,
 				autoCondenseContext,
