@@ -33,7 +33,8 @@ export interface ObservableTask {
 	readonly todoList?: readonly unknown[]
 	getTaskMode(): Promise<string>
 	getTaskApiConfigName(): Promise<string>
-	readonly api: { getModel(): { id: string } }
+	readonly api: { getModel(): { id: string; info?: { contextWindow?: number } } }
+	getTokenUsage?(): { contextTokens?: number }
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- EventEmitter variadic signature
 	on(event: string, listener: (...args: any[]) => void): unknown
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- EventEmitter variadic signature
@@ -402,9 +403,17 @@ export class TaskObservationService implements vscode.Disposable {
 		let mode: string | null = null
 		let profile: string | null = null
 		let model: string | null = null
+		let contextUsed: number | null = null
+		let contextLimit: number | null = null
 		try { mode = await task.getTaskMode() } catch { /* fallback null */ }
 		try { profile = await task.getTaskApiConfigName() } catch { /* fallback null */ }
-		try { model = task.api.getModel().id } catch { /* fallback null */ }
+		try {
+			const modelInfo = task.api.getModel().info
+			model = task.api.getModel().id
+			contextLimit = typeof modelInfo?.contextWindow === "number" ? modelInfo.contextWindow : null
+			const tokenUsage = task.getTokenUsage?.()
+			contextUsed = typeof tokenUsage?.contextTokens === "number" ? tokenUsage.contextTokens : null
+		} catch { /* fallback null */ }
 		const parentId = task.parallelParentTaskId ?? task.parentTaskId
 		const header: SummaryHeader = {
 			status,
@@ -413,8 +422,8 @@ export class TaskObservationService implements vscode.Disposable {
 			profile,
 			model,
 			reasoning: null,
-			contextUsed: null,
-			contextLimit: null,
+			contextUsed,
+			contextLimit,
 			startedAt: task.clineMessages[0]?.ts ?? null,
 			lastActivityAt: last?.ts ?? null,
 			workspace: task.cwd,
