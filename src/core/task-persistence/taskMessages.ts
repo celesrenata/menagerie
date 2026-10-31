@@ -58,6 +58,14 @@ export async function readTaskMessages({
 	return parsedData
 }
 
+/**
+ * Serializes saves per task within this process. Concurrent saves otherwise contend for the same
+ * proper-lockfile lock, and a save that loses the race is dropped after the lock retries run out.
+ * The queue slot is claimed synchronously on call so saves run in call order; each save still
+ * writes the full snapshot it was given.
+ */
+const pendingSavesByTask = new Map<string, Promise<unknown>>()
+
 export type SaveTaskMessagesOptions = {
 	messages: ClineMessage[]
 	taskId: string
@@ -65,7 +73,22 @@ export type SaveTaskMessagesOptions = {
 	merge?: boolean
 }
 
-export async function saveTaskMessages({
+export async function saveTaskMessages(options: SaveTaskMessagesOptions): Promise<ClineMessage[]> {
+	const key = `${options.globalStoragePath}\0${options.taskId}`
+	const previous = pendingSavesByTask.get(key) ?? Promise.resolve()
+	const save = previous.then(() => writeTaskMessages(options))
+	const settled = save.catch(() => undefined)
+	pendingSavesByTask.set(key, settled)
+	try {
+		return await save
+	} finally {
+		if (pendingSavesByTask.get(key) === settled) {
+			pendingSavesByTask.delete(key)
+		}
+	}
+}
+
+async function writeTaskMessages({
 	messages,
 	taskId,
 	globalStoragePath,

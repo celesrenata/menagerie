@@ -41,6 +41,24 @@ describe("taskMessages.saveTaskMessages", () => {
 		hoisted.safeWriteJsonMock.mockClear()
 	})
 
+	it("serializes concurrent saves to the same file so they do not contend for the lock", async () => {
+		const order: string[] = []
+		const message = (text: string): ClineMessage => ({ ts: 1, type: "say", say: "text", text })
+		hoisted.safeWriteJsonMock.mockImplementation(async (_filePath: string, data: ClineMessage[]) => {
+			const text = data[0]?.text
+			order.push(`start:${text}`)
+			await new Promise((resolve) => setTimeout(resolve, 10))
+			order.push(`end:${text}`)
+		})
+
+		await Promise.all([
+			saveTaskMessages({ messages: [message("a")], taskId: "task-q", globalStoragePath: tmpBaseDir }),
+			saveTaskMessages({ messages: [message("b")], taskId: "task-q", globalStoragePath: tmpBaseDir }),
+		])
+
+		expect(order).toEqual(["start:a", "end:a", "start:b", "end:b"])
+	})
+
 	it("persists messages as-is", async () => {
 		const messages: any[] = [
 			{
