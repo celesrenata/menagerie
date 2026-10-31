@@ -193,6 +193,12 @@ function runDelegationTransition<T>(
 	return current
 }
 
+/**
+ * Caps the message list sent on re-show so a long task does not post its full
+ * history in one state message. Older messages are not sent until the next full state.
+ */
+const RECENT_VISIBLE_MESSAGE_COUNT = 200
+
 function scheduleTask(
 	scheduler: TaskScheduler,
 	task: Task,
@@ -1106,10 +1112,7 @@ export class ClineProvider
 			// for this visibility listener panel.
 			const viewStateDisposable = view.onDidChangeViewState(() => {
 				if (this.view?.visible) {
-					// Repost full state so the webview rebuilds if its DOM was dropped
-					// while hidden; otherwise it can render as a gray panel mid-task.
-					void this.postStateToWebview()
-					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+					void this.repostStateOnVisible()
 				} else {
 					this.logWebviewHiddenDiagnostics()
 				}
@@ -1120,10 +1123,7 @@ export class ClineProvider
 			// sidebar
 			const visibilityDisposable = view.onDidChangeVisibility(() => {
 				if (this.view?.visible) {
-					// Repost full state so the webview rebuilds if its DOM was dropped
-					// while hidden; otherwise it can render as a gray panel mid-task.
-					void this.postStateToWebview()
-					void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+					void this.repostStateOnVisible()
 				} else {
 					this.logWebviewHiddenDiagnostics()
 				}
@@ -3562,6 +3562,32 @@ export class ClineProvider
 	/** True for popouts and for headless/task-hub workers: tab-close detaches, task stays alive. */
 	private isDetachableView(): boolean {
 		return this.editorViewRole === "popout" || (this.editorViewRole === "worker" && this.workerDetachOnClose)
+	}
+
+	/**
+	 * Repost full state so the webview rebuilds if its DOM was dropped while hidden;
+	 * otherwise it can render as a gray panel mid-task. Logs the payload cost so a
+	 * stalled re-show can be correlated with message count and size.
+	 */
+	private async repostStateOnVisible(): Promise<void> {
+		const task = this.getCurrentTask()
+		const messageCount = task?.clineMessages.length ?? 0
+		const startedAt = Date.now()
+		const clineMessagesSeq = ++this.clineMessagesSeq
+		const state = await this.getStateToPostToWebview()
+		state.clineMessagesSeq = clineMessagesSeq
+		state.clineMessages = state.clineMessages.slice(-RECENT_VISIBLE_MESSAGE_COUNT)
+		await this.postMessageToWebview({ type: "state", state })
+		const elapsedMs = Date.now() - startedAt
+		const messagesBytes = JSON.stringify(state.clineMessages).length
+		this.log(
+			`[Zoo Code] Webview visible again; reposted state.\n` +
+				`  taskId:        ${task?.taskId ?? "none"}\n` +
+				`  messageCount:  ${messageCount}\n` +
+				`  messagesBytes: ${messagesBytes}\n` +
+				`  elapsedMs:     ${elapsedMs}`,
+		)
+		void this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 	}
 
 	private logWebviewHiddenDiagnostics(): void {

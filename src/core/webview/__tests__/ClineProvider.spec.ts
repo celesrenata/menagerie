@@ -677,12 +677,20 @@ describe("ClineProvider", () => {
 			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("running-task"))
 		})
 
-		test("reposts full state when the view becomes visible again so it does not stay gray", async () => {
-			const postStateSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+		test("reposts state capped to recent messages when the view becomes visible again", async () => {
+			const task = new Task(defaultTaskOptions)
+			Object.defineProperty(task, "taskId", { value: "long-task", writable: true })
+			const longHistory = Array.from({ length: 450 }, (_, i) => ({ ts: i, type: "say", say: "text", text: `m${i}` }))
+			Object.defineProperty(task, "clineMessages", { value: longHistory, configurable: true })
+			await provider.addClineToStack(task)
+			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 			Object.defineProperty(mockWebviewView, "visible", { value: true, configurable: true })
 			visibilityCallback()
-			expect(postStateSpy).toHaveBeenCalledTimes(1)
-			postStateSpy.mockRestore()
+			await vi.waitFor(() => expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "state" })))
+			const statePost = postMessageSpy.mock.calls.find(([msg]) => msg.type === "state")?.[0]
+			expect(statePost?.state.clineMessages).toHaveLength(200)
+			expect(statePost?.state.clineMessages.at(-1)).toEqual(longHistory.at(-1))
+			postMessageSpy.mockRestore()
 		})
 	})
 
