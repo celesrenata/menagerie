@@ -2,7 +2,11 @@ import axios from "axios"
 import { z } from "zod"
 
 import type { ModelInfo } from "@roo-code/types"
-import { VERCEL_AI_GATEWAY_VISION_ONLY_MODELS, VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS } from "@roo-code/types"
+import {
+	VERCEL_AI_GATEWAY_VISION_ONLY_MODELS,
+	VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS,
+	vercelAiGatewayDefaultModelInfo,
+} from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../../shared/api"
 import { parseApiPrice } from "../../../shared/cost"
@@ -114,8 +118,8 @@ export const parseVercelAiGatewayModel = ({ id, model }: { id: string; model: Ve
 		: VERCEL_AI_GATEWAY_VISION_ONLY_MODELS.has(id) || VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS.has(id)
 
 	const modelInfo: ModelInfo = {
-		maxTokens: model.max_tokens,
-		contextWindow: model.context_window,
+		maxTokens: model.max_tokens ?? vercelAiGatewayDefaultModelInfo.maxTokens,
+		contextWindow: model.context_window ?? vercelAiGatewayDefaultModelInfo.contextWindow,
 		supportsImages,
 		supportsPromptCache,
 		inputPrice: parseApiPrice(model.pricing?.input),

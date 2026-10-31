@@ -1,7 +1,11 @@
 // npx vitest run src/api/providers/fetchers/__tests__/vercel-ai-gateway.spec.ts
 
 import axios from "axios"
-import { VERCEL_AI_GATEWAY_VISION_ONLY_MODELS, VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS } from "@roo-code/types"
+import {
+	VERCEL_AI_GATEWAY_VISION_ONLY_MODELS,
+	VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS,
+	vercelAiGatewayDefaultModelInfo,
+} from "@roo-code/types"
 
 import { getVercelAiGatewayModels, parseVercelAiGatewayModel } from "../vercel-ai-gateway"
 
@@ -195,6 +199,17 @@ describe("Vercel AI Gateway Fetchers", () => {
 				output: "10.00",
 			},
 		}
+
+		it("falls back to the default window when a model omits context_window from an invalid response", () => {
+			const { context_window: _omitted, ...withoutWindow } = baseModel
+			const result = parseVercelAiGatewayModel({
+				id: "test/model",
+				model: withoutWindow as unknown as typeof baseModel,
+			})
+
+			expect(result.contextWindow).toBe(vercelAiGatewayDefaultModelInfo.contextWindow)
+			expect(Number.isFinite(result.contextWindow)).toBe(true)
+		})
 
 		it.each(["openai/gpt-6-astra", "openai/gpt-6-astra-fast"])(
 			"applies required Astra request constraints to %s",
