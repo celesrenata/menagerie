@@ -427,6 +427,31 @@ describe("Task persistence", () => {
 			expect(callArgs.messages).toEqual(task.apiConversationHistory)
 		})
 
+		it("isolates the saved API snapshot from later edits to live messages and their content blocks", async () => {
+			mockSaveApiMessages.mockResolvedValueOnce([])
+
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			const block = { type: "text" as const, text: "before" }
+			const live = { role: "user" as const, content: [block] }
+			task.apiConversationHistory.push(live)
+
+			await task.retrySaveApiConversationHistory()
+
+			// A later turn reassigns the message content and annotates a block in place.
+			live.content = [{ type: "text", text: "replaced" }]
+			block.text = "after"
+
+			const saved = mockSaveApiMessages.mock.calls[0][0].messages[0]
+			expect(saved).not.toBe(live)
+			expect(saved.content).toEqual([{ type: "text", text: "before" }])
+		})
+
 		it("settles the current assistant persistence boundary only for assistant messages", async () => {
 			const task = new Task({
 				provider: mockProvider,

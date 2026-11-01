@@ -1449,7 +1449,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async saveApiConversationHistory(merge = true): Promise<boolean> {
 		try {
 			await saveApiMessages({
-				messages: structuredClone(this.apiConversationHistory),
+				// Copy each message and its content blocks so later in-place edits cannot reach an in-flight write.
+				// A deep structuredClone of a long history costs ~100MB of native memory per save.
+				messages: this.apiConversationHistory.map((message) =>
+					Array.isArray(message.content)
+						? { ...message, content: message.content.map((block) => ({ ...block })) }
+						: { ...message },
+				),
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 				merge,
