@@ -1603,7 +1603,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async saveClineMessages(merge = true): Promise<boolean> {
 		try {
 			await saveTaskMessages({
-				messages: structuredClone(this.clineMessages),
+				// Message fields are only ever reassigned (never mutated in place), so a shallow
+				// per-message copy isolates the write from concurrent streaming updates. A deep
+				// structuredClone of a long history costs ~100MB of native memory per save.
+				messages: this.clineMessages.map((message) => ({ ...message })),
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 				merge,

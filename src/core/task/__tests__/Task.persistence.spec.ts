@@ -1056,6 +1056,29 @@ describe("Task persistence", () => {
 			expect(callArgs.messages).toEqual(task.clineMessages)
 		})
 
+		it("isolates the saved snapshot from later top-level updates to live messages", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			const live = { type: "say" as const, say: "text" as const, text: "before", partial: true, ts: Date.now() }
+			task.clineMessages.push(live)
+
+			await getTaskPersistenceAccess(task).saveClineMessages()
+
+			// Streaming updates reassign top-level fields on the live message after the save was issued.
+			live.text = "after"
+			live.partial = false
+
+			const saved = mockSaveTaskMessages.mock.calls[0][0].messages[0]
+			expect(saved).not.toBe(live)
+			expect(saved.text).toBe("before")
+			expect(saved.partial).toBe(true)
+		})
+
 		it("preserves an existing lifecycle status during metadata saves", async () => {
 			mockSaveTaskMessages.mockResolvedValueOnce([])
 			mockTaskMetadata.mockResolvedValueOnce({
