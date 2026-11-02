@@ -38,6 +38,7 @@ import type { WorkerResultWithRecovery } from "./recoveryTelemetry"
 import { pruneParallelTaskBatches } from "./parallelTaskRetention"
 import { AUTO_READER_NAME } from "./ParallelTaskReader"
 import { snapshotWorkingTree, createParallelWorkspace, exportParallelPatch } from "./ParallelTaskWorkspace"
+import { boundErrorText } from "./boundErrorText"
 import { BoundedElasticScheduler } from "./BoundedElasticScheduler"
 import {
 	type ExecutionPlan,
@@ -619,7 +620,7 @@ export async function runParallelTasks(
 					})
 				} catch (error) {
 					result.state = signal.aborted ? "cancelled" : "failed"
-					result.error = error instanceof Error ? error.message : String(error)
+					result.error = boundErrorText(error instanceof Error ? error.message : String(error))
 				}
 				// Settle this worker on the scheduler the instant its loop resolves or
 				// rejects, driving the completion event bus per worker (event-driven
@@ -635,7 +636,7 @@ export async function runParallelTasks(
 						await exportParallelPatch(workspace, snapshot.commit, patch)
 						result.patch = patch
 					} catch (error) {
-						result.error = `${result.error ?? ""} Patch export failed: ${String(error)}`.trim()
+						result.error = `${result.error ?? ""} Patch export failed: ${boundErrorText(String(error))}`.trim()
 						if (result.state === "completed") result.state = "failed"
 					}
 				}
@@ -649,7 +650,7 @@ export async function runParallelTasks(
 					)
 				} catch (error) {
 					// Never let one failed record write abandon siblings still holding permits.
-					result.error = `${result.error ?? ""} Result persistence failed: ${String(error)}`.trim()
+					result.error = `${result.error ?? ""} Result persistence failed: ${boundErrorText(String(error))}`.trim()
 					if (result.state === "completed") result.state = "failed"
 				}
 				return result

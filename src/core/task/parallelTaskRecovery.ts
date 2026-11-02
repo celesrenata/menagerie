@@ -18,8 +18,38 @@ type SavedBatch = {
 // batch once per extension-host session so the reminder cannot become a loop.
 const surfacedBatches = new Set<string>()
 
+// Real manifests are a few KB. Anything past this is not a resumable batch record, and parsing it on
+// every model turn (once for each task in the host) is expensive, so it is skipped without being read.
+const MAX_MANIFEST_BYTES = 1024 * 1024
+
+// Parsed manifests keyed by path, revalidated against mtime and size so an unchanged file is not
+// re-read and re-parsed on each model turn.
+const manifestCache = new Map<string, { mtimeMs: number; size: number; manifest: SavedBatch | undefined }>()
+
+async function readManifest(
+	manifestPath: string,
+	oldestAllowed: number,
+): Promise<{ manifest: SavedBatch | undefined; modified: number } | undefined> {
+	let stat: Awaited<ReturnType<typeof fs.stat>>
+	try {
+		stat = await fs.stat(manifestPath)
+	} catch {
+		return undefined
+	}
+	// Age and size are checked on the stat alone, before any bytes are read.
+	if (stat.mtimeMs < oldestAllowed || stat.size > MAX_MANIFEST_BYTES) return undefined
+	const cached = manifestCache.get(manifestPath)
+	if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+		return { manifest: cached.manifest, modified: stat.mtimeMs }
+	}
+	const manifest = await readJson<SavedBatch>(manifestPath)
+	manifestCache.set(manifestPath, { mtimeMs: stat.mtimeMs, size: stat.size, manifest })
+	return { manifest, modified: stat.mtimeMs }
+}
+
 async function readJson<T>(file: string): Promise<T | undefined> {
 	try {
+		if ((await fs.stat(file)).size > MAX_MANIFEST_BYTES) return undefined
 		return JSON.parse(await fs.readFile(file, "utf8")) as T
 	} catch {
 		return undefined
@@ -36,26 +66,27 @@ export async function getInterruptedParallelBatchSummary(storageRoot: string, pa
 		return undefined
 	}
 
+	// Age-bound the candidates BEFORE reading so an ancient interrupted batch cannot shadow (or resurface
+	// in place of) a recent one, and so expired or oversized manifests are never parsed. Reuses the shared
+	// retention window; no duplicated literal.
+	const oldestAllowed = Date.now() - MAX_RECOVERABLE_BATCH_AGE_MS
 	const batches = await Promise.all(
 		entries.map(async (entry) => {
 			const directory = path.join(root, entry)
-			const manifestPath = path.join(directory, "manifest.json")
-			const manifest = await readJson<SavedBatch>(manifestPath)
-			if (manifest?.parentTaskId !== parentTaskId || !Array.isArray(manifest.tasks)) return undefined
-			try {
-				return { directory, manifest, modified: (await fs.stat(manifestPath)).mtimeMs }
-			} catch {
-				return undefined
-			}
+			const read = await readManifest(path.join(directory, "manifest.json"), oldestAllowed)
+			const manifest = read?.manifest
+			if (!read || manifest?.parentTaskId !== parentTaskId || !Array.isArray(manifest.tasks)) return undefined
+			return { directory, manifest, modified: read.modified }
 		}),
 	)
-	// Age-bound the candidates BEFORE picking the newest so an ancient interrupted
-	// batch cannot shadow (or resurface in place of) a recent one. Reuses the shared
-	// retention window; no duplicated literal.
-	const oldestAllowed = Date.now() - MAX_RECOVERABLE_BATCH_AGE_MS
+	const present = new Set(entries)
+	for (const cachedPath of manifestCache.keys()) {
+		if (cachedPath.startsWith(root + path.sep) && !present.has(path.basename(path.dirname(cachedPath)))) {
+			manifestCache.delete(cachedPath)
+		}
+	}
 	const latest = batches
 		.filter((batch) => batch !== undefined)
-		.filter((batch) => batch.modified >= oldestAllowed)
 		.sort((a, b) => b.modified - a.modified)[0]
 	if (!latest) return undefined
 	const batchKey = `${parentTaskId}:${latest.directory}:${latest.modified}`
