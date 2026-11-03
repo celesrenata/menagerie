@@ -5630,13 +5630,26 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				return undefined
 			})
 
+			// Every read attempt for the api history file misses (ENOENT), so
+			// readFileWithMissingRetry exhausts its retry and the read fails.
+			const fsp = await import("fs/promises")
+			const enoent = Object.assign(new Error("ENOENT: no such file or directory"), { code: "ENOENT" })
+			vi.mocked(fsp.readFile).mockImplementation(async (p) => {
+				if (String(p).endsWith("api_conversation_history.json")) {
+					throw enoent
+				}
+				return ""
+			})
+
 			const deleteTaskSpy = vi.spyOn(provider, "deleteTaskFromState")
 
-			const result = await (provider as any).getTaskWithId("missing-api-file-task")
+			const result = await provider.getTaskWithId("missing-api-file-task")
 
 			expect(result.historyItem).toEqual(historyItem)
 			expect(result.apiConversationHistory).toEqual([])
 			expect(deleteTaskSpy).not.toHaveBeenCalled()
+
+			vi.mocked(fsp.readFile).mockImplementation(async () => "")
 		})
 
 		it("returns empty apiConversationHistory when file contains invalid JSON", async () => {
@@ -5648,24 +5661,62 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				return undefined
 			})
 
-			// Make fileExistsAtPath return true so the read path is exercised
-			const fsUtils = await import("../../../utils/fs")
-			vi.spyOn(fsUtils, "fileExistsAtPath").mockResolvedValue(true)
-
-			// Make readFile return corrupted JSON
+			// Make readFile return corrupted JSON for the api history file
 			const fsp = await import("fs/promises")
-			vi.mocked(fsp.readFile).mockResolvedValueOnce("{not valid json!!!" as never)
+			vi.mocked(fsp.readFile).mockImplementation(async (p) => {
+				if (String(p).endsWith("api_conversation_history.json")) {
+					return "{not valid json!!!"
+				}
+				return ""
+			})
 
 			const deleteTaskSpy = vi.spyOn(provider, "deleteTaskFromState")
 
-			const result = await (provider as any).getTaskWithId("corrupt-api-task")
+			const result = await provider.getTaskWithId("corrupt-api-task")
 
 			expect(result.historyItem).toEqual(historyItem)
 			expect(result.apiConversationHistory).toEqual([])
 			expect(deleteTaskSpy).not.toHaveBeenCalled()
 
-			// Restore the spy
-			vi.mocked(fsUtils.fileExistsAtPath).mockRestore()
+			vi.mocked(fsp.readFile).mockImplementation(async () => "")
+		})
+
+		it("recovers apiConversationHistory when the first read lands in the atomic-rename window (ENOENT then success)", async () => {
+			const historyItem = { id: "race-api-task", task: "test task", ts: Date.now() }
+			vi.mocked(mockContext.globalState.get).mockImplementation((key: string) => {
+				if (key === "taskHistory") {
+					return [historyItem]
+				}
+				return undefined
+			})
+
+			const messages = [{ role: "user", content: "hello" }]
+
+			const fsp = await import("fs/promises")
+			// The atomic rename (target -> .bak, then .new -> target) leaves a window in which
+			// the file does not exist. Simulate that: the first read of the api history file
+			// throws ENOENT, the retry (a later read of the same path) succeeds.
+			let apiHistoryReads = 0
+			vi.mocked(fsp.readFile).mockImplementation(async (p) => {
+				if (String(p).endsWith("api_conversation_history.json")) {
+					apiHistoryReads += 1
+					if (apiHistoryReads === 1) {
+						throw Object.assign(new Error("ENOENT: no such file or directory"), { code: "ENOENT" })
+					}
+					return JSON.stringify(messages)
+				}
+				return ""
+			})
+
+			const deleteTaskSpy = vi.spyOn(provider, "deleteTaskFromState")
+
+			const result = await provider.getTaskWithId("race-api-task")
+
+			expect(result.historyItem).toEqual(historyItem)
+			expect(result.apiConversationHistory).toEqual(messages)
+			expect(deleteTaskSpy).not.toHaveBeenCalled()
+
+			vi.mocked(fsp.readFile).mockImplementation(async () => "")
 		})
 	})
 

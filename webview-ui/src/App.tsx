@@ -237,7 +237,14 @@ const App = () => {
 	}, [tab])
 
 	if (!didHydrateState) {
-		return null
+		// While the extension hasn't posted the first state yet the webview
+		// panel would otherwise be a blank gray rectangle. Show a centered
+		// spinner so the loading state is visible during the round-trip.
+		return (
+			<div data-testid="app-loading" className="flex min-h-dvh items-center justify-center">
+				<span className="codicon codicon-loading codicon-modifier-spin text-xl opacity-60" />
+			</div>
+		)
 	}
 
 	// Do not conditionally load ChatView, it's expensive and there's state we

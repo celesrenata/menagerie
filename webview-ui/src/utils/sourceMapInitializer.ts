@@ -59,14 +59,11 @@ export function initializeSourceMaps(): void {
 		for (let i = 0; i < scripts.length; i++) {
 			const script = scripts[i]
 			if (script.src) {
-				// Try multiple source map locations
-				const possibleMapUrls = [
-					`${script.src}.map`,
-					`${script.src}?source-map=true`,
-					script.src.replace(/\.js$/, ".js.map"),
-					script.src.replace(/\.js$/, ".map.json"),
-					script.src.replace(/\.js$/, ".sourcemap"),
-				]
+				// The Vite build emits a single source map per script at `<src>.map`.
+				// Only preload that real location — the other historical candidates
+				// (`.map.json`, `.sourcemap`, `?source-map=true`) never exist and each
+				// produced a spurious Webview.loadLocalResource 404 on every load.
+				const possibleMapUrls = [`${script.src}.map`]
 
 				// Preload all possible source map locations
 				for (const mapUrl of possibleMapUrls) {

@@ -117,7 +117,6 @@ import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 import { mergeReadDenylist, type ReadDenylistConfig } from "../../services/glob/readDenylist"
 
-import { fileExistsAtPath } from "../../utils/fs"
 import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
@@ -150,6 +149,7 @@ import {
 	interruptDelegatedChild,
 } from "../task-persistence"
 import { readTaskMessages } from "../task-persistence/taskMessages"
+import { getErrorCode, readFileWithMissingRetry } from "../task-persistence/readFileWithMissingRetry"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { REQUESTY_BASE_URL } from "../../shared/utils/requesty"
@@ -2447,22 +2447,24 @@ export class ClineProvider
 		const taskDirPath = await getTaskDirectoryPath(globalStoragePath, id)
 		const apiConversationHistoryFilePath = path.join(taskDirPath, GlobalFileNames.apiConversationHistory)
 		const uiMessagesFilePath = path.join(taskDirPath, GlobalFileNames.uiMessages)
-		const fileExists = await fileExistsAtPath(apiConversationHistoryFilePath)
-
 		let apiConversationHistory: Anthropic.MessageParam[] = []
 
-		if (fileExists) {
-			try {
-				apiConversationHistory = JSON.parse(await fs.readFile(apiConversationHistoryFilePath, "utf8"))
-			} catch (error) {
+		// Read with a short missing-retry: safeWriteJson atomically swaps the file
+		// (rename target -> .bak, then rename .new -> target), so a read that lands in
+		// that window sees ENOENT and would otherwise silently drop the task's context.
+		try {
+			const content = await readFileWithMissingRetry(apiConversationHistoryFilePath)
+			apiConversationHistory = JSON.parse(content)
+		} catch (error) {
+			if (getErrorCode(error) === "ENOENT") {
+				console.warn(
+					`[getTaskWithId] api_conversation_history.json missing for task ${id}, returning empty history`,
+				)
+			} else {
 				console.warn(
 					`[getTaskWithId] api_conversation_history.json corrupted for task ${id}, returning empty history: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
-		} else {
-			console.warn(
-				`[getTaskWithId] api_conversation_history.json missing for task ${id}, returning empty history`,
-			)
 		}
 
 		return {

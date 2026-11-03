@@ -205,6 +205,24 @@ describe("App", () => {
 		expect(chatView.getAttribute("data-hidden")).toBe("false")
 	}, 10000)
 
+	it("shows a loading spinner instead of a blank panel before the first state is hydrated", () => {
+		mockUseExtensionState.mockReturnValue({
+			didHydrateState: false,
+			showWelcome: false,
+			shouldShowAnnouncement: false,
+			experiments: {},
+			language: "en",
+			telemetrySetting: "enabled",
+		})
+
+		render(<AppWithProviders />)
+
+		expect(screen.getByTestId("app-loading")).toBeInTheDocument()
+		// No content should be rendered before hydration.
+		expect(screen.queryByTestId("chat-view")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("welcome-view")).not.toBeInTheDocument()
+	})
+
 	it("shows welcome view when setup is incomplete", () => {
 		mockUseExtensionState.mockReturnValue({
 			didHydrateState: true,
