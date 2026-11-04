@@ -582,6 +582,21 @@ export const webviewMessageHandler = async (
 	if (await handleObservatoryMessage(message)) return
 
 	switch (message.type) {
+		case "webviewDiagnostic":
+			// Diagnostic channel for the intermittent "all gray" webview. The webview's
+			// inline boot script reports document launches, wake-time repaints, and fatal
+			// in-page errors here. A "launch" with no "fatal" means the document is
+			// healthy (the gray state is a compositor stall, not a crash); "repaint"
+			// lines confirm the wake-time forced repaint fired.
+			provider.log(
+				`[webview-diag] ${message.phase ?? "unknown"} @ ${message.diagnosticTs ?? "?"} ` +
+					`rootChildren=${message.rootChildren ?? "?"} bodyChildren=${message.bodyChildren ?? "?"} ` +
+					`overlay=${message.overlay ?? "?"}` +
+					(message.diagnosticReason ? ` reason=${message.diagnosticReason}` : "") +
+					(message.diagnosticError ? ` error=${message.diagnosticError.slice(0, 500)}` : "") +
+					(message.diagnosticStack ? ` stack=${message.diagnosticStack.slice(0, 1000)}` : ""),
+			)
+			break
 		case "themeFixtureProbeResponse":
 			if (process.env.ROO_CODE_THEME_FIXTURE_PROBE === "1" && message.requestId && message.themeFixture) {
 				provider.resolveWebviewThemeFixtureProbe(message.requestId, message.themeFixture)

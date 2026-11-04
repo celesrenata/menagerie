@@ -18,7 +18,17 @@ class VSCodeAPIWrapper {
 		// Check if the acquireVsCodeApi function exists in the current development
 		// context (i.e. VS Code development window or web browser)
 		if (typeof acquireVsCodeApi === "function") {
-			this.vsCodeApi = acquireVsCodeApi()
+			// A separate inline script (injected by the extension's webview HTML)
+			// may have already acquired the API — acquireVsCodeApi() throws if
+			// called twice in the same document, which would prevent the whole
+			// app from booting. Reuse the shared instance when present.
+			const shared = (window as unknown as { __vsCodeApi?: WebviewApi<unknown> }).__vsCodeApi
+			if (shared) {
+				this.vsCodeApi = shared
+			} else {
+				this.vsCodeApi = acquireVsCodeApi()
+				; (window as unknown as { __vsCodeApi?: WebviewApi<unknown> }).__vsCodeApi = this.vsCodeApi
+			}
 		}
 	}
 

@@ -1854,6 +1854,129 @@ export class ClineProvider
           <body>
             <noscript>You need to enable JavaScript to run this app.</noscript>
             <div id="root"></div>
+            <!-- Webview repaint keep-alive + diagnostic.
+
+                 The intermittent "all gray" panel is a Chromium compositor stall:
+                 after the OS sleeps or the window idles, the webview stops
+                 repainting even though its JS and React tree are alive (the
+                 document is never re-created and nothing throws). A user click
+                 forces a hit-test + repaint and clears it. This script keeps the
+                 frame loop warm and force-repaints when the window wakes, so the
+                 panel recovers without any click. It also keeps reporting fatal
+                 in-page errors to the extension output channel. React-independent,
+                 so it survives any app state. -->
+            <script nonce="${nonce}">
+              (function () {
+                try {
+                  var api = null
+                  try {
+                    api = window.acquireVsCodeApi()
+                  } catch (_) {
+                    // VS Code throws if the API was already acquired in this
+                    // document. Never let the diagnostic script fail here: an
+                    // uncaught error during page boot would take the app down
+                    // with it (this is exactly what happened on first deploy).
+                    api = null
+                  }
+                  // Compositor keep-alive: a tiny always-running animation that
+                  // keeps the webview's frame loop from going idle, which is
+                  // what triggers the post-sleep "all gray" repaint stall.
+                  // Created regardless of messaging availability.
+                  var keepAlive = document.createElement("div")
+                  keepAlive.id = "webview-repaint-keepalive"
+                  keepAlive.style.cssText =
+                    "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.001;" +
+                    "pointer-events:none;z-index:-1;will-change:opacity"
+                  ; (document.body || document.documentElement).appendChild(keepAlive)
+                  try {
+                    keepAlive.animate(
+                      { opacity: [0.001, 0.002] },
+                      { duration: 2000, iterations: Infinity, direction: "alternate" },
+                    )
+                  } catch (_) {}
+
+                  // Force a synchronous layout + frame commit (what a click
+                  // effectively does) to un-stall the compositor on wake.
+                  var lastRepaintLog = 0
+                  function forceRepaint(reason, log) {
+                    try {
+                      var el = document.getElementById("root") || document.body
+                      void el.offsetHeight
+                      keepAlive.style.opacity = "0.003"
+                      void keepAlive.offsetHeight
+                      keepAlive.style.opacity = "0.001"
+                    } catch (_) {}
+                    if (log && api) {
+                      var now = Date.now()
+                      if (now - lastRepaintLog > 3000) {
+                        lastRepaintLog = now
+                        report("repaint", { diagnosticReason: reason })
+                      }
+                    }
+                  }
+
+                  if (!api) return
+                  // Publish the instance so the app bundle (loaded as a deferred
+                  // module after this script) reuses it instead of calling
+                  // acquireVsCodeApi() a second time, which would throw.
+                  try {
+                    window.__vsCodeApi = api
+                  } catch (_) {}
+                  function report(phase, extra) {
+                    try {
+                      var root = document.getElementById("root")
+                      var body = document.body
+                      api.postMessage(
+                        Object.assign(
+                          {
+                            type: "webviewDiagnostic",
+                            phase: phase,
+                            diagnosticTs: new Date().toISOString(),
+                            rootChildren: root ? root.childElementCount : -1,
+                            bodyChildren: body ? body.childElementCount : -1,
+                            overlay: document.getElementById("crash-guard-overlay") ? "yes" : "no",
+                          },
+                          extra || {},
+                        ),
+                      )
+                    } catch (_) {}
+                  }
+                  report("launch")
+
+                  // Wake-time forced repaint: when the window regains focus or the
+                  // document becomes visible again (i.e. right after the Mac wakes
+                  // from sleep), force a layout + frame commit. This is the same
+                  // effect a user click has on the stalled compositor, but it
+                  // happens automatically, so the panel recovers without a click.
+                  window.addEventListener("focus", function () {
+                    forceRepaint("focus", true)
+                  })
+                  document.addEventListener("visibilitychange", function () {
+                    if (document.visibilityState === "visible") {
+                      forceRepaint("visible", true)
+                    }
+                  })
+
+                  window.addEventListener(
+                    "error",
+                    function (e) {
+                      report("fatal", {
+                        diagnosticError: (e && e.message) || "unknown",
+                        diagnosticStack: ((e && e.stack) || "").slice(0, 1500),
+                      })
+                    },
+                    true,
+                  )
+                  window.addEventListener("unhandledrejection", function (e) {
+                    var r = e && e.reason
+                    report("fatal", {
+                      diagnosticError: (r && r.message) || String(r).slice(0, 300),
+                      diagnosticStack: ((r && r.stack) || "").slice(0, 1500),
+                    })
+                  })
+                } catch (_) {}
+              })();
+            </script>
             <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
           </body>
         </html>

@@ -732,7 +732,26 @@ export interface WebviewMessage {
 		| "observatoryRequestPersisted"
 		| "observatoryRequestMastermind"
 		| "observatoryRefresh"
+		// Webview diagnostics (webview -> host): document-launch, wake-time
+		// repaint, and fatal in-page error reports from the inline boot script.
+		| "webviewDiagnostic"
 	text?: string
+	/** Diagnostic phase: "launch" | "repaint" | "fatal". */
+	phase?: string
+	/** ISO timestamp of the diagnostic event (webview-side `Date`). */
+	diagnosticTs?: string
+	/** What triggered the event (e.g. "focus", "visible" on repaint reports). */
+	diagnosticReason?: string
+	/** `#root` child element count at report time; -1 if not found. */
+	rootChildren?: number
+	/** `document.body` child element count at report time; -1 if not found. */
+	bodyChildren?: number
+	/** "yes" if the crash-guard overlay is present at report time, else "no". */
+	overlay?: string
+	/** Captured in-page error message (fatal reports). */
+	diagnosticError?: string
+	/** Captured error stack (fatal reports). */
+	diagnosticStack?: string
 	taskId?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
