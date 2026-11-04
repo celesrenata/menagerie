@@ -15,7 +15,7 @@ let
   inherit (pkgs) lib stdenv;
 
   # The extension manifest pins exact versions; keep them in one place.
-  version = "3.84.4";
+  version = "3.84.5";
 
   # ---------------------------------------------------------------------------
   # Toolchain pins.
