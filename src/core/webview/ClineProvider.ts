@@ -1249,6 +1249,47 @@ export class ClineProvider
 	}
 
 	/**
+	 * Recycle the bound webview's document after a wake-from-sleep.
+	 *
+	 * The document is still alive (React mounted, no crash) but its compositor
+	 * surface has stopped repainting after OS sleep; a JS layout flush cannot
+	 * commit a frame to a stalled compositor. Reassigning webview.html provides
+	 * a fresh render surface — the same thing a panel re-open does, which always
+	 * renders. Provider state, tasks, and streams are untouched; the fresh
+	 * document re-posts webviewDidLaunch, which re-posts the full state.
+	 */
+	private webviewRecycleInFlight = false
+	private webviewRecycleLastAt = 0
+	public async recycleWebviewAfterSleep(reason?: string): Promise<void> {
+		const now = Date.now()
+		if (this._disposed || this.view === undefined) {
+			return
+		}
+		// Throttle: a wake can burst several focus/visibility events, and
+		// overlapping recycles would thrash the document.
+		if (this.webviewRecycleInFlight || now - this.webviewRecycleLastAt < 5000) {
+			return
+		}
+		this.webviewRecycleInFlight = true
+		this.webviewRecycleLastAt = now
+		try {
+			const webview = this.view.webview
+			const html =
+				this.contextProxy.extensionMode === vscode.ExtensionMode.Development &&
+				process.env.ROO_CODE_THEME_FIXTURE_PROBE !== "1"
+					? await this.getHMRHtmlContent(webview)
+					: await this.getHtmlContent(webview)
+			if (this._disposed || this.view === undefined) {
+				return
+			}
+			webview.html = html
+			this.log(`[webviewRecycle] recycled webview document after wake (${reason ?? "unknown"})`)
+		} finally {
+			this.webviewRecycleInFlight = false
+		}
+	}
+
+	/**
 	 * Reap a detached popout provider when its sole owned task reaches a terminal event.
 	 * Keyed on the terminal EVENT (not registry-emptiness) because completion does NOT drain
 	 * the registry for a standalone popout task. Safe for both the completed path (status
@@ -1946,17 +1987,58 @@ export class ClineProvider
                   }
                   report("launch")
 
-                  // Wake-time forced repaint: when the window regains focus or the
-                  // document becomes visible again (i.e. right after the Mac wakes
-                  // from sleep), force a layout + frame commit. This is the same
-                  // effect a user click has on the stalled compositor, but it
-                  // happens automatically, so the panel recovers without a click.
+                  // Wake-from-sleep recovery.
+                  //
+                  // A JS layout flush (forceRepaint) cannot commit a frame to a
+                  // compositor that has stopped repainting after OS sleep, so
+                  // the real recovery is a document recycle: ask the extension
+                  // to reassign webview.html, which gives the webview a fresh
+                  // render surface (equivalent to re-opening the panel).
+                  //
+                  // Detecting an actual sleep: the only signal that separates a
+                  // sleep from an ordinary tab switch is that a sleeping
+                  // machine FREEZES the page — its timers stop firing — whereas
+                  // a hidden/unfocused panel merely throttles them (to ~1Hz)
+                  // while the user works elsewhere. So a heartbeat measures the
+                  // largest gap between ticks and only requests a recycle when
+                  // that gap exceeds SLEEP_FREEZE_THRESHOLD_MS. The wake-time
+                  // focus/visibility events then carry that measured gap to the
+                  // extension (which also throttles the recycle).
+                  var SLEEP_FREEZE_THRESHOLD_MS = 60000
+                  var heartbeatGapMs = 0
+                  var lastTick = Date.now()
+                  var heartbeat = setInterval(function () {
+                    var now = Date.now()
+                    var gap = now - lastTick
+                    if (gap > heartbeatGapMs) heartbeatGapMs = gap
+                    lastTick = now
+                  }, 5000)
+                  function onWake(reason) {
+                    if (!api) return
+                    var freezeGapMs = heartbeatGapMs
+                    var looksLikeSleep = freezeGapMs >= SLEEP_FREEZE_THRESHOLD_MS
+                    // Reset for the next episode (a later long sleep still
+                    // recycles).
+                    heartbeatGapMs = 0
+                    lastTick = Date.now()
+                    // Always try the cheap layout flush first, and always log
+                    // so we can correlate wake events with the gray screen.
+                    forceRepaint(reason + (looksLikeSleep ? "+recycle" : ""), true)
+                    if (looksLikeSleep) {
+                      api.postMessage({
+                        type: "webviewRecycleRequest",
+                        diagnosticTs: new Date().toISOString(),
+                        diagnosticReason: reason,
+                        diagnosticFreezeGapMs: freezeGapMs,
+                      })
+                    }
+                  }
                   window.addEventListener("focus", function () {
-                    forceRepaint("focus", true)
+                    onWake("focus")
                   })
                   document.addEventListener("visibilitychange", function () {
                     if (document.visibilityState === "visible") {
-                      forceRepaint("visible", true)
+                      onWake("visible")
                     }
                   })
 

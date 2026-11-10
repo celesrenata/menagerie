@@ -738,6 +738,10 @@ export interface WebviewMessage {
 		// Webview diagnostics (webview -> host): document-launch, wake-time
 		// repaint, and fatal in-page error reports from the inline boot script.
 		| "webviewDiagnostic"
+		// Webview -> host: request a webview document recycle after a
+		// wake-from-sleep. The document is alive but its compositor surface is
+		// stalled; reassigning webview.html provides a fresh render surface.
+		| "webviewRecycleRequest"
 	text?: string
 	/** Diagnostic phase: "launch" | "repaint" | "fatal". */
 	phase?: string
@@ -755,6 +759,13 @@ export interface WebviewMessage {
 	diagnosticError?: string
 	/** Captured error stack (fatal reports). */
 	diagnosticStack?: string
+	/**
+	 * Observed page-freeze duration in ms before the wake (recycle request).
+	 * Measured as the largest gap between inline-script heartbeat ticks; only
+	 * a frozen (sleeping) machine produces gaps this large — a hidden or
+	 * unfocused panel at most throttles timers, so tab switches never reach it.
+	 */
+	diagnosticFreezeGapMs?: number
 	taskId?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"

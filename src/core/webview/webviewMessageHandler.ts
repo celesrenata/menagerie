@@ -4318,6 +4318,17 @@ export const webviewMessageHandler = async (
 			break
 		}
 
+		case "webviewRecycleRequest": {
+			// The webview detected a wake-from-sleep and asked the extension to
+			// reassign webview.html so the webview gets a fresh render surface.
+			// The document is alive but its compositor stopped repainting; a
+			// fresh document always paints. Provider state and tasks are
+			// untouched; the new document re-posts webviewDidLaunch, which
+			// re-posts the full state.
+			await provider.recycleWebviewAfterSleep(message.diagnosticReason)
+			break
+		}
+
 		default: {
 			// console.log(`Unhandled message type: ${message.type}`)
 			//
