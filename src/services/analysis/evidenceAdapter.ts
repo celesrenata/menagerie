@@ -1,4 +1,4 @@
-import type { AnalysisEvidenceItem, AnalysisOutcome, AnalysisRequest } from "@roo-code/types"
+import type { AnalysisEvidenceItem, AnalysisOutcome, AnalysisRequest, WorkerResult } from "@roo-code/types"
 
 import type { EvidencePacket } from "../../core/exploration/types"
 import type { ReaderFinding } from "../../core/task/preparedContextWorkPackage"
@@ -101,4 +101,27 @@ export function outcomeToReaderFindings(outcome: AnalysisOutcome, request: Analy
 			evidence: anchors.map((a) => ({ type: "file" as const, reference: a.path, lines: [a.startLine, a.endLine] as [number, number] })),
 		}
 	})
+}
+
+/**
+ * Scout/reader `WorkerResult` -> candidate evidence packet for the analysis executor
+ * (MEN-GRANITE-SDD-001 R5.1, R7.3). Only a completed result's `file` references with a line range
+ * qualify; test/command/url/screenshot references and failed or blocked results contribute nothing.
+ * The reader's own claims are NOT forwarded as evidence. Every candidate still goes through
+ * `evidencePacketToAnalysisEvidence`, which re-reads the file and pins its digest, so a reference
+ * the scout got wrong or invented is skipped there rather than trusted here.
+ */
+export function workerResultToEvidencePacket(result: WorkerResult, query: string): EvidencePacket {
+	if (result.status !== "completed") return { query, items: [] }
+	const seen = new Set<string>()
+	const items: EvidencePacket["items"][number][] = []
+	for (const ref of result.evidence) {
+		if (ref.type !== "file" || !ref.lines) continue
+		const [startLine, endLine] = ref.lines
+		const key = `${ref.reference}:${startLine}-${endLine}`
+		if (seen.has(key)) continue
+		seen.add(key)
+		items.push({ file: ref.reference, startLine, endLine, score: 1, reason: "cited by scout reader" })
+	}
+	return { query, items }
 }

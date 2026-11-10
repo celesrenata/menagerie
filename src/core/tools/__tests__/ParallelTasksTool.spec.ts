@@ -111,9 +111,9 @@ describe("parallelTaskSpecSchema transitional tolerance", () => {
 })
 
 describe("ParallelTasksTool.execute", () => {
-	const makeTask = (parallelTasksEnabled = true) => {
+	const makeTask = (parallelTasksEnabled = true, extraState: Record<string, unknown> = {}) => {
 		const provider = {
-			getState: async () => ({ experiments: { parallelTasks: parallelTasksEnabled }, customModes: [] }),
+			getState: async () => ({ experiments: { parallelTasks: parallelTasksEnabled }, customModes: [], ...extraState }),
 		}
 		const double = {
 			providerRef: { deref: () => provider },
@@ -160,6 +160,33 @@ describe("ParallelTasksTool.execute", () => {
 		expect(handleError).not.toHaveBeenCalled()
 	})
 
+	describe("Granite workflow policy guard", () => {
+		it("explore rejects an edit-capable worker with a recoverable error and dispatches nothing", async () => {
+			const { double, task } = makeTask(true, { graniteWorkflowEnabled: true, graniteWorkflowPolicy: "explore" })
+			const { askApproval, handleError, pushToolResult, callbacks } = makeCallbacks()
+			await expect(run({ tasks: [{ ...worker(1), mode: "code" }] }, task, callbacks)).resolves.toBeUndefined()
+			expect(runParallelTasks).not.toHaveBeenCalled()
+			expect(askApproval).not.toHaveBeenCalled()
+			expect(handleError).not.toHaveBeenCalled()
+			expect(double.didToolFailInCurrentTurn).toBe(true)
+			expect(pushToolResult.mock.calls[0][0]).toContain("evidence-only")
+		})
+		it("the same batch runs when the feature is disabled, whatever the saved policy", async () => {
+			const { task, provider } = makeTask(true, { graniteWorkflowEnabled: false, graniteWorkflowPolicy: "explore" })
+			const { handleError, callbacks } = makeCallbacks()
+			await run({ tasks: [{ ...worker(1), mode: "code" }] }, task, callbacks)
+			expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [{ ...worker(1), mode: "code" }], {})
+			expect(handleError).not.toHaveBeenCalled()
+		})
+		it("build and strict do not restrict the batch", async () => {
+			for (const graniteWorkflowPolicy of ["build", "strict"]) {
+				vi.mocked(runParallelTasks).mockClear()
+				const { task } = makeTask(true, { graniteWorkflowEnabled: true, graniteWorkflowPolicy })
+				await run({ tasks: [{ ...worker(1), mode: "code" }] }, task, makeCallbacks().callbacks)
+				expect(runParallelTasks).toHaveBeenCalledOnce()
+			}
+		})
+	})
 	it.each([
 		{ label: "0 tasks", input: { tasks: [] } },
 		{

@@ -2,7 +2,7 @@ import type { AnalysisOutcome, AnalysisRequest } from "@roo-code/types"
 
 import { createPreparedContextWorkPackageBuilder } from "../../../core/task/preparedContextWorkPackage"
 import { sha256Hex } from "../analysisDigest"
-import { evidencePacketToAnalysisEvidence, outcomeToReaderFindings } from "../evidenceAdapter"
+import { evidencePacketToAnalysisEvidence, outcomeToReaderFindings, workerResultToEvidencePacket } from "../evidenceAdapter"
 
 const files: Record<string, string> = { "src/a.ts": "l1\nl2\nl3\nl4", "src/big.ts": "x".repeat(10_000) }
 const opts = { workspaceUri: "file:///w", readFileText: async (p: string) => files[p] }
@@ -78,5 +78,39 @@ describe("outcomeToReaderFindings", () => {
 		const builder = createPreparedContextWorkPackageBuilder()
 		const pkg = builder.build({ objective: "do it", readerFindings: outcomeToReaderFindings(valid, request) })
 		expect(pkg.readerFindings?.[0].claim).toBe("A claim")
+	})
+})
+
+describe("workerResultToEvidencePacket", () => {
+	const base = { summary: "s", findings: [{ claim: "x" }], changes: [], tests: [], blockers: [], artifacts: [] }
+	it("keeps only file references with line ranges from a completed result, deduplicated", () => {
+		const packet = workerResultToEvidencePacket(
+			{
+				...base,
+				status: "completed",
+				evidence: [
+					{ type: "file", reference: "src/a.ts", lines: [1, 3] },
+					{ type: "file", reference: "src/a.ts", lines: [1, 3] },
+					{ type: "file", reference: "src/b.ts" },
+					{ type: "test", reference: "a.spec.ts", result: "pass" },
+				],
+			},
+			"q",
+		)
+		expect(packet.items.map((i) => `${i.file}:${i.startLine}-${i.endLine}`)).toEqual(["src/a.ts:1-3"])
+	})
+	it("contributes nothing from failed or blocked results", () => {
+		for (const status of ["failed", "blocked"] as const) {
+			expect(workerResultToEvidencePacket({ ...base, status, evidence: [{ type: "file", reference: "a.ts", lines: [1, 2] }] }, "q").items).toEqual([])
+		}
+	})
+	it("a scout-cited invented range is dropped by the digest-pinning adapter", async () => {
+		const packet = workerResultToEvidencePacket(
+			{ ...base, status: "completed", evidence: [{ type: "file", reference: "src/a.ts", lines: [1, 99] }] },
+			"q",
+		)
+		const out = await evidencePacketToAnalysisEvidence(packet, { workspaceUri: "file:///w", readFileText: async () => "one\ntwo" })
+		expect(out.evidence).toEqual([])
+		expect(out.skipped[0].reason).toBe("bad-range")
 	})
 })

@@ -21,6 +21,8 @@ import { formatResponse } from "../prompts/responses"
 import { ParallelTasksArgumentError } from "./parallelTasksErrors"
 import type { ToolCapabilityId } from "../capability/toolCapability"
 import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
+import { resolveWorkflowPolicy } from "../specs/SpecWorkflowPolicy"
+import { findPolicyViolations, groupsCanEdit } from "../specs/workflowPolicyGuard"
 
 /**
  * A DAG node's declared tool-capability requirement for the Dynamic Capability
@@ -470,6 +472,17 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 					}
 				}
 			}
+			// Granite workflow policy (default off => no violations, exact legacy behaviour).
+			// `explore` is evidence-only; this only rejects, it never reorders or adds work.
+			const policyViolations = findPolicyViolations(
+				tasks,
+				resolveWorkflowPolicy({
+					enabled: state.graniteWorkflowEnabled === true,
+					policy: state.graniteWorkflowPolicy,
+				}),
+				(slug) => groupsCanEdit(getModeBySlug(slug, state.customModes)?.groups),
+			)
+			if (policyViolations.length > 0) throw new ParallelTasksArgumentError(policyViolations.join("; "))
 			// Build the ExecutionPlan and admit it so cyclic/duplicate/invalid plans are rejected
 			// recoverably before any worker is dispatched. `admitPlan` compiles the plan into a
 			// TaskDag, which throws `ParallelTasksArgumentError` on a cycle, a duplicate task name,
