@@ -38,7 +38,7 @@ export async function checkStrictDispatch(tasks: readonly TracedTask[], store: S
 	for (const t of tasks) {
 		const trace = t.specTrace
 		if (!trace) {
-			violations.push(`Task ${t.name} has no specTrace; the "strict" workflow policy only dispatches tasks compiled from an approved spec revision`)
+			violations.push(`Task ${t.name} has no specTrace; the "strict" workflow policy only dispatches tasks compiled from an approved spec revision. Use the "tasks" array in .kiro/specs/<specId>/dispatch.json (written when the user approves a revision) unchanged`)
 			continue
 		}
 		if (trace.taskId !== t.name) {

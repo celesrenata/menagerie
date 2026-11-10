@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { SpecRevisionStore } from "../SpecRevisionStore"
 import { approveSpecRevision, importSpecDraft, verifyApprovedRevision, type SpecUi } from "../specCommands"
 import type { ExecFn } from "../SpecCheckRunner"
-import { SPECS_DIR } from "../strictSpecRun"
+import { checkStrictDispatch, SPECS_DIR } from "../strictSpecRun"
+import { makeParallelTasksSchema } from "../../tools/ParallelTasksTool"
 import { baseContent } from "./specFixtures"
 
 const ui = (over: Partial<SpecUi> = {}): SpecUi & { warnings: string[]; infos: string[] } => {
@@ -84,6 +85,23 @@ describe("spec import and approval commands", () => {
 		const [, detail] = vi.mocked(u.confirm).mock.calls[0]
 		expect(detail).toContain("pnpm test session")
 		expect(await new SpecRevisionStore(specsRoot).findApproval("demo", imported.revisionId)).toEqual({ revisionId: imported.revisionId, approvedBy: "user", approvedAt: 42 })
+	})
+
+	it("writes the compiled parallel_tasks input on approval, valid as-is for strict dispatch", async () => {
+		const imported = await importSpecDraft({ ui: ui(), workspaceRoot: root, file: await writeDraft(baseContent()) })
+		if (!imported.ok) throw new Error("fixture")
+		expect(await fs.readdir(path.join(specsRoot, "demo"))).not.toContain("dispatch.json") // not before approval
+		const u = ui()
+		await approveSpecRevision({ ui: u, workspaceRoot: root })
+		const file = JSON.parse(await fs.readFile(path.join(specsRoot, "demo", "dispatch.json"), "utf8")) as { tasks: unknown[] }
+		expect(u.infos.at(-1)).toContain("dispatch.json")
+		// It passes the real tool schema untouched and every task traces to the approved revision.
+		const parsed = makeParallelTasksSchema(12).safeParse(file)
+		expect(parsed.success).toBe(true)
+		const store = new SpecRevisionStore(specsRoot)
+		const check = await checkStrictDispatch((parsed.success ? parsed.data.tasks : []) as never, store)
+		expect(check.violations).toEqual([])
+		expect(parsed.success && parsed.data.tasks.map((t) => t.name)).toEqual(["t1", "t2", "t3"])
 	})
 
 	it("records nothing when the user declines or cancels", async () => {

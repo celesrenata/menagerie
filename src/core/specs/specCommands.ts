@@ -1,7 +1,7 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 
-import { SPEC_ID_PATTERN } from "@roo-code/types"
+import { SPEC_ID_PATTERN, type SpecApproval, type SpecRevision } from "@roo-code/types"
 
 import { compileSpec } from "./SpecCompiler"
 import { evaluateSpecGate } from "./SpecGate"
@@ -116,8 +116,10 @@ export async function approveSpecRevision(args: { ui: SpecUi; workspaceRoot: str
 	].join("\n")
 	const ok = await args.ui.confirm(`Approve spec ${rev.specId} revision ${rev.revisionId.slice(0, 19)}?`, detail, "Approve")
 	if (!ok) return { approved: false, reason: "declined" }
-	await store.recordApproval(rev.specId, { revisionId: rev.revisionId, approvedBy: "user", approvedAt: (args.now ?? Date.now)() })
-	args.ui.info(`Approved spec ${rev.specId} revision ${rev.revisionId.slice(0, 19)}.`)
+	const approval = { revisionId: rev.revisionId, approvedBy: "user" as const, approvedAt: (args.now ?? Date.now)() }
+	await store.recordApproval(rev.specId, approval)
+	const dispatchFile = await writeDispatchFile(specsRoot, rev, approval)
+	args.ui.info(`Approved spec ${rev.specId} revision ${rev.revisionId.slice(0, 19)}.${dispatchFile ? ` Dispatch its tasks with the parallel_tasks input in ${SPECS_DIR}/${rev.specId}/dispatch.json.` : ""}`)
 	return { approved: true, revisionId: rev.revisionId }
 }
 
@@ -179,4 +181,20 @@ export async function verifyApprovedRevision(args: { ui: SpecUi; workspaceRoot: 
 		args.ui.warn(`Spec verification did not run: ${reason}`)
 		return { verified: false, reason }
 	}
+}
+
+/**
+ * Write the compiled `parallel_tasks` input for an approved revision, so a model (or you) can dispatch it
+ * unchanged: every task already carries its `specTrace`, which strict dispatch requires. Regenerated on every
+ * approval, so it always names the latest approved revision. Returns false when nothing compiles (e.g. `explore`).
+ */
+export async function writeDispatchFile(specsRoot: string, rev: SpecRevision, approval: SpecApproval): Promise<boolean> {
+	const compiled = compileSpec(rev, { approval })
+	if (!compiled.ok) return false
+	const file = path.join(specsRoot, rev.specId, "dispatch.json")
+	await fs.mkdir(path.dirname(file), { recursive: true })
+	const tmp = `${file}.${process.pid}.tmp`
+	await fs.writeFile(tmp, JSON.stringify({ tasks: compiled.taskSpecs }, null, 2), "utf8")
+	await fs.rename(tmp, file)
+	return true
 }
