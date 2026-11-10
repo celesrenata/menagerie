@@ -106,7 +106,11 @@ describe.skipIf(!baseUrl)("Granite live protocol (role boundaries, injection, co
 			writeFileSync(process.env.AB_REPORT_PATH, `${md}\n`)
 			writeFileSync(`${process.env.AB_REPORT_PATH}.json`, JSON.stringify({ granite, baseline }, null, 1))
 		}
+		// Release gates (tasks 5.3): initial thresholds from the spec, revisable only with a recorded justification.
 		expect(granite.falsePassCount).toBe(0)
+		expect(baseline.falsePassCount).toBe(0)
+		expect(granite.schemaValidRate).toBeGreaterThanOrEqual(0.99)
+		if (granite.citationPrecision !== null) expect(granite.citationPrecision).toBeGreaterThanOrEqual(0.95)
 	}, 3_600_000)
 
 	// Serving-config probe (no labels): identical requests should give identical text. Run once per
