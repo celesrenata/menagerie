@@ -1687,6 +1687,15 @@ describe("ClineProvider", () => {
 		})
 	})
 
+	test("question memory defaults to on and round-trips an explicit off", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		expect((await provider.getState()).questionMemoryEnabled).toBe(true)
+		expect((await provider.getStateToPostToWebview()).questionMemoryEnabled).toBe(true)
+		await provider.contextProxy.setValue("questionMemoryEnabled", false)
+		expect((await provider.getState()).questionMemoryEnabled).toBe(false)
+		expect((await provider.getStateToPostToWebview()).questionMemoryEnabled).toBe(false)
+	})
+
 	test("Granite workflow settings round-trip saved values to runtime and webview state", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		await provider.contextProxy.setValue("graniteWorkflowEnabled", true)

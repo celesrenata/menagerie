@@ -4,6 +4,10 @@ import type { ToolUse } from "../../shared/tools"
 import { getSuggestionMode } from "@roo-code/types"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { assistQuestion, rememberAnswer } from "../questions/questionAssist"
+
+// Questions already consulted or answered from memory, per task. A repeat always reaches the user.
+const handledByTask = new WeakMap<object, Set<string>>()
 
 interface Suggestion {
 	text: string
@@ -63,6 +67,26 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 				return
 			}
 
+			// Question memory: answer from earlier replies, or surface relevant docs once, before interrupting the user.
+			const state = await task.providerRef?.deref()?.getState().catch(() => undefined)
+			const memoryEnabled = state?.questionMemoryEnabled !== false
+			if (memoryEnabled) {
+				let handled = handledByTask.get(task)
+				if (!handled) handledByTask.set(task, (handled = new Set<string>()))
+				const help = await assistQuestion({
+					workspaceRoot: task.cwd,
+					messages: task.clineMessages,
+					question,
+					suggestions: follow_up.map((s) => (typeof s?.text === "string" ? s.text : "")).filter(Boolean),
+					handled,
+				})
+				if (help.action !== "ask") {
+					task.consecutiveMistakeCount = 0
+					await task.say("text", help.action === "answer" ? "Reused your earlier answer to this question instead of asking again." : "Checked the conversation and project docs before asking you.")
+					pushToolResult(formatResponse.toolResult(help.text))
+					return
+				}
+			}
 			// Transform follow_up suggestions to the format expected by task.ask
 			const follow_up_json = {
 				question,
@@ -73,6 +97,11 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 			const { text, images } = await task.ask("followup", JSON.stringify(follow_up_json), false)
 			const safeText = text ?? ""
 			await task.say("user_feedback", safeText, images)
+			// Remember genuine user answers. With follow-up auto-approval on, the "answer" may be an
+			// auto-selected suggestion rather than something the user said, so nothing is stored.
+			if (memoryEnabled && state?.alwaysAllowFollowupQuestions !== true && !images?.length) {
+				await rememberAnswer(task.cwd, question, safeText, task.taskId)
+			}
 			pushToolResult(formatResponse.toolResult(`<user_message>\n${safeText}\n</user_message>`, images))
 		} catch (error) {
 			await handleError("asking question", error as Error)

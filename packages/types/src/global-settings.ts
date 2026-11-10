@@ -74,6 +74,12 @@ export const parallelismModeSchema = z.enum(PARALLELISM_MODES)
  * `ClineProvider.getState()` and runtime consumers resolve an unset value identically.
  */
 export const DEFAULT_GRANITE_WORKFLOW_ENABLED = false
+/**
+ * Follow-up question memory. ON by default: before asking the user, `ask_followup_question`
+ * reuses an answer the user already gave in this project, or hands back conversation/doc passages
+ * that overlap the question. A repeat of the same question always reaches the user.
+ */
+export const DEFAULT_QUESTION_MEMORY_ENABLED = true
 export const DEFAULT_GRANITE_WORKFLOW_POLICY: SpecPolicy = "build"
 
 export const WORKER_PRESENTATION_VALUES = ["headless", "task-hub", "editor-tabs"] as const
@@ -317,6 +323,8 @@ export const globalSettingsSchema = z.object({
 	 * derived from this persisted default at submit time.
 	 */
 	parallelismMode: parallelismModeSchema.optional(),
+	/** Reuse earlier answers and check the conversation and project docs before asking a follow-up question. Unset resolves to on. */
+	questionMemoryEnabled: z.boolean().optional(),
 	/** Opt-in switch for Granite-assisted workflows and executable spec contracts. Unset resolves to off. */
 	graniteWorkflowEnabled: z.boolean().optional(),
 	/** Workflow policy used when enabled: explore, build or strict. Unset resolves to `build`. */

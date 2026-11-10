@@ -141,7 +141,7 @@ export function getRulesSection(
 				hasListFiles
 					? ` For example, if the user mentions a file that may be in an outside directory like the Desktop, you should use the list_files tool to list the files in the Desktop and check if the file they are talking about is there, rather than asking the user to provide the file path themselves.`
 					: ""
-			}`,
+			} Before asking, check what you already have: the user's original request, their earlier replies in this conversation, and the project's own docs (README/AGENTS, .kiro/steering, .kiro/specs requirements/design/tasks). Answers the user already gave in this project are remembered, so the tool may return an earlier answer, or relevant passages, instead of asking; use that and continue.`,
 		)
 	} else {
 		// ask_followup_question unavailable: fall back to best-effort guidance.

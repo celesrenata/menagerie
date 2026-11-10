@@ -47,6 +47,20 @@ describe("UISettings", () => {
 		expect(checkbox.checked).toBe(true)
 	})
 
+	describe("question memory setting", () => {
+		it("defaults to on and writes the toggle to cached state", async () => {
+			const setCachedStateField = vi.fn()
+			const { getByTestId } = render(<UISettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			expect((getByTestId("question-memory-checkbox") as HTMLInputElement).checked).toBe(true)
+			fireEvent.click(getByTestId("question-memory-checkbox"))
+			await waitFor(() => expect(setCachedStateField).toHaveBeenCalledWith("questionMemoryEnabled", false))
+		})
+		it("reflects an explicit off value", () => {
+			const { getByTestId } = render(<UISettings {...defaultProps} questionMemoryEnabled={false} />)
+			expect((getByTestId("question-memory-checkbox") as HTMLInputElement).checked).toBe(false)
+		})
+	})
+
 	describe("Granite workflow settings", () => {
 		it("defaults to unchecked with the policy select disabled", () => {
 			const { getByTestId } = render(<UISettings {...defaultProps} />)

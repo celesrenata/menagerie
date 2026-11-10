@@ -8,6 +8,7 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
 	DEFAULT_GRANITE_WORKFLOW_POLICY,
+	DEFAULT_QUESTION_MEMORY_ENABLED,
 	DEFAULT_PARALLELISM_MODE,
 	PARALLELISM_MODES,
 	SPEC_POLICIES,
@@ -38,6 +39,7 @@ interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	parallelismMode?: ParallelismMode
 	graniteWorkflowEnabled?: boolean
 	graniteWorkflowPolicy?: SpecPolicy
+	questionMemoryEnabled?: boolean
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
@@ -51,6 +53,7 @@ export const UISettings = ({
 	parallelismMode,
 	graniteWorkflowEnabled,
 	graniteWorkflowPolicy,
+	questionMemoryEnabled,
 	setCachedStateField,
 	...props
 }: UISettingsProps) => {
@@ -270,6 +273,21 @@ export const UISettings = ({
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								How aggressively Menagerie may fan work out by default. The composer control
 								overrides this per request.
+							</div>
+						</div>
+					</SearchableSetting>
+					{/* Follow-up question memory. On by default. */}
+					<SearchableSetting settingId="ui-question-memory" section="ui" label="Remember answered questions">
+						<div className="flex flex-col gap-1">
+							<VSCodeCheckbox
+								checked={questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED}
+								onChange={(e: any) => setCachedStateField("questionMemoryEnabled", e.target.checked)}
+								data-testid="question-memory-checkbox">
+								<span className="font-medium">Remember answered questions</span>
+							</VSCodeCheckbox>
+							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
+								Before asking a follow-up question, reuse your earlier answers and check the conversation
+								and project docs. Answers are kept in .kiro/memory.
 							</div>
 						</div>
 					</SearchableSetting>

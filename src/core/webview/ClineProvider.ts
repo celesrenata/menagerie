@@ -54,6 +54,7 @@ import {
 	DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_QUESTION_MEMORY_ENABLED,
 	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	DEFAULT_WORKER_PRESENTATION,
 	DEFAULT_TASK_HOME,
@@ -2959,6 +2960,7 @@ export class ClineProvider
 			parallelismMode,
 			graniteWorkflowEnabled,
 			graniteWorkflowPolicy,
+			questionMemoryEnabled,
 			parallelCapacityMap,
 			workerPresentation,
 			taskHome,
@@ -3140,6 +3142,7 @@ export class ClineProvider
 			// Granite workflows: round-trip the opt-in flag and policy with their shared defaults.
 			graniteWorkflowEnabled: graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
 			graniteWorkflowPolicy: graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
+			questionMemoryEnabled: questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED,
 			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
 			// STATIC_ROUTE_CAPACITY) so a saved control re-renders instead of reverting.
 			parallelCapacityMap,
@@ -3399,6 +3402,7 @@ export class ClineProvider
 			parallelismMode: stateValues.parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 			graniteWorkflowEnabled: stateValues.graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
 			graniteWorkflowPolicy: stateValues.graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
+			questionMemoryEnabled: stateValues.questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED,
 			// User-adjustable parallel-task capacity map. Default is left `undefined`:
 			// an unset map merges to exactly `STATIC_ROUTE_CAPACITY` downstream, so the
 			// no-op semantics hold and runtime consumers never see a concrete default here.

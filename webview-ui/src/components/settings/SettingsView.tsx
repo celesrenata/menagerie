@@ -43,6 +43,7 @@ import {
 	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
 	DEFAULT_GRANITE_WORKFLOW_POLICY,
+	DEFAULT_QUESTION_MEMORY_ENABLED,
 	ImageGenerationProvider,
 } from "@roo-code/types"
 
@@ -231,6 +232,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		parallelismMode,
 		graniteWorkflowEnabled,
 		graniteWorkflowPolicy,
+		questionMemoryEnabled,
 		parallelCapacityMap,
 		parallelReadDenylist,
 	} = cachedState
@@ -465,6 +467,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					parallelismMode: parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 					graniteWorkflowEnabled: graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
 					graniteWorkflowPolicy: graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
+					questionMemoryEnabled: questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED,
 					// omniroute-fleet-topology 14.6: persist the opt-in published-lane-routing
 					// toggle. `undefined`/false both resolve to the disabled default downstream.
 					openAiOmniRoutePublishedLaneRouting: openAiOmniRoutePublishedLaneRouting ?? false,
@@ -1002,6 +1005,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								parallelismMode={parallelismMode}
 								graniteWorkflowEnabled={graniteWorkflowEnabled}
 								graniteWorkflowPolicy={graniteWorkflowPolicy}
+								questionMemoryEnabled={questionMemoryEnabled}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}
