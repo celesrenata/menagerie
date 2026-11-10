@@ -21,6 +21,7 @@ import { formatResponse } from "../prompts/responses"
 import { ParallelTasksArgumentError } from "./parallelTasksErrors"
 import type { ToolCapabilityId } from "../capability/toolCapability"
 import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
+import { extractFileCitations } from "../../services/analysis/evidenceAdapter"
 import { analyzeReaderResults, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
 import { normalizeWorkerResult } from "../task/normalizeWorkerResult"
 import { READER_MODES } from "../task/parallelWorkerRouting"
@@ -556,7 +557,17 @@ async function analyzeCompletedReaders(
 	try {
 		const readers = result.tasks
 			.filter((t) => READER_MODES.has(t.mode) && t.state === "completed" && t.result !== undefined)
-			.map((t) => ({ name: t.name, result: normalizeWorkerResult(t.result, { workerName: t.name }) }))
+			.map((t) => {
+				const normalized = normalizeWorkerResult(t.result, { workerName: t.name })
+				// Prose results carry no structured evidence; mine explicit path:line citations (verified later).
+				return {
+					name: t.name,
+					result:
+						normalized.evidence.length === 0 && normalized.status === "completed"
+							? { ...normalized, evidence: extractFileCitations(normalized.summary) }
+							: normalized,
+				}
+			})
 		if (readers.length === 0) return { status: "skipped", reason: "no completed reader results" }
 		return await analyzeReaderResults({ batchId: result.batchId, workspaceRoot, readers, required })
 	} catch (error) {

@@ -3,12 +3,12 @@ import * as path from "path"
 
 import type { AnalysisOutcome, AnalysisRequest, WorkerResult } from "@roo-code/types"
 
-import { selectAnalysisExecutor, type AnalysisRouteStatus } from "../../core/task/analysisWorkRouting"
+import { adviseAnalysisEscalation, selectAnalysisExecutor, type AnalysisRouteStatus } from "../../core/task/analysisWorkRouting"
 import { AnalysisCache } from "./AnalysisCache"
 import { AnalysisExecutor } from "./AnalysisExecutor"
 import { AnalysisQueue } from "./AnalysisQueue"
 import { evidencePacketToAnalysisEvidence, workerResultToEvidencePacket } from "./evidenceAdapter"
-import { GraniteAnalysisClient } from "./GraniteAnalysisClient"
+import { GraniteAnalysisClient, OMNIROUTE_ANALYSIS_HEADERS } from "./GraniteAnalysisClient"
 import { summarizeOutcomeForParent } from "./summarizeForParent"
 import { createWorkspaceEvidenceVerifier } from "./workspaceEvidenceVerifier"
 
@@ -62,7 +62,7 @@ function runtimeFor(config: AnalysisRouteConfig): Runtime {
 	const key = `${config.baseUrl}|${config.model}`
 	let rt = runtimes.get(key)
 	if (!rt) {
-		const client = new GraniteAnalysisClient({ baseUrl: config.baseUrl, model: config.model, apiKey: config.apiKey, timeoutMs: config.timeoutMs })
+		const client = new GraniteAnalysisClient({ baseUrl: config.baseUrl, model: config.model, apiKey: config.apiKey, timeoutMs: config.timeoutMs, extraHeaders: OMNIROUTE_ANALYSIS_HEADERS })
 		const queue = new AnalysisQueue({ maxActive: config.maxActive, maxQueued: config.maxQueued })
 		const cache = new AnalysisCache()
 		const created: Runtime = {
@@ -96,6 +96,8 @@ export interface AnalysisAugmentationItem {
 	status: AnalysisOutcome["kind"] | "no-file-evidence"
 	/** Bounded summary text (parent-safe). */
 	summary: string
+	/** Present only when the existing reader-escalation quality triggers fired. Cost is the planner's call. */
+	escalation?: { triggers: string[] }
 }
 
 export type AnalysisAugmentation =
@@ -183,11 +185,20 @@ export async function analyzeReaderResults(args: AnalyzeArgs): Promise<AnalysisA
 			} catch (error) {
 				return { task: reader.name, status: "unavailable", summary: `[analysis unavailable] ${error instanceof Error ? error.message : "unexpected error"}`.slice(0, 300) }
 			}
-			return { task: reader.name, status: outcome.kind, summary: summarizeOutcomeForParent(outcome) }
+			const advice = adviseAnalysisEscalation(outcome)
+			return {
+				task: reader.name,
+				status: outcome.kind,
+				summary: summarizeOutcomeForParent(outcome),
+				...(advice.qualityTriggered ? { escalation: { triggers: advice.triggers } } : {}),
+			}
 		}),
 	)
 
 	// A required analysis that produced nothing usable must not read as success.
+	if (args.required && items.length > 0 && items.some((i) => i.escalation !== undefined)) {
+		return { status: "escalate", lane: "reader.deep", reason: "analysis quality signals call for a deeper reader", items }
+	}
 	if (args.required && items.length > 0 && items.every((i) => i.status !== "valid")) {
 		return { status: "escalate", lane: "reader.deep", reason: "required analysis produced no valid result", items }
 	}

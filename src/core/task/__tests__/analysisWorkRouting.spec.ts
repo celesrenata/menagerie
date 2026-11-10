@@ -1,6 +1,6 @@
 import type { AnalysisOutcome } from "@roo-code/types"
 
-import { analysisOutcomeToEscalationSignals, selectAnalysisExecutor } from "../analysisWorkRouting"
+import { adviseAnalysisEscalation, analysisOutcomeToEscalationSignals, selectAnalysisExecutor } from "../analysisWorkRouting"
 import { decide } from "../readerEscalationDecision"
 
 const healthy = { published: true, healthy: true }
@@ -56,5 +56,39 @@ describe("analysisOutcomeToEscalationSignals feeds the EXISTING escalation decis
 	it("a clean, confident result stays on the fast path", () => {
 		const s = analysisOutcomeToEscalationSignals(valid({ findings: [{ claim: "c", anchorIds: ["a"], confidence: 0.9 }] }))
 		expect(decide({ ...s, explicitRequest: false, cost }).action).toBe("stay-fast")
+	})
+})
+
+describe("adviseAnalysisEscalation", () => {
+	const valid = (over: Partial<Extract<AnalysisOutcome, { kind: "valid" }>> = {}): AnalysisOutcome => ({
+		kind: "valid",
+		requestId: "r",
+		operation: "summarize-evidence",
+		findings: [{ claim: "c", anchorIds: ["e1"], confidence: 0.9 }],
+		unknowns: [],
+		digest: "d".repeat(64),
+		modelId: "m",
+		retried: false,
+		...over,
+	})
+	it("fires no trigger for a confident, grounded outcome", () => {
+		expect(adviseAnalysisEscalation(valid())).toMatchObject({ qualityTriggered: false, triggers: [] })
+	})
+	it("reports low confidence", () => {
+		const out = adviseAnalysisEscalation(valid({ findings: [{ claim: "c", anchorIds: ["e1"], confidence: 0.2 }] }))
+		expect(out.qualityTriggered).toBe(true)
+		expect(out.triggers).toContain("low-confidence")
+	})
+	it("reports high risk, contradictions and unknowns", () => {
+		expect(adviseAnalysisEscalation(valid({ risk: "high" })).triggers).toContain("hard-analysis")
+		const contradictions = valid({ operation: "find-contradictions", findings: [{ claim: "A vs B", anchorIds: ["e1"] }] })
+		expect(adviseAnalysisEscalation(contradictions).triggers).toContain("contradictory-evidence")
+		expect(adviseAnalysisEscalation(valid({ unknowns: ["what is X"] })).triggers).toContain("architectural-ambiguity")
+	})
+	it("reports an outcome the bounded executor could not handle", () => {
+		expect(adviseAnalysisEscalation({ kind: "oversize", requestId: "r", reason: "too big" } as AnalysisOutcome).triggers).toContain("hard-analysis")
+	})
+	it("does not treat an infrastructure failure as a quality signal", () => {
+		expect(adviseAnalysisEscalation({ kind: "unavailable", requestId: "r", reason: "down" } as AnalysisOutcome).qualityTriggered).toBe(false)
 	})
 })

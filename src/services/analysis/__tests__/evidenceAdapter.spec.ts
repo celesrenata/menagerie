@@ -2,7 +2,7 @@ import type { AnalysisOutcome, AnalysisRequest } from "@roo-code/types"
 
 import { createPreparedContextWorkPackageBuilder } from "../../../core/task/preparedContextWorkPackage"
 import { sha256Hex } from "../analysisDigest"
-import { evidencePacketToAnalysisEvidence, outcomeToReaderFindings, workerResultToEvidencePacket } from "../evidenceAdapter"
+import { evidencePacketToAnalysisEvidence, outcomeToReaderFindings, workerResultToEvidencePacket, extractFileCitations } from "../evidenceAdapter"
 
 const files: Record<string, string> = { "src/a.ts": "l1\nl2\nl3\nl4", "src/big.ts": "x".repeat(10_000) }
 const opts = { workspaceUri: "file:///w", readFileText: async (p: string) => files[p] }
@@ -112,5 +112,26 @@ describe("workerResultToEvidencePacket", () => {
 		const out = await evidencePacketToAnalysisEvidence(packet, { workspaceUri: "file:///w", readFileText: async () => "one\ntwo" })
 		expect(out.evidence).toEqual([])
 		expect(out.skipped[0].reason).toBe("bad-range")
+	})
+})
+
+describe("extractFileCitations", () => {
+	it("finds path:line and path:start-end citations in prose, deduplicated", () => {
+		const text = "The cache lives in src/cache.ts:10-24 and is read at src/api/user.ts:7. Again src/cache.ts:10-24."
+		expect(extractFileCitations(text)).toEqual([
+			{ type: "file", reference: "src/cache.ts", lines: [10, 24] },
+			{ type: "file", reference: "src/api/user.ts", lines: [7, 7] },
+		])
+	})
+	it("ignores urls, versions and inverted or oversize ranges, and bounds the count", () => {
+		expect(extractFileCitations("see http://host:8080 and v1.2:3 and a.ts:9-2 and b.ts:1-9999")).toEqual([])
+		const many = Array.from({ length: 20 }, (_, i) => `f${i}.ts:${i + 1}`).join(" ")
+		expect(extractFileCitations(many)).toHaveLength(8)
+	})
+	it("extracted citations to a nonexistent range are dropped by the digest-pinning adapter", async () => {
+		const packet = { query: "q", items: extractFileCitations("see src/a.ts:1-3 and src/a.ts:50").map((e) => ({ file: e.reference, startLine: e.lines![0], endLine: e.lines![1], score: 1, reason: "r" })) }
+		const out = await evidencePacketToAnalysisEvidence(packet, opts)
+		expect(out.evidence.map((e) => e.anchor.startLine)).toEqual([1])
+		expect(out.skipped.map((s) => s.reason)).toEqual(["bad-range"])
 	})
 })

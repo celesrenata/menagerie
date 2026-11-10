@@ -37,3 +37,21 @@ Checked `granite-4-rtx-4070-ti-super` @ `eecc005`, `frontend/chat_template.py` a
 - Caveat: the deployed process may be older than the repo HEAD. The black-box probes above pass against it.
 
 The automated role-boundary golden test lives in the optional live integration spec (`GRANITE_LIVE_URL`, skipped by default) added in task 1.2.
+
+## OmniRoute probe (2026-11-10)
+
+Probed through the published OmniRoute `/v1` (key read from the host secret file, never recorded here).
+
+- Granite is published as `vllm/granite-4.2-8b`, advertised `context_length` 128000. The served window used by Menagerie
+  stays 32,768 (operator-reported); the advertised value is not trusted for budgeting. `tool_calling: true` is advertised;
+  the client still sends no tools.
+- **Default OmniRoute requests are polluted by injected context.** A 34-token prompt arrived as 1,005-1,008 prompt tokens and
+  Granite answered in prose (`finish_reason: length` at 120 tokens). Sending `x-omniroute-no-memory: true` and
+  `x-omniroute-compression: off` restored a 34-token prompt and a clean JSON reply. The analysis client now sends both
+  (`OMNIROUTE_ANALYSIS_HEADERS`).
+- `hybrid/reader` and `local/reader` currently resolve to `granite-4.2-8b` and ignore `response_format` (prose back).
+  `pool/tier2/reader` (codestral-latest) honored `json_schema` and returned valid structured evidence.
+  Readers therefore do not reliably emit structured evidence; Menagerie mines explicit `path:line` citations from reader
+  prose deterministically, and every candidate is re-read and digest-pinned before the model sees it.
+- Offline CI never uses this endpoint. The live check is `AnalysisService.live.spec.ts`, gated on
+  `MENAGERIE_ANALYSIS_BASE_URL` and `MENAGERIE_ANALYSIS_MODEL`.

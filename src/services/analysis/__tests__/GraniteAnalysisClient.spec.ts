@@ -1,4 +1,4 @@
-import { AnalysisTransportError, GraniteAnalysisClient, buildRequestBody, parseCompletion } from "../GraniteAnalysisClient"
+import { AnalysisTransportError, GraniteAnalysisClient, OMNIROUTE_ANALYSIS_HEADERS, buildRequestBody, parseCompletion } from "../GraniteAnalysisClient"
 
 const messages = [
 	{ role: "system" as const, content: "s" },
@@ -78,6 +78,20 @@ describe("GraniteAnalysisClient", () => {
 		expect((init.headers as Record<string, string>).authorization).toBe("Bearer k")
 	})
 
+	it("sends extra headers (OmniRoute opt-outs) but never lets them replace content-type", async () => {
+		const fetchImpl = vi.fn(async () => okResponse("{}"))
+		await new GraniteAnalysisClient({
+			baseUrl: "http://x/v1",
+			model: "m",
+			timeoutMs: 1000,
+			extraHeaders: { ...OMNIROUTE_ANALYSIS_HEADERS, "content-type": "text/plain" },
+			fetchImpl: fetchImpl as unknown as typeof fetch,
+		}).complete(messages, 8)
+		const headers = (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>
+		expect(headers["x-omniroute-no-memory"]).toBe("true")
+		expect(headers["x-omniroute-compression"]).toBe("off")
+		expect(headers["content-type"]).toBe("application/json")
+	})
 	it("maps 429 to rate-limited and other HTTP errors to unavailable", async () => {
 		expect(
 			await kindOf(client((async () => new Response("", { status: 429 })) as typeof fetch).complete(messages, 8)),

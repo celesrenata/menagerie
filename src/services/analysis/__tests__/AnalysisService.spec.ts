@@ -103,6 +103,20 @@ describe("analyzeReaderResults", () => {
 		if (out.status === "analyzed") expect(out.items.map((i) => i.status)).toEqual(["no-file-evidence", "no-file-evidence", "no-file-evidence"])
 	})
 
+	it("attaches the existing escalation verdict to a low-confidence item and escalates when required", async () => {
+		const lowConfidence = (r: AnalysisRequest): AnalysisOutcome => ({
+			...(valid(r) as Extract<AnalysisOutcome, { kind: "valid" }>),
+			findings: [{ claim: "maybe", anchorIds: [r.evidence[0].anchorId], confidence: 0.1 }],
+		})
+		const runner: AnalysisRunner = { execute: vi.fn(async (r) => lowConfidence(r)) }
+		const readers = [{ name: "r", result: worker([{ type: "file", reference: "src/a.ts", lines: [1, 1] }]) }]
+		const optional = await analyzeReaderResults({ ...base, workspaceRoot: root, runner, readers })
+		expect(optional.status).toBe("analyzed")
+		if (optional.status === "analyzed") expect(optional.items[0].escalation?.triggers).toContain("low-confidence")
+		const required = await analyzeReaderResults({ ...base, workspaceRoot: root, runner, readers, required: true })
+		expect(required).toMatchObject({ status: "escalate", lane: "reader.deep" })
+	})
+
 	it("turns a runner exception into a visible unavailable item instead of throwing", async () => {
 		const runner: AnalysisRunner = { execute: vi.fn(async () => Promise.reject(new Error("boom"))) }
 		const out = await analyzeReaderResults({

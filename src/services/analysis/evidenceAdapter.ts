@@ -125,3 +125,28 @@ export function workerResultToEvidencePacket(result: WorkerResult, query: string
 	}
 	return { query, items }
 }
+
+const CITATION_RE = /(?<![\w/.-])((?:[\w@.-]+\/)*[\w@.-]+\.[A-Za-z][A-Za-z0-9]{0,7}):(\d{1,6})(?:\s*[-\u2013]\s*(\d{1,6}))?/g
+
+/**
+ * Deterministic `path:line` / `path:start-end` extraction from reader prose. Readers finish with
+ * markdown, not structured evidence, but they routinely cite code this way. These are only
+ * CANDIDATES: `evidencePacketToAnalysisEvidence` re-reads each file and drops anything that is
+ * missing, out of range, unsafe or stale, so a wrong or invented citation cannot reach the model.
+ * No model is involved. Bounded in count; ranges are capped to avoid pulling whole files.
+ */
+export function extractFileCitations(text: string, maxCitations = 8, maxRangeLines = 200): WorkerResult["evidence"] {
+	const out: WorkerResult["evidence"] = []
+	const seen = new Set<string>()
+	for (const m of text.matchAll(CITATION_RE)) {
+		const start = Number.parseInt(m[2], 10)
+		const end = m[3] ? Number.parseInt(m[3], 10) : start
+		if (start < 1 || end < start || end - start + 1 > maxRangeLines) continue
+		const key = `${m[1]}:${start}-${end}`
+		if (seen.has(key)) continue
+		seen.add(key)
+		out.push({ type: "file", reference: m[1], lines: [start, end] })
+		if (out.length >= maxCitations) break
+	}
+	return out
+}

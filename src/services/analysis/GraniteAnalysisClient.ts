@@ -17,9 +17,24 @@ export interface GraniteClientConfig {
 	/** Served model id, resolved from published route metadata. */
 	model: string
 	apiKey?: string
+	/**
+	 * Extra request headers. Through OmniRoute these opt out of its default context injection
+	 * (see {@link OMNIROUTE_ANALYSIS_HEADERS}); `content-type` and `authorization` cannot be overridden.
+	 */
+	extraHeaders?: Readonly<Record<string, string>>
 	/** Per-request deadline. */
 	timeoutMs: number
 	fetchImpl?: typeof fetch
+}
+
+/**
+ * OmniRoute injects ~1k tokens of memory context into chat requests by default (measured: a
+ * 34-token prompt becomes ~1,005), which made Granite answer in prose instead of the JSON
+ * contract. Its documented opt-out headers restore a clean prompt. Harmless to a direct vLLM URL.
+ */
+export const OMNIROUTE_ANALYSIS_HEADERS: Readonly<Record<string, string>> = {
+	"x-omniroute-no-memory": "true",
+	"x-omniroute-compression": "off",
 }
 
 export interface AnalysisChatMessage {
@@ -103,7 +118,7 @@ export class GraniteAnalysisClient implements AnalysisCompletionClient {
 
 		try {
 			const doFetch = this.config.fetchImpl ?? fetch
-			const headers: Record<string, string> = { "content-type": "application/json" }
+			const headers: Record<string, string> = { ...this.config.extraHeaders, "content-type": "application/json" }
 			if (this.config.apiKey) headers.authorization = `Bearer ${this.config.apiKey}`
 
 			let response: Response

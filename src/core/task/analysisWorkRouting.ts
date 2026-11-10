@@ -1,7 +1,7 @@
 import type { AnalysisOutcome } from "@roo-code/types"
 
 import type { CapabilityLane } from "./capabilityLanes"
-import type { ReaderCallerFlags } from "./readerEscalationDecision"
+import { decide, type ReaderCallerFlags, type ReaderEscalationOutcome } from "./readerEscalationDecision"
 import type { RoutingMetadata } from "./routingMetadata"
 
 /**
@@ -80,4 +80,43 @@ export function analysisOutcomeToEscalationSignals(outcome: AnalysisOutcome): {
 		callerFlags.unsuccessfulSearch = true
 	}
 	return { metadata, callerFlags }
+}
+
+const NON_TRIGGER_REASONS = new Set(["quality-trigger", "cost-below-deep-threshold", "cost-below-spawn-threshold", "cost-clears-deep-threshold", "no-quality-trigger"])
+
+export interface AnalysisEscalationAdvice {
+	/** Quality triggers fired (low confidence, contradictions, ambiguity, hard analysis ...). */
+	qualityTriggered: boolean
+	triggers: string[]
+	/** The existing decision's verdict for a cost-neutral snapshot; informational only. */
+	decision: ReaderEscalationOutcome
+}
+
+/**
+ * Runs the EXISTING pure `readerEscalationDecision.decide` on an analysis outcome's quality
+ * signals and reports which triggers fired. No capacity snapshot is available here (OmniRoute
+ * owns physical capacity) and none is fabricated, so with an empty snapshot `decide` cannot reach
+ * `escalate-deep` on cost grounds. Whether to pay for a deeper reader is therefore the planner's
+ * call; `qualityTriggered` is the deterministic part. Strict callers treat it as "hand this to a
+ * deeper capable reader" because correctness outranks cost there.
+ */
+export function adviseAnalysisEscalation(outcome: AnalysisOutcome): AnalysisEscalationAdvice {
+	const { metadata, callerFlags } = analysisOutcomeToEscalationSignals(outcome)
+	const decision = decide({
+		metadata,
+		callerFlags,
+		explicitRequest: false,
+		taskType: "lookup",
+		cost: {
+			modelSwapLoadLatencyMs: 0,
+			interruptsParallelFastCapacity: false,
+			queuedFastReaderWork: 0,
+			expectedDeepTaskMs: 0,
+			alternateHardwareCanAnswer: true,
+			capacity: [],
+		},
+	})
+	const qualityTriggered = decision.action === "escalate-deep" || decision.reasons.includes("quality-trigger")
+	const triggers = decision.action === "escalate-deep" ? [...decision.triggers] : decision.reasons.filter((r) => !NON_TRIGGER_REASONS.has(r))
+	return { qualityTriggered, triggers: qualityTriggered ? triggers : [], decision }
 }
