@@ -41,7 +41,7 @@ Missing base URL or model means "not published". Settings: `graniteWorkflowEnabl
 ## Behaviour by policy (when enabled)
 - `explore`: dispatch rejects edit-capable modes and tasks declaring `filesWrite` (recoverable tool error).
 - `build`: no extra restriction; a single worker is allowed.
-- `strict`: analysis that cannot run **escalates to `reader.deep`** and is reported in the result; it is never skipped.
+- `strict`: dispatch only accepts tasks compiled from a stored, user-approved `SpecRevision` (`specTrace`); after the batch the host runs the revision's executable checks and the tool result carries a deterministic `specGate` verdict. Analysis that cannot run **escalates to `reader.deep`** and is reported in the result; it is never skipped.
 - Optional analysis that cannot run is reported as `skipped` with its cause.
 - When disabled nothing changes: no policy check, no analysis, and the `parallel_tasks` result has no `analysis` key.
 
@@ -52,8 +52,12 @@ outcome map onto the existing `readerEscalationDecision` inputs via `analysisOut
 
 ## Known gaps (see tasks.md for the authoritative list)
 - Readers that return prose without structured file citations produce `no-file-evidence`.
-- Nothing runs spec checks yet: there is no check runner, so `strict` dispatch is not tied to approved
-  `SpecRevision`s and `SpecGate` is not invoked by the live path. A runner must go through the Capability Broker.
+- Checks run host-side (`SpecCheckRunner`): `execFile` with no shell, refused shells, timeout, output cap, scrubbed
+  environment, and only for a revision the user approved (that approval is consent to the exact argv). This is outside the
+  Capability Broker by design because a worker's exit code would be a model-reported assertion.
+- `runParallelTasks` does not schedule the existing verifier workers, `decideFixerLoop` or `produceDeeperLaneFollowUp` at
+  runtime, so in `strict` the independent verification is the host-run checks, and no fixer is scheduled automatically.
+- No UI or tool authors or approves a `SpecRevision` yet.
 - Escalation is reported in the tool result but not fed into the live escalation/GLM gate.
 - No Observatory/UI status, no host E2E, no A/B against the actual reader lane.
 - Quality evidence: `docs/performance/granite-analysis-quality.md` (50 cases x 6 runs). Contradiction finding is

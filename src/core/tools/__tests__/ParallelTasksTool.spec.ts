@@ -1,3 +1,10 @@
+import * as fs from "fs/promises"
+import { SpecRevisionStore } from "../../specs/SpecRevisionStore"
+import { sealRevision } from "../../specs/specRevision"
+import { compileSpec } from "../../specs/SpecCompiler"
+import { SPECS_DIR } from "../../specs/strictSpecRun"
+import * as os from "os"
+import * as path from "path"
 import { DEFAULT_PARALLELISM_POLICY_TABLE, type ParallelismPolicy } from "@roo-code/types"
 import type { ToolCallbacks } from "../BaseTool"
 import type { Task } from "../../task/Task"
@@ -200,8 +207,8 @@ describe("ParallelTasksTool.execute", () => {
 			await run({ tasks: [{ ...worker(1), mode: "project-reader" }] }, task, callbacks)
 			expect(JSON.parse(pushToolResult.mock.calls[0][0])).not.toHaveProperty("analysis")
 		})
-		it("build and strict do not restrict the batch", async () => {
-			for (const graniteWorkflowPolicy of ["build", "strict"]) {
+		it("build does not restrict the batch", async () => {
+			for (const graniteWorkflowPolicy of ["build"]) {
 				vi.mocked(runParallelTasks).mockClear()
 				const { task } = makeTask(true, { graniteWorkflowEnabled: true, graniteWorkflowPolicy })
 				await run({ tasks: [{ ...worker(1), mode: "code" }] }, task, makeCallbacks().callbacks)

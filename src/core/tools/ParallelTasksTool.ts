@@ -1,3 +1,4 @@
+import * as path from "path"
 import * as vscode from "vscode"
 import { z } from "zod"
 import { workerReasoningPolicySchema, verificationPolicySchema } from "@roo-code/types"
@@ -25,6 +26,8 @@ import { extractFileCitations } from "../../services/analysis/evidenceAdapter"
 import { analyzeReaderResults, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
 import { normalizeWorkerResult } from "../task/normalizeWorkerResult"
 import { READER_MODES } from "../task/parallelWorkerRouting"
+import { SpecRevisionStore } from "../specs/SpecRevisionStore"
+import { checkStrictDispatch, runStrictGate, SPECS_DIR } from "../specs/strictSpecRun"
 import { resolveWorkflowPolicy } from "../specs/SpecWorkflowPolicy"
 import { findPolicyViolations, groupsCanEdit } from "../specs/workflowPolicyGuard"
 
@@ -488,6 +491,10 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 				(slug) => groupsCanEdit(getModeBySlug(slug, state.customModes)?.groups),
 			)
 			if (policyViolations.length > 0) throw new ParallelTasksArgumentError(policyViolations.join("; "))
+			// Strict: only tasks compiled from a stored, user-approved spec revision may dispatch.
+			const specStore = workflowPolicy.requiresApproval ? new SpecRevisionStore(path.join(task.cwd, SPECS_DIR)) : undefined
+			const strictCheck = specStore ? await checkStrictDispatch(tasks, specStore) : undefined
+			if (strictCheck && strictCheck.violations.length > 0) throw new ParallelTasksArgumentError(strictCheck.violations.join("; "))
 			// Build the ExecutionPlan and admit it so cyclic/duplicate/invalid plans are rejected
 			// recoverably before any worker is dispatched. `admitPlan` compiles the plan into a
 			// TaskDag, which throws `ParallelTasksArgumentError` on a cycle, a duplicate task name,
@@ -520,9 +527,14 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			if (!approved) return
 			const result = await runParallelTasks(task, provider, tasks, policy)
 			const compact = compactParallelTasksResultForParent(result)
+			// Strict: host-run executable checks decide; the result carries the deterministic verdict.
+			const specGate =
+				specStore && strictCheck
+					? await runStrictGate({ revisions: strictCheck.revisions, store: specStore, workspaceRoot: task.cwd, tasks: result.tasks })
+					: undefined
 			// Additive and only when the feature is on: bounded analysis of completed reader results.
 			const analysis = workflowPolicy.active ? await analyzeCompletedReaders(result, task.cwd, workflowPolicy.requiredAnalysisFailsClosed) : undefined
-			callbacks.pushToolResult(JSON.stringify(analysis ? { ...compact, analysis } : compact))
+			callbacks.pushToolResult(JSON.stringify({ ...compact, ...(analysis ? { analysis } : {}), ...(specGate ? { specGate } : {}) }))
 		} catch (error) {
 			// Argument problems are recoverable: report them to the model as a tool error so it can
 			// retry with a valid batch of tasks, instead of surfacing a fatal user-facing error.
