@@ -730,11 +730,12 @@ describe("SYSTEM_PROMPT", () => {
 			expect(capabilities).toContain("read files")
 		})
 
-		it("Orchestrator advertises no read/list/edit clauses", async () => {
+		it("Orchestrator advertises read access (its mode has the read group) but no execute or edit clauses", async () => {
 			const prompt = await run("orchestrator")
 			const capabilities = extractSection(prompt, "CAPABILITIES")
 
-			expect(capabilities).not.toContain("read files")
+			// The orchestrator's own instructions tell it to read specs and plans itself first.
+			expect(capabilities).toContain("read files")
 			expect(capabilities).not.toContain("execute CLI commands")
 			expect(capabilities).not.toContain("write and edit files")
 		})

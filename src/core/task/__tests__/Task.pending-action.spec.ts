@@ -124,8 +124,11 @@ describe("Task pending action replay", () => {
 		)
 		expect(provider.clearPendingTaskAction).toHaveBeenCalledTimes(1)
 		expect(provider.clearPendingTaskAction).toHaveBeenCalledWith("task-1", "finish-action")
-		expect(provider.taskHistoryStore.get).toHaveBeenCalledTimes(1)
-		expect(provider.taskHistoryStore.get).toHaveBeenCalledWith("task-1")
+		// Read once to adopt the newer persisted action, and once more by the stale-delegation guard
+		// (design Change 2) when the adopted create-subtask action is replayed.
+		expect(provider.taskHistoryStore.get).toHaveBeenCalledTimes(2)
+		expect(provider.taskHistoryStore.get).toHaveBeenNthCalledWith(1, "task-1")
+		expect(provider.taskHistoryStore.get).toHaveBeenNthCalledWith(2, "task-1")
 		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledTimes(1)
 		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith({
 			parentTaskId: "task-1",

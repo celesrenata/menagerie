@@ -31,6 +31,7 @@ import { describe, it, expect } from "vitest"
 import {
 	resolveOmniRouteContextWindow,
 	OMNIROUTE_ROUTE_CONTEXT_WINDOWS,
+	OMNIROUTE_DEFAULT_CONTEXT_WINDOW,
 } from "../../../api/providers/omniroute"
 import { DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES } from "@roo-code/types"
 
@@ -73,6 +74,17 @@ const evaluateAtBoundary = (reader: FakeReaderWorker): ReaderReadBudgetOutcome =
 	}
 	return evaluate(input)
 }
+// The same evaluation when the caller has NO window for the route (Req 14.6). Since the resolver now
+// returns a 128k default for a route it has never seen (Req 13.4), "unknown" is modelled by the caller
+// not having a window, which is the contract of `readerReadBudget.evaluate`.
+const evaluateWithUnavailableWindow = (reader: FakeReaderWorker): ReaderReadBudgetOutcome =>
+	evaluate({
+		servedContextWindow: undefined,
+		readInputConsumed: reader.readInputBytesConsumed,
+		windowFraction: WINDOW_FRACTION,
+		bytesPerToken: BYTES_PER_TOKEN,
+		fallbackBudget: DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES,
+	})
 
 describe("reader-ingestion boundary wiring (Property 11, Req 14.1/14.2/14.3/14.6)", () => {
 	// Sanity anchor: the reader lane route genuinely resolves through OmniRoute to
@@ -156,29 +168,32 @@ describe("reader-ingestion boundary wiring (Property 11, Req 14.1/14.2/14.3/14.6
 		expect(evaluateAtBoundary(reader).action).toBe("summarize-and-conclude")
 	})
 
-	it("falls back to the per-worker DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES for an unknown route (Req 14.6)", () => {
-		// An unknown/new route resolves to `undefined` through OmniRoute, so the
-		// boundary degrades to the Lever-2 per-worker default rather than failing.
+	it("a route OmniRoute has never seen resolves to the documented 128k default window (Req 13.4)", () => {
 		const unknownRoute = "hybrid/does-not-exist"
-		expect(resolveOmniRouteContextWindow(unknownRoute)).toBeUndefined()
+		expect(resolveOmniRouteContextWindow(unknownRoute)).toBe(OMNIROUTE_DEFAULT_CONTEXT_WINDOW)
+		const outcome = evaluateAtBoundary(makeReader(unknownRoute, 0))
+		expect(outcome.bound).toBe(OMNIROUTE_DEFAULT_CONTEXT_WINDOW * WINDOW_FRACTION * BYTES_PER_TOKEN)
+		expect(outcome.reasons).toContain("window-known")
+	})
 
-		const reader = makeReader(unknownRoute, 0)
-		const outcome = evaluateAtBoundary(reader)
+	it("falls back to the per-worker DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES when the caller has no window (Req 14.6)", () => {
+		// With no window available the boundary degrades to the Lever-2 per-worker default rather than failing.
+		const outcome = evaluateWithUnavailableWindow(makeReader("hybrid/does-not-exist", 0))
 
 		expect(outcome.bound).toBe(DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES)
 		expect(outcome.reasons).toContain("window-unknown-fallback")
 	})
 
-	it("applies the unknown-route fallback bound to the reader's cumulative read-input (Req 14.6)", () => {
+	it("applies the no-window fallback bound to the reader's cumulative read-input (Req 14.6)", () => {
 		const unknownRoute = "hybrid/does-not-exist"
 
 		// Under the fallback budget ⇒ continue.
 		const under = makeReader(unknownRoute, DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES - 1)
-		expect(evaluateAtBoundary(under).action).toBe("within-budget")
+		expect(evaluateWithUnavailableWindow(under).action).toBe("within-budget")
 
 		// Over the fallback budget ⇒ a bounding action, never within-budget.
 		const over = makeReader(unknownRoute, DEFAULT_WORKER_READ_INPUT_BUDGET_BYTES + 1)
-		const overOutcome = evaluateAtBoundary(over)
+		const overOutcome = evaluateWithUnavailableWindow(over)
 		expect(overOutcome.action).not.toBe("within-budget")
 		expect(["bound-reads", "summarize-and-conclude"]).toContain(overOutcome.action)
 	})

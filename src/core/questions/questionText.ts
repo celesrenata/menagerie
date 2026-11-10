@@ -19,7 +19,25 @@ export function contentTokens(text: string): string[] {
 }
 
 /** Very light plural/gerund folding so "databases" matches "database". Deliberately not a full stemmer. */
+/** Word-form variants that mean the same thing in a project question; kept tiny and unambiguous on purpose. */
+const FOLD: Readonly<Record<string, string>> = {
+	configuration: "config",
+	configurations: "config",
+	configure: "config",
+	configured: "config",
+	deployment: "deploy",
+	deployments: "deploy",
+	deployed: "deploy",
+	testing: "test",
+	tests: "test",
+	repository: "repo",
+	repositories: "repo",
+	dependency: "dependenc",
+	dependencies: "dependenc",
+}
+
 function stem(t: string): string {
+	if (FOLD[t]) return FOLD[t]
 	if (t.length > 5 && t.endsWith("ing")) return t.slice(0, -3)
 	// "boxes"/"matches"/"classes" -> drop "es"; "databases"/"types" -> drop only "s".
 	if (t.length > 4 && /(ss|x|z|ch|sh)es$/.test(t)) return t.slice(0, -2)

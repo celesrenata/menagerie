@@ -27,6 +27,14 @@ Not stored: answers that look like credentials, over-long answers, empty answers
 while follow-up auto-approval is on (the answer may be an auto-selected suggestion, not something the user said).
 Memory I/O failures fall back to simply asking.
 
+## Measured matcher quality
+`core/questions/__fixtures__/questionPairs.ts` holds 16 paraphrase pairs and 16 near-miss pairs (same topic, different thing
+asked, e.g. "which database for sessions" vs "which cache for sessions"). On that set the reuse threshold (0.75) gives
+**0 of 16 false matches** (worst near-miss scores 0.71, so the margin is thin) and **11 of 16 paraphrases recognized (69%)**.
+The misses are genuine synonyms ("called" vs "name", "located" vs "live"); they fail safely, because the user is simply asked.
+`matcher.measure.spec.ts` holds the floors (no false match, recall >= 65%, worst near-miss below the threshold). 32 hand-written
+pairs is a small sample: treat the numbers as a regression guard, not a population estimate.
+
 ## Known limits
 - Matching is lexical. It will miss a paraphrase with no shared content words and can bounce a question whose words
   overlap a doc that does not actually answer it; the cost of a false bounce is one extra model turn, never a wrong

@@ -370,3 +370,39 @@ route. The 2-slot cap is therefore conservative rather than limiting. The live s
 64K positions (granite-live-perf.md), not the 2 slots / 32,768 window the spec assumed; Menagerie keeps the conservative
 2 / 32,768 until the operator publishes capacity through OmniRoute. Single rounds only: p50/p95 across repeated rounds were
 not collected.
+
+## Firmer numbers: Granite x 5 repeats and the schema-valid gate (2026-11-10)
+
+Granite side re-run with 5 repeats (250 calls, template-10, through OmniRoute with the opt-out headers) against the same
+baseline JSON (`pool/tier2/reader`, 2 repeats). Raw: `granite-ab-reader-2026-11-10-granite5.json`.
+
+| Metric | vllm/granite-4.2-8b (250 calls) | pool/tier2/reader (100 calls) |
+| --- | ---: | ---: |
+| Schema-valid after <=1 retry | 100.0% | 100.0% |
+| Retry rate | 4.4% | 0.0% |
+| Citation precision | 100.0% | 100.0% |
+| Requirement-coverage recall | 87.3% | 96.7% |
+| Contradiction recall | 80.0% | 100.0% |
+| Risk accuracy | 98.0% | 100.0% |
+| False PASS (count) | 0 | 0 |
+| Latency p50 / p95 (ms) | 1,228 / 2,666 | 2,158 / 3,275 |
+
+Schema-valid gate (>= 99% after at most one retry): 250/250 alone has a 95% Wilson lower bound of 98.5%, which does not
+by itself show 99%. Pooled with the earlier 100-call A/B and the 300-call run (299/300) on the same executor and template,
+649/650 gives a lower bound of **99.1%**, which clears the gate. Pooling assumes those runs are comparable (same template-10
+executor and golden set); a changed template or model would reset the count.
+
+## Do real models follow `dispatch.json` under strict mode? (2026-11-10)
+
+`StrictDispatchModel.live.spec.ts` gives a model what the mastermind would see (the strict rejection message and
+`dispatch.json` as a `read_file` result) and validates its reply against the REAL `parallel_tasks` schema and the REAL strict
+dispatch check. 5 samples per model:
+
+| Model | Valid, traced calls |
+| --- | ---: |
+| `pool/tier2/reader` (codestral) | 5 / 5 |
+| `vllm/granite-4.2-8b` | 0 / 5 |
+
+Granite did not copy the task objects; it summarized them (`{"specId":"demo","tasks":["t1"]}`). This matches the design: Granite
+is a bounded analysis executor, never the orchestrator that emits tool calls. Strict mode needs a capable orchestrator model;
+one such model passing 5/5 is encouraging but is a small sample of a single model, not a guarantee.
