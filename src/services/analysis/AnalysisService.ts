@@ -6,6 +6,7 @@ import type { AnalysisOutcome, AnalysisRequest, WorkerResult } from "@roo-code/t
 import { adviseAnalysisEscalation, selectAnalysisExecutor, type AnalysisRouteStatus } from "../../core/task/analysisWorkRouting"
 import { AnalysisCache } from "./AnalysisCache"
 import { AnalysisExecutor } from "./AnalysisExecutor"
+import { analysisMetricsSnapshot, recordAnalysisEscalation, recordAnalysisEvent } from "./analysisMetrics"
 import { AnalysisQueue } from "./AnalysisQueue"
 import { evidencePacketToAnalysisEvidence, workerResultToEvidencePacket } from "./evidenceAdapter"
 import { GraniteAnalysisClient, OMNIROUTE_ANALYSIS_HEADERS } from "./GraniteAnalysisClient"
@@ -49,6 +50,7 @@ export interface AnalysisRunner {
 }
 
 interface Runtime {
+	queue: AnalysisQueue
 	runner: (namespace: string, workspaceRoot: string) => AnalysisRunner
 	/** Last time the service looked down (unavailable / timeout). */
 	lastUnavailableAt: number
@@ -66,6 +68,7 @@ function runtimeFor(config: AnalysisRouteConfig): Runtime {
 		const queue = new AnalysisQueue({ maxActive: config.maxActive, maxQueued: config.maxQueued })
 		const cache = new AnalysisCache()
 		const created: Runtime = {
+			queue,
 			lastUnavailableAt: 0,
 			runner: (namespace, workspaceRoot) =>
 				new AnalysisExecutor({
@@ -75,6 +78,7 @@ function runtimeFor(config: AnalysisRouteConfig): Runtime {
 					namespace,
 					verifyEvidence: createWorkspaceEvidenceVerifier(workspaceRoot),
 					onEvent: (e) => {
+						recordAnalysisEvent(e)
 						if (e.type === "completed" && (e.kind === "unavailable" || e.kind === "timeout")) created.lastUnavailableAt = Date.now()
 					},
 				}),
@@ -83,6 +87,13 @@ function runtimeFor(config: AnalysisRouteConfig): Runtime {
 		runtimes.set(key, rt)
 	}
 	return rt
+}
+
+/** Current analysis counters plus the live queue state of the most recently configured route. */
+export function currentAnalysisMetrics(env: Readonly<Record<string, string | undefined>> = process.env): ReturnType<typeof analysisMetricsSnapshot> {
+	const config = resolveAnalysisRouteConfig(env)
+	const queue = config ? runtimeFor(config).queue : { active: 0, waiting: 0 }
+	return analysisMetricsSnapshot(queue)
 }
 
 export interface ReaderResultInput {
@@ -186,6 +197,7 @@ export async function analyzeReaderResults(args: AnalyzeArgs): Promise<AnalysisA
 				return { task: reader.name, status: "unavailable", summary: `[analysis unavailable] ${error instanceof Error ? error.message : "unexpected error"}`.slice(0, 300) }
 			}
 			const advice = adviseAnalysisEscalation(outcome)
+			if (advice.qualityTriggered) recordAnalysisEscalation()
 			return {
 				task: reader.name,
 				status: outcome.kind,

@@ -3,6 +3,7 @@ import type { ObservableProvider, ObservableTask, GetAllInstances } from "./Task
 import type { TaskObservationService } from "./TaskObservationService.js"
 import { PersistedTaskStoreReader } from "./PersistedTaskStoreReader.js"
 import { computeMastermindSummary, computeAttentionQueue } from "./aggregation.js"
+import { getSpecStatus } from "./specStatusRegistry.js"
 
 /**
  * Read-only message router for Task Observatory webview requests.
@@ -184,7 +185,7 @@ export class ObservatoryMessageRouter {
 			}
 		}
 
-		const summary = computeMastermindSummary(parentTaskId, workers)
+		const summary = computeMastermindSummary(parentTaskId, workers, getSpecStatus(parentTaskId))
 		await this.provider.postMessageToWebview({
 			type: "observatoryMastermind",
 			observatory: { kind: "mastermind", summary },

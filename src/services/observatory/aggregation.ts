@@ -1,4 +1,4 @@
-import type { ObservedTask, ObservedTaskStatus, MastermindSummary } from "@roo-code/types"
+import type { ObservedTask, ObservedTaskStatus, MastermindSummary, SpecStatusSummary } from "@roo-code/types"
 
 const ALL_STATUSES: readonly ObservedTaskStatus[] = [
 	"queued",
@@ -17,6 +17,7 @@ const ALL_STATUSES: readonly ObservedTaskStatus[] = [
 export function computeMastermindSummary(
 	parentTaskId: string,
 	workers: readonly ObservedTask[],
+	spec?: readonly SpecStatusSummary[],
 ): MastermindSummary {
 	const workerCounts = {} as Record<ObservedTaskStatus, number>
 	for (const status of ALL_STATUSES) {
@@ -61,6 +62,7 @@ export function computeMastermindSummary(
 		tierCeiling,
 		artifacts: Array.from(artifactSet),
 		blockers,
+		...(spec && spec.length > 0 ? { spec: [...spec] } : {}),
 	}
 }
 

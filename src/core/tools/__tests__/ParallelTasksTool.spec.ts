@@ -2,6 +2,7 @@ import * as fs from "fs/promises"
 import { SpecRevisionStore } from "../../specs/SpecRevisionStore"
 import { sealRevision } from "../../specs/specRevision"
 import { compileSpec } from "../../specs/SpecCompiler"
+import { getSpecStatus } from "../../../services/observatory/specStatusRegistry"
 import { SPECS_DIR } from "../../specs/strictSpecRun"
 import * as os from "os"
 import * as path from "path"
@@ -125,6 +126,7 @@ describe("ParallelTasksTool.execute", () => {
 		const double = {
 			providerRef: { deref: () => provider },
 			parallelWorker: false,
+			taskId: "parent-1",
 			cwd: "/test/workspace",
 			consecutiveMistakeCount: 0,
 			recordToolError: vi.fn(),
@@ -207,6 +209,75 @@ describe("ParallelTasksTool.execute", () => {
 			await run({ tasks: [{ ...worker(1), mode: "project-reader" }] }, task, callbacks)
 			expect(JSON.parse(pushToolResult.mock.calls[0][0])).not.toHaveProperty("analysis")
 		})
+		describe("strict policy", () => {
+			let root: string
+			beforeEach(async () => {
+				root = await fs.mkdtemp(path.join(os.tmpdir(), "strict-tool-"))
+			})
+			afterEach(async () => {
+				await fs.rm(root, { recursive: true, force: true })
+			})
+			const strictState = { graniteWorkflowEnabled: true, graniteWorkflowPolicy: "strict" }
+			const approved = async (exitCode: number) => {
+				const rev = sealRevision({
+					specId: "demo",
+					policy: "strict",
+					sourceRevision: "git:aaa",
+					requirements: [{ id: "R1", text: "It works", acceptanceIds: ["A1"] }],
+					decisions: [],
+					tasks: [{ id: "t1", summary: "Do it", dependsOn: [], requirementIds: ["R1"], decisionIds: [], acceptanceIds: ["A1"], filesWrite: ["src/a.ts"] }],
+					acceptance: [{ id: "A1", text: "check passes", required: true, evidenceKind: "test", checkRef: "C1" }],
+					checks: [{ id: "C1", kind: "test", command: [process.execPath, "-e", `process.exit(${exitCode})`] }],
+				})
+				const store = new SpecRevisionStore(path.join(root, SPECS_DIR))
+				await store.saveRevision(rev)
+				await store.recordApproval("demo", { revisionId: rev.revisionId, approvedBy: "user", approvedAt: 1 })
+				const compiled = compileSpec(rev, { approval: { revisionId: rev.revisionId, approvedBy: "user", approvedAt: 1 } })
+				if (!compiled.ok) throw new Error(`fixture must compile: ${JSON.stringify(compiled.issues)}`)
+				return compiled.taskSpecs
+			}
+			const runStrict = async (tasks: unknown[]) => {
+				const { double, task } = makeTask(true, strictState)
+				double.cwd = root
+				vi.mocked(runParallelTasks).mockResolvedValueOnce({ batchId: "b", tasks: [{ name: "t1", mode: "code", state: "completed", result: "done" }] } as never)
+				const { askApproval, pushToolResult, callbacks } = makeCallbacks()
+				await run({ tasks }, task, callbacks)
+				return { askApproval, payload: JSON.parse(pushToolResult.mock.calls[0][0]) }
+			}
+
+			it("rejects tasks without a specTrace before anything is approved or dispatched", async () => {
+				vi.mocked(runParallelTasks).mockClear()
+				const { askApproval, payload } = await runStrict([{ ...worker(1), mode: "code" }])
+				expect(payload.error).toContain("specTrace")
+				expect(askApproval).not.toHaveBeenCalled()
+				expect(runParallelTasks).not.toHaveBeenCalled()
+			})
+
+			it("rejects a trace to a revision that exists but was never approved", async () => {
+				const specs = await approved(0)
+				await fs.rm(path.join(root, SPECS_DIR, "demo", ".revisions", "approvals.jsonl"))
+				vi.mocked(runParallelTasks).mockClear()
+				const { payload } = await runStrict(specs)
+				expect(payload.error).toContain("not user-approved")
+				expect(runParallelTasks).not.toHaveBeenCalled()
+			})
+
+			it("dispatches an approved revision and reports a passing gate from the host-run check", async () => {
+				const specs = await approved(0)
+				const { payload } = await runStrict(specs)
+				expect(payload.specGate).toEqual([expect.objectContaining({ specId: "demo", verdict: "pass", requirementsCovered: "1/1" })])
+				// The Observatory sees the same deterministic verdict (display-only registry).
+				expect(getSpecStatus("parent-1")?.[0]).toMatchObject({ specId: "demo", phase: "verified", verdict: "pass", requirementsCovered: "1/1" })
+			})
+
+			it("reports a failed gate when the executable check fails, regardless of the worker finishing", async () => {
+				const specs = await approved(7)
+				const { payload } = await runStrict(specs)
+				expect(payload.tasks[0].state).toBe("completed")
+				expect(payload.specGate[0].verdict).toBe("failed")
+			})
+		})
+
 		it("build does not restrict the batch", async () => {
 			for (const graniteWorkflowPolicy of ["build"]) {
 				vi.mocked(runParallelTasks).mockClear()

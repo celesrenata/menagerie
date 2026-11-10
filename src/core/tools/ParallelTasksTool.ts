@@ -23,7 +23,8 @@ import { ParallelTasksArgumentError } from "./parallelTasksErrors"
 import type { ToolCapabilityId } from "../capability/toolCapability"
 import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
 import { extractFileCitations } from "../../services/analysis/evidenceAdapter"
-import { analyzeReaderResults, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
+import { setSpecStatus } from "../../services/observatory/specStatusRegistry"
+import { analyzeReaderResults, currentAnalysisMetrics, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
 import { normalizeWorkerResult } from "../task/normalizeWorkerResult"
 import { READER_MODES } from "../task/parallelWorkerRouting"
 import { SpecRevisionStore } from "../specs/SpecRevisionStore"
@@ -534,6 +535,23 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 					: undefined
 			// Additive and only when the feature is on: bounded analysis of completed reader results.
 			const analysis = workflowPolicy.active ? await analyzeCompletedReaders(result, task.cwd, workflowPolicy.requiredAnalysisFailsClosed) : undefined
+			if (specGate && specGate.length > 0) {
+				// Display-only status for the Observatory; the gate result above is the authority.
+				const metrics = currentAnalysisMetrics()
+				setSpecStatus(
+					task.taskId,
+					specGate.map((g) => ({
+						specId: g.specId,
+						revisionId: g.revisionId,
+						phase: g.verdict === "pass" ? "verified" : g.verdict === "failed" ? "failed" : g.verdict === "blocked" ? "blocked" : "not-verified",
+						verdict: g.verdict,
+						requirementsCovered: g.requirementsCovered,
+						reasons: g.reasons,
+						analysis: metrics,
+						updatedAt: Date.now(),
+					})),
+				)
+			}
 			callbacks.pushToolResult(JSON.stringify({ ...compact, ...(analysis ? { analysis } : {}), ...(specGate ? { specGate } : {}) }))
 		} catch (error) {
 			// Argument problems are recoverable: report them to the model as a tool error so it can

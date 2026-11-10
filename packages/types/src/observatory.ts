@@ -169,6 +169,42 @@ export interface TaskMetrics {
 	toolCounts: Record<string, number>
 }
 
+/**
+ * Read-only Granite analysis counters (MEN-GRANITE-SDD-001 R9.3). Counts and token totals only:
+ * no source text, prompts, responses or credentials.
+ */
+export interface AnalysisMetricsSnapshot {
+	requests: number
+	cacheHits: number
+	retries: number
+	/** Outcome counts keyed by AnalysisOutcome kind (valid, invalid-schema, timeout, ...). */
+	outcomes: Record<string, number>
+	promptTokens: number
+	completionTokens: number
+	/** Items whose reader-escalation quality triggers fired. */
+	escalations: number
+	/** Current admission state of the analysis route. */
+	queueActive: number
+	queueWaiting: number
+}
+
+/**
+ * Read-only spec-contract status for a parent task (MEN-GRANITE-SDD-001 R9.1). Derived from the
+ * deterministic gate, never from checkbox text, and carries no mutation path.
+ */
+export interface SpecStatusSummary {
+	specId: string
+	revisionId: string
+	phase: "dispatch-blocked" | "verifying" | "verified" | "not-verified" | "failed" | "blocked"
+	verdict?: "pass" | "failed" | "not-verified" | "blocked"
+	/** e.g. "2/3" requirements covered by fresh passing evidence. */
+	requirementsCovered: string
+	/** Why the gate did not pass (blocked, failed, stale or missing criteria). */
+	reasons: string[]
+	analysis?: AnalysisMetricsSnapshot
+	updatedAt: number
+}
+
 /** Parent batch overview (Requirement 10.2). */
 export interface MastermindSummary {
 	parentTaskId: string
@@ -178,6 +214,8 @@ export interface MastermindSummary {
 	tierCeiling: string | null
 	artifacts: string[]
 	blockers: string[]
+	/** Additive, optional: absent unless a Granite workflow policy produced spec status. */
+	spec?: SpecStatusSummary[]
 }
 
 /** Error categories (Requirement 12.1). */
