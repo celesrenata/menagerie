@@ -58,7 +58,7 @@ Work in vertical slices. The P0 service/chat-template issue is an external deplo
 - [ ] **5.2 Evaluate queue and context scaling.** Concurrency 1, 2, 3; short ~1–3K, medium ~8–13K, and near served cap. Measure wall-clock p50/p95 and actual p50/p95 queue wait, generation tok/s, reruns and cache behavior. _R2.3–R2.5, R10.2_
 - [ ] **5.3 Assert hard quality gates.** Zero observed false PASS on curated negative gate tests, all required criteria linked to fresh executable evidence, ≥99% schema-valid after max one retry and ≥95% grounded citations on easy examples (initial thresholds, revise from baseline with justification). Escalate or disable failing operations individually; no forced launch. _R10.3_
 - [ ] **5.4 Final regression passes.** `pnpm check-types`, narrow unit and integration suites, `pnpm lifecycle:model-check`, `pnpm fanout-protocol:model-check`, `pnpm test`, relevant UI/host E2E, affected-file ESLint. Honor `AGENTS.md` no ad hoc changesets/changelog and no increasing lint suppressions. _R10.4_
-- [ ] **5.5 Produce ADR + operator guide.** Explain no-tools Granite role, route ownership, protocol limitations, served window vs checkpoint window, cache/prefix behavior, recovery/escalation, opt-in defaults and quality evidence. _R2–R10_
+- [x] **5.5 Produce ADR + operator guide.** Explain no-tools Granite role, route ownership, protocol limitations, served window vs checkpoint window, cache/prefix behavior, recovery/escalation, opt-in defaults and quality evidence. _R2–R10_ **Status:** Evidence: docs/architecture/granite-analysis-adr.md (role, route ownership, protocol limits, window, cache, configuration, escalation, defaults, known gaps).
 
 ## Dependencies / safe parallelization
 
