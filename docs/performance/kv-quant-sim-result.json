@@ -1,0 +1,92 @@
+[
+ {
+  "k_bits": 8,
+  "v_bits": 8,
+  "positions": 4607,
+  "mean_kl": 0.0018499846381710614,
+  "top1_flip_rate": 0.009767744736270892,
+  "flip_rate_on_near_ties": 0.07913669064748201,
+  "flip_rate_on_confident": 0.00024685262898049864
+ },
+ {
+  "k_bits": 6,
+  "v_bits": 6,
+  "positions": 4607,
+  "mean_kl": 0.01829211424301565,
+  "top1_flip_rate": 0.03646624701541133,
+  "flip_rate_on_near_ties": 0.2787769784172662,
+  "flip_rate_on_confident": 0.0032090841767464825
+ },
+ {
+  "k_bits": 5,
+  "v_bits": 5,
+  "positions": 4607,
+  "mean_kl": 0.0751980207706833,
+  "top1_flip_rate": 0.06750596917733884,
+  "flip_rate_on_near_ties": 0.3902877697841727,
+  "flip_rate_on_confident": 0.023204147124166873
+ },
+ {
+  "k_bits": 4,
+  "v_bits": 4,
+  "positions": 4607,
+  "mean_kl": 0.287738898665114,
+  "top1_flip_rate": 0.14586498806164533,
+  "flip_rate_on_near_ties": 0.5809352517985612,
+  "flip_rate_on_confident": 0.08615156751419403
+ },
+ {
+  "k_bits": 8,
+  "v_bits": 4,
+  "positions": 4607,
+  "mean_kl": 0.01489569496368253,
+  "top1_flip_rate": 0.03147384415020621,
+  "flip_rate_on_near_ties": 0.22841726618705036,
+  "flip_rate_on_confident": 0.004443347321648976
+ },
+ {
+  "k_bits": 4,
+  "v_bits": 8,
+  "positions": 4607,
+  "mean_kl": 0.28332074060276013,
+  "top1_flip_rate": 0.13935315823746472,
+  "flip_rate_on_near_ties": 0.5611510791366906,
+  "flip_rate_on_confident": 0.08146136756356455
+ },
+ {
+  "k_bits": 5,
+  "v_bits": 4,
+  "positions": 4607,
+  "mean_kl": 0.0840159990192624,
+  "top1_flip_rate": 0.07076188408942913,
+  "flip_rate_on_near_ties": 0.3830935251798561,
+  "flip_rate_on_confident": 0.027894347074796346
+ },
+ {
+  "k_bits": 4,
+  "v_bits": 5,
+  "positions": 4607,
+  "mean_kl": 0.26182862223957454,
+  "top1_flip_rate": 0.13609724332537443,
+  "flip_rate_on_near_ties": 0.5503597122302158,
+  "flip_rate_on_confident": 0.07923969390274006
+ },
+ {
+  "k_bits": 6,
+  "v_bits": 4,
+  "positions": 4607,
+  "mean_kl": 0.02929485491180798,
+  "top1_flip_rate": 0.04666811373996093,
+  "flip_rate_on_near_ties": 0.3183453237410072,
+  "flip_rate_on_confident": 0.009380399901258949
+ },
+ {
+  "k_bits": 4,
+  "v_bits": 6,
+  "positions": 4607,
+  "mean_kl": 0.2837252271797695,
+  "top1_flip_rate": 0.13826785326676796,
+  "flip_rate_on_near_ties": 0.552158273381295,
+  "flip_rate_on_confident": 0.08146136756356455
+ }
+]

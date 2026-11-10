@@ -1,0 +1,116 @@
+{
+ "started": "2026-11-09T15:43:17-0800",
+ "base": "http://10.1.1.12:2701/v1",
+ "prefill": [
+  {
+   "prompt_tokens": 1050,
+   "seconds_median": 0.41,
+   "prefill_tok_s": 2564,
+   "runs": 3
+  },
+  {
+   "prompt_tokens": 3015,
+   "seconds_median": 0.87,
+   "prefill_tok_s": 3449,
+   "runs": 3
+  },
+  {
+   "prompt_tokens": 7936,
+   "seconds_median": 2.81,
+   "prefill_tok_s": 2826,
+   "runs": 3
+  },
+  {
+   "prompt_tokens": 15830,
+   "seconds_median": 7.28,
+   "prefill_tok_s": 2174,
+   "runs": 1
+  },
+  {
+   "prompt_tokens": 32293,
+   "seconds_median": 22.25,
+   "prefill_tok_s": 1451,
+   "runs": 1
+  },
+  {
+   "prompt_tokens": 55957,
+   "seconds_median": 56.68,
+   "prefill_tok_s": 987,
+   "runs": 1
+  }
+ ],
+ "decode": [
+  {
+   "context_tokens": 545,
+   "decode_tok_s_median": 120.4,
+   "min": 118.3,
+   "max": 124.1,
+   "samples": 4,
+   "avg_completion_tokens": 400
+  },
+  {
+   "context_tokens": 7941,
+   "decode_tok_s_median": 73.7,
+   "min": 72.7,
+   "max": 76.4,
+   "samples": 4,
+   "avg_completion_tokens": 400
+  }
+ ],
+ "concurrency": [
+  {
+   "clients": 1,
+   "wall_s_median": 1.94,
+   "latency_p50_s": 1.94,
+   "latency_max_s": 1.96,
+   "aggregate_out_tok_s_median": 102.9
+  },
+  {
+   "clients": 2,
+   "wall_s_median": 2.36,
+   "latency_p50_s": 2.36,
+   "latency_max_s": 2.56,
+   "aggregate_out_tok_s_median": 169.6
+  },
+  {
+   "clients": 3,
+   "wall_s_median": 2.84,
+   "latency_p50_s": 2.83,
+   "latency_max_s": 2.9,
+   "aggregate_out_tok_s_median": 211.1
+  },
+  {
+   "clients": 4,
+   "wall_s_median": 4.67,
+   "latency_p50_s": 3.14,
+   "latency_max_s": 4.84,
+   "aggregate_out_tok_s_median": 171.1
+  }
+ ],
+ "resume": [
+  {
+   "prompt_tokens": 3013,
+   "first_s": 0.92,
+   "identical_repeat_s": 0.07,
+   "same_prefix_new_question_s": 0.07,
+   "speedup_x": 12.5,
+   "first_finish": "stop"
+  },
+  {
+   "prompt_tokens": 15827,
+   "first_s": 7.5,
+   "identical_repeat_s": 0.18,
+   "same_prefix_new_question_s": 0.2,
+   "speedup_x": 36.7,
+   "first_finish": "stop"
+  },
+  {
+   "prompt_tokens": 55956,
+   "first_s": 58.28,
+   "identical_repeat_s": 0.48,
+   "same_prefix_new_question_s": 0.64,
+   "speedup_x": 90.8,
+   "first_finish": "stop"
+  }
+ ]
+}
