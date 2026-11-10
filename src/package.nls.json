@@ -26,6 +26,7 @@
 	"command.showRipgrepDiagnostic.title": "Show Ripgrep Diagnostic",
 	"command.importSpecDraft.title": "Import Spec Draft",
 	"command.approveSpecRevision.title": "Approve Spec Revision",
+	"command.verifySpecRevision.title": "Verify Spec Revision",
 	"command.toggleAutoApprove.title": "Toggle Auto-Approve",
 	"configuration.title": "Menagerie",
 	"commands.allowedCommands.description": "Commands that can be auto-executed when 'Always approve execute operations' is enabled",

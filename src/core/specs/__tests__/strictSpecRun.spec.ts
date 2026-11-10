@@ -5,14 +5,14 @@ import * as path from "path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { SpecRevisionStore } from "../SpecRevisionStore"
-import { checkStrictDispatch, MAX_FIXER_ATTEMPTS, resetFixerAttemptsForTests, runStrictGate, SPECS_DIR } from "../strictSpecRun"
+import { checkStrictDispatch, MAX_FIXER_ATTEMPTS, runStrictGate, SPECS_DIR } from "../strictSpecRun"
+import type { SandboxFactory } from "../strictSandbox"
 import { sealRevision } from "../specRevision"
 
 describe("strict gate fixer advice", () => {
 	let root: string
 	let store: SpecRevisionStore
 	beforeEach(async () => {
-		resetFixerAttemptsForTests()
 		root = await fs.mkdtemp(path.join(os.tmpdir(), "strict-run-"))
 		store = new SpecRevisionStore(path.join(root, SPECS_DIR))
 	})
@@ -35,8 +35,10 @@ describe("strict gate fixer advice", () => {
 		await store.recordApproval("demo", { revisionId: rev.revisionId, approvedBy: "user", approvedAt: 1 })
 		return rev
 	}
-	const run = (rev: Awaited<ReturnType<typeof revision>>) =>
-		runStrictGate({ revisions: [rev], store, workspaceRoot: root, tasks: [{ name: "t1", state: "completed" }] })
+	// The real sandbox is covered by strictSandbox.spec; here the "sandbox" is just the temp dir.
+	const sandbox: SandboxFactory = async () => ({ ok: true, dir: root, sourceRevision: "batch:test", cleanup: async () => {} })
+	const run = (rev: Awaited<ReturnType<typeof revision>>, tasks = [{ name: "t1", state: "completed" }], factory: SandboxFactory = sandbox) =>
+		runStrictGate({ revisions: [rev], store, workspaceRoot: root, manifestPath: "unused", tasks, sandbox: factory })
 
 	it("advises a bounded number of fixes linked to the failing requirement, then reports exhaustion", async () => {
 		const rev = await revision(3)
@@ -82,5 +84,34 @@ describe("strict gate fixer advice", () => {
 		const rev = await revision(0)
 		const out = await checkStrictDispatch([{ name: "ghost", specTrace: { specId: "demo", revisionId: rev.revisionId, taskId: "ghost" } }], store)
 		expect(out.violations.join(" ")).toContain("not part of revision")
+	})
+
+	it("does not run any check when a worker did not complete", async () => {
+		const rev = await revision(0)
+		for (const tasks of [[{ name: "t1", state: "failed" }], []]) {
+			const out = (await run(rev, tasks))[0]
+			expect(out.verdict).toBe("failed")
+			expect(out.reasons[0]).toMatch(/task t1/)
+		}
+		expect((await store.readEvidence("demo")).records).toEqual([])
+	})
+
+	it("is blocked, not passed, when the sandbox cannot be built, and still cleans up", async () => {
+		const rev = await revision(0)
+		const out = (await run(rev, undefined, async () => ({ ok: false, reason: "patch for t1 does not apply" })))[0]
+		expect(out).toMatchObject({ verdict: "blocked", reasons: ["patch for t1 does not apply"] })
+		let cleaned = 0
+		await run(rev, undefined, async () => ({ ok: true, dir: root, sourceRevision: "batch:x", cleanup: async () => void cleaned++ }))
+		expect(cleaned).toBe(1)
+	})
+
+	it("derives fixer attempts from persisted evidence, so a new process continues the count", async () => {
+		const rev = await revision(3)
+		await run(rev)
+		await run(rev)
+		// A fresh store over the same directory stands in for a restart: attempts come from the evidence file.
+		const reopened = new SpecRevisionStore(path.join(root, SPECS_DIR))
+		const third = (await runStrictGate({ revisions: [rev], store: reopened, workspaceRoot: root, manifestPath: "unused", tasks: [{ name: "t1", state: "completed" }], sandbox }))[0]
+		expect(third.fixer).toMatchObject({ exhausted: true })
 	})
 })

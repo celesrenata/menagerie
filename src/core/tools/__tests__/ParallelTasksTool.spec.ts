@@ -3,7 +3,7 @@ import { SpecRevisionStore } from "../../specs/SpecRevisionStore"
 import { sealRevision } from "../../specs/specRevision"
 import { compileSpec } from "../../specs/SpecCompiler"
 import { getSpecStatus } from "../../../services/observatory/specStatusRegistry"
-import { resetFixerAttemptsForTests, SPECS_DIR } from "../../specs/strictSpecRun"
+import { SPECS_DIR } from "../../specs/strictSpecRun"
 import * as os from "os"
 import * as path from "path"
 import { DEFAULT_PARALLELISM_POLICY_TABLE, type ParallelismPolicy } from "@roo-code/types"
@@ -25,6 +25,13 @@ import {
 	resolveParallelTasksMax,
 	type ParallelTaskSpec,
 } from "../ParallelTasksTool"
+
+// The git-worktree sandbox has its own tests (strictSandbox.spec); here the sandbox is the temp workspace.
+const sandboxBox = vi.hoisted(() => ({ dir: "" }))
+vi.mock("../../specs/strictSandbox", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../../specs/strictSandbox")>()),
+	createVerificationSandbox: async () => ({ ok: true, dir: sandboxBox.dir, sourceRevision: "batch:test", cleanup: async () => {} }),
+}))
 
 vi.mock("../../task/runParallelTasks", () => ({
 	runParallelTasks: vi.fn().mockResolvedValue({ batchId: "b", tasks: [] }),
@@ -212,8 +219,8 @@ describe("ParallelTasksTool.execute", () => {
 		describe("strict policy", () => {
 			let root: string
 			beforeEach(async () => {
-				resetFixerAttemptsForTests()
 				root = await fs.mkdtemp(path.join(os.tmpdir(), "strict-tool-"))
+				sandboxBox.dir = root
 			})
 			afterEach(async () => {
 				await fs.rm(root, { recursive: true, force: true })

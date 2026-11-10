@@ -50,6 +50,7 @@ export const commandIds = [
 	"showRipgrepDiagnostic",
 	"importSpecDraft",
 	"approveSpecRevision",
+	"verifySpecRevision",
 ] as const
 
 export type CommandId = (typeof commandIds)[number]

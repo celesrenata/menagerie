@@ -23,12 +23,13 @@ import { ParallelTasksArgumentError } from "./parallelTasksErrors"
 import type { ToolCapabilityId } from "../capability/toolCapability"
 import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
 import { extractFileCitations } from "../../services/analysis/evidenceAdapter"
-import { setSpecStatus } from "../../services/observatory/specStatusRegistry"
+import { persistSpecStatus, setSpecStatus } from "../../services/observatory/specStatusRegistry"
 import { analyzeReaderResults, currentAnalysisMetrics, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
 import { normalizeWorkerResult } from "../task/normalizeWorkerResult"
 import { READER_MODES } from "../task/parallelWorkerRouting"
 import { SpecRevisionStore } from "../specs/SpecRevisionStore"
 import { checkStrictDispatch, runStrictGate, SPECS_DIR } from "../specs/strictSpecRun"
+import type { SpecStatusSummary } from "@roo-code/types"
 import { resolveWorkflowPolicy } from "../specs/SpecWorkflowPolicy"
 import { findPolicyViolations, groupsCanEdit } from "../specs/workflowPolicyGuard"
 
@@ -531,16 +532,14 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			// Strict: host-run executable checks decide; the result carries the deterministic verdict.
 			const specGate =
 				specStore && strictCheck
-					? await runStrictGate({ revisions: strictCheck.revisions, store: specStore, workspaceRoot: task.cwd, tasks: result.tasks })
+					? await runStrictGate({ revisions: strictCheck.revisions, store: specStore, workspaceRoot: task.cwd, manifestPath: result.manifestPath, tasks: result.tasks })
 					: undefined
 			// Additive and only when the feature is on: bounded analysis of completed reader results.
 			const analysis = workflowPolicy.active ? await analyzeCompletedReaders(result, task.cwd, workflowPolicy.requiredAnalysisFailsClosed) : undefined
 			if (specGate && specGate.length > 0) {
 				// Display-only status for the Observatory; the gate result above is the authority.
 				const metrics = currentAnalysisMetrics()
-				setSpecStatus(
-					task.taskId,
-					specGate.map((g) => ({
+				const rows: SpecStatusSummary[] = specGate.map((g) => ({
 						specId: g.specId,
 						revisionId: g.revisionId,
 						phase: g.verdict === "pass" ? "verified" : g.verdict === "failed" ? "failed" : g.verdict === "blocked" ? "blocked" : "not-verified",
@@ -551,8 +550,10 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 						...(g.fixer ? { fixer: g.fixer } : {}),
 						analysis: metrics,
 						updatedAt: Date.now(),
-					})),
-				)
+				}))
+				setSpecStatus(task.taskId, rows)
+				// Also persisted so the Observatory can show it after a restart (display only).
+				await persistSpecStatus(task.cwd, task.taskId, rows)
 			}
 			callbacks.pushToolResult(JSON.stringify({ ...compact, ...(analysis ? { analysis } : {}), ...(specGate ? { specGate } : {}) }))
 		} catch (error) {

@@ -14,7 +14,7 @@ import { importSettingsWithFeedback } from "../core/config/importExport"
 import { MdmService } from "../services/mdm/MdmService"
 import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic"
 import { t } from "../i18n"
-import { approveSpecRevision, importSpecDraft } from "../core/specs/specCommands"
+import { approveSpecRevision, importSpecDraft, verifyApprovedRevision } from "../core/specs/specCommands"
 import { createVscodeSpecUi } from "./specUi"
 
 /**
@@ -208,6 +208,11 @@ const getCommandsMap = ({
 		const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 		if (!root) return void vscode.window.showWarningMessage("Open a workspace folder first.")
 		await importSpecDraft({ ui: createVscodeSpecUi(), workspaceRoot: root })
+	},
+	verifySpecRevision: async () => {
+		const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		if (!root) return void vscode.window.showWarningMessage("Open a workspace folder first.")
+		await verifyApprovedRevision({ ui: createVscodeSpecUi(), workspaceRoot: root })
 	},
 	approveSpecRevision: async () => {
 		const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath

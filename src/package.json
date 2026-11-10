@@ -170,6 +170,11 @@
 				"category": "%configuration.title%"
 			},
 			{
+				"command": "zoo-code.verifySpecRevision",
+				"title": "%command.verifySpecRevision.title%",
+				"category": "%configuration.title%"
+			},
+			{
 				"command": "zoo-code.approveSpecRevision",
 				"title": "%command.approveSpecRevision.title%",
 				"category": "%configuration.title%"

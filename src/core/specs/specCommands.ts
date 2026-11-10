@@ -9,7 +9,9 @@ import { syncProjection } from "./SpecMarkdownProjection"
 import { SpecRevisionStore } from "./SpecRevisionStore"
 import { parseSpecDraft, sealRevision } from "./specRevision"
 import { validateSpecGraph } from "./SpecTraceability"
-import { SPECS_DIR } from "./strictSpecRun"
+import { currentSourceRevision, SPECS_DIR } from "./strictSpecRun"
+import type { ExecFn } from "./SpecCheckRunner"
+import { verifySpecRevision } from "./SpecVerifier"
 
 /**
  * User-driven authoring and approval of spec revisions (MEN-GRANITE-SDD-001 R6.1, R6.6, R1.1).
@@ -117,4 +119,64 @@ export async function approveSpecRevision(args: { ui: SpecUi; workspaceRoot: str
 	await store.recordApproval(rev.specId, { revisionId: rev.revisionId, approvedBy: "user", approvedAt: (args.now ?? Date.now)() })
 	args.ui.info(`Approved spec ${rev.specId} revision ${rev.revisionId.slice(0, 19)}.`)
 	return { approved: true, revisionId: rev.revisionId }
+}
+
+export type VerifyResult = { verified: true; verdict: string; reasons: string[] } | { verified: false; reason: string }
+
+/**
+ * Run an APPROVED revision's executable checks in the real workspace and refresh the Kiro checkboxes
+ * from the resulting evidence. Use this after the parent has integrated the workers' patches: the
+ * strict batch gate verifies a sandbox of the patches, this verifies what is actually in the checkout.
+ * Running a check is authorized by the earlier approval; nothing here asks the model anything.
+ */
+export async function verifyApprovedRevision(args: { ui: SpecUi; workspaceRoot: string; exec?: ExecFn; now?: () => number }): Promise<VerifyResult> {
+	const specsRoot = path.join(args.workspaceRoot, SPECS_DIR)
+	const store = new SpecRevisionStore(specsRoot)
+	let dirs: string[] = []
+	try {
+		dirs = (await fs.readdir(specsRoot)).filter((d) => SPEC_ID_PATTERN.test(d))
+	} catch {
+		// no specs directory
+	}
+	const approved: Array<{ id: string; specId: string; revisionId: string; label: string; detail: string }> = []
+	for (const specId of dirs) {
+		for (const revisionId of await store.listRevisionIds(specId)) {
+			if (!(await store.findApproval(specId, revisionId))) continue
+			try {
+				const rev = await store.loadRevision(specId, revisionId)
+				approved.push({ id: `${specId}|${revisionId}`, specId, revisionId, label: `${specId} · ${revisionId.slice(0, 19)} · ${rev.policy}`, detail: `${rev.checks.filter((c) => c.command).length} executable checks` })
+			} catch {
+				// integrity failure: never offered
+			}
+		}
+	}
+	if (approved.length === 0) {
+		args.ui.info("No approved spec revisions to verify.")
+		return { verified: false, reason: "nothing approved" }
+	}
+	const choice = await args.ui.chooseRevision(approved.map((a) => ({ id: a.id, label: a.label, detail: a.detail })))
+	const picked = approved.find((a) => a.id === choice)
+	if (!picked) return { verified: false, reason: "cancelled" }
+	const rev = await store.loadRevision(picked.specId, picked.revisionId)
+	try {
+		const gate = await verifySpecRevision({
+			store,
+			revision: rev,
+			workspaceRoot: args.workspaceRoot,
+			sourceRevision: await currentSourceRevision(args.workspaceRoot),
+			// User-triggered, on the integrated checkout: the host-run checks are the verification.
+			verifierOutcomes: [{ kind: "pass", reason: "user-triggered verification of the integrated checkout" }],
+			exec: args.exec,
+			now: args.now,
+		})
+		await syncProjection(path.join(specsRoot, rev.specId), rev, gate)
+		const summary = `Spec ${rev.specId}: ${gate.verdict} (${gate.coverage.covered}/${gate.coverage.total} requirements covered).${gate.reasons.length ? ` ${gate.reasons.slice(0, 3).join("; ")}` : ""}`
+		if (gate.verdict === "pass") args.ui.info(summary)
+		else args.ui.warn(summary)
+		return { verified: true, verdict: gate.verdict, reasons: gate.reasons }
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : "verification failed"
+		args.ui.warn(`Spec verification did not run: ${reason}`)
+		return { verified: false, reason }
+	}
 }

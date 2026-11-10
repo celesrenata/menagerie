@@ -3,7 +3,7 @@ import type { ObservableProvider, ObservableTask, GetAllInstances } from "./Task
 import type { TaskObservationService } from "./TaskObservationService.js"
 import { PersistedTaskStoreReader } from "./PersistedTaskStoreReader.js"
 import { computeMastermindSummary, computeAttentionQueue } from "./aggregation.js"
-import { getSpecStatus } from "./specStatusRegistry.js"
+import { getSpecStatus, loadPersistedSpecStatus } from "./specStatusRegistry.js"
 
 /**
  * Read-only message router for Task Observatory webview requests.
@@ -185,7 +185,18 @@ export class ObservatoryMessageRouter {
 			}
 		}
 
-		const summary = computeMastermindSummary(parentTaskId, workers, getSpecStatus(parentTaskId))
+		let specStatus = getSpecStatus(parentTaskId)
+		if (!specStatus) {
+			// After a restart the in-memory cache is empty; fall back to the last persisted gate summary.
+			for (const p of this.getAllInstances()) {
+				const parent = p.getCurrentTask()
+				if (parent?.taskId === parentTaskId) {
+					specStatus = await loadPersistedSpecStatus(parent.cwd, parentTaskId)
+					break
+				}
+			}
+		}
+		const summary = computeMastermindSummary(parentTaskId, workers, specStatus)
 		await this.provider.postMessageToWebview({
 			type: "observatoryMastermind",
 			observatory: { kind: "mastermind", summary },

@@ -5,7 +5,8 @@ import * as path from "path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { SpecRevisionStore } from "../SpecRevisionStore"
-import { approveSpecRevision, importSpecDraft, type SpecUi } from "../specCommands"
+import { approveSpecRevision, importSpecDraft, verifyApprovedRevision, type SpecUi } from "../specCommands"
+import type { ExecFn } from "../SpecCheckRunner"
 import { SPECS_DIR } from "../strictSpecRun"
 import { baseContent } from "./specFixtures"
 
@@ -102,5 +103,40 @@ describe("spec import and approval commands", () => {
 		const u = ui()
 		expect(await approveSpecRevision({ ui: u, workspaceRoot: root })).toMatchObject({ approved: false, reason: "nothing to approve" })
 		expect(u.confirm).not.toHaveBeenCalled()
+	})
+
+	describe("verify", () => {
+		const exit = (code: number): ExecFn => vi.fn(async () => ({ exitCode: code, output: "out" }))
+		const approvedSpec = async () => {
+			const imported = await importSpecDraft({ ui: ui(), workspaceRoot: root, file: await writeDraft(baseContent()) })
+			if (!imported.ok) throw new Error("fixture")
+			await approveSpecRevision({ ui: ui(), workspaceRoot: root })
+			return imported.revisionId
+		}
+
+		it("runs the approved checks in the real workspace and ticks the Kiro checkboxes from evidence", async () => {
+			await approvedSpec()
+			const u = ui()
+			const out = await verifyApprovedRevision({ ui: u, workspaceRoot: root, exec: exit(0) })
+			expect(out).toMatchObject({ verified: true, verdict: "pass" })
+			expect(u.infos.at(-1)).toContain("pass")
+			expect(await fs.readFile(path.join(specsRoot, "demo", "tasks.md"), "utf8")).toContain("- [x] **t1**")
+		})
+
+		it("leaves boxes unticked and warns when a check fails", async () => {
+			await approvedSpec()
+			const u = ui()
+			const out = await verifyApprovedRevision({ ui: u, workspaceRoot: root, exec: exit(1) })
+			expect(out).toMatchObject({ verified: true, verdict: "failed" })
+			expect(u.warnings.at(-1)).toContain("failed")
+			expect(await fs.readFile(path.join(specsRoot, "demo", "tasks.md"), "utf8")).toContain("- [ ] **t1**")
+		})
+
+		it("offers and runs nothing for a revision that was never approved", async () => {
+			await importSpecDraft({ ui: ui(), workspaceRoot: root, file: await writeDraft(baseContent()) })
+			const exec = exit(0)
+			expect(await verifyApprovedRevision({ ui: ui(), workspaceRoot: root, exec })).toEqual({ verified: false, reason: "nothing approved" })
+			expect(exec).not.toHaveBeenCalled()
+		})
 	})
 })

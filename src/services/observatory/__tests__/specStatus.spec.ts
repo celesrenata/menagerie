@@ -1,8 +1,13 @@
+import * as fs from "fs/promises"
+import * as os from "os"
+import * as path from "path"
+
 import type { ObservedTask, SpecStatusSummary } from "@roo-code/types"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { computeMastermindSummary } from "../aggregation"
-import { clearSpecStatusForTests, getSpecStatus, setSpecStatus } from "../specStatusRegistry"
+import { ObservatoryMessageRouter } from "../ObservatoryMessageRouter"
+import { clearSpecStatusForTests, getSpecStatus, loadPersistedSpecStatus, persistSpecStatus, setSpecStatus } from "../specStatusRegistry"
 import { analysisMetricsSnapshot, recordAnalysisEscalation, recordAnalysisEvent, resetAnalysisMetricsForTests } from "../../analysis/analysisMetrics"
 
 const status = (specId: string): SpecStatusSummary => ({
@@ -66,5 +71,52 @@ describe("analysis metrics", () => {
 		recordAnalysisEvent({ type: "completed", requestId: "d", kind: "valid", attempts: 1, suppressedFindings: 0, queueWaitMs: 100, latencyMs: 400 })
 		recordAnalysisEvent({ type: "completed", requestId: "e", kind: "valid", attempts: 1, suppressedFindings: 0, queueWaitMs: 300, latencyMs: 800 })
 		expect(analysisMetricsSnapshot({ active: 0, waiting: 0 })).toMatchObject({ queueWaitMsAvg: 200, queueWaitMsMax: 300, latencyMsAvg: 600, latencyMsMax: 800 })
+	})
+})
+
+describe("spec status survives a restart", () => {
+	it("persists the last gate summary and reads it back without the in-memory cache", async () => {
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "spec-status-"))
+		try {
+			await persistSpecStatus(root, "parent/../1", [status("a")])
+			clearSpecStatusForTests() // a new process
+			expect((await loadPersistedSpecStatus(root, "parent/../1"))?.[0].specId).toBe("a")
+			expect(await loadPersistedSpecStatus(root, "other")).toBeUndefined()
+			// the file lives in a dot directory that can never be mistaken for a spec id
+			expect(await fs.readdir(path.join(root, ".kiro/specs/.status"))).toHaveLength(1)
+		} finally {
+			await fs.rm(root, { recursive: true, force: true })
+		}
+	})
+
+	it("ignores a corrupt status file", async () => {
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "spec-status-"))
+		try {
+			await fs.mkdir(path.join(root, ".kiro/specs/.status"), { recursive: true })
+			await fs.writeFile(path.join(root, ".kiro/specs/.status/p.json"), "{nope")
+			expect(await loadPersistedSpecStatus(root, "p")).toBeUndefined()
+		} finally {
+			await fs.rm(root, { recursive: true, force: true })
+		}
+	})
+
+	it("the Observatory shows the persisted status for a parent task after a restart", async () => {
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "spec-status-"))
+		try {
+			clearSpecStatusForTests()
+			await persistSpecStatus(root, "parent-1", [status("restored")])
+			const posted: Array<{ type: string; observatory?: { summary?: { spec?: SpecStatusSummary[] } } }> = []
+			const parent = { taskId: "parent-1", cwd: root, parallelParentTaskId: undefined, parentTaskId: undefined, clineMessages: [] }
+			const router = new ObservatoryMessageRouter({
+				service: { reconcile: vi.fn(), getEventWindow: vi.fn() } as never,
+				provider: { postMessageToWebview: async (m: never) => void posted.push(m) } as never,
+				getAllInstances: () => [{ getCurrentTask: () => parent, taskHistoryStore: { get: () => undefined } }] as never,
+				parallelTasksDir: root,
+			})
+			await router.handle({ type: "observatoryRequestMastermind", observatory: { kind: "requestMastermind", parentTaskId: "parent-1" } } as never)
+			expect(posted.at(-1)?.observatory?.summary?.spec?.[0].specId).toBe("restored")
+		} finally {
+			await fs.rm(root, { recursive: true, force: true })
+		}
 	})
 })

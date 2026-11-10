@@ -41,7 +41,7 @@ Missing base URL or model means "not published". Settings: `graniteWorkflowEnabl
 ## Behaviour by policy (when enabled)
 - `explore`: dispatch rejects edit-capable modes and tasks declaring `filesWrite` (recoverable tool error).
 - `build`: no extra restriction; a single worker is allowed.
-- `strict`: dispatch only accepts tasks compiled from a stored, user-approved `SpecRevision` (`specTrace`); after the batch the host runs the revision's executable checks and the tool result carries a deterministic `specGate` verdict. Analysis that cannot run **escalates to `reader.deep`** and is reported in the result; it is never skipped.
+- `strict`: workers edit isolated worktrees whose patches are NOT applied to your checkout, so after the batch the gate verifies a throwaway sandbox (snapshot commit + the workers' patches) rather than your checkout; dispatch only accepts tasks compiled from a stored, user-approved `SpecRevision` (`specTrace`); after the batch the host runs the revision's executable checks and the tool result carries a deterministic `specGate` verdict. Analysis that cannot run **escalates to `reader.deep`** and is reported in the result; it is never skipped.
 - Optional analysis that cannot run is reported as `skipped` with its cause.
 - When disabled nothing changes: no policy check, no analysis, and the `parallel_tasks` result has no `analysis` key.
 
@@ -60,6 +60,9 @@ outcome map onto the existing `readerEscalationDecision` inputs via `analysisOut
 3. Run **Approve Spec Revision**. A modal shows the exact argv commands the revision may run; only an explicit click records
    `approvedBy: "user"`. Editing the spec means importing a new revision, which needs its own approval.
 4. Compile tasks with `compileSpec` (they carry `specTrace`) and dispatch under the `strict` policy.
+5. After you integrate the returned patches, run **Verify Spec Revision**: it runs the approved checks in your real workspace and
+   ticks the Kiro checkboxes from the evidence. Fixers are advised, not scheduled automatically (a fixer would not see
+   unintegrated patches).
 
 ## Known gaps (see tasks.md for the authoritative list)
 - Readers that return prose without structured file citations produce `no-file-evidence`.
@@ -67,10 +70,11 @@ outcome map onto the existing `readerEscalationDecision` inputs via `analysisOut
   environment, and only for a revision the user approved (that approval is consent to the exact argv). This is outside the
   Capability Broker by design because a worker's exit code would be a model-reported assertion.
 - `runParallelTasks` does not schedule the existing verifier workers, `decideFixerLoop` or `produceDeeperLaneFollowUp` at
-  runtime, so in `strict` the independent verification is the host-run checks, and no fixer is scheduled automatically.
+  runtime, so in `strict` the independent verification is the host-run checks. Automatic fixer scheduling was deliberately
+  not added (see step 5 above).
 - Escalation and fixer advice are reported in the tool result and Observatory; nothing schedules a deeper reader, fixer or
   verifier worker because those pure components have no runtime caller in `runParallelTasks`.
 - No host E2E (it needs a full extension bundle, a VS Code download and recorded model traffic); restart rehydration is
-  covered at the store layer. Observatory spec status is an in-memory display cache, empty after a restart until the next gate run.
+  covered at the store layer. Observatory spec status is a display cache, also persisted under `.kiro/specs/.status` and restored after a restart.
 - Quality evidence: `docs/performance/granite-analysis-quality.md` (50 cases x 6 runs). Contradiction finding is
   advisory only and risk classification needs the deterministic floor; neither may gate a PASS.

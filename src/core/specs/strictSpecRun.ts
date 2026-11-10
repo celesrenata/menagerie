@@ -11,6 +11,7 @@ import type { GateResult } from "./SpecGate"
 import { SpecRevisionStore, SpecStoreError } from "./SpecRevisionStore"
 import { planSpecFixer } from "./SpecGateJoin"
 import { verifySpecRevision } from "./SpecVerifier"
+import { createVerificationSandbox, dependencyOrder, type SandboxFactory } from "./strictSandbox"
 
 /**
  * `strict` workflow glue (MEN-GRANITE-SDD-001 R1.1, R8.3). Two steps around the existing batch run:
@@ -78,12 +79,6 @@ export async function currentSourceRevision(workspaceRoot: string): Promise<stri
 
 /** Bound on advised fixer rounds per revision. Nothing is scheduled here; the planner decides. */
 export const MAX_FIXER_ATTEMPTS = 2
-// Failed gate runs per revision in this process; display/advice only, evidence in the store is the record.
-const failedRuns = new Map<string, number>()
-
-export function resetFixerAttemptsForTests(): void {
-	failedRuns.clear()
-}
 
 export interface StrictGateSummary {
 	specId: string
@@ -98,25 +93,51 @@ export interface StrictGateSummary {
 export async function runStrictGate(args: {
 	revisions: readonly SpecRevision[]
 	store: SpecRevisionStore
+	/** The parent task's working directory (inside the git repository). */
 	workspaceRoot: string
-	tasks: ReadonlyArray<{ name: string; state: string }>
+	/** Batch manifest from `runParallelTasks`; names the snapshot the workers started from. */
+	manifestPath: string | undefined
+	tasks: ReadonlyArray<{ name: string; state: string; patch?: string }>
+	/** Test seam; defaults to a real git worktree sandbox. */
+	sandbox?: SandboxFactory
 }): Promise<StrictGateSummary[]> {
-	const sourceRevision = await currentSourceRevision(args.workspaceRoot)
 	const out: StrictGateSummary[] = []
 	for (const revision of args.revisions) {
-		// The implementer's own terminal state is the only worker-side input; verification is the host-run checks.
-		const outcomes: ParentOutcome[] = revision.tasks.map((t) => {
-			const run = args.tasks.find((x) => x.name === t.id)
-			return gateParentOutcome({ policy: undefined, implementerState: (run?.state ?? "failed") as WorkerTerminalState })
+		const base = { specId: revision.specId, revisionId: revision.revisionId }
+		const covered = (n: number) => `${n}/${revision.requirements.length}`
+
+		// Workers must have finished before there is anything to verify.
+		const runs = revision.tasks.map((t) => ({ spec: t, run: args.tasks.find((x) => x.name === t.id) }))
+		const unfinished = runs.filter((r) => r.run?.state !== "completed")
+		if (unfinished.length > 0) {
+			const reasons = unfinished.map((r) => `task ${r.spec.id} ${r.run ? `ended ${r.run.state}` : "did not run"}`).slice(0, 10)
+			out.push({ ...base, verdict: "failed", reasons, requirementsCovered: covered(0), criteria: [] })
+			continue
+		}
+
+		// The workers' changes live only in their exported patches, so verify a sandbox that has them applied.
+		const order = dependencyOrder(revision.tasks)
+		const box = await (args.sandbox ?? createVerificationSandbox)({
+			repoCwd: args.workspaceRoot,
+			manifestPath: args.manifestPath,
+			patches: order.map((id) => ({ taskId: id, patchPath: args.tasks.find((x) => x.name === id)?.patch })),
 		})
+		if (!box.ok) {
+			out.push({ ...base, verdict: "blocked", reasons: [box.reason], requirementsCovered: covered(0), criteria: [] })
+			continue
+		}
 		try {
-			const gate = await verifySpecRevision({ store: args.store, revision, workspaceRoot: args.workspaceRoot, sourceRevision, verifierOutcomes: outcomes })
+			// Every task completed, so the implementer-side gate passes; the host-run checks are the independent verification.
+			const outcomes: ParentOutcome[] = runs.map((r) => gateParentOutcome({ policy: undefined, implementerState: r.run!.state as WorkerTerminalState }))
+			const gate = await verifySpecRevision({ store: args.store, revision, workspaceRoot: box.dir, sourceRevision: box.sourceRevision, verifierOutcomes: outcomes })
 			let fixer: SpecFixerAdvice | undefined
-			if (gate.verdict === "pass") {
-				failedRuns.delete(revision.revisionId)
-			} else if (gate.verdict === "failed") {
-				const attemptsSoFar = failedRuns.get(revision.revisionId) ?? 0
-				failedRuns.set(revision.revisionId, attemptsSoFar + 1)
+			if (gate.verdict === "failed") {
+				const { records } = await args.store.readEvidence(revision.specId)
+				// Attempts so far come from the persisted evidence (survives a restart): the most failed runs any
+				// failing criterion has accumulated on this revision, not counting the run that just happened.
+				const failing = gate.acceptance.filter((a) => a.required && a.state === "failed").map((a) => a.acceptanceId)
+				const failedRuns = Math.max(0, ...failing.map((id) => records.filter((r) => r.revisionId === revision.revisionId && r.acceptanceId === id && r.status === "fail").length))
+				const attemptsSoFar = Math.max(0, failedRuns - 1)
 				// The host-run checks play the verifier role here: they ran and did not pass.
 				const failedVerifier = buildVerifierResult(["executable checks"], [{ criterion: "executable checks", passed: false }])
 				const loop = decideFixerLoop({
@@ -125,14 +146,12 @@ export async function runStrictGate(args: {
 					verifierState: "completed",
 					verifierResult: failedVerifier,
 				})
-				const { records } = await args.store.readEvidence(revision.specId)
 				const plan = planSpecFixer({ rev: revision, gate, evidence: records, loop, attemptsSoFar, maxAttempts: MAX_FIXER_ATTEMPTS })
 				if (plan.schedule) fixer = { attempt: plan.attempt, maxAttempts: MAX_FIXER_ATTEMPTS, exhausted: false, links: plan.links }
 				else if ("exhausted" in plan) fixer = { attempt: attemptsSoFar, maxAttempts: MAX_FIXER_ATTEMPTS, exhausted: true, links: plan.links }
 			}
 			out.push({
-				specId: revision.specId,
-				revisionId: revision.revisionId,
+				...base,
 				verdict: gate.verdict,
 				reasons: gate.reasons.slice(0, 10),
 				requirementsCovered: `${gate.coverage.covered}/${gate.coverage.total}`,
@@ -141,7 +160,9 @@ export async function runStrictGate(args: {
 			})
 		} catch (error) {
 			// A runner refusal or store failure is never a pass.
-			out.push({ specId: revision.specId, revisionId: revision.revisionId, verdict: "blocked", reasons: [error instanceof Error ? error.message.slice(0, 200) : "gate error"], requirementsCovered: "0/" + revision.requirements.length, criteria: [] })
+			out.push({ ...base, verdict: "blocked", reasons: [error instanceof Error ? error.message.slice(0, 200) : "gate error"], requirementsCovered: covered(0), criteria: [] })
+		} finally {
+			await box.cleanup()
 		}
 	}
 	return out
