@@ -1,4 +1,6 @@
 export * from "./api.js"
+export * from "./analysis-contracts.js"
+export * from "./spec-contracts.js"
 export * from "./cli.js"
 export * from "./cloud.js"
 export * from "./codebase-index.js"

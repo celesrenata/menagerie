@@ -125,6 +125,19 @@ export const parallelTaskSpecSchema = z
 		// Nominal priority; `normal` is the legacy default. The scheduler ranks lease
 		// admission by this, so a coordinator can keep critical-path work ahead of fan-out.
 		priority: z.enum(["critical", "high", "normal", "background", "speculative"]).optional(),
+		// Optional spec traceability (MEN-GRANITE-SDD-001 R6.4). Carried through validation so a
+		// compiled spec task can be joined back to its requirements/acceptance criteria. Purely
+		// descriptive: the scheduler and DAG never read it. Absent on every legacy spec.
+		specTrace: z
+			.object({
+				specId: z.string().min(1).max(64),
+				revisionId: z.string().min(1).max(80),
+				taskId: z.string().min(1).max(64),
+				requirementIds: z.array(z.string().min(1).max(64)).max(64),
+				acceptanceIds: z.array(z.string().min(1).max(64)).max(64),
+			})
+			.strip()
+			.optional(),
 	})
 	// `.strip()` (not `.strict()`) for the transition release so a stray legacy
 	// `routing_tier`/`routing_reason` on a worker spec is dropped rather than rejected (design §7).
