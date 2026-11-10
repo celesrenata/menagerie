@@ -178,6 +178,28 @@ describe("ParallelTasksTool.execute", () => {
 			expect(runParallelTasks).toHaveBeenCalledWith(task, provider, [{ ...worker(1), mode: "code" }], {})
 			expect(handleError).not.toHaveBeenCalled()
 		})
+		it("adds a visible skipped analysis status when enabled but no route is published", async () => {
+			const { task } = makeTask(true, { graniteWorkflowEnabled: true, graniteWorkflowPolicy: "build", customModes: [{ slug: "project-reader", name: "Project Reader", roleDefinition: "r", groups: ["read"] }] })
+			vi.mocked(runParallelTasks).mockResolvedValueOnce({
+				batchId: "b",
+				tasks: [{ name: "r", mode: "project-reader", state: "completed", result: "prose only" }],
+			} as never)
+			const { pushToolResult, callbacks } = makeCallbacks()
+			await run({ tasks: [{ ...worker(1), mode: "project-reader" }] }, task, callbacks)
+			const payload = JSON.parse(pushToolResult.mock.calls[0][0])
+			expect(payload.analysis).toEqual({ status: "skipped", reason: "no analysis route published" })
+			expect(payload.tasks).toHaveLength(1)
+		})
+		it("adds no analysis key when the feature is disabled", async () => {
+			const { task } = makeTask(true, { graniteWorkflowEnabled: false, customModes: [{ slug: "project-reader", name: "Project Reader", roleDefinition: "r", groups: ["read"] }] })
+			vi.mocked(runParallelTasks).mockResolvedValueOnce({
+				batchId: "b",
+				tasks: [{ name: "r", mode: "project-reader", state: "completed", result: "x" }],
+			} as never)
+			const { pushToolResult, callbacks } = makeCallbacks()
+			await run({ tasks: [{ ...worker(1), mode: "project-reader" }] }, task, callbacks)
+			expect(JSON.parse(pushToolResult.mock.calls[0][0])).not.toHaveProperty("analysis")
+		})
 		it("build and strict do not restrict the batch", async () => {
 			for (const graniteWorkflowPolicy of ["build", "strict"]) {
 				vi.mocked(runParallelTasks).mockClear()

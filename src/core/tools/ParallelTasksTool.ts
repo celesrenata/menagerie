@@ -21,6 +21,9 @@ import { formatResponse } from "../prompts/responses"
 import { ParallelTasksArgumentError } from "./parallelTasksErrors"
 import type { ToolCapabilityId } from "../capability/toolCapability"
 import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
+import { analyzeReaderResults, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
+import { normalizeWorkerResult } from "../task/normalizeWorkerResult"
+import { READER_MODES } from "../task/parallelWorkerRouting"
 import { resolveWorkflowPolicy } from "../specs/SpecWorkflowPolicy"
 import { findPolicyViolations, groupsCanEdit } from "../specs/workflowPolicyGuard"
 
@@ -474,12 +477,13 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			}
 			// Granite workflow policy (default off => no violations, exact legacy behaviour).
 			// `explore` is evidence-only; this only rejects, it never reorders or adds work.
+			const workflowPolicy = resolveWorkflowPolicy({
+				enabled: state.graniteWorkflowEnabled === true,
+				policy: state.graniteWorkflowPolicy,
+			})
 			const policyViolations = findPolicyViolations(
 				tasks,
-				resolveWorkflowPolicy({
-					enabled: state.graniteWorkflowEnabled === true,
-					policy: state.graniteWorkflowPolicy,
-				}),
+				workflowPolicy,
 				(slug) => groupsCanEdit(getModeBySlug(slug, state.customModes)?.groups),
 			)
 			if (policyViolations.length > 0) throw new ParallelTasksArgumentError(policyViolations.join("; "))
@@ -514,7 +518,10 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			)
 			if (!approved) return
 			const result = await runParallelTasks(task, provider, tasks, policy)
-			callbacks.pushToolResult(JSON.stringify(compactParallelTasksResultForParent(result)))
+			const compact = compactParallelTasksResultForParent(result)
+			// Additive and only when the feature is on: bounded analysis of completed reader results.
+			const analysis = workflowPolicy.active ? await analyzeCompletedReaders(result, task.cwd, workflowPolicy.requiredAnalysisFailsClosed) : undefined
+			callbacks.pushToolResult(JSON.stringify(analysis ? { ...compact, analysis } : compact))
 		} catch (error) {
 			// Argument problems are recoverable: report them to the model as a tool error so it can
 			// retry with a valid batch of tasks, instead of surfacing a fatal user-facing error.
@@ -536,3 +543,23 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 }
 
 export const parallelTasksTool = new ParallelTasksTool()
+
+/**
+ * Feeds completed reader results to the tool-less analysis executor. Never throws: any failure is
+ * reported as a visible skipped status so the batch result itself is always delivered.
+ */
+async function analyzeCompletedReaders(
+	result: { batchId: string; tasks: ReadonlyArray<{ name: string; mode: string; state: string; result?: string }> },
+	workspaceRoot: string,
+	required: boolean,
+): Promise<AnalysisAugmentation> {
+	try {
+		const readers = result.tasks
+			.filter((t) => READER_MODES.has(t.mode) && t.state === "completed" && t.result !== undefined)
+			.map((t) => ({ name: t.name, result: normalizeWorkerResult(t.result, { workerName: t.name }) }))
+		if (readers.length === 0) return { status: "skipped", reason: "no completed reader results" }
+		return await analyzeReaderResults({ batchId: result.batchId, workspaceRoot, readers, required })
+	} catch (error) {
+		return { status: "skipped", reason: `analysis error: ${error instanceof Error ? error.message : "unknown"}`.slice(0, 200) }
+	}
+}
