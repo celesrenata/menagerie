@@ -6,6 +6,13 @@ import { canonicalJson, sha256Hex } from "../../services/analysis/analysisDigest
 
 const contentSchema = specRevisionSchema.omit({ revisionId: true })
 
+/** Validate an untrusted draft (a revision without its id). Returns issues instead of throwing. */
+export function parseSpecDraft(raw: unknown): { ok: true; content: z.output<typeof contentSchema> } | { ok: false; issues: string[] } {
+	const parsed = contentSchema.safeParse(raw)
+	if (parsed.success) return { ok: true, content: parsed.data }
+	return { ok: false, issues: parsed.error.issues.slice(0, 10).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`) }
+}
+
 /** `sha256:<hex>` over the canonical content, excluding `revisionId` itself. */
 export function computeRevisionId(content: SpecRevisionContent): string {
 	return `sha256:${sha256Hex(canonicalJson(content))}`

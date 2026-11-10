@@ -547,6 +547,8 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 						verdict: g.verdict,
 						requirementsCovered: g.requirementsCovered,
 						reasons: g.reasons,
+						criteria: g.criteria,
+						...(g.fixer ? { fixer: g.fixer } : {}),
 						analysis: metrics,
 						updatedAt: Date.now(),
 					})),

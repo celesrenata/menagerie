@@ -48,6 +48,8 @@ export const commandIds = [
 	"toggleAutoApprove",
 
 	"showRipgrepDiagnostic",
+	"importSpecDraft",
+	"approveSpecRevision",
 ] as const
 
 export type CommandId = (typeof commandIds)[number]

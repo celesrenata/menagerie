@@ -165,6 +165,16 @@
 				"category": "%configuration.title%"
 			},
 			{
+				"command": "zoo-code.importSpecDraft",
+				"title": "%command.importSpecDraft.title%",
+				"category": "%configuration.title%"
+			},
+			{
+				"command": "zoo-code.approveSpecRevision",
+				"title": "%command.approveSpecRevision.title%",
+				"category": "%configuration.title%"
+			},
+			{
 				"command": "zoo-code.showRipgrepDiagnostic",
 				"title": "%command.showRipgrepDiagnostic.title%",
 				"category": "%configuration.title%"

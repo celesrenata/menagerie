@@ -25,6 +25,10 @@ export type AnalysisEvent =
 			promptTokens?: number
 			completionTokens?: number
 			suppressedFindings: number
+			/** Time spent waiting for an analysis permit, summed over attempts. */
+			queueWaitMs?: number
+			/** Total time from request to outcome, including queue wait and retries. */
+			latencyMs?: number
 	  }
 
 export interface AnalysisExecutorOptions {
@@ -69,6 +73,8 @@ export class AnalysisExecutor {
 		const stale = await findStaleEvidence(request, o.verifyEvidence)
 		if (stale) return fail("stale-evidence", `evidence ${stale.anchorId} is ${stale.freshness}`)
 
+		const startedAt = Date.now()
+		let queueWaitMs = 0
 		const digest = analysisDigest(request, {
 			modelId: o.client.model,
 			templateVersion: o.templateVersion ?? ANALYSIS_TEMPLATE_VERSION,
@@ -91,7 +97,13 @@ export class AnalysisExecutor {
 		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 			let completion
 			try {
-				completion = await o.queue.run((s) => o.client.complete(messages, request.maxOutputTokens, s), {
+				const submittedAt = Date.now()
+				completion = await o.queue.run(
+					(s) => {
+						queueWaitMs += Date.now() - submittedAt
+						return o.client.complete(messages, request.maxOutputTokens, s)
+					},
+					{
 					deadlineMs: o.deadlineMs ?? 60_000,
 					signal,
 				})
@@ -135,6 +147,8 @@ export class AnalysisExecutor {
 					promptTokens,
 					completionTokens,
 					suppressedFindings: validated.suppressed,
+					queueWaitMs,
+					latencyMs: Date.now() - startedAt,
 				})
 				return outcome
 			}

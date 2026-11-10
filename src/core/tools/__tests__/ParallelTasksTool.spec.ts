@@ -3,7 +3,7 @@ import { SpecRevisionStore } from "../../specs/SpecRevisionStore"
 import { sealRevision } from "../../specs/specRevision"
 import { compileSpec } from "../../specs/SpecCompiler"
 import { getSpecStatus } from "../../../services/observatory/specStatusRegistry"
-import { SPECS_DIR } from "../../specs/strictSpecRun"
+import { resetFixerAttemptsForTests, SPECS_DIR } from "../../specs/strictSpecRun"
 import * as os from "os"
 import * as path from "path"
 import { DEFAULT_PARALLELISM_POLICY_TABLE, type ParallelismPolicy } from "@roo-code/types"
@@ -212,6 +212,7 @@ describe("ParallelTasksTool.execute", () => {
 		describe("strict policy", () => {
 			let root: string
 			beforeEach(async () => {
+				resetFixerAttemptsForTests()
 				root = await fs.mkdtemp(path.join(os.tmpdir(), "strict-tool-"))
 			})
 			afterEach(async () => {
@@ -275,6 +276,10 @@ describe("ParallelTasksTool.execute", () => {
 				const { payload } = await runStrict(specs)
 				expect(payload.tasks[0].state).toBe("completed")
 				expect(payload.specGate[0].verdict).toBe("failed")
+				expect(payload.specGate[0].criteria).toEqual([expect.objectContaining({ acceptanceId: "A1", state: "failed" })])
+				// Fixer advice only: it names the failing criterion and requirement; nothing is scheduled.
+				expect(payload.specGate[0].fixer).toMatchObject({ attempt: 1, maxAttempts: 2, exhausted: false, links: [{ acceptanceId: "A1", requirementIds: ["R1"] }] })
+				expect(runParallelTasks).toHaveBeenCalledTimes(1)
 			})
 		})
 

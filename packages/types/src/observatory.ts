@@ -186,6 +186,27 @@ export interface AnalysisMetricsSnapshot {
 	/** Current admission state of the analysis route. */
 	queueActive: number
 	queueWaiting: number
+	/** Wait for an analysis permit and end-to-end latency over timed (non-cached) requests. */
+	queueWaitMsAvg: number
+	queueWaitMsMax: number
+	latencyMsAvg: number
+	latencyMsMax: number
+}
+
+/** One acceptance criterion's deterministic state in a spec gate (R9.1 test evidence / stale / blocked). */
+export interface SpecCriterionStatus {
+	acceptanceId: string
+	required: boolean
+	state: "pass" | "failed" | "missing" | "stale" | "invalid-evidence"
+	reason: string
+}
+
+/** Advice for the planner after a failed gate: which criteria to fix, tied to requirements. Nothing is scheduled. */
+export interface SpecFixerAdvice {
+	attempt: number
+	maxAttempts: number
+	exhausted: boolean
+	links: Array<{ acceptanceId: string; requirementIds: string[]; priorCheckRunIds: string[] }>
 }
 
 /**
@@ -201,6 +222,9 @@ export interface SpecStatusSummary {
 	requirementsCovered: string
 	/** Why the gate did not pass (blocked, failed, stale or missing criteria). */
 	reasons: string[]
+	/** Per-criterion state, so blocked/stale/failed criteria are individually visible. */
+	criteria?: SpecCriterionStatus[]
+	fixer?: SpecFixerAdvice
 	analysis?: AnalysisMetricsSnapshot
 	updatedAt: number
 }

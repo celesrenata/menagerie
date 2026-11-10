@@ -58,6 +58,13 @@ describe("analysis metrics", () => {
 			escalations: 1,
 			queueActive: 2,
 			queueWaiting: 1,
+			queueWaitMsAvg: 0,
+			queueWaitMsMax: 0,
+			latencyMsAvg: 0,
+			latencyMsMax: 0,
 		})
+		recordAnalysisEvent({ type: "completed", requestId: "d", kind: "valid", attempts: 1, suppressedFindings: 0, queueWaitMs: 100, latencyMs: 400 })
+		recordAnalysisEvent({ type: "completed", requestId: "e", kind: "valid", attempts: 1, suppressedFindings: 0, queueWaitMs: 300, latencyMs: 800 })
+		expect(analysisMetricsSnapshot({ active: 0, waiting: 0 })).toMatchObject({ queueWaitMsAvg: 200, queueWaitMsMax: 300, latencyMsAvg: 600, latencyMsMax: 800 })
 	})
 })

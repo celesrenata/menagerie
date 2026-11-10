@@ -14,6 +14,8 @@ import { importSettingsWithFeedback } from "../core/config/importExport"
 import { MdmService } from "../services/mdm/MdmService"
 import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic"
 import { t } from "../i18n"
+import { approveSpecRevision, importSpecDraft } from "../core/specs/specCommands"
+import { createVscodeSpecUi } from "./specUi"
 
 /**
  * Helper to get the visible ClineProvider instance or log if not found.
@@ -201,6 +203,16 @@ const getCommandsMap = ({
 		void visibleProvider
 			.postMessageToWebview({ type: "acceptInput" })
 			.catch((error) => outputChannel.appendLine(`[acceptInput] postMessageToWebview failed: ${error}`))
+	},
+	importSpecDraft: async () => {
+		const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		if (!root) return void vscode.window.showWarningMessage("Open a workspace folder first.")
+		await importSpecDraft({ ui: createVscodeSpecUi(), workspaceRoot: root })
+	},
+	approveSpecRevision: async () => {
+		const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		if (!root) return void vscode.window.showWarningMessage("Open a workspace folder first.")
+		await approveSpecRevision({ ui: createVscodeSpecUi(), workspaceRoot: root })
 	},
 	toggleAutoApprove: async () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)

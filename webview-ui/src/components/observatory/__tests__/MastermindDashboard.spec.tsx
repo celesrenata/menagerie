@@ -23,6 +23,11 @@ const spec: SpecStatusSummary = {
 	verdict: "not-verified",
 	requirementsCovered: "2/3",
 	reasons: ["A3: missing (no evidence recorded for this criterion)"],
+	criteria: [
+		{ acceptanceId: "A1", required: true, state: "pass", reason: "fresh passing artifact" },
+		{ acceptanceId: "A3", required: true, state: "stale", reason: "evidence predates the current source" },
+	],
+	fixer: { attempt: 1, maxAttempts: 2, exhausted: false, links: [{ acceptanceId: "A3", requirementIds: ["R3"], priorCheckRunIds: [] }] },
 	updatedAt: 1,
 	analysis: {
 		requests: 4,
@@ -34,6 +39,10 @@ const spec: SpecStatusSummary = {
 		escalations: 1,
 		queueActive: 2,
 		queueWaiting: 3,
+		queueWaitMsAvg: 120,
+		queueWaitMsMax: 900,
+		latencyMsAvg: 700,
+		latencyMsMax: 2100,
 	},
 }
 
@@ -50,6 +59,20 @@ describe("MastermindDashboard spec status", () => {
 		expect(getByText(/A3: missing/)).toBeTruthy()
 		expect(getByTestId("observatory-analysis-metrics").textContent).toContain("queue 2 active / 3 waiting")
 		expect(getByTestId("observatory-spec-status").textContent).toContain("rev abababab")
+	})
+
+	it("lists each criterion's state, fixer advice and queue timing", () => {
+		const { getByTestId } = render(<MastermindDashboard summary={summary([spec])} />)
+		expect(getByTestId("observatory-criterion-A1").textContent).toBe("A1: pass")
+		expect(getByTestId("observatory-criterion-A3").textContent).toBe("A3: stale")
+		expect(getByTestId("observatory-spec-fixer").textContent).toContain("attempt 1/2 for A3")
+		expect(getByTestId("observatory-analysis-metrics").textContent).toContain("wait avg 120ms (max 900)")
+	})
+
+	it("says so when fixer attempts are exhausted", () => {
+		const exhausted = { ...spec, fixer: { ...spec.fixer!, exhausted: true } }
+		const { getByTestId } = render(<MastermindDashboard summary={summary([exhausted])} />)
+		expect(getByTestId("observatory-spec-fixer").textContent).toContain("exhausted")
 	})
 
 	it("is read-only: it renders no buttons or interactive controls", () => {

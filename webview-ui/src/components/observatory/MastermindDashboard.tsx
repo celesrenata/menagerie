@@ -48,10 +48,28 @@ export const MastermindDashboard: React.FC<MastermindDashboardProps> = ({ summar
 							))}
 						</ul>
 					)}
+					{spec.criteria && spec.criteria.length > 0 && (
+						<ul data-testid="observatory-spec-criteria" style={{ margin: "2px 0 0 16px" }}>
+							{spec.criteria.map((c) => (
+								<li key={c.acceptanceId} data-testid={`observatory-criterion-${c.acceptanceId}`}>
+									{c.acceptanceId}
+									{c.required ? "" : " (optional)"}: {c.state}
+								</li>
+							))}
+						</ul>
+					)}
+					{spec.fixer && (
+						<div data-testid="observatory-spec-fixer" style={{ color: "var(--vscode-editorWarning-foreground)" }}>
+							{spec.fixer.exhausted
+								? `fixer attempts exhausted (${spec.fixer.maxAttempts}); needs your attention`
+								: `fix advised: attempt ${spec.fixer.attempt}/${spec.fixer.maxAttempts} for ${spec.fixer.links.map((l) => l.acceptanceId).join(", ")}`}
+						</div>
+					)}
 					{spec.analysis && (
 						<div data-testid="observatory-analysis-metrics" style={{ color: "var(--vscode-descriptionForeground)" }}>
 							analysis: {spec.analysis.requests} req · {spec.analysis.cacheHits} cached · {spec.analysis.retries} retries ·{" "}
-							{spec.analysis.escalations} escalations · queue {spec.analysis.queueActive} active / {spec.analysis.queueWaiting} waiting
+							{spec.analysis.escalations} escalations · queue {spec.analysis.queueActive} active / {spec.analysis.queueWaiting} waiting ·
+							wait avg {spec.analysis.queueWaitMsAvg}ms (max {spec.analysis.queueWaitMsMax}) · latency avg {spec.analysis.latencyMsAvg}ms
 						</div>
 					)}
 				</div>

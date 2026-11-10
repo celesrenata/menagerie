@@ -50,6 +50,17 @@ Typed outcomes cover unavailable, timeout, queue-full, cancelled, non-JSON, inva
 stale-evidence. One bounded format retry is allowed and the first failure stays visible. Quality signals from an
 outcome map onto the existing `readerEscalationDecision` inputs via `analysisOutcomeToEscalationSignals`.
 
+## Authoring and approving a spec (user-driven)
+1. Write a draft at `.kiro/specs/<id>/spec.draft.json`: the revision content without `revisionId`
+   (`specId`, `policy`, `sourceRevision`, `requirements`, `decisions`, `tasks`, `acceptance`, `checks`; see
+   `src/core/specs/__tests__/specFixtures.ts` for a complete example). A model may draft it; it cannot approve it.
+2. Run **Import Spec Draft**. The draft is validated (schema, traceability graph, dependency cycles, write collisions,
+   unsafe paths, shell commands), sealed into an immutable content-addressed revision, and projected into
+   `requirements.md`, `design.md` and `tasks.md` (hand edits are preserved and reported).
+3. Run **Approve Spec Revision**. A modal shows the exact argv commands the revision may run; only an explicit click records
+   `approvedBy: "user"`. Editing the spec means importing a new revision, which needs its own approval.
+4. Compile tasks with `compileSpec` (they carry `specTrace`) and dispatch under the `strict` policy.
+
 ## Known gaps (see tasks.md for the authoritative list)
 - Readers that return prose without structured file citations produce `no-file-evidence`.
 - Checks run host-side (`SpecCheckRunner`): `execFile` with no shell, refused shells, timeout, output cap, scrubbed
@@ -57,8 +68,9 @@ outcome map onto the existing `readerEscalationDecision` inputs via `analysisOut
   Capability Broker by design because a worker's exit code would be a model-reported assertion.
 - `runParallelTasks` does not schedule the existing verifier workers, `decideFixerLoop` or `produceDeeperLaneFollowUp` at
   runtime, so in `strict` the independent verification is the host-run checks, and no fixer is scheduled automatically.
-- No UI or tool authors or approves a `SpecRevision` yet.
-- Escalation is reported in the tool result but not fed into the live escalation/GLM gate.
-- No Observatory/UI status, no host E2E, no A/B against the actual reader lane.
+- Escalation and fixer advice are reported in the tool result and Observatory; nothing schedules a deeper reader, fixer or
+  verifier worker because those pure components have no runtime caller in `runParallelTasks`.
+- No host E2E (it needs a full extension bundle, a VS Code download and recorded model traffic); restart rehydration is
+  covered at the store layer. Observatory spec status is an in-memory display cache, empty after a restart until the next gate run.
 - Quality evidence: `docs/performance/granite-analysis-quality.md` (50 cases x 6 runs). Contradiction finding is
   advisory only and risk classification needs the deterministic floor; neither may gate a PASS.
