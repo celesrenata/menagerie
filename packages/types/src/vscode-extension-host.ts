@@ -339,6 +339,8 @@ export type ExtensionState = Pick<
 	| "omniRouteTier"
 	| "openAiOmniRoutePublishedLaneRouting"
 	| "parallelismMode"
+	| "graniteWorkflowEnabled"
+	| "graniteWorkflowPolicy"
 	| "parallelCapacityMap"
 	| "workerPresentation"
 	| "taskHome"

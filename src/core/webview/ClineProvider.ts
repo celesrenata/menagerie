@@ -53,6 +53,8 @@ import {
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
 	DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 	DEFAULT_PARALLELISM_MODE,
+	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	DEFAULT_WORKER_PRESENTATION,
 	DEFAULT_TASK_HOME,
 	DEFAULT_OPEN_FILES_ON_AGENT_EDIT,
@@ -2955,6 +2957,8 @@ export class ClineProvider
 			omniRouteTier,
 			openAiOmniRoutePublishedLaneRouting,
 			parallelismMode,
+			graniteWorkflowEnabled,
+			graniteWorkflowPolicy,
 			parallelCapacityMap,
 			workerPresentation,
 			taskHome,
@@ -3133,6 +3137,9 @@ export class ClineProvider
 				openAiOmniRoutePublishedLaneRouting ?? DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 			// FEAT-011: round-trip the saved parallelism default back to the webview.
 			parallelismMode,
+			// Granite workflows: round-trip the opt-in flag and policy with their shared defaults.
+			graniteWorkflowEnabled: graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
+			graniteWorkflowPolicy: graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
 			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
 			// STATIC_ROUTE_CAPACITY) so a saved control re-renders instead of reverting.
 			parallelCapacityMap,
@@ -3390,6 +3397,8 @@ export class ClineProvider
 				stateValues.openAiOmniRoutePublishedLaneRouting ?? DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 			// FEAT-011: default the saved parallelism appetite to "auto" so runtime consumers read a mode.
 			parallelismMode: stateValues.parallelismMode ?? DEFAULT_PARALLELISM_MODE,
+			graniteWorkflowEnabled: stateValues.graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
+			graniteWorkflowPolicy: stateValues.graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
 			// User-adjustable parallel-task capacity map. Default is left `undefined`:
 			// an unset map merges to exactly `STATIC_ROUTE_CAPACITY` downstream, so the
 			// no-op semantics hold and runtime consumers never see a concrete default here.

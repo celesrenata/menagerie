@@ -6,9 +6,13 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	DEFAULT_PARALLELISM_MODE,
 	PARALLELISM_MODES,
+	SPEC_POLICIES,
 	type ParallelismMode,
+	type SpecPolicy,
 } from "@roo-code/types"
 
 import { PARALLELISM_MODE_LABELS } from "../chat/ParallelismControl"
@@ -32,6 +36,8 @@ interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	autoCloseZooOpenedFilesAfterUserEdited?: boolean
 	autoCloseZooOpenedNewFiles?: boolean
 	parallelismMode?: ParallelismMode
+	graniteWorkflowEnabled?: boolean
+	graniteWorkflowPolicy?: SpecPolicy
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
@@ -43,6 +49,8 @@ export const UISettings = ({
 	autoCloseZooOpenedFilesAfterUserEdited,
 	autoCloseZooOpenedNewFiles,
 	parallelismMode,
+	graniteWorkflowEnabled,
+	graniteWorkflowPolicy,
 	setCachedStateField,
 	...props
 }: UISettingsProps) => {
@@ -263,6 +271,43 @@ export const UISettings = ({
 								How aggressively Menagerie may fan work out by default. The composer control
 								overrides this per request.
 							</div>
+						</div>
+					</SearchableSetting>
+					{/* Granite-assisted workflows (MEN-GRANITE-SDD-001). Off by default. */}
+					<SearchableSetting
+						settingId="ui-granite-workflow"
+						section="ui"
+						label="Granite-assisted workflows">
+						<div className="flex flex-col gap-1">
+							<VSCodeCheckbox
+								checked={graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED}
+								onChange={(e: any) => setCachedStateField("graniteWorkflowEnabled", e.target.checked)}
+								data-testid="granite-workflow-enabled-checkbox">
+								<span className="font-medium">Granite-assisted workflows</span>
+							</VSCodeCheckbox>
+							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
+								Use bounded, tool-less analysis and executable spec contracts. Off keeps existing
+								behavior.
+							</div>
+							<label className="block font-medium mt-2 mb-1">Workflow policy</label>
+							<Select
+								value={graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY}
+								disabled={!(graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED)}
+								onValueChange={(value) => setCachedStateField("graniteWorkflowPolicy", value as SpecPolicy)}>
+								<SelectTrigger className="w-full" data-testid="granite-workflow-policy-select-trigger">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{SPEC_POLICIES.map((policy) => (
+										<SelectItem
+											key={policy}
+											value={policy}
+											data-testid={`granite-workflow-policy-option-${policy}`}>
+											{policy}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 					</SearchableSetting>
 				</div>

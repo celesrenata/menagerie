@@ -10,6 +10,7 @@ import {
 	providerSettingsEntrySchema,
 	providerSettingsSchema,
 } from "./provider-settings.js"
+import { specPolicySchema, type SpecPolicy } from "./spec-contracts.js"
 import { routeCapabilitySchema } from "./provider-settings/openai.js"
 import { telemetrySettingsSchema } from "./telemetry.js"
 import { toolNamesSchema } from "./tool.js"
@@ -66,6 +67,14 @@ export const DEFAULT_PARALLELISM_MODE: ParallelismMode = "auto"
  * value is treated as unset and resolves to the `"auto"` default downstream.
  */
 export const parallelismModeSchema = z.enum(PARALLELISM_MODES)
+
+/**
+ * Granite-assisted workflows (MEN-GRANITE-SDD-001). Default OFF: when disabled no workflow
+ * policy applies and existing behaviour is unchanged. Shared so the webview control,
+ * `ClineProvider.getState()` and runtime consumers resolve an unset value identically.
+ */
+export const DEFAULT_GRANITE_WORKFLOW_ENABLED = false
+export const DEFAULT_GRANITE_WORKFLOW_POLICY: SpecPolicy = "build"
 
 export const WORKER_PRESENTATION_VALUES = ["headless", "task-hub", "editor-tabs"] as const
 export type WorkerPresentation = (typeof WORKER_PRESENTATION_VALUES)[number]
@@ -308,6 +317,10 @@ export const globalSettingsSchema = z.object({
 	 * derived from this persisted default at submit time.
 	 */
 	parallelismMode: parallelismModeSchema.optional(),
+	/** Opt-in switch for Granite-assisted workflows and executable spec contracts. Unset resolves to off. */
+	graniteWorkflowEnabled: z.boolean().optional(),
+	/** Workflow policy used when enabled: explore, build or strict. Unset resolves to `build`. */
+	graniteWorkflowPolicy: specPolicySchema.optional(),
 	/**
 	 * Persisted user-adjustable per-capability parallel-task capacity map. A
 	 * PARTIAL `Record<RouteCapability, positive integer>`; `undefined`/empty means

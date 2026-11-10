@@ -1678,6 +1678,26 @@ describe("ClineProvider", () => {
 		expect(state.allowedReadFiles).toEqual([])
 	})
 
+	test("Granite workflow settings default to off/build in getState and the posted state", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		expect(await provider.getState()).toMatchObject({ graniteWorkflowEnabled: false, graniteWorkflowPolicy: "build" })
+		expect(await provider.getStateToPostToWebview()).toMatchObject({
+			graniteWorkflowEnabled: false,
+			graniteWorkflowPolicy: "build",
+		})
+	})
+
+	test("Granite workflow settings round-trip saved values to runtime and webview state", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		await provider.contextProxy.setValue("graniteWorkflowEnabled", true)
+		await provider.contextProxy.setValue("graniteWorkflowPolicy", "strict")
+		expect(await provider.getState()).toMatchObject({ graniteWorkflowEnabled: true, graniteWorkflowPolicy: "strict" })
+		expect(await provider.getStateToPostToWebview()).toMatchObject({
+			graniteWorkflowEnabled: true,
+			graniteWorkflowPolicy: "strict",
+		})
+	})
+
 	test("getState returns the saved allowed write files", async () => {
 		await provider.contextProxy.setValue("allowedWriteFiles", ["notes.md"])
 

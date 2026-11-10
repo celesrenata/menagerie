@@ -41,6 +41,8 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_PARALLELISM_MODE,
+	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	ImageGenerationProvider,
 } from "@roo-code/types"
 
@@ -227,6 +229,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCloseZooOpenedNewFiles,
 		openAiOmniRoutePublishedLaneRouting,
 		parallelismMode,
+		graniteWorkflowEnabled,
+		graniteWorkflowPolicy,
 		parallelCapacityMap,
 		parallelReadDenylist,
 	} = cachedState
@@ -459,6 +463,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 					autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 					parallelismMode: parallelismMode ?? DEFAULT_PARALLELISM_MODE,
+					graniteWorkflowEnabled: graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
+					graniteWorkflowPolicy: graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
 					// omniroute-fleet-topology 14.6: persist the opt-in published-lane-routing
 					// toggle. `undefined`/false both resolve to the disabled default downstream.
 					openAiOmniRoutePublishedLaneRouting: openAiOmniRoutePublishedLaneRouting ?? false,
@@ -994,6 +1000,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								autoCloseZooOpenedFilesAfterUserEdited={autoCloseZooOpenedFilesAfterUserEdited}
 								autoCloseZooOpenedNewFiles={autoCloseZooOpenedNewFiles}
 								parallelismMode={parallelismMode}
+								graniteWorkflowEnabled={graniteWorkflowEnabled}
+								graniteWorkflowPolicy={graniteWorkflowPolicy}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

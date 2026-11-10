@@ -47,6 +47,29 @@ describe("UISettings", () => {
 		expect(checkbox.checked).toBe(true)
 	})
 
+	describe("Granite workflow settings", () => {
+		it("defaults to unchecked with the policy select disabled", () => {
+			const { getByTestId } = render(<UISettings {...defaultProps} />)
+			expect((getByTestId("granite-workflow-enabled-checkbox") as HTMLInputElement).checked).toBe(false)
+			expect(getByTestId("granite-workflow-policy-select-trigger").hasAttribute("disabled")).toBe(true)
+		})
+
+		it("reflects the enabled value and enables the policy select", () => {
+			const { getByTestId } = render(<UISettings {...defaultProps} graniteWorkflowEnabled={true} />)
+			expect((getByTestId("granite-workflow-enabled-checkbox") as HTMLInputElement).checked).toBe(true)
+			expect(getByTestId("granite-workflow-policy-select-trigger").hasAttribute("disabled")).toBe(false)
+		})
+
+		it("writes the toggle to cached state, not live state", async () => {
+			const setCachedStateField = vi.fn()
+			const { getByTestId } = render(<UISettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			fireEvent.click(getByTestId("granite-workflow-enabled-checkbox"))
+			await waitFor(() => {
+				expect(setCachedStateField).toHaveBeenCalledWith("graniteWorkflowEnabled", true)
+			})
+		})
+	})
+
 	describe("chat font size", () => {
 		it("shows the default font size when unset (init)", () => {
 			const { getByText, getByTestId } = render(<UISettings {...defaultProps} chatFontSize={undefined} />)
