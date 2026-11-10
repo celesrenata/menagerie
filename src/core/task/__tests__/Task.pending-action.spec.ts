@@ -41,7 +41,10 @@ const finishAction: PendingTaskAction = {
 
 describe("Task pending action replay", () => {
 	it("executes an approved create-subtask action", async () => {
-		const provider = { delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }) }
+		const provider = {
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
+			taskHistoryStore: { get: vi.fn() },
+		}
 		const task = createTask(provider)
 		task.ask = vi.fn().mockResolvedValue({ response: "yesButtonClicked" })
 

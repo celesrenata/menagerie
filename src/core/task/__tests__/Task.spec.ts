@@ -38,7 +38,7 @@ import { writeToFileTool } from "../../tools/WriteToFileTool"
 
 type TaskTestAccess = {
 	getSystemPrompt: (requestState: ProviderState | undefined, requestModelInfo?: ModelInfo) => Promise<string>
-	handleContextWindowExceededError: (requestModelInfo: ModelInfo) => Promise<void>
+	handleContextWindowExceededError: (requestModelInfo: ModelInfo) => Promise<{ retry: boolean; terminalError?: unknown }>
 	getEnabledMcpToolsCount: () => Promise<{ enabledToolCount: number; enabledServerCount: number }>
 	initiateTaskLoop: (userContent: Anthropic.Messages.ContentBlockParam[]) => Promise<void>
 	startTask: (task?: string, images?: string[]) => Promise<void>

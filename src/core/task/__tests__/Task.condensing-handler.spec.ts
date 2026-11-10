@@ -95,6 +95,8 @@ vi.mock("../../../api", async (importOriginal) => {
 		buildApiHandler: vi.fn((config: ProviderSettings) => ({
 			__id: `handler-${counter++}`,
 			__config: config,
+			// Task reads the model when it builds its loop detector.
+			getModel: () => ({ id: "test-model", info: { contextWindow: 200_000, maxTokens: 8_192 } }),
 		})),
 	}
 })

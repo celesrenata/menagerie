@@ -4,7 +4,7 @@
 import fc from "fast-check"
 import { describe, it, expect } from "vitest"
 
-import type { ApiMessage } from "../task-persistence/apiMessages"
+import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { convergentReduction } from "../convergentReduction"
 import {
 	classifyRecoveryOutcome,

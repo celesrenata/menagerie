@@ -714,7 +714,8 @@ describe("getCapabilitiesSection / getRulesSection fragment gating", () => {
 			expect(result).toContain("When presented with images, utilize your vision capabilities")
 			expect(result).toContain("you will automatically receive environment_details")
 			expect(result).toContain('"Actively Running Terminals"')
-			expect(result).toContain("It is critical you wait for the user's response after each tool use")
+			// The "wait for the user's response after each tool use" rule was replaced by an explicit continue rule.
+			expect(result).toContain("Continue as soon as tool results arrive")
 			expect(result).not.toContain("MCP operations should be used one at a time")
 			expect(result).not.toContain("VENDOR CONFIDENTIALITY")
 			// join separator: rules are bulleted one per line, not concatenated

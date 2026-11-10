@@ -53,6 +53,8 @@ vi.mock("../diagnosticsHandler", () => ({
 
 vi.mock("../../../api/providers/omniroute", () => ({
 	fetchOmniRouteCatalog: vi.fn(),
+	resolveRequestTier: vi.fn(),
+	withOmniRouteTier: vi.fn((config: unknown) => config),
 }))
 
 vi.mock("../rulesMessageHandler", () => ({
@@ -387,6 +389,8 @@ describe("webviewMessageHandler - image mentions", () => {
 		vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
 			cwd: "/mock/workspace",
 			rooIgnoreController: undefined,
+			apiConfiguration: {},
+			updateApiConfiguration: vi.fn(),
 			handleWebviewAskResponse: mockHandleWebviewAskResponse,
 		} as any)
 

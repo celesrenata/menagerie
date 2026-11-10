@@ -18,7 +18,7 @@ vi.mock("vscode", () => ({
 describe("EditTransactionService", () => {
 	beforeEach(() => {
 		changeIndex.clear()
-		;(vscode.workspace as { textDocuments: unknown[] }).textDocuments = []
+		;(vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = []
 	})
 
 	it("refuses path escapes", async () => {
@@ -30,7 +30,7 @@ describe("EditTransactionService", () => {
 
 	it("refuses to overwrite a dirty buffer and does not write", async () => {
 		const writeFile = vi.fn()
-		;(vscode.workspace as { textDocuments: unknown[] }).textDocuments = [
+		;(vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [
 			{ isDirty: true, uri: { fsPath: "/ws/a.ts" }, fileName: "/ws/a.ts" },
 		]
 		await expect(

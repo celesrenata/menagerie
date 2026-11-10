@@ -358,6 +358,10 @@ export async function manageContext({
 }: ContextManagementOptions): Promise<ContextManagementResult> {
 	let error: string | undefined
 	let errorDetails: string | undefined
+	// An empty conversation has nothing to condense or truncate; reading its "last message" would throw.
+	if (messages.length === 0) {
+		return { messages, summary: "", cost: 0, prevContextTokens: totalTokens }
+	}
 	let cost = 0
 	// Calculate the maximum tokens reserved for response
 	// vscode-lm reports maxTokens: -1 (unlimited); a negative reserve must not distort the window math.

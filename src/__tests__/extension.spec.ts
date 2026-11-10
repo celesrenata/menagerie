@@ -179,6 +179,10 @@ vi.mock("../activate", () => ({
 	}),
 }))
 
+// Task Board / Observatory registration needs a full vscode tree-view API and is not what these tests cover.
+vi.mock("../activate/taskBoard", () => ({ registerTaskBoard: vi.fn() }))
+vi.mock("../activate/observatory", () => ({ registerObservatory: vi.fn() }))
+
 vi.mock("../i18n", () => ({
 	initializeI18n: vi.fn(),
 	t: vi.fn((key) => key),

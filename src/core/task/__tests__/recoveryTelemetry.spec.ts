@@ -63,7 +63,7 @@ const buildAttempt = (spec: AttemptSpec): RecoveryAttemptTelemetry => {
 // can assert the recovery field is purely additive (every base field survives).
 const evidenceArb = fc.record(
 	{
-		type: fc.constantFrom("file", "test", "command", "url", "screenshot"),
+		type: fc.constantFrom("file" as const, "test" as const, "command" as const, "url" as const, "screenshot" as const),
 		reference: fc.string({ maxLength: 40 }),
 		lines: fc.option(fc.tuple(fc.integer(), fc.integer()), { nil: undefined }),
 		result: fc.option(fc.string({ maxLength: 20 }), { nil: undefined }),
@@ -73,7 +73,7 @@ const evidenceArb = fc.record(
 
 const workerResultArb: fc.Arbitrary<WorkerResult> = fc.record(
 	{
-		status: fc.constantFrom("completed", "failed", "blocked"),
+		status: fc.constantFrom("completed" as const, "failed" as const, "blocked" as const),
 		summary: fc.string({ maxLength: 80 }),
 		findings: fc.array(
 			fc.record(
@@ -89,8 +89,8 @@ const workerResultArb: fc.Arbitrary<WorkerResult> = fc.record(
 		artifacts: fc.array(fc.string({ maxLength: 30 }), { maxLength: 4 }),
 		reasoning: fc.option(
 			fc.record({
-				requested: fc.constantFrom("minimal", "low", "medium", "high"),
-				used: fc.constantFrom("minimal", "low", "medium", "high"),
+				requested: fc.constantFrom("minimal" as const, "low" as const, "medium" as const, "high" as const),
+				used: fc.constantFrom("minimal" as const, "low" as const, "medium" as const, "high" as const),
 				escalations: fc.integer({ min: 0, max: 10 }),
 			}),
 			{ nil: undefined },

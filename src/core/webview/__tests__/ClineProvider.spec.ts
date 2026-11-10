@@ -584,6 +584,60 @@ describe("ClineProvider", () => {
 		expect(ClineProvider.getVisibleInstance()).toBe(provider)
 	})
 
+	describe("recycleWebviewAfterSleep", () => {
+		beforeEach(() => {
+			// @ts-ignore - accessing private property for testing
+			provider.view = mockWebviewView
+			// Reset throttle window between cases (real Date.now() is used).
+			provider["webviewRecycleLastAt"] = 0
+			provider["webviewRecycleInFlight"] = false
+		})
+
+		it("reassigns webview.html from a fresh document after a wake", async () => {
+			const log = vi.spyOn(provider, "log")
+			mockWebviewView.webview.html = ""
+
+			await provider.recycleWebviewAfterSleep("visible")
+
+			// The real getHtmlContent produced a fresh document, which was
+			// assigned to webview.html (proving the recycle ran end-to-end
+			// without mocking the private builder).
+			const html = mockWebviewView.webview.html as string
+			expect(html).toContain("Content-Security-Policy")
+			expect(html).toContain("script nonce")
+			expect(html).toContain("webview-repaint-keepalive")
+			expect(html.length).toBeGreaterThan(0)
+			expect(log).toHaveBeenCalledWith(
+				"[webviewRecycle] recycled webview document after wake (visible)",
+			)
+		})
+
+		it("does not recycle twice within the throttle window", async () => {
+			const log = vi.spyOn(provider, "log")
+			mockWebviewView.webview.html = ""
+
+			await provider.recycleWebviewAfterSleep("visible")
+			const first = mockWebviewView.webview.html as string
+			// The second call is throttled, so html is untouched and only one
+			// recycle is logged.
+			await provider.recycleWebviewAfterSleep("focus")
+
+			expect(mockWebviewView.webview.html).toBe(first)
+			expect(log).toHaveBeenCalledTimes(1)
+		})
+
+		it("resolves without touching the webview when no view is bound", async () => {
+			const log = vi.spyOn(provider, "log")
+			mockWebviewView.webview.html = ""
+			provider["view"] = undefined
+
+			await provider.recycleWebviewAfterSleep("visible")
+
+			expect(mockWebviewView.webview.html).toBe("")
+			expect(log).not.toHaveBeenCalled()
+		})
+	})
+
 	test("loads full model details when preparing an LM Studio task", async () => {
 		await provider.performPreparationTasks({
 			apiConfiguration: {
@@ -688,8 +742,8 @@ describe("ClineProvider", () => {
 			visibilityCallback()
 			await vi.waitFor(() => expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "state" })))
 			const statePost = postMessageSpy.mock.calls.find(([msg]) => msg.type === "state")?.[0]
-			expect(statePost?.state.clineMessages).toHaveLength(200)
-			expect(statePost?.state.clineMessages.at(-1)).toEqual(longHistory.at(-1))
+			expect(statePost?.state?.clineMessages).toHaveLength(200)
+			expect(statePost?.state?.clineMessages?.at(-1)).toEqual(longHistory.at(-1))
 			postMessageSpy.mockRestore()
 		})
 	})
@@ -3548,6 +3602,20 @@ describe("webviewMessageHandler no-floating-promises coverage", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+	})
+
+	it("routes webviewRecycleRequest to the provider's wake-from-sleep recycle", async () => {
+		const provider = createProvider({
+			recycleWebviewAfterSleep: vi.fn().mockResolvedValue(undefined),
+		})
+
+		await webviewMessageHandler(provider, {
+			type: "webviewRecycleRequest",
+			diagnosticReason: "visible",
+			diagnosticFreezeGapMs: 90000,
+		})
+
+		expect(provider.recycleWebviewAfterSleep).toHaveBeenCalledWith("visible")
 	})
 
 	it("logs a detached indexing rejection without rejecting the handler", async () => {

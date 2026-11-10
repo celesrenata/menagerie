@@ -28,7 +28,7 @@ type TaskTestAccess = {
 	presentAssistantMessageSafe: () => void
 	safeEnsureModelFetched: () => Promise<ModelInfo>
 	backoffAndAnnounce: (retryAttempt: number, error: unknown) => Promise<void>
-	handleContextWindowExceededError: (requestModelInfo: ModelInfo) => Promise<void>
+	handleContextWindowExceededError: (requestModelInfo: ModelInfo) => Promise<{ retry: boolean; terminalError?: unknown }>
 }
 
 type ProviderState = Awaited<ReturnType<ClineProvider["getState"]>>

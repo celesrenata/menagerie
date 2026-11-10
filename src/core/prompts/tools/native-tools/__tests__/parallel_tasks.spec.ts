@@ -7,11 +7,13 @@ describe("parallel_tasks", () => {
 	it("routes independent subtasks by scope to their configured mode profiles", () => {
 		const description = (parallelTasks as FunctionTool).function.description
 
-		expect(description).toContain("a fast reader mode for bounded file gathering")
-		expect(description).toContain("a research mode for long-context synthesis")
+		expect(description).toContain("project-reader on the configured fast reader route for bounded file gathering")
+		expect(description).toContain("a research/long-context mode only for work that genuinely needs long-context synthesis")
 		expect(description).toContain("do not send every worker through the same long-task profile by default")
 		expect(description).toContain("fourth bounded project-reader audit")
-		expect(description).toContain("M5 works concurrently")
+		// No hardware names in policy text: the reader lane is described, not a specific machine.
+		expect(description).toContain("so the reader lane works concurrently")
+		expect(description).not.toContain("M5")
 		expect((parallelTasks as FunctionTool).function.parameters).toMatchObject({
 			properties: { tasks: { maxItems: 4 } },
 		})
