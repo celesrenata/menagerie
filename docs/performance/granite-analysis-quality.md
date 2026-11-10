@@ -315,3 +315,58 @@ The >= 99% schema-valid gate is **met with confidence on the expanded set: 99.7%
 - Client enforces `stream:false`, no `tools`/`tool_choice`/`temperature`; the server accepts `stream:true` and `tools` silently, so this is enforced client-side (pinned by unit test).
 - Server does not enforce the 32,768 served window (a ~40K-token prompt returned 200). The client preflight is the only guard.
 - Live concurrency probe: 4 jobs through the queue never exceeded 2 active.
+
+## A/B on the real reader lane through OmniRoute (task 5.1, 2026-11-10; template-10, 50 cases x 2 repeats = 100 calls per side)
+
+Both sides went through OmniRoute `/v1` with the opt-out headers (`x-omniroute-no-memory`, `x-omniroute-compression: off`),
+so neither was measured under injected context. Granite = `vllm/granite-4.2-8b`; baseline = `pool/tier2/reader`
+(`codestral-latest` behind a reader pool route, the one reader route found to honor structured output). Raw data:
+`granite-ab-reader-2026-11-10.json`.
+
+| Metric | vllm/granite-4.2-8b | pool/tier2/reader |
+| --- | ---: | ---: |
+| Schema-valid after <=1 retry | 100.0% | 100.0% |
+| Retry rate | 5.0% | 0.0% |
+| Citation precision | 100.0% | 100.0% |
+| Requirement-coverage recall | 85.8% | 96.7% |
+| Contradiction recall | 80.0% | 100.0% |
+| Contradiction false-positive rate | 0.0% | 0.0% |
+| Risk accuracy (effective) | 95.0% | 100.0% |
+| False PASS (count) | 0 | 0 |
+| Rerun variance | 38.0% | 64.0% |
+| Latency p50 / p95 (ms) | 847 / 1774 | 2158 / 3275 |
+| Tokens prompt / completion | 37,769 / 5,273 | not reported by the route |
+
+Reading: the stronger reader is more accurate on coverage (+10.9 points), contradiction recall (+20) and risk (+5), at about
+2.5x the median latency; Granite is faster and runs on local capacity. Neither produced a false PASS and both grounded every
+citation. Granite is therefore suitable for bounded evidence condensation where a miss is cheap, and it is correctly kept
+advisory for contradictions and risk (see the existing caveats), not a replacement for the reader.
+
+Caveats: one baseline route and only 2 repeats (100 calls per side), so the intervals are wide; a single run, not a
+distribution of runs. The earlier hosted-baseline comparison in this document ran without the opt-out headers, so its baseline
+numbers were measured under injected context and should not be compared with the table above. The spec-orchestrator-instructions
+versus executable-contract comparison (the other half of 5.1) was not run: the instructions are prose and have no executable
+equivalent to score.
+
+## Admission scaling through OmniRoute (task 5.2, 2026-11-10)
+
+Menagerie's own path (client + 2-slot `AnalysisQueue`) against `vllm/granite-4.2-8b`, unique synthetic prompts, one round per
+cell, 64 max output tokens. Raw: `granite-analysis-scaling-2026-11-10.json`. Peak active generations observed: **2**;
+the third client queued (peak waiting 1).
+
+| Prompt | Clients | Wall | Max queue wait | Median / max latency |
+| ---: | ---: | ---: | ---: | ---: |
+| ~1.5K tok | 1 | 0.71 s | 0 | 0.71 / 0.71 s |
+| ~1.5K tok | 2 | 1.08 s | 0 | 1.08 / 1.08 s |
+| ~1.5K tok | 3 | 1.83 s | 1.15 s | 1.21 / 1.83 s |
+| ~8K tok | 1 | 2.62 s | 0 | 2.62 / 2.62 s |
+| ~8K tok | 2 | 5.11 s | 0 | 5.11 / 5.11 s |
+| ~8K tok | 3 | 7.62 s | 4.99 s | 5.02 / 7.62 s |
+| ~27K tok | 1 | 12.17 s | 0 | 12.17 / 12.17 s |
+| ~27K tok | 3 | 36.49 s | 24.24 s | 24.25 / 36.49 s |
+
+Two clients give no throughput gain at 8K (5.11 s vs 2.62 s for one): prefill-bound work is effectively serialized behind the
+route. The 2-slot cap is therefore conservative rather than limiting. The live service was also observed to run 3 slots with
+64K positions (granite-live-perf.md), not the 2 slots / 32,768 window the spec assumed; Menagerie keeps the conservative
+2 / 32,768 until the operator publishes capacity through OmniRoute. Single rounds only: p50/p95 across repeated rounds were
+not collected.

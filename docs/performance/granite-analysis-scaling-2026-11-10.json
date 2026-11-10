@@ -1,0 +1,78 @@
+{
+  "peakActive": 2,
+  "peakWaiting": 1,
+  "results": [
+    {
+      "label": "short",
+      "clients": 1,
+      "promptTokens": 1500,
+      "wallMs": 706,
+      "queueWaitMsMax": 0,
+      "totalMsMedian": 706,
+      "totalMsMax": 706
+    },
+    {
+      "label": "short",
+      "clients": 2,
+      "promptTokens": 1500,
+      "wallMs": 1079,
+      "queueWaitMsMax": 0,
+      "totalMsMedian": 1079,
+      "totalMsMax": 1079
+    },
+    {
+      "label": "short",
+      "clients": 3,
+      "promptTokens": 1500,
+      "wallMs": 1833,
+      "queueWaitMsMax": 1151,
+      "totalMsMedian": 1211,
+      "totalMsMax": 1833
+    },
+    {
+      "label": "medium",
+      "clients": 1,
+      "promptTokens": 8000,
+      "wallMs": 2615,
+      "queueWaitMsMax": 0,
+      "totalMsMedian": 2615,
+      "totalMsMax": 2615
+    },
+    {
+      "label": "medium",
+      "clients": 2,
+      "promptTokens": 8000,
+      "wallMs": 5112,
+      "queueWaitMsMax": 0,
+      "totalMsMedian": 5112,
+      "totalMsMax": 5112
+    },
+    {
+      "label": "medium",
+      "clients": 3,
+      "promptTokens": 8000,
+      "wallMs": 7617,
+      "queueWaitMsMax": 4985,
+      "totalMsMedian": 5018,
+      "totalMsMax": 7617
+    },
+    {
+      "label": "near-cap",
+      "clients": 1,
+      "promptTokens": 27000,
+      "wallMs": 12169,
+      "queueWaitMsMax": 0,
+      "totalMsMedian": 12169,
+      "totalMsMax": 12169
+    },
+    {
+      "label": "near-cap",
+      "clients": 3,
+      "promptTokens": 27000,
+      "wallMs": 36493,
+      "queueWaitMsMax": 24243,
+      "totalMsMedian": 24246,
+      "totalMsMax": 36493
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import { AnalysisExecutor, type AnalysisEvent } from "../AnalysisExecutor"
 import { AnalysisQueue } from "../AnalysisQueue"
 import { ANALYSIS_TEMPLATE_VERSION } from "../AnalysisPrompt"
 import { DEFAULT_PAIRWISE_OPTIONS, PairwiseAnalysisRunner } from "../PairwiseAnalysisRunner"
-import { GraniteAnalysisClient } from "../GraniteAnalysisClient"
+import { GraniteAnalysisClient, OMNIROUTE_ANALYSIS_HEADERS } from "../GraniteAnalysisClient"
 
 /**
  * Optional live integration against an operator-supplied Granite endpoint.
@@ -21,6 +21,9 @@ import { GraniteAnalysisClient } from "../GraniteAnalysisClient"
 const baseUrl = process.env.GRANITE_LIVE_URL
 const model = process.env.GRANITE_LIVE_MODEL ?? "granite-4.2-8b"
 
+/** nock matches `host:port`; `URL.host` omits a default port, so accept an optional port. */
+const hostMatcher = (urls: string[]): RegExp =>
+	new RegExp(`^(${urls.map((u) => new URL(u).hostname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(:\\d+)?$`)
 const anchor = { workspaceUri: "file:///live", path: "src/cache.ts", fileDigest: "d", startLine: 1, endLine: 1 }
 const request = (id: string, excerpt: string): AnalysisRequest => ({
 	requestId: id,
@@ -33,8 +36,8 @@ const request = (id: string, excerpt: string): AnalysisRequest => ({
 
 describe.skipIf(!baseUrl)("Granite live protocol (role boundaries, injection, concurrency)", () => {
 	// vitest.setup.ts disables outbound connections by default; open only the operator-supplied host.
-	beforeAll(() => allowNetConnect(new URL(baseUrl!).host))
-	const client = () => new GraniteAnalysisClient({ baseUrl: baseUrl!, model, timeoutMs: 120_000 })
+	beforeAll(() => allowNetConnect(hostMatcher([baseUrl!])))
+	const client = () => new GraniteAnalysisClient({ baseUrl: baseUrl!, model, apiKey: process.env.GRANITE_LIVE_API_KEY, timeoutMs: 120_000, extraHeaders: OMNIROUTE_ANALYSIS_HEADERS })
 	const executor = (queue = new AnalysisQueue({ maxActive: 2, maxQueued: 8 })) =>
 		new AnalysisExecutor({ client: client(), queue, verifyEvidence: async () => "fresh", namespace: "live" })
 
@@ -78,11 +81,11 @@ describe.skipIf(!baseUrl)("Granite live protocol (role boundaries, injection, co
 
 	// A/B (task 5.1): the SAME executor, prompt, validator and cases; only the model differs.
 	// Set BASELINE_URL (incl. /v1) and BASELINE_MODEL; optional BASELINE_API_KEY. Cache is not used.
+	// Both sides send the OmniRoute opt-out headers so neither is measured under injected context.
 	it.skipIf(!process.env.BASELINE_URL || !process.env.BASELINE_MODEL)("A/B against a baseline reader route", async () => {
 		const baseUrl2 = process.env.BASELINE_URL!
 		// enableNetConnect REPLACES the allow list, so allow both hosts in one call.
-		const hosts = [new URL(baseUrl!).host, new URL(baseUrl2).host].map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-		allowNetConnect(new RegExp(`^(${hosts.join("|")})$`))
+		allowNetConnect(hostMatcher([baseUrl!, baseUrl2]))
 		const make = (c: GraniteAnalysisClient, events: AnalysisEvent[] = []) =>
 			new AnalysisExecutor({ client: c, queue: new AnalysisQueue({ maxActive: 2, maxQueued: 256 }), verifyEvidence: async () => "fresh", namespace: "ab", onEvent: (e) => events.push(e) })
 		const repeats = Number(process.env.GRANITE_REPEATS ?? 3)
@@ -93,7 +96,7 @@ describe.skipIf(!baseUrl)("Granite live protocol (role boundaries, injection, co
 		const baseline: typeof granite = reuse
 			? (JSON.parse(readFileSync(reuse, "utf8")) as { baseline: typeof granite }).baseline
 			: await runGoldenSet(
-			make(new GraniteAnalysisClient({ baseUrl: baseUrl2, model: process.env.BASELINE_MODEL!, apiKey: process.env.BASELINE_API_KEY, timeoutMs: 180_000 })),
+			make(new GraniteAnalysisClient({ baseUrl: baseUrl2, model: process.env.BASELINE_MODEL!, apiKey: process.env.BASELINE_API_KEY, timeoutMs: 180_000, extraHeaders: OMNIROUTE_ANALYSIS_HEADERS })),
 			GOLDEN_SET,
 			{ repeats },
 		)

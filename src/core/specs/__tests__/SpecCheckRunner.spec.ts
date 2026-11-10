@@ -113,6 +113,28 @@ describe("verifySpecRevision (end to end, real store)", () => {
 		expect(stale.verdict).toBe("not-verified")
 	})
 
+	it("derives the same verdict after a restart from persisted state alone, with no re-run", async () => {
+		const store = await setup()
+		const before = await verifySpecRevision({ store, revision: rev, workspaceRoot: root, sourceRevision: "git:aaa", verifierOutcomes: pass, exec: exit(0) })
+		expect(before.verdict).toBe("pass")
+
+		// A brand-new store over the same directory: nothing in memory survives.
+		const reopened = new SpecRevisionStore(path.join(root, ".kiro/specs"))
+		const loaded = await reopened.loadRevision(rev.specId, rev.revisionId)
+		const { evaluateSpecGate } = await import("../SpecGate")
+		const { digestInputs } = await import("../SpecCheckRunner")
+		const after = evaluateSpecGate({
+			revision: loaded,
+			approval: await reopened.findApproval(rev.specId, rev.revisionId),
+			evidence: (await reopened.readEvidence(rev.specId)).records,
+			currentSourceRevision: "git:aaa",
+			currentInputDigests: await digestInputs(root, ["src/session.ts", "src/password.ts", "src/ratelimit.ts"]),
+			verifierGatePassed: true,
+		})
+		expect(after.verdict).toBe("pass")
+		expect(after.coverage).toEqual(before.coverage)
+	})
+
 	it("refuses to run anything when the revision was never approved", async () => {
 		const store = new SpecRevisionStore(path.join(root, ".kiro/specs"))
 		await store.saveRevision(rev)
