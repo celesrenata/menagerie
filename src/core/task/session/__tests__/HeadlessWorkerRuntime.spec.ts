@@ -30,7 +30,7 @@ describe("worker presentation policy", () => {
 		expect(shouldCreateWorkerPanel("editor-tabs")).toBe(true)
 		expect(isDetachableWorkerPresentation("headless")).toBe(true)
 		expect(isDetachableWorkerPresentation("task-hub")).toBe(true)
-		expect(isDetachableWorkerPresentation("editor-tabs")).toBe(false)
+		expect(isDetachableWorkerPresentation("editor-tabs")).toBe(true)
 	})
 })
 

@@ -5,7 +5,7 @@ export const LAST_SELECTED_TASK_ID_KEY = "menagerie.lastSelectedTaskId"
 export const HOST_ID_KEY = "menagerie.hostId"
 
 export type TaskCommandResult =
-	| { ok: true; action: "opened" | "inspected" | "resumed" | "cancelled" | "persisted" }
+	| { ok: true; action: "opened" | "inspected" | "resumed" | "paused" | "restarted" | "cancelled" | "persisted" }
 	| { ok: false; error: string; foreignHost?: boolean; workspaceUri?: string }
 
 export interface TaskOwnerHandle {
@@ -15,7 +15,10 @@ export interface TaskOwnerHandle {
 	showInHub: () => Promise<void> | void
 	openInEditor?: () => Promise<void> | void
 	inspectDiff?: (path?: string) => Promise<void> | void
-	resume?: () => Promise<void> | void
+	/** Return false when the command does not apply to the task's current state. */
+	resume?: () => Promise<boolean | void> | boolean | void
+	pause?: () => Promise<boolean | void> | boolean | void
+	restart?: () => Promise<boolean | void> | boolean | void
 	cancel?: () => Promise<void> | void
 }
 
@@ -34,11 +37,13 @@ export class TaskCommandRouter {
 
 	resolve(ref: TaskRef): TaskOwnerHandle | null {
 		if (ref.hostId && ref.hostId !== this.deps.hostId) return null
-		const matches = this.deps.listOwners().filter(
-			(owner) =>
-				owner.ref.taskId === ref.taskId &&
-				(ref.workspaceUri === "" || owner.ref.workspaceUri === ref.workspaceUri),
-		)
+		const matches = this.deps
+			.listOwners()
+			.filter(
+				(owner) =>
+					owner.ref.taskId === ref.taskId &&
+					(ref.workspaceUri === "" || owner.ref.workspaceUri === ref.workspaceUri),
+			)
 		if (matches.length !== 1) return null
 		const owner = matches[0]!
 		if (owner.ref.hostId && owner.ref.hostId !== this.deps.hostId) return null
@@ -68,8 +73,17 @@ export class TaskCommandRouter {
 				await owner.inspectDiff?.(command.path)
 				return { ok: true, action: "inspected" }
 			case "resume":
-				await owner.resume?.()
+				if ((await owner.resume?.()) === false) return { ok: false, error: "Nothing to resume" }
 				return { ok: true, action: "resumed" }
+			case "pause":
+				if ((await owner.pause?.()) === false) return { ok: false, error: "Task cannot be paused" }
+				return { ok: true, action: "paused" }
+			case "restart":
+				if (!command.confirmed) return { ok: false, error: "Restart requires confirmation" }
+				if ((await owner.restart?.()) === false) {
+					return { ok: false, error: "Task cannot be restarted (parallel workers can only be resumed)" }
+				}
+				return { ok: true, action: "restarted" }
 			case "cancel":
 				if (!command.confirmed) return { ok: false, error: "Cancel requires confirmation" }
 				await owner.cancel?.()

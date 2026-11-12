@@ -457,6 +457,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	abortReason?: ClineApiReqCancelReason
 	isInitialized = false
 	isPaused: boolean = false
+	/** User-requested pause from the Task Board. Holds the task before its next request; never aborts it. */
+	userPaused = false
+
+	/** Pause before the next API request. An in-flight response is allowed to finish. */
+	public pauseByUser(): void {
+		this.userPaused = true
+	}
+
+	public resumeByUser(): void {
+		this.userPaused = false
+	}
 
 	// API
 	apiConfiguration: ProviderSettings
@@ -3425,6 +3436,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			if (this.abort) {
 				throw new Error(`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
+			}
+
+			// Task Board pause: hold here until resumed, cancelled, or abandoned.
+			if (this.userPaused) {
+				await pWaitFor(() => !this.userPaused || this.abort || this.abandoned, { interval: 250 })
+				if (this.abort) {
+					throw new Error(
+						`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`,
+					)
+				}
 			}
 
 			if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {

@@ -8,11 +8,12 @@ export function resolveWorkerPresentation(value: unknown): WorkerPresentation {
 		: DEFAULT_WORKER_PRESENTATION
 }
 
-/** Headless and task-hub both skip auto-created editor tabs. Only editor-tabs is legacy abort-on-close. */
+/** Headless and task-hub both skip auto-created editor tabs. editor-tabs creates one per worker. */
 export function shouldCreateWorkerPanel(presentation: WorkerPresentation): boolean {
 	return presentation === "editor-tabs"
 }
 
-export function isDetachableWorkerPresentation(presentation: WorkerPresentation): boolean {
-	return presentation !== "editor-tabs"
+/** Closing a worker tab never cancels the task, whatever the presentation. */
+export function isDetachableWorkerPresentation(_presentation: WorkerPresentation): boolean {
+	return true
 }

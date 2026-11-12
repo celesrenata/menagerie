@@ -341,7 +341,7 @@ export const globalSettingsSchema = z.object({
 	/**
 	 * How parallel workers present themselves. `headless` (default) never auto-opens
 	 * an editor tab; `task-hub` routes workers through the shared hub; `editor-tabs`
-	 * restores the legacy abort-on-close tab per worker.
+	 * opens an editor tab per worker (closing it detaches, never cancels).
 	 */
 	workerPresentation: workerPresentationSchema.optional(),
 	/** Preferred Menagerie home container. Preference only — not a placement promise. */

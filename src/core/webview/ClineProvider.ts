@@ -81,7 +81,6 @@ import {
 	createWorkerPanelIfNeeded,
 	resolveWorkerPresentationFromState,
 } from "../task/session/HeadlessWorkerRuntime"
-import { isDetachableWorkerPresentation } from "../task/session/workerPresentation"
 import type { ParallelTaskSpec } from "../tools/ParallelTasksTool"
 import { parseMarkdownChecklist } from "../tools/UpdateTodoListTool"
 import {
@@ -200,7 +199,7 @@ function runDelegationTransition<T>(
  * Caps the message list sent on re-show so a long task does not post its full
  * history in one state message. Older messages are not sent until the next full state.
  */
-const RECENT_VISIBLE_MESSAGE_COUNT = 200
+const RECENT_VISIBLE_MESSAGE_COUNT = 1000
 
 function scheduleTask(
 	scheduler: TaskScheduler,
@@ -241,11 +240,10 @@ export class ClineProvider
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	// Refines the "editor" renderContext for tab-close semantics:
 	//   "popout" — interactive popout tab; closing the tab DETACHES the view, keeping the task alive.
-	//   "worker" — parallel worker tab; closing the tab ABORTS the worker (intended lifecycle).
+	//   "worker" — parallel worker tab; closing the tab DETACHES the view too. Tasks are only
+	//              cancelled explicitly (Task Board context menu), never by closing a tab.
 	// undefined — sidebar (or any editor provider whose role was never set) falls back to dispose() on close.
 	private editorViewRole?: "popout" | "worker"
-	/** When true, a worker tab-close detaches instead of aborting (headless/task-hub). */
-	private workerDetachOnClose = false
 	private taskRegistry = new TaskRegistry()
 	private taskScheduler = new TaskScheduler()
 	private static readonly delegationTransitionLocks = new Map<string, Promise<void>>()
@@ -968,6 +966,52 @@ export class ClineProvider
 	public revealChat(): void {
 		if (this.view && "reveal" in this.view) this.view.reveal(undefined, false)
 		else if (this.view) this.view.show(false)
+	}
+
+	/** True when a webview is currently bound; headless workers and detached popouts have none. */
+	public get hasView(): boolean {
+		return this.view !== undefined
+	}
+
+	/** Hold the current task before its next request. Used by the Task Board. */
+	public pauseCurrentTask(): boolean {
+		const task = this.getCurrentTask()
+		if (!task || task.abort) return false
+		task.pauseByUser()
+		return true
+	}
+
+	/**
+	 * Continue the current task: lift a user pause, or accept the resume prompt that a
+	 * cancelled/interrupted task is rehydrated with.
+	 */
+	public resumeCurrentTask(): boolean {
+		const task = this.getCurrentTask()
+		if (!task) return false
+		if (task.userPaused) {
+			task.resumeByUser()
+			return true
+		}
+		const pending = task.clineMessages.at(-1)
+		if (pending?.type === "ask" && !pending.isAnswered && !pending.partial) {
+			if (pending.ask === "resume_task" || pending.ask === "resume_completed_task") {
+				task.approveAsk()
+				return true
+			}
+		}
+		return false
+	}
+
+	/** Cancel the current task, then start it again from its original prompt. */
+	public async restartCurrentTask(): Promise<boolean> {
+		const task = this.getCurrentTask()
+		if (!task || task.parallelWorker) return false
+		const prompt = this.taskHistoryStore.get(task.taskId)?.task ?? task.clineMessages[0]?.text
+		if (!prompt) return false
+		await this.cancelTask()
+		await this.clearTask()
+		await this.createTask(prompt)
+		return true
 	}
 
 	public static async getInstance(): Promise<ClineProvider | undefined> {
@@ -3779,9 +3823,9 @@ export class ClineProvider
 		this.editorViewRole = role
 	}
 
-	/** True for popouts and for headless/task-hub workers: tab-close detaches, task stays alive. */
+	/** True for popouts and workers: tab-close (including "close all editors") detaches, task stays alive. */
 	private isDetachableView(): boolean {
-		return this.editorViewRole === "popout" || (this.editorViewRole === "worker" && this.workerDetachOnClose)
+		return this.editorViewRole === "popout" || this.editorViewRole === "worker"
 	}
 
 	/**
@@ -3892,7 +3936,6 @@ export class ClineProvider
 		)
 		provider.setEditorViewRole("worker")
 		const presentation = resolveWorkerPresentationFromState(await this.getState())
-		provider.workerDetachOnClose = isDetachableWorkerPresentation(presentation)
 		try {
 			const panel = createWorkerPanelIfNeeded(
 				presentation,
@@ -3933,7 +3976,6 @@ export class ClineProvider
 	 */
 	public async openWorkerInEditor(title: string): Promise<void> {
 		if (this.view !== undefined) return
-		this.workerDetachOnClose = true
 		this.setEditorViewRole("worker")
 		const panel = createOnDemandWorkerPanel(title, this.context.extensionUri, ClineProvider.tabPanelId)
 		await this.rebindView(panel)

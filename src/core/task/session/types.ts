@@ -12,14 +12,7 @@ export interface TaskRef {
 	taskId: string
 }
 
-export type TaskStatus =
-	| "queued"
-	| "running"
-	| "waiting-input"
-	| "review"
-	| "completed"
-	| "failed"
-	| "cancelled"
+export type TaskStatus = "queued" | "running" | "waiting-input" | "review" | "completed" | "failed" | "cancelled"
 
 export interface TaskSummary {
 	ref: TaskRef
@@ -42,6 +35,8 @@ export type TaskCommand =
 	| { kind: "open"; ref: TaskRef; destination?: "task-hub" | "editor" }
 	| { kind: "inspect-diff"; ref: TaskRef; path?: string }
 	| { kind: "resume"; ref: TaskRef }
+	| { kind: "pause"; ref: TaskRef }
+	| { kind: "restart"; ref: TaskRef; confirmed: true }
 	| { kind: "cancel"; ref: TaskRef; confirmed: true }
 
 export function taskRefKey(ref: TaskRef): string {

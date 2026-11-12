@@ -607,9 +607,7 @@ describe("ClineProvider", () => {
 			expect(html).toContain("script nonce")
 			expect(html).toContain("webview-repaint-keepalive")
 			expect(html.length).toBeGreaterThan(0)
-			expect(log).toHaveBeenCalledWith(
-				"[webviewRecycle] recycled webview document after wake (visible)",
-			)
+			expect(log).toHaveBeenCalledWith("[webviewRecycle] recycled webview document after wake (visible)")
 		})
 
 		it("does not recycle twice within the throttle window", async () => {
@@ -734,15 +732,22 @@ describe("ClineProvider", () => {
 		test("reposts state capped to recent messages when the view becomes visible again", async () => {
 			const task = new Task(defaultTaskOptions)
 			Object.defineProperty(task, "taskId", { value: "long-task", writable: true })
-			const longHistory = Array.from({ length: 450 }, (_, i) => ({ ts: i, type: "say", say: "text", text: `m${i}` }))
+			const longHistory = Array.from({ length: 1500 }, (_, i) => ({
+				ts: i,
+				type: "say",
+				say: "text",
+				text: `m${i}`,
+			}))
 			Object.defineProperty(task, "clineMessages", { value: longHistory, configurable: true })
 			await provider.addClineToStack(task)
 			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 			Object.defineProperty(mockWebviewView, "visible", { value: true, configurable: true })
 			visibilityCallback()
-			await vi.waitFor(() => expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "state" })))
+			await vi.waitFor(() =>
+				expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "state" })),
+			)
 			const statePost = postMessageSpy.mock.calls.find(([msg]) => msg.type === "state")?.[0]
-			expect(statePost?.state?.clineMessages).toHaveLength(200)
+			expect(statePost?.state?.clineMessages).toHaveLength(1000)
 			expect(statePost?.state?.clineMessages?.at(-1)).toEqual(longHistory.at(-1))
 			postMessageSpy.mockRestore()
 		})
@@ -1734,7 +1739,10 @@ describe("ClineProvider", () => {
 
 	test("Granite workflow settings default to off/build in getState and the posted state", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
-		expect(await provider.getState()).toMatchObject({ graniteWorkflowEnabled: false, graniteWorkflowPolicy: "build" })
+		expect(await provider.getState()).toMatchObject({
+			graniteWorkflowEnabled: false,
+			graniteWorkflowPolicy: "build",
+		})
 		expect(await provider.getStateToPostToWebview()).toMatchObject({
 			graniteWorkflowEnabled: false,
 			graniteWorkflowPolicy: "build",
@@ -1754,7 +1762,10 @@ describe("ClineProvider", () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		await provider.contextProxy.setValue("graniteWorkflowEnabled", true)
 		await provider.contextProxy.setValue("graniteWorkflowPolicy", "strict")
-		expect(await provider.getState()).toMatchObject({ graniteWorkflowEnabled: true, graniteWorkflowPolicy: "strict" })
+		expect(await provider.getState()).toMatchObject({
+			graniteWorkflowEnabled: true,
+			graniteWorkflowPolicy: "strict",
+		})
 		expect(await provider.getStateToPostToWebview()).toMatchObject({
 			graniteWorkflowEnabled: true,
 			graniteWorkflowPolicy: "strict",
@@ -3337,7 +3348,7 @@ describe("ClineProvider", () => {
 			await popout.dispose()
 		})
 
-		test("worker tab-close still disposes (aborts) the worker", async () => {
+		test("worker tab-close detaches without aborting the worker", async () => {
 			const worker = makePopout()
 			worker.setEditorViewRole("worker")
 			const h = makePanel()
@@ -3346,10 +3357,11 @@ describe("ClineProvider", () => {
 
 			await h.fireDispose()
 
-			// Worker close goes through dispose(): task is drained/aborted and the instance removed.
-			expect(task.abortTask).toHaveBeenCalled()
-			expect(ClineProvider.getAllInstances()).not.toContain(worker)
-			expect(disposedOf(worker)).toBe(true)
+			// Closing a worker tab only detaches the view; cancelling is an explicit Task Board action.
+			expect(task.abortTask).not.toHaveBeenCalled()
+			expect(ClineProvider.getAllInstances()).toContain(worker)
+			expect(disposedOf(worker)).toBe(false)
+			await worker.dispose()
 		})
 
 		test("headless worker tab-close detaches without aborting the task", async () => {

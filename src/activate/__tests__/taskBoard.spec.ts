@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import * as fs from "node:fs/promises"
-import { collectTaskBoard, registerTaskBoard } from "../taskBoard"
+import { collectTaskBoard, registerTaskBoard, summarizeTaskTitle } from "../taskBoard"
 
 const mockProviders = vi.hoisted(() => ({
 	all: [] as unknown[],
@@ -46,7 +46,11 @@ vi.mock("vscode", () => ({
 		}),
 		executeCommand: vi.fn(),
 	},
-	TreeItemCollapsibleState: { None: 0, Expanded: 2 },
+	TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+	MarkdownString: class {
+		isTrusted = false
+		constructor(public value: string) {}
+	},
 	TreeItem: class {
 		label: string
 		collapsibleState: number
@@ -188,9 +192,7 @@ describe("Task Board registration", () => {
 		vi.useFakeTimers()
 		const task = {
 			taskId: "active-task",
-			clineMessages: [
-				{ ts: 1_000, type: "say", say: "text", text: "Implement the requested feature" },
-			],
+			clineMessages: [{ ts: 1_000, type: "say", say: "text", text: "Implement the requested feature" }],
 			getTaskMode: async () => "code",
 			getTaskApiConfigName: async () => "hybrid/code",
 			api: { getModel: () => ({ id: "model" }) },
@@ -229,7 +231,7 @@ describe("Task Board registration", () => {
 		const firstTask = children?.[0]
 		if (!firstTask) throw new Error("Active task was not added to the Task Board")
 		const item = await Promise.resolve(treeViewCall[1].treeDataProvider.getTreeItem(firstTask))
-		expect(item.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None)
+		expect(item.collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed)
 		expect(item.command).toEqual({
 			command: "zoo-code.openTask",
 			title: "Open Task",
@@ -241,7 +243,8 @@ describe("Task Board registration", () => {
 				},
 			],
 		})
-		expect(item.tooltip).toContain("Click to open this task")
+		const tooltip = item.tooltip
+		expect(typeof tooltip === "string" ? tooltip : tooltip?.value).toContain("Click to open")
 
 		const revealChat = vi.fn()
 		const postMessageToWebview = vi.fn()
@@ -251,6 +254,7 @@ describe("Task Board registration", () => {
 			{
 				getCurrentTask: vi.fn(() => task),
 				taskHistoryStore: { get: () => ({ task: "Task title", status: "active" }) },
+				hasView: true,
 				revealChat,
 				postMessageToWebview,
 				createTask,
@@ -266,5 +270,23 @@ describe("Task Board registration", () => {
 		expect(persist).toHaveBeenCalledWith("menagerie.lastSelectedTaskId", "active-task")
 
 		for (const subscription of subscriptions) subscription.dispose()
+	})
+})
+
+describe("summarizeTaskTitle", () => {
+	it("drops the parallel-worker handoff and keeps the first sentence", () => {
+		const text =
+			"Review the auth module. Then list findings.\n\nYou are an independent parallel worker for task abc. Work only in /x"
+		expect(summarizeTaskTitle(text)).toBe("Review the auth module.")
+	})
+
+	it("truncates long single-line prompts to one short line", () => {
+		const summary = summarizeTaskTitle("word ".repeat(80))
+		expect(summary.length).toBeLessThanOrEqual(56)
+		expect(summary.endsWith("…")).toBe(true)
+	})
+
+	it("falls back when there is no text", () => {
+		expect(summarizeTaskTitle("  \n ")).toBe("Starting task")
 	})
 })
