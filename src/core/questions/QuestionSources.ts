@@ -81,6 +81,22 @@ export async function gatherDocs(workspaceRoot: string): Promise<SourceDoc[]> {
 	return docs
 }
 
+const DESIGN_DIRS = ["docs", "docs/architecture", "docs/design"]
+const MAX_DESIGN_FILES = 12
+/** Top-level design docs (docs/*.md, docs/architecture, docs/design) for the reader-assisted flow. */
+export async function gatherDesignDocs(workspaceRoot: string): Promise<SourceDoc[]> {
+	const docs: SourceDoc[] = []
+	for (const dir of DESIGN_DIRS) {
+		for (const name of await listDir(workspaceRoot, dir)) {
+			if (docs.length >= MAX_DESIGN_FILES) return docs
+			if (!/\.md$/i.test(name)) continue
+			const rel = `${dir}/${name}`
+			const text = await readBounded(workspaceRoot, rel)
+			if (text) docs.push({ label: rel, text, kind: "doc" })
+		}
+	}
+	return docs
+}
 export interface ConversationMessageLike {
 	type: string
 	say?: string

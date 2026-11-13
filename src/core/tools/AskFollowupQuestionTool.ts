@@ -1,14 +1,39 @@
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import type { ToolUse } from "../../shared/tools"
-import { getSuggestionMode } from "@roo-code/types"
+import { DEFAULT_READER_ASSISTED_QUESTIONS, getSuggestionMode } from "@roo-code/types"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
-import { assistQuestion, rememberAnswer } from "../questions/questionAssist"
+import { assistQuestion, assistWithReader, rememberAnswer, type ReaderAssistDeps } from "../questions/questionAssist"
+import { completeOnAnalysisRoute } from "../../services/analysis/AnalysisService"
+import { runParallelTasks } from "../task/runParallelTasks"
+import type { ClineProvider } from "../webview/ClineProvider"
 
 // Questions already consulted or answered from memory, per task. A repeat always reaches the user.
 const handledByTask = new WeakMap<object, Set<string>>()
 
+const DEEP_READER_NAME = "question-reader"
+/**
+ * The two reader lanes. Low: Granite on host-selected excerpts (bounded, tool-less). High: one
+ * tool-capable `project-reader` subtask forced onto `reader.deep`. Both fail soft to `undefined`.
+ */
+function readerDeps(task: Task, provider: ClineProvider | undefined): ReaderAssistDeps {
+	return {
+		complete: async (messages, maxTokens) => {
+			const done = await completeOnAnalysisRoute({ messages, maxTokens })
+			return done.kind === "ok" ? { kind: "ok", content: done.content } : done
+		},
+		deep: provider
+			? async (message) => {
+					const batch = await runParallelTasks(task, provider, [{ name: DEEP_READER_NAME, mode: "project-reader", message }], {}, {
+						laneSelections: new Map([[DEEP_READER_NAME, { lane: "reader.deep", taskType: "lookup" }]]),
+					})
+					const worker = batch.tasks.find((t) => t.name === DEEP_READER_NAME)
+					return worker?.state === "completed" ? worker.result : undefined
+				}
+			: undefined,
+	}
+}
 interface Suggestion {
 	text: string
 	mode?: unknown
@@ -73,13 +98,20 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 			if (memoryEnabled) {
 				let handled = handledByTask.get(task)
 				if (!handled) handledByTask.set(task, (handled = new Set<string>()))
-				const help = await assistQuestion({
-					workspaceRoot: task.cwd,
-					messages: task.clineMessages,
-					question,
-					suggestions: follow_up.map((s) => (typeof s?.text === "string" ? s.text : "")).filter(Boolean),
-					handled,
-				})
+				const suggestions = follow_up.map((s) => (typeof s?.text === "string" ? s.text : "")).filter(Boolean)
+				const help = await assistQuestion({ workspaceRoot: task.cwd, messages: task.clineMessages, question, suggestions, handled })
+				if (help.action === "ask" && (state?.readerAssistedQuestions ?? DEFAULT_READER_ASSISTED_QUESTIONS) !== false) {
+					const read = await assistWithReader(
+						{ workspaceRoot: task.cwd, messages: task.clineMessages, question, suggestions, handled },
+						readerDeps(task, task.providerRef?.deref()),
+					)
+					if (read.action === "answer") {
+						task.consecutiveMistakeCount = 0
+						await task.say("text", `A ${read.lane === "low" ? "low-lane (Granite)" : "high-lane"} reader found this in the original request and docs, so you were not asked.`)
+						pushToolResult(formatResponse.toolResult(read.text))
+						return
+					}
+				}
 				if (help.action !== "ask") {
 					task.consecutiveMistakeCount = 0
 					await task.say("text", help.action === "answer" ? "Reused your earlier answer to this question instead of asking again." : "Checked the conversation and project docs before asking you.")
