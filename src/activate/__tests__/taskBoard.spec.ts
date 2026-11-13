@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import * as fs from "node:fs/promises"
-import { collectTaskBoard, registerTaskBoard, summarizeTaskTitle } from "../taskBoard"
+import { collectTaskBoard, registerTaskBoard, summarizeTaskTitle, type TaskBoardRecoveryDeps } from "../taskBoard"
 
 const mockProviders = vi.hoisted(() => ({
 	all: [] as unknown[],
@@ -71,6 +71,7 @@ vi.mock("../../core/webview/ClineProvider", () => ({
 }))
 vi.mock("../registerCommands", () => ({
 	openTaskInNewTab: vi.fn(),
+	createHeadlessTaskProvider: vi.fn(),
 }))
 
 describe("Task Board registration", () => {
@@ -288,5 +289,73 @@ describe("summarizeTaskTitle", () => {
 
 	it("falls back when there is no text", () => {
 		expect(summarizeTaskTitle("  \n ")).toBe("Starting task")
+	})
+})
+
+describe("Task Board recovery after reload", () => {
+	beforeEach(() => {
+		vi.useFakeTimers()
+		mockProviders.commandHandlers.clear()
+		vi.mocked(vscode.window.createTreeView).mockClear()
+	})
+	afterEach(() => vi.useRealTimers())
+
+	it("lists roster tasks with no live owner and rehydrates one on resume", async () => {
+		mockProviders.all = []
+		const rosterEntry = {
+			id: "lost-task",
+			title: "Fix the build. Then report.",
+			summary: "Fix the build.",
+			mode: "code",
+			workspace: "/repo",
+			workspaceUri: "file:///repo",
+			parallelWorker: false,
+			todos: [],
+			updatedAt: 10,
+		}
+		const workspaceState = new Map<string, unknown>([["menagerie.taskBoard.roster.v1", [rosterEntry]]])
+		const historyItem = { id: "lost-task", task: rosterEntry.title, status: "active" }
+		const context = {
+			subscriptions: [] as { dispose(): unknown }[],
+			globalStorageUri: { fsPath: "/mock/zoo" },
+			globalState: { get: vi.fn(() => "host-test"), update: vi.fn() },
+			workspaceState: {
+				get: (key: string) => workspaceState.get(key),
+				update: vi.fn((key: string, value: unknown) => workspaceState.set(key, value)),
+			},
+		} as unknown as vscode.ExtensionContext
+		const historyProvider = {
+			taskHistoryStore: {
+				initialized: Promise.resolve(),
+				get: (id: string) => (id === "lost-task" ? historyItem : undefined),
+			},
+		} as unknown as TaskBoardRecoveryDeps["historyProvider"]
+		const headless = {
+			createTaskWithHistoryItem: vi.fn(),
+			resumeCurrentTask: vi.fn(() => true),
+			dispose: vi.fn(),
+		}
+		const { createHeadlessTaskProvider } = await import("../registerCommands")
+		vi.mocked(createHeadlessTaskProvider).mockResolvedValue(headless as never)
+
+		registerTaskBoard(context, { outputChannel: {} as vscode.OutputChannel, historyProvider })
+		await vi.advanceTimersByTimeAsync(0)
+
+		const treeViewCall = vi.mocked(vscode.window.createTreeView).mock.calls[0]
+		if (!treeViewCall) throw new Error("Task Board view was not created")
+		const children = (await treeViewCall[1].treeDataProvider.getChildren()) as
+			| { row?: { recovered?: boolean } }[]
+			| undefined
+		const recovered = children?.[0]
+		if (!recovered?.row) throw new Error("Recovered task was not listed")
+		expect(recovered.row.recovered).toBe(true)
+		const item = await Promise.resolve(treeViewCall[1].treeDataProvider.getTreeItem(recovered))
+		expect(item.contextValue).toBe("menagerieTask.recovered")
+
+		await mockProviders.commandHandlers.get("zoo-code.taskBoard.resume")?.(recovered as never)
+		expect(headless.createTaskWithHistoryItem).toHaveBeenCalledWith(historyItem)
+		expect(headless.resumeCurrentTask).toHaveBeenCalled()
+
+		for (const subscription of context.subscriptions) subscription.dispose()
 	})
 })

@@ -315,6 +315,28 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 }
 
 /**
+ * Create a provider with no view, owning one task restored from history. Used by the Task
+ * Board to recover tasks after a window reload. The provider behaves like a detached popout:
+ * it stays alive while the task runs, `openTaskInNewTab` can attach a tab to it later, and
+ * closing that tab detaches again.
+ */
+export const createHeadlessTaskProvider = async (
+	context: vscode.ExtensionContext,
+	outputChannel: vscode.OutputChannel,
+): Promise<ClineProvider> => {
+	const contextProxy = await ContextProxy.getInstance(context)
+	let mdmService: MdmService | undefined
+	try {
+		mdmService = MdmService.getInstance()
+	} catch {
+		mdmService = undefined
+	}
+	const provider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
+	provider.setEditorViewRole("popout")
+	return provider
+}
+
+/**
  * Re-open a still-running task in a new editor tab by re-binding a fresh panel to the task's
  * existing owning (headless/detached) popout provider. Does NOT create a task: if no live
  * instance owns `taskId` (the task completed/closed between board render and click), it shows

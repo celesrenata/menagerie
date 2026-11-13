@@ -747,7 +747,9 @@ describe("ClineProvider", () => {
 				expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "state" })),
 			)
 			const statePost = postMessageSpy.mock.calls.find(([msg]) => msg.type === "state")?.[0]
-			expect(statePost?.state?.clineMessages).toHaveLength(1000)
+			expect(statePost?.state?.clineMessages).toHaveLength(501)
+			// The task prompt (first message) is kept for the chat header.
+			expect(statePost?.state?.clineMessages?.[0]).toEqual(longHistory[0])
 			expect(statePost?.state?.clineMessages?.at(-1)).toEqual(longHistory.at(-1))
 			postMessageSpy.mockRestore()
 		})

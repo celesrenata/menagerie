@@ -281,7 +281,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	registerCommands({ context, outputChannel, provider })
-	registerTaskBoard(context)
+	registerTaskBoard(context, { outputChannel, historyProvider: provider })
 	registerObservatory(context, provider)
 	const taskSessionRegistry = new TaskSessionRegistry()
 	taskSessionRegistry.bindStorage({

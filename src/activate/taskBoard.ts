@@ -4,7 +4,18 @@ import path from "node:path"
 import crypto from "node:crypto"
 import type { TodoItem } from "@roo-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
-import { openTaskInNewTab } from "./registerCommands"
+import { createHeadlessTaskProvider, openTaskInNewTab } from "./registerCommands"
+import {
+	TASK_BOARD_ROSTER_KEY,
+	markCancelled,
+	parseRoster,
+	pruneOnActivation,
+	recoverableEntries,
+	removeEntry,
+	rostersEqual,
+	syncRoster,
+	type RosterEntry,
+} from "./taskBoardRoster"
 import { HOST_ID_KEY, LAST_SELECTED_TASK_ID_KEY, TaskCommandRouter, type TaskOwnerHandle } from "./taskCommandRouter"
 import type { TaskCommand, TaskRef } from "../core/task/session/types"
 
@@ -109,6 +120,28 @@ export interface TaskBoardRow {
 	todos: TodoItem[]
 	parentTaskId?: string
 	parallelWorker: boolean
+	/** Restored from the persisted roster after a reload; no live task owns it yet. */
+	recovered?: boolean
+}
+
+export const RECOVERED_STATUS = "not running"
+
+export function rowFromRosterEntry(entry: RosterEntry): TaskBoardRow {
+	return {
+		id: entry.id,
+		title: entry.title,
+		summary: entry.summary,
+		mode: entry.mode,
+		model: "",
+		status: RECOVERED_STATUS,
+		workspace: entry.workspace,
+		workspaceUri: entry.workspaceUri,
+		updatedAt: entry.updatedAt,
+		todos: entry.todos,
+		parentTaskId: entry.parentTaskId,
+		parallelWorker: entry.parallelWorker,
+		recovered: true,
+	}
 }
 
 /** Read task-local state across all chats in this extension host, without focusing any chat. */
@@ -155,7 +188,10 @@ export async function collectTaskBoard(): Promise<TaskBoardRow[]> {
 
 type Node = { row: TaskBoardRow } | { text: string; status?: string; id: string; icon?: string }
 
-function stateOf(row: TaskBoardRow): "running" | "paused" | "stopped" | "completed" {
+type RowState = "running" | "paused" | "stopped" | "completed" | "recovered" | "recoveredWorker"
+
+function stateOf(row: TaskBoardRow): RowState {
+	if (row.recovered) return row.parallelWorker ? "recoveredWorker" : "recovered"
 	if (row.status === "completed") return "completed"
 	if (row.status === "paused") return "paused"
 	if (row.status === "stopped") return "stopped"
@@ -170,6 +206,9 @@ function statusIcon(row: TaskBoardRow): string {
 			return "debug-pause"
 		case "stopped":
 			return "debug-stop"
+		case "recovered":
+		case "recoveredWorker":
+			return "history"
 		default:
 			return row.status === "waiting for input" ? "bell" : "sync"
 	}
@@ -188,8 +227,30 @@ function escapeMarkdown(text: string): string {
  * `onDidChangeSelection` focus-on-selection handler, and the `ViewColumn.Beside`
  * detail panel have been removed.
  */
-export function registerTaskBoard(context: vscode.ExtensionContext): void {
+export interface TaskBoardRecoveryDeps {
+	outputChannel: vscode.OutputChannel
+	/** Any provider whose history store can look up tasks from earlier sessions. */
+	historyProvider: Pick<ClineProvider, "taskHistoryStore">
+}
+
+export function registerTaskBoard(context: vscode.ExtensionContext, recovery?: TaskBoardRecoveryDeps): void {
 	const hostId = resolveHostId(context)
+	// Tasks on the board when the window last closed. Kept per workspace so a reload can offer them again.
+	let roster = parseRoster(context.workspaceState?.get(TASK_BOARD_ROSTER_KEY))
+	let rosterReady: Promise<void> = Promise.resolve()
+	const saveRoster = (next: RosterEntry[]) => {
+		if (rostersEqual(roster, next)) return
+		roster = next
+		void context.workspaceState?.update(TASK_BOARD_ROSTER_KEY, next)
+	}
+	if (recovery) {
+		const store = recovery.historyProvider.taskHistoryStore
+		rosterReady = store.initialized.then(
+			() => saveRoster(pruneOnActivation(roster, (id) => store.get(id)?.status ?? (store.get(id) ? "" : null))),
+			() => {},
+		)
+	}
+	const recovering = new Set<string>()
 	const router = createTaskCommandRouter(context, hostId)
 	const events = new vscode.EventEmitter<Node | undefined>()
 	let rows: TaskBoardRow[] = []
@@ -209,13 +270,19 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 		if (refreshing) return
 		refreshing = true
 		try {
+			await rosterReady
 			const data = await snapshot()
+			saveRoster(syncRoster(roster, data.tasks))
+			const liveIds = new Set(data.tasks.map((task) => task.id))
+			const boardRows = recovery
+				? [...data.tasks, ...recoverableEntries(roster, liveIds).map(rowFromRosterEntry)]
+				: data.tasks
 			// Re-rendering the tree dismisses an open hover and resets expansion, so only
 			// notify when something the tree displays actually changed.
-			const signature = JSON.stringify(data.tasks.map(({ updatedAt: _updatedAt, ...row }) => row))
+			const signature = JSON.stringify(boardRows.map(({ updatedAt: _updatedAt, ...row }) => row))
 			const changed = signature !== lastSignature
 			lastSignature = signature
-			rows = data.tasks
+			rows = boardRows
 			await fs.mkdir(directory, { recursive: true })
 			await fs.writeFile(snapshotPath + ".tmp", JSON.stringify(data, null, 2), { mode: 0o600 })
 			await fs.rename(snapshotPath + ".tmp", snapshotPath)
@@ -240,7 +307,9 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 			return [
 				detail("status", `Status: ${row.status}`, statusIcon(row)),
 				detail("mode", `Mode: ${row.mode}`, "symbol-misc"),
-				detail("route", `Route: ${row.profile ?? "default"} · ${row.model}`, "server-process"),
+				...(row.recovered
+					? []
+					: [detail("route", `Route: ${row.profile ?? "default"} · ${row.model}`, "server-process")]),
 				detail("workspace", `Workspace: ${row.workspace}`, "folder"),
 				detail("chat", `Chat ID: ${row.id}`, "comment-discussion"),
 				...(row.parentTaskId ? [detail("parent", `Parent chat: ${row.parentTaskId}`, "type-hierarchy")] : []),
@@ -290,9 +359,15 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 					`${escapeMarkdown(row.mode)} · ${escapeMarkdown(row.status)}` +
 						(row.todos.length ? ` · ${completedTodos}/${row.todos.length} steps` : ""),
 					"",
-					`${escapeMarkdown(row.profile ?? "default")} · ${escapeMarkdown(row.model)}`,
+					row.recovered
+						? row.parallelWorker
+							? "Not running in this window. Resume its parent task to continue it."
+							: "Not running in this window (reloaded, replaced or closed). Click to reopen, or right-click to resume."
+						: `${escapeMarkdown(row.profile ?? "default")} · ${escapeMarkdown(row.model)}`,
 					"",
-					"_Click to open and expand. Right-click for restart, resume, pause or cancel._",
+					row.recovered
+						? "_Right-click for resume, restart or cancel (removes it from the board)._"
+						: "_Click to open and expand. Right-click for restart, resume, pause or cancel._",
 				].join("\n"),
 			)
 			tooltip.isTrusted = false
@@ -341,6 +416,77 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 	void refresh()
 	if (view.visible) startPolling()
 	void router.restoreLastSelection()
+	/**
+	 * Restore a roster task from history into a headless provider. The task comes back
+	 * waiting at its resume prompt; `autoResume` answers it so work continues.
+	 */
+	const recoverTask = async (taskId: string, autoResume: boolean): Promise<ClineProvider | undefined> => {
+		if (!recovery) return undefined
+		const entry = roster.find((candidate) => candidate.id === taskId)
+		if (!entry) return undefined
+		if (entry.parallelWorker) {
+			void vscode.window.showInformationMessage(
+				"Parallel workers continue with their parent task. Resume the parent instead.",
+			)
+			return undefined
+		}
+		if (recovering.has(taskId)) return undefined
+		const historyItem = recovery.historyProvider.taskHistoryStore.get(taskId)
+		if (!historyItem) {
+			saveRoster(removeEntry(roster, taskId))
+			void vscode.window.showInformationMessage("That task's history is gone, so it was removed from the board.")
+			await refresh()
+			return undefined
+		}
+		recovering.add(taskId)
+		const provider = await createHeadlessTaskProvider(context, recovery.outputChannel)
+		try {
+			await provider.createTaskWithHistoryItem(historyItem)
+			if (autoResume) {
+				const deadline = Date.now() + 15_000
+				while (!provider.resumeCurrentTask() && Date.now() < deadline) {
+					await new Promise((resolve) => setTimeout(resolve, 200))
+				}
+			}
+			return provider
+		} catch (error) {
+			await provider.dispose()
+			void vscode.window.showErrorMessage(
+				`Could not recover task: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			return undefined
+		} finally {
+			recovering.delete(taskId)
+			await refresh()
+		}
+	}
+	const recoveredActions: RecoveredActions = {
+		isRecovered: (taskId) => rows.some((row) => row.id === taskId && row.recovered),
+		resume: async (taskId) => {
+			await recoverTask(taskId, true)
+		},
+		restart: async (taskId) => {
+			if (!recovery) return
+			const entry = roster.find((candidate) => candidate.id === taskId)
+			if (!entry || entry.parallelWorker) return
+			saveRoster(removeEntry(roster, taskId))
+			const provider = await createHeadlessTaskProvider(context, recovery.outputChannel)
+			try {
+				await provider.createTask(entry.title)
+			} catch (error) {
+				await provider.dispose()
+				void vscode.window.showErrorMessage(
+					`Could not restart task: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+			await refresh()
+		},
+		dismiss: async (taskId) => {
+			saveRoster(removeEntry(roster, taskId))
+			await refresh()
+		},
+		markCancelled: (taskId) => saveRoster(markCancelled(roster, taskId)),
+	}
 	context.subscriptions.push(
 		vscode.commands.registerCommand("zoo-code.getTaskBoard", snapshot),
 		vscode.commands.registerCommand("zoo-code.taskBoardShowDetails", () => {
@@ -356,9 +502,14 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 			await refresh()
 			await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(vscode.Uri.file(snapshotPath)))
 		}),
-		...registerTaskActionCommands(router, hostId, refresh),
+		...registerTaskActionCommands(router, hostId, refresh, recoveredActions),
 		vscode.commands.registerCommand(OPEN_TASK_COMMAND, async (command?: TaskCommand) => {
 			if (!command || command.kind !== "open") return
+			if (recoveredActions.isRecovered(command.ref.taskId)) {
+				const provider = await recoverTask(command.ref.taskId, false)
+				if (provider) await openTaskInNewTab(command.ref.taskId, { context })
+				return
+			}
 			const result = await router.execute(command)
 			if (!result.ok) {
 				void vscode.window.showInformationMessage(
@@ -373,11 +524,20 @@ export function registerTaskBoard(context: vscode.ExtensionContext): void {
 
 type TaskActionKind = "resume" | "pause" | "restart" | "cancel"
 
+interface RecoveredActions {
+	isRecovered: (taskId: string) => boolean
+	resume: (taskId: string) => Promise<void>
+	restart: (taskId: string) => Promise<void>
+	dismiss: (taskId: string) => Promise<void>
+	markCancelled: (taskId: string) => void
+}
+
 /** Right-click actions on a Task Board row. Cancel and restart ask first; nothing else cancels a task. */
 function registerTaskActionCommands(
 	router: TaskCommandRouter,
 	hostId: string,
 	refresh: () => Promise<void>,
+	recovered: RecoveredActions,
 ): vscode.Disposable[] {
 	const run = async (kind: TaskActionKind, node?: Node) => {
 		const row = node && "row" in node ? node.row : undefined
@@ -390,18 +550,29 @@ function registerTaskActionCommands(
 				{
 					modal: true,
 					detail:
-						kind === "cancel"
-							? "The task stops. You can resume it later."
-							: "The task stops and starts again from its original prompt.",
+						kind === "restart"
+							? "The task stops and starts again from its original prompt."
+							: row.recovered
+								? "It is removed from the board. Its history stays available."
+								: "The task stops and will not be offered again after a reload.",
 				},
 				verb,
 			)
 			if (choice !== verb) return
 		}
+		if (row.recovered) {
+			if (kind === "resume") await recovered.resume(row.id)
+			else if (kind === "restart") await recovered.restart(row.id)
+			else if (kind === "cancel") await recovered.dismiss(row.id)
+			return
+		}
 		const command: TaskCommand =
 			kind === "cancel" || kind === "restart" ? { kind, ref, confirmed: true } : { kind, ref }
 		const result = await router.execute(command)
 		if (!result.ok) void vscode.window.showInformationMessage(result.error)
+		else if (kind === "cancel") recovered.markCancelled(row.id)
+		// Restart starts a new task id; the old entry would otherwise linger as "not running".
+		else if (kind === "restart") await recovered.dismiss(row.id)
 		await refresh()
 	}
 	return (["resume", "pause", "restart", "cancel"] as const).map((kind) =>

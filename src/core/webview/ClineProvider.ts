@@ -196,10 +196,20 @@ function runDelegationTransition<T>(
 }
 
 /**
- * Caps the message list sent on re-show so a long task does not post its full
- * history in one state message. Older messages are not sent until the next full state.
+ * Caps the message list posted to the webview. A long task (thousands of messages,
+ * tens of MB) otherwise re-sends its whole history on every state update, which
+ * exhausts the webview renderer and leaves a gray panel. Full history stays on disk.
  */
-const RECENT_VISIBLE_MESSAGE_COUNT = 1000
+const RECENT_VISIBLE_MESSAGE_COUNT = 500
+
+/**
+ * Keep the first message (the task prompt, which the chat header reads from
+ * messages[0]) plus the most recent `limit` messages.
+ */
+export function capWebviewMessages<T>(messages: T[], limit = RECENT_VISIBLE_MESSAGE_COUNT): T[] {
+	if (!Array.isArray(messages) || messages.length <= limit + 1) return messages
+	return [messages[0]!, ...messages.slice(-limit)]
+}
 
 function scheduleTask(
 	scheduler: TaskScheduler,
@@ -2873,6 +2883,7 @@ export class ClineProvider
 		const clineMessagesSeq = ++this.clineMessagesSeq
 		const state = await this.getStateToPostToWebview()
 		state.clineMessagesSeq = clineMessagesSeq
+		state.clineMessages = capWebviewMessages(state.clineMessages)
 		await this.postMessageToWebview({ type: "state", state })
 	}
 
@@ -2888,6 +2899,7 @@ export class ClineProvider
 		const clineMessagesSeq = ++this.clineMessagesSeq
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
 		state.clineMessagesSeq = clineMessagesSeq
+		state.clineMessages = capWebviewMessages(state.clineMessages)
 		const { taskHistory: _omit, ...rest } = state
 		await this.postMessageToWebview({ type: "state", state: rest })
 	}
@@ -3840,7 +3852,7 @@ export class ClineProvider
 		const clineMessagesSeq = ++this.clineMessagesSeq
 		const state = await this.getStateToPostToWebview()
 		state.clineMessagesSeq = clineMessagesSeq
-		state.clineMessages = state.clineMessages.slice(-RECENT_VISIBLE_MESSAGE_COUNT)
+		state.clineMessages = capWebviewMessages(state.clineMessages)
 		await this.postMessageToWebview({ type: "state", state })
 		const elapsedMs = Date.now() - startedAt
 		const messagesBytes = JSON.stringify(state.clineMessages).length

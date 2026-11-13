@@ -232,12 +232,12 @@
 			"view/item/context": [
 				{
 					"command": "zoo-code.taskBoard.restart",
-					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\./",
+					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused|stopped|completed|recovered)$/",
 					"group": "1_control@1"
 				},
 				{
 					"command": "zoo-code.taskBoard.resume",
-					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(paused|stopped)$/",
+					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(paused|stopped|recovered)$/",
 					"group": "1_control@2"
 				},
 				{
@@ -247,7 +247,7 @@
 				},
 				{
 					"command": "zoo-code.taskBoard.cancel",
-					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused)$/",
+					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused|recovered|recoveredWorker)$/",
 					"group": "2_cancel@1"
 				}
 			],
