@@ -1760,6 +1760,53 @@ describe("ClineProvider", () => {
 		expect((await provider.getStateToPostToWebview()).questionMemoryEnabled).toBe(false)
 	})
 
+	test("reader-assisted questions default to on and round-trip an explicit off", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		expect((await provider.getState()).readerAssistedQuestions).toBe(true)
+		expect((await provider.getStateToPostToWebview()).readerAssistedQuestions).toBe(true)
+		await provider.contextProxy.setValue("readerAssistedQuestions", false)
+		expect((await provider.getState()).readerAssistedQuestions).toBe(false)
+		expect((await provider.getStateToPostToWebview()).readerAssistedQuestions).toBe(false)
+	})
+
+	test("Skill Hub settings default to off and round-trip saved values without leaking the key", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		const unset = await provider.getStateToPostToWebview()
+		expect(unset).toMatchObject({
+			skillHubEnabled: false,
+			skillHubBaseUrl: "",
+			skillHubMaxSkills: 8,
+			skillHubSkillModes: {},
+			skillHubApiKeySet: false,
+		})
+		expect(unset).not.toHaveProperty("skillHubApiKey")
+
+		await provider.contextProxy.setValue("skillHubEnabled", true)
+		await provider.contextProxy.setValue("skillHubBaseUrl", "http://hub.test:20128")
+		await provider.contextProxy.setValue("skillHubMaxSkills", 3)
+		await provider.contextProxy.setValue("skillHubSkillModes", { a: "on", b: "off" })
+		await provider.contextProxy.setValue("skillHubApiKey", "sk-hub-secret")
+		expect(await provider.getState()).toMatchObject({
+			skillHubEnabled: true,
+			skillHubBaseUrl: "http://hub.test:20128",
+			skillHubMaxSkills: 3,
+			skillHubSkillModes: { a: "on", b: "off" },
+			skillHubApiKey: "sk-hub-secret",
+		})
+		const posted = await provider.getStateToPostToWebview()
+		expect(posted).toMatchObject({
+			skillHubEnabled: true,
+			skillHubBaseUrl: "http://hub.test:20128",
+			skillHubMaxSkills: 3,
+			skillHubSkillModes: { a: "on", b: "off" },
+			skillHubApiKeySet: true,
+		})
+		expect(posted).not.toHaveProperty("skillHubApiKey")
+		expect(JSON.stringify(posted)).not.toContain("sk-hub-secret")
+
+		await provider.contextProxy.setValue("skillHubEnabled", false)
+		expect((await provider.getStateToPostToWebview()).skillHubEnabled).toBe(false)
+	})
 	test("Granite workflow settings round-trip saved values to runtime and webview state", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		await provider.contextProxy.setValue("graniteWorkflowEnabled", true)
@@ -1774,6 +1821,14 @@ describe("ClineProvider", () => {
 		})
 	})
 
+	test("worker audit mode defaults to edits and round-trips an explicit off", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		expect((await provider.getState()).workerAuditMode).toBe("edits")
+		expect((await provider.getStateToPostToWebview()).workerAuditMode).toBe("edits")
+		await provider.contextProxy.setValue("workerAuditMode", "off")
+		expect((await provider.getState()).workerAuditMode).toBe("off")
+		expect((await provider.getStateToPostToWebview()).workerAuditMode).toBe("off")
+	})
 	test("getState returns the saved allowed write files", async () => {
 		await provider.contextProxy.setValue("allowedWriteFiles", ["notes.md"])
 

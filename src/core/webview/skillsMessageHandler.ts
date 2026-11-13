@@ -1,12 +1,49 @@
 import * as vscode from "vscode"
 
-import type { SkillMetadata, WebviewMessage } from "@roo-code/types"
+import { SKILL_HUB_SKILL_MODES } from "@roo-code/types"
+import type { SkillHubSkillMode, SkillMetadata, WebviewMessage } from "@roo-code/types"
 
 import type { ClineProvider } from "./ClineProvider"
 import { openFile } from "../../integrations/misc/open-file"
 import { t } from "../../i18n"
+import { SkillHubError } from "../../services/skills/hub/SkillHubClient"
 
 type SkillSource = SkillMetadata["source"]
+
+/**
+ * Keeps only well-formed `id -> on|off|auto` entries. `auto` is the default, so it is dropped to keep the map small.
+ */
+export function normalizeSkillHubSkillModes(value: unknown): Record<string, SkillHubSkillMode> {
+	const result: Record<string, SkillHubSkillMode> = {}
+	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+		return result
+	}
+	for (const [id, mode] of Object.entries(value as Record<string, unknown>)) {
+		if (
+			id.length > 0 &&
+			id.length <= 200 &&
+			(SKILL_HUB_SKILL_MODES as readonly unknown[]).includes(mode) &&
+			mode !== "auto"
+		) {
+			result[id] = mode as SkillHubSkillMode
+		}
+	}
+	return result
+}
+
+/**
+ * Handles requestSkillHubCatalog: replies with the hub catalog, or a sanitized reason it is unavailable.
+ */
+export async function handleRequestSkillHubCatalog(provider: ClineProvider): Promise<void> {
+	try {
+		const skillHubCatalog = await provider.getHubSkillsProvider().getCatalog(true)
+		await provider.postMessageToWebview({ type: "skillHubCatalog", skillHubCatalog })
+	} catch (error) {
+		// SkillHubError messages are fixed text; anything else is reduced to a generic reason.
+		const skillHubCatalogError = error instanceof SkillHubError ? error.message : "Skill Hub request failed"
+		await provider.postMessageToWebview({ type: "skillHubCatalog", skillHubCatalog: [], skillHubCatalogError })
+	}
+}
 
 /**
  * Handles the requestSkills message - returns all skills metadata

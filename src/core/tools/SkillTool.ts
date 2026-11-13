@@ -47,7 +47,8 @@ export class SkillTool extends BaseTool<"skill"> {
 			const currentMode = await task.getTaskMode()
 
 			// Fetch skill content
-			const skillContent = await resolveSkillContentForMode(skillsManager, skillName, currentMode)
+			const hubSkills = provider?.getHubSkillsProvider?.()
+			const skillContent = await resolveSkillContentForMode(skillsManager, skillName, currentMode, hubSkills)
 
 			if (!skillContent) {
 				// Get available skills for error message

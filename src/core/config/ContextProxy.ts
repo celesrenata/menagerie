@@ -36,6 +36,7 @@ const globalSettingsExportSchema = globalSettingsSchema.omit({
 	taskHistory: true,
 	listApiConfigMeta: true,
 	currentApiConfigName: true,
+	skillHubApiKey: true, // Secret: never written to an export file
 })
 
 export class ContextProxy {

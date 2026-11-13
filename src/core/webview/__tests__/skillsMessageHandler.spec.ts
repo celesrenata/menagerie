@@ -41,7 +41,10 @@ import {
 	handleDeleteSkill,
 	handleMoveSkill,
 	handleOpenSkillFile,
+	normalizeSkillHubSkillModes,
+	handleRequestSkillHubCatalog,
 } from "../skillsMessageHandler"
+import { SkillHubError } from "../../../services/skills/hub/SkillHubClient"
 
 describe("skillsMessageHandler", () => {
 	const mockLog = vi.fn()
@@ -410,6 +413,56 @@ describe("skillsMessageHandler", () => {
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				'Failed to open skill file: Skill "nonexistent-skill" not found',
 			)
+		})
+	})
+	describe("normalizeSkillHubSkillModes", () => {
+		it("keeps on and off, drops auto and invalid entries, tolerates non-objects", () => {
+			expect(normalizeSkillHubSkillModes({ a: "on", b: "off", c: "auto", d: 1, "": "on" })).toEqual({
+				a: "on",
+				b: "off",
+			})
+			expect(normalizeSkillHubSkillModes(undefined)).toEqual({})
+			expect(normalizeSkillHubSkillModes(["on"])).toEqual({})
+		})
+	})
+
+	describe("handleRequestSkillHubCatalog", () => {
+		const providerWithHub = (getCatalog: () => Promise<unknown>) =>
+			({
+				postMessageToWebview: mockPostMessageToWebview,
+				getHubSkillsProvider: () => ({ getCatalog }),
+			}) as unknown as ClineProvider
+
+		it("posts the catalog", async () => {
+			const catalog = [{ id: "1", name: "alpha", description: "d" }]
+			await handleRequestSkillHubCatalog(providerWithHub(async () => catalog))
+			expect(mockPostMessageToWebview).toHaveBeenCalledWith({ type: "skillHubCatalog", skillHubCatalog: catalog })
+		})
+
+		it("posts the typed hub reason without the raw error", async () => {
+			await handleRequestSkillHubCatalog(
+				providerWithHub(async () => {
+					throw new SkillHubError("forbidden", "Skill Hub key lacks the read:catalog scope (403)", 403)
+				}),
+			)
+			expect(mockPostMessageToWebview).toHaveBeenCalledWith({
+				type: "skillHubCatalog",
+				skillHubCatalog: [],
+				skillHubCatalogError: "Skill Hub key lacks the read:catalog scope (403)",
+			})
+		})
+
+		it("hides unexpected error text", async () => {
+			await handleRequestSkillHubCatalog(
+				providerWithHub(async () => {
+					throw new Error("secret sk-leak at /Users/x/file.ts")
+				}),
+			)
+			expect(mockPostMessageToWebview).toHaveBeenCalledWith({
+				type: "skillHubCatalog",
+				skillHubCatalog: [],
+				skillHubCatalogError: "Skill Hub request failed",
+			})
 		})
 	})
 })

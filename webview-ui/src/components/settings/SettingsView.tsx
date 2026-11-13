@@ -41,8 +41,12 @@ import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_WORKER_AUDIT_MODE,
 	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	DEFAULT_QUESTION_MEMORY_ENABLED,
+	DEFAULT_SKILL_HUB_ENABLED,
+	DEFAULT_SKILL_HUB_MAX_SKILLS,
+	DEFAULT_READER_ASSISTED_QUESTIONS,
 	ImageGenerationProvider,
 } from "@roo-code/types"
 
@@ -85,6 +89,7 @@ import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
+import { SkillHubSettings } from "./SkillHubSettings"
 import { RulesSettings } from "./RulesSettings"
 import { UISettings } from "./UISettings"
 import ModesView from "../modes/ModesView"
@@ -230,8 +235,16 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		openAiOmniRoutePublishedLaneRouting,
 		parallelismMode,
 		graniteWorkflowEnabled,
+		workerAuditMode,
 		graniteWorkflowPolicy,
 		questionMemoryEnabled,
+		readerAssistedQuestions,
+		skillHubEnabled,
+		skillHubBaseUrl,
+		skillHubMaxSkills,
+		skillHubSkillModes,
+		skillHubApiKey,
+		skillHubApiKeySet,
 		parallelCapacityMap,
 		parallelReadDenylist,
 	} = cachedState
@@ -455,8 +468,16 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 					parallelismMode: parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 					graniteWorkflowEnabled: graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
+					workerAuditMode: workerAuditMode ?? DEFAULT_WORKER_AUDIT_MODE,
 					graniteWorkflowPolicy: graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
 					questionMemoryEnabled: questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED,
+					readerAssistedQuestions: readerAssistedQuestions ?? DEFAULT_READER_ASSISTED_QUESTIONS,
+					skillHubEnabled: skillHubEnabled ?? DEFAULT_SKILL_HUB_ENABLED,
+					skillHubBaseUrl: skillHubBaseUrl ?? "",
+					skillHubMaxSkills: skillHubMaxSkills ?? DEFAULT_SKILL_HUB_MAX_SKILLS,
+					skillHubSkillModes: skillHubSkillModes ?? {},
+					// Write-only secret: sent only when the user typed a new key; blank keeps the stored one.
+					...(skillHubApiKey?.trim() ? { skillHubApiKey } : {}),
 					// omniroute-fleet-topology 14.6: persist the opt-in published-lane-routing
 					// toggle. `undefined`/false both resolve to the disabled default downstream.
 					openAiOmniRoutePublishedLaneRouting: openAiOmniRoutePublishedLaneRouting ?? false,
@@ -481,6 +502,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "debugSetting", bool: cachedState.debug })
+			// Drop the typed secret from webview state once posted; the extension only reports skillHubApiKeySet.
+			setCachedState((prev) => (prev.skillHubApiKey ? { ...prev, skillHubApiKey: undefined } : prev))
 
 			setChangeDetected(false)
 		}
@@ -885,7 +908,20 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						{renderTab === "slashCommands" && <SlashCommandsSettings />}
 
 						{/* Skills Section */}
-						{renderTab === "skills" && <SkillsSettings />}
+						{renderTab === "skills" && (
+							<>
+								<SkillsSettings />
+								<SkillHubSettings
+									skillHubEnabled={skillHubEnabled}
+									skillHubBaseUrl={skillHubBaseUrl}
+									skillHubMaxSkills={skillHubMaxSkills}
+									skillHubSkillModes={skillHubSkillModes}
+									skillHubApiKey={skillHubApiKey}
+									skillHubApiKeySet={skillHubApiKeySet}
+									setCachedStateField={setCachedStateField}
+								/>
+							</>
+						)}
 
 						{/* Rules Section */}
 						{renderTab === "rules" && <RulesSettings />}
@@ -993,8 +1029,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								autoCloseZooOpenedNewFiles={autoCloseZooOpenedNewFiles}
 								parallelismMode={parallelismMode}
 								graniteWorkflowEnabled={graniteWorkflowEnabled}
+								workerAuditMode={workerAuditMode}
 								graniteWorkflowPolicy={graniteWorkflowPolicy}
 								questionMemoryEnabled={questionMemoryEnabled}
+								readerAssistedQuestions={readerAssistedQuestions}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

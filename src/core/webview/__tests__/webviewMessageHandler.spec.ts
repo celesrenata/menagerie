@@ -2388,3 +2388,57 @@ describe("webviewMessageHandler - telemetrySetting", () => {
 		expect(TelemetryService.instance.updateTelemetryState).not.toHaveBeenCalled()
 	})
 })
+
+describe("webviewMessageHandler - Skill Hub settings", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("stores a typed hub key as a trimmed secret value", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { skillHubApiKey: "  sk-hub-secret  " },
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("skillHubApiKey", "sk-hub-secret")
+	})
+
+	it.each([[""], ["   "], [undefined]])("leaves the stored key alone when the payload key is %j", async (blank) => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { skillHubApiKey: blank, skillHubEnabled: true },
+		})
+		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalledWith("skillHubApiKey", expect.anything())
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("skillHubEnabled", true)
+	})
+
+	it("removes the stored hub key on clearSkillHubApiKey and refreshes state", async () => {
+		await webviewMessageHandler(mockClineProvider, { type: "clearSkillHubApiKey" })
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("skillHubApiKey", undefined)
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+	})
+	it("normalizes per-skill modes: keeps on/off, drops auto and junk", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: {
+				skillHubSkillModes: { a: "on", b: "off", c: "auto", d: "maybe", "": "on" } as never,
+			},
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("skillHubSkillModes", {
+			a: "on",
+			b: "off",
+		})
+	})
+
+	it("clamps the skill budget", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { skillHubMaxSkills: 500 },
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("skillHubMaxSkills", 50)
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { skillHubMaxSkills: -3 },
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("skillHubMaxSkills", 0)
+	})
+})

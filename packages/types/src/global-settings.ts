@@ -60,6 +60,14 @@ export type ParallelismMode = (typeof PARALLELISM_MODES)[number]
  * manufacturing filler work.
  */
 export const DEFAULT_PARALLELISM_MODE: ParallelismMode = "auto"
+/**
+ * Worker audit: `edits` verifies edit-capable parallel workers with an independent
+ * read-only verifier and sends failures back for rework; `off` audits only workers
+ * that declare `verification.required`.
+ */
+export const WORKER_AUDIT_MODES = ["off", "edits"] as const
+export type WorkerAuditMode = (typeof WORKER_AUDIT_MODES)[number]
+export const DEFAULT_WORKER_AUDIT_MODE: WorkerAuditMode = "edits"
 
 /**
  * Shared schema for the parallelism appetite mode so the global setting, the webview
@@ -80,6 +88,15 @@ export const DEFAULT_GRANITE_WORKFLOW_ENABLED = false
  * that overlap the question. A repeat of the same question always reaches the user.
  */
 export const DEFAULT_QUESTION_MEMORY_ENABLED = true
+/** Before asking the user, let a reader subtask (Granite low lane, then the high lane) look in the original request and design docs. */
+export const DEFAULT_READER_ASSISTED_QUESTIONS = true
+/** OmniRoute Skill Hub integration is opt-in. */
+export const DEFAULT_SKILL_HUB_ENABLED = false
+/** Total hub skills offered to the model per task: manual-on first, then auto matches fill the rest. */
+export const DEFAULT_SKILL_HUB_MAX_SKILLS = 8
+export const SKILL_HUB_SKILL_MODES = ["on", "off", "auto"] as const
+export type SkillHubSkillMode = (typeof SKILL_HUB_SKILL_MODES)[number]
+export const skillHubSkillModeSchema = z.enum(SKILL_HUB_SKILL_MODES)
 export const DEFAULT_GRANITE_WORKFLOW_POLICY: SpecPolicy = "build"
 
 export const WORKER_PRESENTATION_VALUES = ["headless", "task-hub", "editor-tabs"] as const
@@ -323,8 +340,22 @@ export const globalSettingsSchema = z.object({
 	 * derived from this persisted default at submit time.
 	 */
 	parallelismMode: parallelismModeSchema.optional(),
+	/** Audit parallel workers and send failures back for rework. Unset resolves to `edits`. */
+	workerAuditMode: z.enum(WORKER_AUDIT_MODES).optional(),
 	/** Reuse earlier answers and check the conversation and project docs before asking a follow-up question. Unset resolves to on. */
 	questionMemoryEnabled: z.boolean().optional(),
+	/** Let a reader subtask search the original request and design docs before a follow-up question reaches the user. Needs question memory on. Unset resolves to on. */
+	readerAssistedQuestions: z.boolean().optional(),
+	/** Pull skills from an OmniRoute Skill Hub. Unset resolves to off. */
+	skillHubEnabled: z.boolean().optional(),
+	/** Hub origin. Blank resolves to the origin of the active OmniRoute profile's base URL. */
+	skillHubBaseUrl: z.string().optional(),
+	/** Budget of hub skills per task. Unset resolves to {@link DEFAULT_SKILL_HUB_MAX_SKILLS}. */
+	skillHubMaxSkills: z.number().int().min(0).max(50).optional(),
+	/** Per-skill state keyed by hub skill id: on = always, off = never, auto or missing = eligible. */
+	skillHubSkillModes: z.record(z.string(), skillHubSkillModeSchema).optional(),
+	/** Secondary management key (read:catalog scope). Stored as a secret, never posted to the webview, separate from the inference key. */
+	skillHubApiKey: z.string().optional(),
 	/** Opt-in switch for Granite-assisted workflows and executable spec contracts. Unset resolves to off. */
 	graniteWorkflowEnabled: z.boolean().optional(),
 	/** Workflow policy used when enabled: explore, build or strict. Unset resolves to `build`. */
@@ -587,6 +618,7 @@ export const SECRET_STATE_KEYS = [
 // Global secrets that are part of GlobalSettings (not ProviderSettings)
 export const GLOBAL_SECRET_KEYS = [
 	"openRouterImageApiKey", // For image generation
+	"skillHubApiKey", // OmniRoute Skill Hub secondary key
 ] as const
 
 // Type for the actual secret storage keys

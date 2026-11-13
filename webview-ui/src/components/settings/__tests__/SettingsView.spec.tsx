@@ -943,3 +943,69 @@ describe("SettingsView - condensingApiConfigId", () => {
 		)
 	})
 })
+
+describe("SettingsView - Skill Hub settings", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	const lastUpdatedSettings = () => {
+		const calls = (vscode.postMessage as any).mock.calls.filter((c: any[]) => c[0]?.type === "updateSettings")
+		return calls[calls.length - 1][0].updatedSettings
+	}
+
+	it("saves defaults for unset hub settings and omits the key", () => {
+		const { activateTab } = renderSettingsView()
+		activateTab("skills")
+		fireEvent.click(screen.getByTestId("save-button"))
+		const saved = lastUpdatedSettings()
+		expect(saved).toMatchObject({
+			skillHubEnabled: false,
+			skillHubBaseUrl: "",
+			skillHubMaxSkills: 8,
+			skillHubSkillModes: {},
+		})
+		expect(saved).not.toHaveProperty("skillHubApiKey")
+	})
+
+	it("buffers edits in cached state and sends them, with the typed key, only on Save", () => {
+		const { activateTab } = renderSettingsView({ skillHubEnabled: false, skillHubApiKeySet: false })
+		activateTab("skills")
+
+		fireEvent.click(screen.getByTestId("skill-hub-enabled-checkbox"))
+		fireEvent.change(screen.getByTestId("skill-hub-key-input"), { target: { value: "sk-typed" } })
+		expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "updateSettings" }))
+
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(lastUpdatedSettings()).toMatchObject({ skillHubEnabled: true, skillHubApiKey: "sk-typed" })
+	})
+
+	it("clears the typed key buffer after Save so later saves do not resend it", () => {
+		const { activateTab } = renderSettingsView({ skillHubApiKeySet: false })
+		activateTab("skills")
+		fireEvent.change(screen.getByTestId("skill-hub-key-input"), { target: { value: "sk-typed" } })
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(lastUpdatedSettings()).toMatchObject({ skillHubApiKey: "sk-typed" })
+		expect((screen.getByTestId("skill-hub-key-input") as HTMLInputElement).value).toBe("")
+		fireEvent.click(screen.getByTestId("skill-hub-enabled-checkbox"))
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(lastUpdatedSettings()).not.toHaveProperty("skillHubApiKey")
+	})
+	it("round-trips saved true and false values from the extension", async () => {
+		const { activateTab } = renderSettingsView({
+			skillHubEnabled: true,
+			skillHubSkillModes: { s1: "on" },
+			skillHubApiKeySet: true,
+			// cachedState hydrates from the extension only on an import or a profile/mode change.
+			settingsImportedAt: new Date().toISOString(),
+		})
+		activateTab("skills")
+		await waitFor(() =>
+			expect((screen.getByTestId("skill-hub-enabled-checkbox") as HTMLInputElement).checked).toBe(true),
+		)
+		fireEvent.click(screen.getByTestId("skill-hub-enabled-checkbox"))
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(lastUpdatedSettings()).toMatchObject({ skillHubEnabled: false, skillHubSkillModes: { s1: "on" } })
+		expect(lastUpdatedSettings()).not.toHaveProperty("skillHubApiKey")
+	})
+})

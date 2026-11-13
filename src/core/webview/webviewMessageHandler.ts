@@ -52,6 +52,8 @@ import {
 	handleMoveSkill,
 	handleUpdateSkillModes,
 	handleOpenSkillFile,
+	handleRequestSkillHubCatalog,
+	normalizeSkillHubSkillModes,
 } from "./skillsMessageHandler"
 import {
 	handleRequestRules,
@@ -860,6 +862,17 @@ export const webviewMessageHandler = async (
 						newValue = Array.isArray(patterns)
 							? patterns.filter((pattern) => typeof pattern === "string" && pattern.trim().length > 0)
 							: []
+					} else if (key === "skillHubApiKey") {
+						// Write-only secret: a blank or non-string value leaves the stored key untouched.
+						if (typeof value !== "string" || value.trim().length === 0) {
+							continue
+						}
+						newValue = value.trim()
+					} else if (key === "skillHubSkillModes") {
+						newValue = normalizeSkillHubSkillModes(value)
+					} else if (key === "skillHubMaxSkills") {
+						const parsed = typeof value === "number" && Number.isFinite(value) ? Math.floor(value) : undefined
+						newValue = parsed === undefined ? undefined : Math.min(Math.max(parsed, 0), 50)
 					} else if (key === "ttsEnabled") {
 						newValue = value ?? true
 						setTtsEnabled(newValue as boolean)
@@ -3666,6 +3679,16 @@ export const webviewMessageHandler = async (
 				provider.log(`Error fetching modes: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
 				await provider.postMessageToWebview({ type: "modes", modes: [] })
 			}
+			break
+		}
+		case "clearSkillHubApiKey": {
+			// Explicit, immediate removal of the stored secret (blank input in Save only keeps it).
+			await provider.contextProxy.setValue("skillHubApiKey", undefined)
+			await provider.postStateToWebview()
+			break
+		}
+		case "requestSkillHubCatalog": {
+			await handleRequestSkillHubCatalog(provider)
 			break
 		}
 		case "requestSkills": {

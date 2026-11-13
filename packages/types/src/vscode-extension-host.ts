@@ -114,6 +114,7 @@ export interface ExtensionMessage {
 		| "branchWorktreeIncludeResult"
 		| "folderSelected"
 		| "skills"
+		| "skillHubCatalog"
 		| "rules"
 		| "fileContent"
 		| "rooHistoryImportProgress"
@@ -203,6 +204,8 @@ export interface ExtensionMessage {
 	list?: string[] // For dismissedUpsells
 	tools?: SerializedCustomToolDefinition[] // For customToolsResult
 	skills?: SkillMetadata[] // For skills response
+	skillHubCatalog?: { id: string; name: string; description: string }[] // For skillHubCatalog response
+	skillHubCatalogError?: string // Sanitized reason the hub catalog could not be loaded
 	rules?: RuleMetadata[] // For rules response
 	modes?: { slug: string; name: string }[] // For modes response
 	rooHistoryImportProgress?: {
@@ -340,7 +343,13 @@ export type ExtensionState = Pick<
 	| "openAiOmniRoutePublishedLaneRouting"
 	| "parallelismMode"
 	| "graniteWorkflowEnabled"
+	| "workerAuditMode"
 	| "questionMemoryEnabled"
+	| "readerAssistedQuestions"
+	| "skillHubEnabled"
+	| "skillHubBaseUrl"
+	| "skillHubMaxSkills"
+	| "skillHubSkillModes"
 	| "graniteWorkflowPolicy"
 	| "parallelCapacityMap"
 	| "workerPresentation"
@@ -477,6 +486,10 @@ export type ExtensionState = Pick<
 	profileThresholds: Record<string, number>
 	hasOpenedModeSelector: boolean
 	openRouterImageApiKey?: string
+	/** True when a Skill Hub key is stored. The key itself is never sent to the webview. */
+	skillHubApiKeySet?: boolean
+	/** Write-only edit buffer in the settings view. The extension never posts this value back. */
+	skillHubApiKey?: string
 	messageQueue?: QueuedMessage[]
 	lastShownAnnouncementId?: string
 	apiModelId?: string
@@ -716,6 +729,8 @@ export interface WebviewMessage {
 		| "importRooHistory"
 		// Skills messages
 		| "requestSkills"
+		| "requestSkillHubCatalog"
+		| "clearSkillHubApiKey"
 		| "createSkill"
 		| "deleteSkill"
 		| "moveSkill"

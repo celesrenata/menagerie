@@ -7,8 +7,11 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_WORKER_AUDIT_MODE,
+	type WorkerAuditMode,
 	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	DEFAULT_QUESTION_MEMORY_ENABLED,
+	DEFAULT_READER_ASSISTED_QUESTIONS,
 	DEFAULT_PARALLELISM_MODE,
 	PARALLELISM_MODES,
 	SPEC_POLICIES,
@@ -38,8 +41,10 @@ interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	autoCloseZooOpenedNewFiles?: boolean
 	parallelismMode?: ParallelismMode
 	graniteWorkflowEnabled?: boolean
+	workerAuditMode?: WorkerAuditMode
 	graniteWorkflowPolicy?: SpecPolicy
 	questionMemoryEnabled?: boolean
+	readerAssistedQuestions?: boolean
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
@@ -52,8 +57,10 @@ export const UISettings = ({
 	autoCloseZooOpenedNewFiles,
 	parallelismMode,
 	graniteWorkflowEnabled,
+	workerAuditMode,
 	graniteWorkflowPolicy,
 	questionMemoryEnabled,
+	readerAssistedQuestions,
 	setCachedStateField,
 	...props
 }: UISettingsProps) => {
@@ -243,10 +250,7 @@ export const UISettings = ({
 
 					{/* Default parallelism appetite (FEAT-011). Mirrors the composer control; the
 					    per-request value is sourced only from composer-local state in ChatView. */}
-					<SearchableSetting
-						settingId="ui-parallelism-default"
-						section="ui"
-						label="Default parallelism">
+					<SearchableSetting settingId="ui-parallelism-default" section="ui" label="Default parallelism">
 						<div className="flex flex-col gap-1">
 							<label className="block font-medium mb-1">Default parallelism</label>
 							<Select
@@ -254,9 +258,7 @@ export const UISettings = ({
 								onValueChange={(value) =>
 									setCachedStateField("parallelismMode", value as ParallelismMode)
 								}>
-								<SelectTrigger
-									className="w-full"
-									data-testid="parallelism-default-select-trigger">
+								<SelectTrigger className="w-full" data-testid="parallelism-default-select-trigger">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
@@ -271,8 +273,8 @@ export const UISettings = ({
 								</SelectContent>
 							</Select>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
-								How aggressively Menagerie may fan work out by default. The composer control
-								overrides this per request.
+								How aggressively Menagerie may fan work out by default. The composer control overrides
+								this per request.
 							</div>
 						</div>
 					</SearchableSetting>
@@ -286,16 +288,44 @@ export const UISettings = ({
 								<span className="font-medium">Remember answered questions</span>
 							</VSCodeCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
-								Before asking a follow-up question, reuse your earlier answers and check the conversation
-								and project docs. Answers are kept in .kiro/memory.
+								Before asking a follow-up question, reuse your earlier answers and check the
+								conversation and project docs. Answers are kept in .kiro/memory.
+							</div>
+						</div>
+					</SearchableSetting>
+					<SearchableSetting settingId="ui-reader-assisted-questions" section="ui" label="Ask a reader before asking me">
+						<div className="flex flex-col gap-1">
+							<VSCodeCheckbox
+								checked={readerAssistedQuestions ?? DEFAULT_READER_ASSISTED_QUESTIONS}
+								onChange={(e: any) => setCachedStateField("readerAssistedQuestions", e.target.checked)}
+								data-testid="reader-assisted-questions-checkbox">
+								<span className="font-medium">Ask a reader before asking me</span>
+							</VSCodeCheckbox>
+							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
+								When memory and docs do not answer a follow-up question, a reader subtask searches the
+								original request and design docs first (Granite on the low reader lane, then the high
+								lane). A repeated question always reaches you. Needs question memory on.
+							</div>
+						</div>
+					</SearchableSetting>
+					<SearchableSetting settingId="ui-worker-audit" section="ui" label="Audit parallel workers">
+						<div className="flex flex-col gap-1">
+							<VSCodeCheckbox
+								checked={(workerAuditMode ?? DEFAULT_WORKER_AUDIT_MODE) === "edits"}
+								onChange={(e: any) =>
+									setCachedStateField("workerAuditMode", e.target.checked ? "edits" : "off")
+								}
+								data-testid="worker-audit-checkbox">
+								<span className="font-medium">Audit parallel workers</span>
+							</VSCodeCheckbox>
+							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
+								Check edit-capable workers with an independent read-only verifier and send failed work
+								back for rework, up to two rounds.
 							</div>
 						</div>
 					</SearchableSetting>
 					{/* Granite-assisted workflows (MEN-GRANITE-SDD-001). Off by default. */}
-					<SearchableSetting
-						settingId="ui-granite-workflow"
-						section="ui"
-						label="Granite-assisted workflows">
+					<SearchableSetting settingId="ui-granite-workflow" section="ui" label="Granite-assisted workflows">
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED}
@@ -311,7 +341,9 @@ export const UISettings = ({
 							<Select
 								value={graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY}
 								disabled={!(graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED)}
-								onValueChange={(value) => setCachedStateField("graniteWorkflowPolicy", value as SpecPolicy)}>
+								onValueChange={(value) =>
+									setCachedStateField("graniteWorkflowPolicy", value as SpecPolicy)
+								}>
 								<SelectTrigger className="w-full" data-testid="granite-workflow-policy-select-trigger">
 									<SelectValue />
 								</SelectTrigger>

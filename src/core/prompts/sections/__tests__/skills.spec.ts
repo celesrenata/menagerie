@@ -55,4 +55,33 @@ describe("getSkillsSection", () => {
 
 		await expect(getSkillsSection(mockSkillsManager, "code", policyFor([]))).resolves.toBe("")
 	})
+
+	it("renders hub skills as extra entries with an omniroute-hub location", async () => {
+		const manager = {
+			getSkillsForMode: vi
+				.fn()
+				.mockReturnValue([{ name: "local-one", description: "Local", path: "/abs/local-one/SKILL.md" }]),
+		}
+		const result = await getSkillsSection(manager, "code", policyFor(["skill"]), [
+			{ id: "h-1", name: "hub-one", description: "From <hub>" },
+		])
+		expect(result).toContain("<location>/abs/local-one/SKILL.md</location>")
+		expect(result).toContain("<name>hub-one</name>")
+		expect(result).toContain("<description>From &lt;hub&gt;</description>")
+		expect(result).toContain("<location>omniroute-hub:h-1</location>")
+	})
+
+	it("emits hub skills even when there is no local skills manager", async () => {
+		const result = await getSkillsSection(undefined, "code", policyFor(["skill"]), [
+			{ id: "h-1", name: "hub-one", description: "d" },
+		])
+		expect(result).toContain("<location>omniroute-hub:h-1</location>")
+	})
+
+	it("stays empty with no local and no hub skills, or when the skill tool is off", async () => {
+		await expect(getSkillsSection(undefined, "code", policyFor(["skill"]), [])).resolves.toBe("")
+		await expect(
+			getSkillsSection(undefined, "code", policyFor([]), [{ id: "h", name: "n", description: "d" }]),
+		).resolves.toBe("")
+	})
 })

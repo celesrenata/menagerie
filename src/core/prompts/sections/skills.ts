@@ -1,6 +1,12 @@
 import type { SkillsManager } from "../../../services/skills/SkillsManager"
 import type { EffectiveToolPolicy } from "../tools/effective-tool-policy"
 
+export interface HubSkillPromptEntry {
+	id: string
+	name: string
+	description: string
+}
+
 type SkillsManagerLike = Pick<SkillsManager, "getSkillsForMode">
 
 function escapeXml(value: string): string {
@@ -24,22 +30,32 @@ export async function getSkillsSection(
 	skillsManager: SkillsManagerLike | undefined,
 	currentMode: string | undefined,
 	policy: EffectiveToolPolicy,
+	hubSkills: HubSkillPromptEntry[] = [],
 ): Promise<string> {
 	// The protocol in this section mandates the `skill` tool; if it's not available
 	// the section would be unhelpful/unactionable, so emit nothing.
 	if (!policy.tools.has("skill")) return ""
 
-	if (!skillsManager || !currentMode) return ""
+	if (!currentMode) return ""
 
 	// Get skills filtered by current mode (with override resolution)
-	const skills = skillsManager.getSkillsForMode(currentMode)
-	if (skills.length === 0) return ""
+	const skills = skillsManager?.getSkillsForMode(currentMode) ?? []
+	if (skills.length === 0 && hubSkills.length === 0) return ""
 
-	const skillsXml = skills
+	const entries = [
+		...skills.map((skill) => ({ name: skill.name, description: skill.description, location: skill.path })),
+		...hubSkills.map((skill) => ({
+			name: skill.name,
+			description: skill.description,
+			location: `omniroute-hub:${skill.id}`,
+		})),
+	]
+
+	const skillsXml = entries
 		.map((skill) => {
 			const name = escapeXml(skill.name)
 			const description = escapeXml(skill.description)
-			const locationLine = `\n    <location>${escapeXml(skill.path)}</location>`
+			const locationLine = `\n    <location>${escapeXml(skill.location)}</location>`
 			return `  <skill>\n    <name>${name}</name>\n    <description>${description}</description>${locationLine}\n  </skill>`
 		})
 		.join("\n")

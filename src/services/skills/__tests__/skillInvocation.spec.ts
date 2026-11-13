@@ -37,6 +37,36 @@ describe("skillInvocation", () => {
 		})
 	})
 
+	describe("resolveSkillContentForMode hub fallback", () => {
+		const hubResult = { name: "hub-skill", description: "From hub", content: "Hub steps", source: "omniroute-hub" }
+
+		it("falls back to the hub when no local skill matches", async () => {
+			const skillsManager: SkillLookup = { getSkillContent: vi.fn().mockResolvedValue(null) }
+			const hub = { load: vi.fn().mockResolvedValue(hubResult) }
+			const result = await resolveSkillContentForMode(skillsManager, "hub-skill", "code", hub)
+			expect(hub.load).toHaveBeenCalledWith("hub-skill")
+			expect(result).toMatchObject({ instructions: "Hub steps", source: "omniroute-hub" })
+		})
+
+		it("works without a local skills manager", async () => {
+			const hub = { load: vi.fn().mockResolvedValue(hubResult) }
+			expect(await resolveSkillContentForMode(undefined, "hub-skill", "code", hub)).not.toBeNull()
+		})
+
+		it("lets a local skill win and does not call the hub", async () => {
+			const skillsManager: SkillLookup = { getSkillContent: vi.fn().mockResolvedValue(mockSkillContent) }
+			const hub = { load: vi.fn() }
+			expect(await resolveSkillContentForMode(skillsManager, "test-skill", "code", hub)).toBe(mockSkillContent)
+			expect(hub.load).not.toHaveBeenCalled()
+		})
+
+		it("returns null when neither has the skill", async () => {
+			const skillsManager: SkillLookup = { getSkillContent: vi.fn().mockResolvedValue(null) }
+			const hub = { load: vi.fn().mockResolvedValue(null) }
+			expect(await resolveSkillContentForMode(skillsManager, "nope", "code", hub)).toBeNull()
+		})
+	})
+
 	describe("buildSkillApprovalMessage", () => {
 		it("produces valid JSON with skill, args, source, and description", () => {
 			const message = buildSkillApprovalMessage("deploy", "staging", {

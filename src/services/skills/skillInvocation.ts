@@ -1,5 +1,9 @@
 import type { SkillContent } from "../../shared/skills"
 
+export interface HubSkillLookup {
+	load(nameOrLocation: string): Promise<{ name: string; description: string; content: string; source: string } | null>
+}
+
 export interface SkillLookup {
 	getSkillContent(name: string, currentMode?: string): Promise<SkillContent | null>
 }
@@ -8,12 +12,27 @@ export async function resolveSkillContentForMode(
 	skillsManager: SkillLookup | undefined,
 	skillName: string,
 	currentMode: string,
+	hubSkills?: HubSkillLookup,
 ): Promise<SkillContent | null> {
-	if (!skillsManager) {
+	// Local filesystem skills win over hub skills with the same name.
+	const local = skillsManager ? await skillsManager.getSkillContent(skillName, currentMode) : null
+	if (local || !hubSkills) {
+		return local
+	}
+
+	const hub = await hubSkills.load(skillName)
+	if (!hub) {
 		return null
 	}
 
-	return skillsManager.getSkillContent(skillName, currentMode)
+	return {
+		name: hub.name,
+		description: hub.description,
+		path: `omniroute-hub:${skillName}`,
+		// Reported as "omniroute-hub" in the approval message; SkillMetadata only types the local sources.
+		source: hub.source as SkillContent["source"],
+		instructions: hub.content,
+	}
 }
 
 type SkillContentForFormatting = Pick<SkillContent, "source" | "description" | "instructions">

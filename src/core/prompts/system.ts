@@ -17,6 +17,7 @@ import { McpHub } from "../../services/mcp/McpHub"
 import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-manager-registry"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
+import type { HubSkillPromptEntry } from "./sections/skills"
 import type { SystemPromptSettings } from "./types"
 import type { EffectiveToolPolicy } from "./tools/effective-tool-policy"
 import { resolveEffectiveToolPolicy } from "./tools/effective-tool-policy"
@@ -65,6 +66,7 @@ async function generatePrompt(
 	skillsManager?: SkillsManager,
 	disabledTools?: string[],
 	modelInfo?: ModelInfo,
+	hubSkills?: HubSkillPromptEntry[],
 ): Promise<string> {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -96,7 +98,7 @@ async function generatePrompt(
 
 	const [modesSection, skillsSection] = await Promise.all([
 		getModesSection(context),
-		getSkillsSection(skillsManager, mode as string, policy),
+		getSkillsSection(skillsManager, mode as string, policy, hubSkills),
 	])
 
 	// Tools catalog is not included in the system prompt.
@@ -148,6 +150,7 @@ export const SYSTEM_PROMPT = async (
 	skillsManager?: SkillsManager,
 	disabledTools?: string[],
 	modelInfo?: ModelInfo,
+	hubSkills?: HubSkillPromptEntry[],
 ): Promise<string> => {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -178,5 +181,6 @@ export const SYSTEM_PROMPT = async (
 		skillsManager,
 		disabledTools,
 		modelInfo,
+		hubSkills,
 	)
 }

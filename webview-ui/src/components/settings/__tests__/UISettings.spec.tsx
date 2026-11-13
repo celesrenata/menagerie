@@ -61,6 +61,20 @@ describe("UISettings", () => {
 		})
 	})
 
+	describe("reader-assisted questions setting", () => {
+		it("defaults to on and writes the toggle to cached state", async () => {
+			const setCachedStateField = vi.fn()
+			const { getByTestId } = render(<UISettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			expect((getByTestId("reader-assisted-questions-checkbox") as HTMLInputElement).checked).toBe(true)
+			fireEvent.click(getByTestId("reader-assisted-questions-checkbox"))
+			await waitFor(() => expect(setCachedStateField).toHaveBeenCalledWith("readerAssistedQuestions", false))
+		})
+		it("reflects an explicit off value", () => {
+			const { getByTestId } = render(<UISettings {...defaultProps} readerAssistedQuestions={false} />)
+			expect((getByTestId("reader-assisted-questions-checkbox") as HTMLInputElement).checked).toBe(false)
+		})
+	})
+
 	describe("Granite workflow settings", () => {
 		it("defaults to unchecked with the policy select disabled", () => {
 			const { getByTestId } = render(<UISettings {...defaultProps} />)
@@ -84,6 +98,20 @@ describe("UISettings", () => {
 		})
 	})
 
+	describe("Worker audit setting", () => {
+		it("defaults to checked and reflects off", () => {
+			const { getByTestId, rerender } = render(<UISettings {...defaultProps} />)
+			expect((getByTestId("worker-audit-checkbox") as HTMLInputElement).checked).toBe(true)
+			rerender(<UISettings {...defaultProps} workerAuditMode="off" />)
+			expect((getByTestId("worker-audit-checkbox") as HTMLInputElement).checked).toBe(false)
+		})
+		it("writes edits/off to cached state", async () => {
+			const setCachedStateField = vi.fn()
+			const { getByTestId } = render(<UISettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			fireEvent.click(getByTestId("worker-audit-checkbox"))
+			await waitFor(() => expect(setCachedStateField).toHaveBeenCalledWith("workerAuditMode", "off"))
+		})
+	})
 	describe("chat font size", () => {
 		it("shows the default font size when unset (init)", () => {
 			const { getByText, getByTestId } = render(<UISettings {...defaultProps} chatFontSize={undefined} />)

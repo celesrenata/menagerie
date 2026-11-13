@@ -1,5 +1,6 @@
 import { CachedUiValue } from "./CachedUiValue"
 import { WebviewMessageQueue } from "./WebviewMessageQueue"
+import { BackgroundBatchService } from "../task/background/BackgroundBatchService"
 import os from "os"
 import * as path from "path"
 import fs from "fs/promises"
@@ -54,7 +55,11 @@ import {
 	DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
+	DEFAULT_WORKER_AUDIT_MODE,
 	DEFAULT_QUESTION_MEMORY_ENABLED,
+	DEFAULT_SKILL_HUB_ENABLED,
+	DEFAULT_SKILL_HUB_MAX_SKILLS,
+	DEFAULT_READER_ASSISTED_QUESTIONS,
 	DEFAULT_GRANITE_WORKFLOW_POLICY,
 	DEFAULT_WORKER_PRESENTATION,
 	DEFAULT_TASK_HOME,
@@ -117,6 +122,7 @@ import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-m
 import type { CodeIndexWorkspaceScope } from "../../services/code-index/code-index-workspace-scope"
 import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
+import { HubSkillsProvider, originOf } from "../../services/skills/hub/HubSkillsProvider"
 import { mergeReadDenylist, type ReadDenylistConfig } from "../../services/glob/readDenylist"
 
 import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
@@ -261,6 +267,7 @@ export class ClineProvider
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
 	protected mcpHub?: McpHub // Change from private to protected
 	protected skillsManager?: SkillsManager
+	private hubSkillsProvider?: HubSkillsProvider
 	private marketplaceManager: MarketplaceManager
 	private mdmService?: MdmService
 	private taskCreationCallback: (task: Task) => void
@@ -277,6 +284,8 @@ export class ClineProvider
 			// The view may have been disposed between scheduling and dispatch.
 		}
 	})
+	/** Detached (fire-and-forget) parallel_tasks batches owned by this provider. */
+	public readonly backgroundBatches = new BackgroundBatchService()
 	private readonly optionalAuthState = new CachedUiValue<
 		Pick<ExtensionState, "openAiCodexIsAuthenticated" | "kimiCodeIsAuthenticated">
 	>(
@@ -900,6 +909,7 @@ export class ClineProvider
 		this._disposed = true
 		this.optionalAuthState.dispose()
 		this.messageQueue.dispose()
+		this.backgroundBatches.dispose()
 		this._postStateToWebviewThrottled.cancel()
 		this.log("Disposing ClineProvider...")
 
@@ -3097,8 +3107,15 @@ export class ClineProvider
 			openAiOmniRoutePublishedLaneRouting,
 			parallelismMode,
 			graniteWorkflowEnabled,
+			workerAuditMode,
 			graniteWorkflowPolicy,
 			questionMemoryEnabled,
+			readerAssistedQuestions,
+			skillHubEnabled,
+			skillHubBaseUrl,
+			skillHubMaxSkills,
+			skillHubSkillModes,
+			skillHubApiKey,
 			parallelCapacityMap,
 			workerPresentation,
 			taskHome,
@@ -3280,8 +3297,16 @@ export class ClineProvider
 			parallelismMode,
 			// Granite workflows: round-trip the opt-in flag and policy with their shared defaults.
 			graniteWorkflowEnabled: graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
+			workerAuditMode: workerAuditMode ?? DEFAULT_WORKER_AUDIT_MODE,
 			graniteWorkflowPolicy: graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
 			questionMemoryEnabled: questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED,
+			readerAssistedQuestions: readerAssistedQuestions ?? DEFAULT_READER_ASSISTED_QUESTIONS,
+			// Skill Hub: round-trip the settings. The key is a secret and only its presence goes to the webview.
+			skillHubEnabled: skillHubEnabled ?? DEFAULT_SKILL_HUB_ENABLED,
+			skillHubBaseUrl: skillHubBaseUrl ?? "",
+			skillHubMaxSkills: skillHubMaxSkills ?? DEFAULT_SKILL_HUB_MAX_SKILLS,
+			skillHubSkillModes: skillHubSkillModes ?? {},
+			skillHubApiKeySet: Boolean(skillHubApiKey),
 			// Round-trip the saved user-adjustable parallel capacity map (undefined = use
 			// STATIC_ROUTE_CAPACITY) so a saved control re-renders instead of reverting.
 			parallelCapacityMap,
@@ -3539,8 +3564,15 @@ export class ClineProvider
 			// FEAT-011: default the saved parallelism appetite to "auto" so runtime consumers read a mode.
 			parallelismMode: stateValues.parallelismMode ?? DEFAULT_PARALLELISM_MODE,
 			graniteWorkflowEnabled: stateValues.graniteWorkflowEnabled ?? DEFAULT_GRANITE_WORKFLOW_ENABLED,
+			workerAuditMode: stateValues.workerAuditMode ?? DEFAULT_WORKER_AUDIT_MODE,
 			graniteWorkflowPolicy: stateValues.graniteWorkflowPolicy ?? DEFAULT_GRANITE_WORKFLOW_POLICY,
 			questionMemoryEnabled: stateValues.questionMemoryEnabled ?? DEFAULT_QUESTION_MEMORY_ENABLED,
+			readerAssistedQuestions: stateValues.readerAssistedQuestions ?? DEFAULT_READER_ASSISTED_QUESTIONS,
+			skillHubEnabled: stateValues.skillHubEnabled ?? DEFAULT_SKILL_HUB_ENABLED,
+			skillHubBaseUrl: stateValues.skillHubBaseUrl ?? "",
+			skillHubMaxSkills: stateValues.skillHubMaxSkills ?? DEFAULT_SKILL_HUB_MAX_SKILLS,
+			skillHubSkillModes: stateValues.skillHubSkillModes ?? {},
+			skillHubApiKey: stateValues.skillHubApiKey,
 			// User-adjustable parallel-task capacity map. Default is left `undefined`:
 			// an unset map merges to exactly `STATIC_ROUTE_CAPACITY` downstream, so the
 			// no-op semantics hold and runtime consumers never see a concrete default here.
@@ -3794,6 +3826,21 @@ export class ClineProvider
 
 	public getSkillsManager(): SkillsManager | undefined {
 		return this.skillsManager
+	}
+
+	/** OmniRoute Skill Hub resolver. Settings and the secret key are read per call, so saves apply on the next turn. */
+	public getHubSkillsProvider(): HubSkillsProvider {
+		this.hubSkillsProvider ??= new HubSkillsProvider({
+			getConfig: () => ({
+				enabled: this.contextProxy.getValue("skillHubEnabled"),
+				baseUrl: this.contextProxy.getValue("skillHubBaseUrl"),
+				apiKey: this.contextProxy.getValue("skillHubApiKey"),
+				maxSkills: this.contextProxy.getValue("skillHubMaxSkills"),
+				modes: this.contextProxy.getValue("skillHubSkillModes"),
+			}),
+			getFallbackBaseUrl: () => originOf(this.contextProxy.getValue("openAiBaseUrl")),
+		})
+		return this.hubSkillsProvider
 	}
 
 	/**
