@@ -1,5 +1,5 @@
 {
-  description = "Menagerie (Zoo Code) VS Code extension built from source, with bundled custom modes and home-manager / nixOS / nix-darwin modules.";
+  description = "Menagerie VS Code extension built from source, with bundled custom modes and home-manager / nixOS / nix-darwin modules.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

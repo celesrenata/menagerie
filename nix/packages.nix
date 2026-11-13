@@ -1,7 +1,10 @@
 # Per-system package set for the Menagerie flake.
 #
 # Produces:
-#   menagerie-vsix       - the built zoo-code-<version>.vsix (PRIMARY deliverable)
+#   menagerie-vsix       - the built menagerie-<version>.vsix (PRIMARY deliverable)
+#   menagerie-vscode-extension
+#                        - the vsix unpacked as a nixpkgs VS Code extension, for
+#                          home-manager's programs.vscode.profiles.<name>.extensions
 #   menagerie-modes      - the bundled custom modes (AA&R v2 pack + in-repo profile)
 #   menagerie-with-modes - symlinkJoin of the vsix + the modes tree
 #
@@ -14,8 +17,11 @@
 let
   inherit (pkgs) lib stdenv;
 
-  # The extension manifest pins exact versions; keep them in one place.
-  version = "3.84.5";
+  # Read identity from the extension manifest so the flake never drifts from it.
+  manifest = lib.importJSON ../src/package.json;
+  extensionPublisher = manifest.publisher;
+  extensionName = manifest.name;
+  inherit (manifest) version;
 
   # ---------------------------------------------------------------------------
   # Toolchain pins.
@@ -205,12 +211,12 @@ let
       runHook postBuild
     '';
 
-    # The repo's `vsix` script writes bin/zoo-code-<version>.vsix at the root.
+    # The repo's `vsix` script writes bin/<name>-<version>.vsix at the root.
     installPhase = ''
       runHook preInstall
 
       mkdir -p $out
-      cp bin/zoo-code-*.vsix $out/
+      cp bin/${extensionName}-${version}.vsix $out/
 
       runHook postInstall
     '';
@@ -218,13 +224,32 @@ let
     dontConfigure = false;
 
     meta = with lib; {
-      description = "Menagerie (Zoo Code) VS Code extension packaged as a .vsix, built from source.";
-      homepage = "https://zoocode.dev";
+      description = "Menagerie VS Code extension packaged as a .vsix, built from source.";
+      homepage = "https://github.com/celesrenata/menagerie";
       license = licenses.asl20;
       platforms = platforms.unix;
     };
   });
 
+  # ---------------------------------------------------------------------------
+  # menagerie-vscode-extension: the vsix as a nixpkgs VS Code extension.
+  #
+  # This is what actually installs the build: home-manager links it into the
+  # editor's extensions directory and records it in extensions.json, so every
+  # switch puts the current build in place (no `code --install-extension`, no
+  # dependency on the editor CLI being on PATH during activation).
+  # ---------------------------------------------------------------------------
+  menagerie-vscode-extension = pkgs.vscode-utils.buildVscodeExtension {
+    pname = "${extensionPublisher}-${extensionName}";
+    inherit version;
+    src = "${menagerie-vsix}/${extensionName}-${version}.vsix";
+    vscodeExtPublisher = extensionPublisher;
+    vscodeExtName = extensionName;
+    vscodeExtUniqueId = "${extensionPublisher}.${extensionName}";
+    meta = menagerie-vsix.meta // {
+      description = "Menagerie VS Code extension, built from source, as a nixpkgs VS Code extension.";
+    };
+  };
   # ---------------------------------------------------------------------------
   # menagerie-modes: the bundled custom modes.
   #
@@ -265,5 +290,5 @@ let
   };
 in
 {
-  inherit menagerie-vsix menagerie-modes menagerie-with-modes;
+  inherit menagerie-vsix menagerie-vscode-extension menagerie-modes menagerie-with-modes;
 }

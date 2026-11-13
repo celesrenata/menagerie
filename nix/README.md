@@ -1,6 +1,6 @@
 # Menagerie Nix flake
 
-This flake builds the **Menagerie** (Zoo Code) VS Code extension from source into
+This flake builds the **Menagerie** VS Code extension (`celesrenata.menagerie`) from source into
 a `.vsix`, bundles its custom modes, and ships home-manager / NixOS / nix-darwin
 modules so a downstream flake gets the extension plus modes on Linux and Darwin.
 
@@ -12,11 +12,13 @@ output so a host on any platform can `nix build`.
 ## Flake output surface
 
 ```
-packages.<system>.menagerie-vsix        # the built zoo-code-<version>.vsix (PRIMARY)
+packages.<system>.menagerie-vsix        # the built menagerie-<version>.vsix (PRIMARY)
+packages.<system>.menagerie-vscode-extension
+                                        # the vsix unpacked as a nixpkgs VS Code extension
 packages.<system>.default               # = menagerie-vsix
 packages.<system>.menagerie-modes       # the bundled custom modes tree (aar/ + repo/)
 packages.<system>.menagerie-with-modes  # symlinkJoin: vsix + a modes/ tree in one path
-homeManagerModules.default              # programs.menagerie — installs vsix + places modes
+homeManagerModules.default              # programs.menagerie — installs the extension + places modes
 nixosModules.default                    # services.menagerie — adds packages to system profile
 darwinModules.default                   # services.menagerie — nix-darwin equivalent
 ```
@@ -33,16 +35,16 @@ No modules required. Build the extension and install it into your editor:
 
 ```sh
 nix build github:celesrenata/menagerie#menagerie-vsix
-code --install-extension ./result/zoo-code-*.vsix
+code --install-extension ./result/menagerie-*.vsix
 ```
 
 Build the vsix together with the bundled modes in one store path:
 
 ```sh
 nix build github:celesrenata/menagerie#menagerie-with-modes
-# result/zoo-code-*.vsix              -> the extension
+# result/menagerie-*.vsix              -> the extension
 # result/modes/aar/ , result/modes/repo/  -> the bundled mode profiles
-code --install-extension ./result/zoo-code-*.vsix
+code --install-extension ./result/menagerie-*.vsix
 ```
 
 ## 1. Add the input
@@ -69,8 +71,8 @@ rather than tracking the default branch.
 
 ## 2a. Install via home-manager (`homeManagerModules.default`)
 
-Works on both Linux and Darwin. Installs the vsix and seeds the bundled custom
-modes into the user's discovery paths.
+Works on both Linux and Darwin. Installs the extension on every switch and seeds
+the bundled custom modes into the user's discovery paths.
 
 ```nix
 { inputs, ... }:
@@ -80,8 +82,11 @@ modes into the user's discovery paths.
   programs.menagerie = {
     enable = true;
 
-    installExtension = true;        # runs `<editor> --install-extension <vsix>` on activation
-    # package = ...;                # defaults to the flake's menagerie-vsix
+    # Default: copy the build into ~/.vscode/extensions on every switch.
+    vscode.enable = true;           # default true
+    # vscode.extensionsDir = "...";  # defaults per modes.editor (~/.vscode/extensions for code)
+    # vscode.removeLegacyZooCode = true;  # default true; see "Migrating from Zoo Code"
+    # installExtension = true;      # alternative: run `<editor> --install-extension <vsix> --force`
 
     modes = {
       enable = true;                # default true
@@ -103,8 +108,30 @@ Notes:
   `modes.projects`, because global custom modes live in the editor's global
   storage and are not declaratively stable. `modes.globalStorage` is an opt-in,
   best-effort write of `custom_modes.yaml` into the editor's global-storage path.
-- `installExtension = false` (default) only places the vsix in the store; install
-  it manually (quick start above).
+- `vscode.enable` (default) copies the extension into the editor's extensions
+  directory as a real directory and registers it in `extensions.json`. A real copy
+  is required: VS Code 1.140+ marks symlinked extension directories obsolete, so
+  `programs.vscode.profiles.*.extensions` cannot load it. The copy is replaced
+  whenever the build's store path changes, even if the version number did not,
+  and the activation prints a line asking you to reload VS Code windows.
+- `installExtension` is for editors whose CLI should do the install instead
+  (Cursor, VSCodium, a VS Code outside Nix). It runs with `--force` because
+  rebuilds usually keep the same version, and it looks for the CLI in the usual
+  app locations because activation runs with a minimal `PATH`. Turn it on
+  *instead of* `vscode.enable`, not alongside it.
+
+### Migrating from Zoo Code
+
+Menagerie used to ship under Zoo Code's id (`ZooCodeOrganization.zoo-code`). It
+now has its own id, `menagerie.*` command and settings keys, and its own
+global-storage folder (`celesrenata.menagerie`).
+
+On first start, Menagerie imports Zoo Code's task history, custom modes, MCP
+settings and `zoo-code.*` settings, but only once Zoo Code is uninstalled.
+`vscode.removeLegacyZooCode` (default on) removes the old Zoo Code extension
+code for you; Zoo's data is left in place for the import. API keys live in
+per-extension secret storage and cannot be moved: re-enter them, or point
+`menagerie.autoImportSettingsPath` at a settings export.
 
 ## 2b. Install via NixOS / nix-darwin
 

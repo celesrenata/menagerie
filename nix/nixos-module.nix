@@ -15,7 +15,7 @@ let
 in
 {
   options.services.menagerie = {
-    enable = lib.mkEnableOption "Menagerie (Zoo Code) packages in the system profile";
+    enable = lib.mkEnableOption "Menagerie packages in the system profile";
 
     package = lib.mkOption {
       type = lib.types.package;
