@@ -77,6 +77,10 @@ export const ZooCodeAuthBadge: React.FC<ZooCodeAuthBadgeProps> = ({ className })
 		setIsOpen(false)
 	}
 
+	// Signed-out users get no badge in the chat toolbar; only the signed-in avatar menu renders.
+	if (!zooCodeIsAuthenticated) {
+		return null
+	}
 	return (
 		<div ref={ref} className={cn("relative ml-2", className)}>
 			{/* The icon button */}
