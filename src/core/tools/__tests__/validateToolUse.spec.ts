@@ -18,7 +18,7 @@ describe("mode-validator", () => {
 				// Code mode has all groups
 				Object.entries(TOOL_GROUPS).forEach(([_, config]) => {
 					config.tools.forEach((tool: string) => {
-						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(tool !== "parallel_tasks")
+						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(tool !== "parallel_tasks" && tool !== "background_tasks")
 					})
 				})
 			})

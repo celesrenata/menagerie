@@ -389,6 +389,28 @@ describe("getEnvironmentDetails", () => {
 
 		await expect(getEnvironmentDetails(mockCline as Task)).resolves.not.toThrow()
 	})
+	it("delivers background results once and renders steering for a background worker", async () => {
+		const takeReport = vi
+			.fn()
+			.mockReturnValueOnce({
+				batches: [{ batchId: "b1", results: [{ name: "a", mode: "code", state: "completed", result: "A done" }] }],
+				running: [{ batchId: "b1", name: "c", pendingSteering: 1 }],
+			})
+			.mockReturnValue(undefined)
+		const withService = Object.assign(mockProvider, { backgroundBatches: { takeReport } })
+		const parent = { ...mockCline, taskId: "parent-1", parallelWorker: false, providerRef: { deref: () => withService } }
+		const first = await getEnvironmentDetails(parent as unknown as Task)
+		expect(takeReport).toHaveBeenCalledWith("parent-1")
+		expect(first).toContain("# Background Tasks")
+		expect(first).toContain("A done")
+		expect(first).toContain("- c (batch b1), 1 steering message(s) not read yet")
+		const second = await getEnvironmentDetails(parent as unknown as Task)
+		expect(second).not.toContain("# Background Tasks")
+		const drain = vi.fn().mockReturnValueOnce(["switch to v2"]).mockReturnValue([])
+		const child = { ...mockCline, parallelWorker: true, steeringDrain: drain }
+		expect(await getEnvironmentDetails(child as unknown as Task)).toContain("# Steering from parent\n")
+		expect(await getEnvironmentDetails(child as unknown as Task)).not.toContain("# Steering from parent")
+	})
 	it("should include REMINDERS section when todoListEnabled is true", async () => {
 		mockProvider.getState.mockResolvedValue({
 			...mockState,

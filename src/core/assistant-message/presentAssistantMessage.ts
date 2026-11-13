@@ -31,6 +31,7 @@ import { switchModeTool } from "../tools/SwitchModeTool"
 import { attemptCompletionTool, AttemptCompletionCallbacks } from "../tools/AttemptCompletionTool"
 import { newTaskTool } from "../tools/NewTaskTool"
 import { parallelTasksTool } from "../tools/ParallelTasksTool"
+import { backgroundTasksTool } from "../tools/BackgroundTasksTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
 import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
@@ -594,7 +595,7 @@ export async function executeAssistantMessageBlock(
 			const state = await cline.providerRef.deref()?.getState()
 			const { customModes, experiments: stateExperiments } = state ?? {}
 			const disabledTools = cline.parallelWorker
-				? [...(state?.disabledTools ?? []), "new_task", "parallel_tasks"]
+				? [...(state?.disabledTools ?? []), "new_task", "parallel_tasks", "background_tasks"]
 				: state?.disabledTools
 			// Read the task-local mode, not the shared provider mode.
 			// A delegated child task may run in a different mode than its parent.
@@ -655,6 +656,8 @@ export async function executeAssistantMessageBlock(
 						return `[${block.name} for '${block.params.artifact_id}']`
 					case "update_todo_list":
 						return `[${block.name}]`
+					case "background_tasks":
+						return `[${block.name} ${block.params.action ?? ""}]`
 					case "new_task": {
 						const mode = block.params.mode ?? defaultModeSlug
 						const message = block.params.message ?? "(no message)"
@@ -707,7 +710,7 @@ export async function executeAssistantMessageBlock(
 					const errorMessage =
 						`Invalid tool call for '${block.name}': missing nativeArgs. ` +
 						(block.name === "parallel_tasks"
-							? `The call had no valid tasks array. Retry parallel_tasks alone with 1–4 independent tasks, each with name, mode, message, and todos (use null if no checklist is needed). Example: {"tasks":[{"name":"first","mode":"code","message":"Implement the first independent scope and report changed files.","todos":null},{"name":"second","mode":"architect","message":"Review the second independent scope and report findings.","todos":null}]}. Do not fall back to one new_task merely because this call was malformed.`
+							? `The call had no valid tasks array. Retry parallel_tasks alone with 1–12 independent tasks, each with name, mode, message, and todos (use null if no checklist is needed), plus background (null to wait, true to detach). Example: {"background":null,"tasks":[{"name":"first","mode":"code","message":"Implement the first independent scope and report changed files.","todos":null},{"name":"second","mode":"architect","message":"Review the second independent scope and report findings.","todos":null}]}. Do not fall back to one new_task merely because this call was malformed.`
 							: `This usually means the model streamed invalid or incomplete arguments and the call could not be finalized.`)
 
 					cline.consecutiveMistakeCount++
@@ -1145,6 +1148,14 @@ export async function executeAssistantMessageBlock(
 				switch (block.name) {
 					case "parallel_tasks":
 						await parallelTasksTool.handle(cline, block as ToolUse<"parallel_tasks">, {
+							askApproval,
+							handleError,
+							pushToolResult,
+							toolCallId,
+						})
+						break
+					case "background_tasks":
+						await backgroundTasksTool.handle(cline, block as ToolUse<"background_tasks">, {
 							askApproval,
 							handleError,
 							pushToolResult,

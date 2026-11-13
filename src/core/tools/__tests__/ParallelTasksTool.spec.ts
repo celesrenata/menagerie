@@ -176,6 +176,25 @@ describe("ParallelTasksTool.execute", () => {
 		expect(handleError).not.toHaveBeenCalled()
 	})
 
+	it("detaches the batch when background is true and returns the batchId at once", async () => {
+		const { task, provider } = makeTask()
+		const start = vi.fn().mockReturnValue({ batchId: "bg-1", names: ["worker-1", "worker-2"] })
+		;(provider as unknown as { backgroundBatches: { start: typeof start } }).backgroundBatches = { start }
+		const { askApproval, pushToolResult, callbacks } = makeCallbacks()
+		await run({ tasks: [worker(1), worker(2)], background: true }, task, callbacks)
+		expect(askApproval).toHaveBeenCalledOnce()
+		expect(start).toHaveBeenCalledOnce()
+		expect(runParallelTasks).not.toHaveBeenCalled()
+		const pushed = JSON.parse(pushToolResult.mock.calls[0]![0] as string)
+		expect(pushed).toMatchObject({ batchId: "bg-1", status: "running", tasks: ["worker-1", "worker-2"] })
+	})
+	it("still blocks when background is null or false", async () => {
+		const { task } = makeTask()
+		const { callbacks } = makeCallbacks()
+		await run({ tasks: [worker(1)], background: null }, task, callbacks)
+		await run({ tasks: [worker(1)], background: false }, task, callbacks)
+		expect(runParallelTasks).toHaveBeenCalledTimes(2)
+	})
 	describe("Granite workflow policy guard", () => {
 		it("explore rejects an edit-capable worker with a recoverable error and dispatches nothing", async () => {
 			const { double, task } = makeTask(true, { graniteWorkflowEnabled: true, graniteWorkflowPolicy: "explore" })

@@ -414,6 +414,25 @@ describe("NativeToolCallParser", () => {
 			}
 		})
 
+		it("keeps the background flag on parallel_tasks and parses background_tasks arguments", () => {
+			const scope = NativeToolCallParser.createScope()
+			const tasks = [{ name: "only", mode: "code", message: "Implement scope", todos: null }]
+			NativeToolCallParser.startStreamingToolCall("bg_batch", "parallel_tasks", scope)
+			NativeToolCallParser.processStreamingChunk("bg_batch", JSON.stringify({ tasks, background: true }), scope)
+			const batch = NativeToolCallParser.finalizeStreamingToolCall("bg_batch", scope)
+			if (batch?.type === "tool_use") expect(batch.nativeArgs).toEqual({ tasks, background: true })
+			else throw new Error("expected tool_use")
+			NativeToolCallParser.startStreamingToolCall("bg_steer", "background_tasks", scope)
+			NativeToolCallParser.processStreamingChunk(
+				"bg_steer",
+				JSON.stringify({ action: "steer", target: "only", message: "use v2", timeoutMs: null }),
+				scope,
+			)
+			const steer = NativeToolCallParser.finalizeStreamingToolCall("bg_steer", scope)
+			if (steer?.type === "tool_use") {
+				expect(steer.nativeArgs).toEqual({ action: "steer", target: "only", message: "use v2", timeoutMs: null })
+			} else throw new Error("expected tool_use")
+		})
 		it("decodes a stringified one-task parallel_tasks array that passes the schema", () => {
 			const scope = NativeToolCallParser.createScope()
 			const tasks = [{ name: "only", mode: "code", message: "Implement scope", todos: null }]

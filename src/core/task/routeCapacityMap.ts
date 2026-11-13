@@ -44,10 +44,10 @@ import { CAPABILITY_LANES, laneToRouteCapability, type CapabilityLane, type Lane
  * (PAR-013); nothing here models GPU/VRAM/CUDA/node identity.
  */
 export const STATIC_ROUTE_CAPACITY: Readonly<Record<RouteCapability, number>> = {
-	reader: 4,
-	reasoner: 2,
+	reader: 8,
+	reasoner: 4,
 	"long-context": 4,
-	general: 1,
+	general: 4,
 	// `vision` is intentionally omitted-as-configured; a vision worker falls
 	// through to DEFAULT_UNKNOWN_CAPABILITY_SLOTS until a vision backend is wired.
 	vision: 2,

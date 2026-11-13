@@ -6,16 +6,18 @@ Zoo Code checks task lifecycle protocols through one umbrella command for indepe
 pnpm lifecycle:model-check
 ```
 
-The baseline command runs seven independent bounded checks in sequence:
+The baseline command runs eight independent bounded checks in sequence:
 
 1. the persisted task delegation lifecycle;
 2. shared-store concurrency across task-history hosts;
 3. production-backed handoff reducers with an abstract provider/scheduler protocol;
 4. the task cleanup protocol;
 5. request-stream parser scoping;
-6. completion persistence; and
-7. delegated-mode reader refinement.
+6. completion persistence;
+7. delegated-mode reader refinement; and
+8. detached background batches (`scripts/check-background-subtasks.ts`).
 
+Detached (fire-and-forget) `parallel_tasks` batches are now production-backed: `scripts/check-background-subtasks.ts` drives the reducers in `src/core/task-persistence/backgroundBatchLifecycle.ts` (`detachBatch`, `settleBackgroundWorker`, `deliverSettledResults`, `steerBackgroundWorker`, `drainWorkerSteering`, `cancelBackgroundWorker`, `loseBackgroundParent`), the same functions `BackgroundBatchService` calls at runtime. It explores a two-worker batch and checks that a result reaches the parent at most once and never before the worker settles, that nothing is delivered or steered after parent loss, that steering never reaches a settled worker, that every steering item is delivered, still pending, or dropped with a reason, and that running workers end `cancelled` on parent loss. It also requires all eight named landmarks to stay reachable and catches a mutant `deliver` that forgets to mark results delivered.
 The planned two-sibling fan-out protocol is intentionally outside the baseline and CI umbrella. Run it explicitly with `pnpm fanout-protocol:model-check`; it describes optional future functionality, not current production coverage.
 
 This umbrella command is the single model-check entry point in the `compile` CI job after type checking. Command-level composition does not merge the submodels' state spaces: each checker retains its own bounds, transitions, invariant ownership, reachability requirements, and counterexample format. In particular, parser state is not part of the persisted lifecycle graph. The focused parser checker remains directly runnable with `pnpm parser-scope:model-check` for debugging.

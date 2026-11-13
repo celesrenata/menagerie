@@ -949,6 +949,16 @@ export class NativeToolCallParser {
 					}
 					break
 
+				case "background_tasks":
+					if (typeof args.action === "string") {
+						nativeArgs = {
+							action: args.action,
+							target: args.target ?? null,
+							message: args.message ?? null,
+							timeoutMs: args.timeoutMs ?? null,
+						} as NativeArgsFor<TName>
+					}
+					break
 				case "update_todo_list":
 					if (args.todos !== undefined) {
 						const todos = coerceTodosArg(args.todos)
@@ -1058,7 +1068,11 @@ export class NativeToolCallParser {
 						}
 					}
 					if (Array.isArray(tasks)) {
-						nativeArgs = { tasks } as NativeArgsFor<TName>
+						const background = typeof args.background === "boolean" ? args.background : undefined
+						nativeArgs = {
+							tasks,
+							...(background !== undefined ? { background } : {}),
+						} as NativeArgsFor<TName>
 					}
 					break
 				}

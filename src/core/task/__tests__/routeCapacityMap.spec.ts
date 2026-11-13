@@ -22,6 +22,9 @@ import { getPublishedCatalogEntries, __resetPublishedCatalogCache, __setPublishe
 import { DEFAULT_SCHEDULER_BOUNDS, type RouteCapability, type RouteCapacityProvider } from "../elasticTypes"
 
 describe("validateRouteCapacityMap", () => {
+	it("ships fan-out defaults large enough to use a big local fleet", () => {
+		expect(STATIC_ROUTE_CAPACITY).toEqual({ reader: 8, reasoner: 4, "long-context": 4, general: 4, vision: 2 })
+	})
 	it("accepts the shipped STATIC_ROUTE_CAPACITY", () => {
 		expect(() => validateRouteCapacityMap(STATIC_ROUTE_CAPACITY)).not.toThrow()
 	})
@@ -39,7 +42,7 @@ describe("createStaticRouteCapacityProvider", () => {
 	it("returns the configured slot count for a known capability", () => {
 		const provider = createStaticRouteCapacityProvider()
 		const [snapshot] = provider.capacitiesFor("reader")
-		expect(snapshot).toMatchObject({ capability: "reader", capacity: 4, available: 4 })
+		expect(snapshot).toMatchObject({ capability: "reader", capacity: 8, available: 8 })
 		expect(snapshot?.route).toBe("static:reader")
 	})
 

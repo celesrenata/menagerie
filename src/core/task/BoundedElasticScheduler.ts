@@ -115,7 +115,7 @@ export class BoundedElasticScheduler {
 	/** Gates how many workers may progress at once (PAR-003.1). */
 	private readonly dispatchSemaphore: TaskSemaphore
 	/** One lease pool per capability, created lazily on first `acquireLease`. */
-	private readonly leasePools = new Map<RouteCapability, InferenceLeasePool>()
+	private readonly leasePools: Map<RouteCapability, InferenceLeasePool> = new Map()
 
 	/** The DAG compiled from the admitted plan; undefined until `admitPlan`. */
 	private dag?: TaskDag
@@ -139,9 +139,17 @@ export class BoundedElasticScheduler {
 	 */
 	private readonly metricsCollector: ParallelismMetricsCollector
 
-	constructor(bounds: SchedulerBounds, policy: UserParallelismPolicy, routes: RouteCapacityProvider) {
+	constructor(
+		bounds: SchedulerBounds,
+		policy: UserParallelismPolicy,
+		routes: RouteCapacityProvider,
+		sharedLeasePools?: Map<RouteCapability, InferenceLeasePool>,
+	) {
 		this.policy = policy
 		this.routes = routes
+		// Concurrent (background) batches pass one shared map so they draw from the
+		// same per-capability lease pools instead of each assuming full capacity.
+		if (sharedLeasePools) this.leasePools = sharedLeasePools
 		this.bounds = {
 			maxLive: clampCeiling(bounds.maxLive, policy.maxLive),
 			maxDispatched: clampCeiling(bounds.maxDispatched, policy.maxDispatched),

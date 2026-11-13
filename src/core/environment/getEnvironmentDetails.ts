@@ -1,3 +1,4 @@
+import { renderBackgroundTasksSection, renderSteeringSection } from "../task/background/renderBackgroundReport"
 import path from "path"
 import os from "os"
 
@@ -180,6 +181,14 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		const recovery = await getInterruptedParallelBatchSummary(clineProvider.context.globalStorageUri.fsPath, cline.taskId)
 		if (recovery) details += `\n\n${recovery}`
 	}
+	// Detached parallel_tasks batches: deliver newly settled results once and list what is still running.
+	if (!cline.parallelWorker && clineProvider?.backgroundBatches) {
+		const report = clineProvider.backgroundBatches.takeReport(cline.taskId)
+		if (report) details += `\n\n${renderBackgroundTasksSection(report)}`
+	}
+	// A background worker reads steering its parent queued for it at its next request boundary.
+	const steering = cline.steeringDrain?.() ?? []
+	if (steering.length > 0) details += `\n\n${renderSteeringSection(steering)}`
 
 	// Get settings for time and cost display
 	const { includeCurrentTime = true, includeCurrentCost = true, maxGitStatusFiles = 0 } = state ?? {}

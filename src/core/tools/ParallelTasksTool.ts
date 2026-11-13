@@ -6,7 +6,7 @@ import { Task } from "../task/Task"
 import { BaseTool, type ToolCallbacks } from "./BaseTool"
 import { getModeBySlug } from "../../shared/modes"
 import { Package } from "../../shared/package"
-import { runParallelTasks } from "../task/runParallelTasks"
+import { runParallelTasks, type ParallelTaskResult } from "../task/runParallelTasks"
 import { addSharedDocumentReader } from "../task/ParallelTaskReader"
 import { BoundedElasticScheduler } from "../task/BoundedElasticScheduler"
 import {
@@ -24,7 +24,11 @@ import type { ToolCapabilityId } from "../capability/toolCapability"
 import { toUserParallelismPolicy } from "../task/resolveUserParallelismPolicy"
 import { extractFileCitations } from "../../services/analysis/evidenceAdapter"
 import { persistSpecStatus, setSpecStatus } from "../../services/observatory/specStatusRegistry"
-import { analyzeReaderResults, currentAnalysisMetrics, type AnalysisAugmentation } from "../../services/analysis/AnalysisService"
+import {
+	analyzeReaderResults,
+	currentAnalysisMetrics,
+	type AnalysisAugmentation,
+} from "../../services/analysis/AnalysisService"
 import { normalizeWorkerResult } from "../task/normalizeWorkerResult"
 import { READER_MODES } from "../task/parallelWorkerRouting"
 import { SpecRevisionStore } from "../specs/SpecRevisionStore"
@@ -110,7 +114,7 @@ export const parallelTaskSpecSchema = z
 		// Optional cognition metadata (design §FEAT-006/§FEAT-008). The mastermind expresses the
 		// reasoning budget/bias and verification intent; OmniRoute still schedules the silicon.
 		reasoning: workerReasoningPolicySchema.optional(),
-		verification: verificationPolicySchema.optional(),
+		verification: verificationPolicySchema.nullish(),
 		// Optional capability requirement (FEAT-013, MCP-016). Preserved through validation so
 		// `readNodeCapabilityRequirement` finds it and `setUpWorkerBroker` provisions the
 		// required set before the worker's first generation. Absent for legacy/reader specs.
@@ -180,6 +184,8 @@ export function makeParallelTasksSchema(maxLive: number = DEFAULT_SCHEDULER_BOUN
 	return z
 		.object({
 			tasks: z.array(parallelTaskSpecSchema).min(1).max(maxLive),
+			/** true detaches the batch; false/null/absent waits (legacy behavior). */
+			background: z.boolean().nullable().optional(),
 		})
 		.strict()
 		.refine(
@@ -296,6 +302,7 @@ type ParentParallelTaskResult = {
 	patch?: string
 	result?: string
 	error?: string
+	audit?: { outcome: string; rounds: number; reason: string; escalation?: { lane: string } }
 }
 
 type ParentParallelTaskBatch = {
@@ -332,6 +339,14 @@ export function compactParallelTasksResultForParent(result: ParentParallelTaskBa
 			const errorClipped = worker.error !== undefined && worker.error.length > MAX_WORKER_PARENT_ERROR_CHARS
 			return {
 				...worker,
+				// One line only: the full record stays in the worker file and manifest.
+				...(worker.audit
+					? {
+							audit: `${worker.audit.outcome} after ${worker.audit.rounds} rework round(s)${
+								worker.audit.escalation ? `; escalated to ${worker.audit.escalation.lane}` : ""
+							}: ${worker.audit.reason}`,
+						}
+					: {}),
 				...(worker.result !== undefined
 					? {
 							result: clipParentResult(worker.result, maxResultChars, result.manifestPath),
@@ -435,7 +450,11 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 		return toUserParallelismPolicy(task.resolvedParallelismPolicy)
 	}
 
-	async execute(input: { tasks: ParallelTaskSpec[] }, task: Task, callbacks: ToolCallbacks): Promise<void> {
+	async execute(
+		input: { tasks: ParallelTaskSpec[]; background?: boolean | null },
+		task: Task,
+		callbacks: ToolCallbacks,
+	): Promise<void> {
 		try {
 			// Guard before validation: `.strip()` would drop placement keys, so inspect the raw
 			// input to reject mastermind-originated physical placement without a user route override.
@@ -447,7 +466,7 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 			const requestSchema = makeParallelTasksSchema(resolveParallelTasksMax(policy))
 			const parsed = requestSchema.safeParse(input)
 			if (!parsed.success) throw parsed.error
-			const { tasks: requestedTasks } = parsed.data
+			const { tasks: requestedTasks, background } = parsed.data
 			task.parallelTaskArgumentRecovery.onValidCall()
 			const provider = task.providerRef.deref()
 			if (!provider) throw new Error("Provider reference lost")
@@ -487,16 +506,17 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 				enabled: state.graniteWorkflowEnabled === true,
 				policy: state.graniteWorkflowPolicy,
 			})
-			const policyViolations = findPolicyViolations(
-				tasks,
-				workflowPolicy,
-				(slug) => groupsCanEdit(getModeBySlug(slug, state.customModes)?.groups),
+			const policyViolations = findPolicyViolations(tasks, workflowPolicy, (slug) =>
+				groupsCanEdit(getModeBySlug(slug, state.customModes)?.groups),
 			)
 			if (policyViolations.length > 0) throw new ParallelTasksArgumentError(policyViolations.join("; "))
 			// Strict: only tasks compiled from a stored, user-approved spec revision may dispatch.
-			const specStore = workflowPolicy.requiresApproval ? new SpecRevisionStore(path.join(task.cwd, SPECS_DIR)) : undefined
+			const specStore = workflowPolicy.requiresApproval
+				? new SpecRevisionStore(path.join(task.cwd, SPECS_DIR))
+				: undefined
 			const strictCheck = specStore ? await checkStrictDispatch(tasks, specStore) : undefined
-			if (strictCheck && strictCheck.violations.length > 0) throw new ParallelTasksArgumentError(strictCheck.violations.join("; "))
+			if (strictCheck && strictCheck.violations.length > 0)
+				throw new ParallelTasksArgumentError(strictCheck.violations.join("; "))
 			// Build the ExecutionPlan and admit it so cyclic/duplicate/invalid plans are rejected
 			// recoverably before any worker is dispatched. `admitPlan` compiles the plan into a
 			// TaskDag, which throws `ParallelTasksArgumentError` on a cycle, a duplicate task name,
@@ -527,35 +547,63 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 				}),
 			)
 			if (!approved) return
+			// Strict gate and reader analysis run after the batch finishes, whether the parent
+			// waited for it or it was detached to the background.
+			const finishBatch = async (result: {
+				batchId: string
+				manifestPath?: string
+				tasks: ParallelTaskResult[]
+			}) => {
+				// Strict: host-run executable checks decide; the result carries the deterministic verdict.
+				const specGate =
+					specStore && strictCheck
+						? await runStrictGate({
+								revisions: strictCheck.revisions,
+								store: specStore,
+								workspaceRoot: task.cwd,
+								manifestPath: result.manifestPath,
+								tasks: result.tasks,
+							})
+						: undefined
+				// Additive and only when the feature is on: bounded analysis of completed reader results.
+				const analysis = workflowPolicy.active
+					? await analyzeCompletedReaders(result, task.cwd, workflowPolicy.requiredAnalysisFailsClosed)
+					: undefined
+				return { specGate, analysis }
+			}
+			if (background === true) {
+				const started = provider.backgroundBatches.start({
+					parent: task,
+					provider,
+					specs: tasks,
+					policy,
+					afterBatch: async ({ batchId, results, manifestPath }) => {
+						const gated = await finishBatch({ batchId, manifestPath, tasks: results })
+						await recordSpecGate(task, gated.specGate)
+						if (!gated.specGate && !gated.analysis) return undefined
+						return {
+							...(gated.analysis ? { analysis: gated.analysis } : {}),
+							...(gated.specGate ? { specGate: gated.specGate } : {}),
+						}
+					},
+				})
+				callbacks.pushToolResult(
+					JSON.stringify({
+						batchId: started.batchId,
+						status: "running",
+						tasks: started.names,
+						note: "Detached. Keep working; results appear under '# Background Tasks' in later turns. Use background_tasks to check status, steer, cancel or wait.",
+					}),
+				)
+				return
+			}
 			const result = await runParallelTasks(task, provider, tasks, policy)
 			const compact = compactParallelTasksResultForParent(result)
-			// Strict: host-run executable checks decide; the result carries the deterministic verdict.
-			const specGate =
-				specStore && strictCheck
-					? await runStrictGate({ revisions: strictCheck.revisions, store: specStore, workspaceRoot: task.cwd, manifestPath: result.manifestPath, tasks: result.tasks })
-					: undefined
-			// Additive and only when the feature is on: bounded analysis of completed reader results.
-			const analysis = workflowPolicy.active ? await analyzeCompletedReaders(result, task.cwd, workflowPolicy.requiredAnalysisFailsClosed) : undefined
-			if (specGate && specGate.length > 0) {
-				// Display-only status for the Observatory; the gate result above is the authority.
-				const metrics = currentAnalysisMetrics()
-				const rows: SpecStatusSummary[] = specGate.map((g) => ({
-						specId: g.specId,
-						revisionId: g.revisionId,
-						phase: g.verdict === "pass" ? "verified" : g.verdict === "failed" ? "failed" : g.verdict === "blocked" ? "blocked" : "not-verified",
-						verdict: g.verdict,
-						requirementsCovered: g.requirementsCovered,
-						reasons: g.reasons,
-						criteria: g.criteria,
-						...(g.fixer ? { fixer: g.fixer } : {}),
-						analysis: metrics,
-						updatedAt: Date.now(),
-				}))
-				setSpecStatus(task.taskId, rows)
-				// Also persisted so the Observatory can show it after a restart (display only).
-				await persistSpecStatus(task.cwd, task.taskId, rows)
-			}
-			callbacks.pushToolResult(JSON.stringify({ ...compact, ...(analysis ? { analysis } : {}), ...(specGate ? { specGate } : {}) }))
+			const { specGate, analysis } = await finishBatch(result)
+			await recordSpecGate(task, specGate)
+			callbacks.pushToolResult(
+				JSON.stringify({ ...compact, ...(analysis ? { analysis } : {}), ...(specGate ? { specGate } : {}) }),
+			)
 		} catch (error) {
 			// Argument problems are recoverable: report them to the model as a tool error so it can
 			// retry with a valid batch of tasks, instead of surfacing a fatal user-facing error.
@@ -577,6 +625,36 @@ export class ParallelTasksTool extends BaseTool<"parallel_tasks"> {
 }
 
 export const parallelTasksTool = new ParallelTasksTool()
+/** Display-only Observatory status for a strict gate; the gate result itself is the authority. */
+async function recordSpecGate(
+	task: Task,
+	specGate: Awaited<ReturnType<typeof runStrictGate>> | undefined,
+): Promise<void> {
+	if (!specGate || specGate.length === 0) return
+	const metrics = currentAnalysisMetrics()
+	const rows: SpecStatusSummary[] = specGate.map((g) => ({
+		specId: g.specId,
+		revisionId: g.revisionId,
+		phase:
+			g.verdict === "pass"
+				? "verified"
+				: g.verdict === "failed"
+					? "failed"
+					: g.verdict === "blocked"
+						? "blocked"
+						: "not-verified",
+		verdict: g.verdict,
+		requirementsCovered: g.requirementsCovered,
+		reasons: g.reasons,
+		criteria: g.criteria,
+		...(g.fixer ? { fixer: g.fixer } : {}),
+		analysis: metrics,
+		updatedAt: Date.now(),
+	}))
+	setSpecStatus(task.taskId, rows)
+	// Also persisted so the Observatory can show it after a restart (display only).
+	await persistSpecStatus(task.cwd, task.taskId, rows)
+}
 
 /**
  * Feeds completed reader results to the tool-less analysis executor. Never throws: any failure is
@@ -604,6 +682,9 @@ async function analyzeCompletedReaders(
 		if (readers.length === 0) return { status: "skipped", reason: "no completed reader results" }
 		return await analyzeReaderResults({ batchId: result.batchId, workspaceRoot, readers, required })
 	} catch (error) {
-		return { status: "skipped", reason: `analysis error: ${error instanceof Error ? error.message : "unknown"}`.slice(0, 200) }
+		return {
+			status: "skipped",
+			reason: `analysis error: ${error instanceof Error ? error.message : "unknown"}`.slice(0, 200),
+		}
 	}
 }
