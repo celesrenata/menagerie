@@ -314,19 +314,13 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
-		"title": "Выпущен Zoo Code {{version}}",
-		"support": "Поддержите Zoo Code, поставив нам звезду на <githubLink>GitHub</githubLink>.",
+		"title": "Menagerie {{version}}",
+		"support": "Read the full release notes and report issues on <githubLink>GitHub</githubLink>.",
 		"release": {
-			"heading": "Что нового:",
-			"highlight1": "✨ Добавлены новые SOTA-модели: Используйте GPT-6 Sol, GPT-6 Luna и Claude Opus 5.5 у поддерживаемых провайдеров.",
-			"highlight2": "🧭 Более надёжные задачи и подзадачи: Сохраняйте изоляцию делегированных режимов, связи с подзадачами после повторных остановок и настройки оркестратора при переключении режима slash-командами.",
-			"highlight3": "🛠️ Более надёжная работа терминала, провайдеров и поиска по коду: Улучшена работа терминала в Windows и неанглоязычных средах, ответы и отмена запросов провайдеров, а поиск по коду теперь стабильнее использует правильный workspace."
-		},
-		"cloudAgents": {
-			"heading": "Новое в облаке:",
-			"specialized": "Представляем <bold>Explainer</bold>, <bold>Planner</bold> и <bold>Coder</bold> - трёх специализированных облачных агентов для улучшения ваших рабочих процессов.",
-			"description": "Агенты работают вместе в облаке и могут быть запущены из веб-интерфейса или через Slack.",
-			"tryButton": "Попробовать облачных агентов"
+			"heading": "What's new in Menagerie:",
+			"highlight1": "🧭 Task board: summaries, expandable details, pause/resume/restart/cancel, and tasks that recover after a reload.",
+			"highlight2": "❓ Fewer interruptions: answered questions are remembered, and your original request and project docs are checked before you are asked again.",
+			"highlight3": "🧪 Spec-driven workflows: import and approve spec revisions, run strict batches in a patch sandbox, and route cost tiers through OmniRoute."
 		}
 	},
 	"reasoning": {

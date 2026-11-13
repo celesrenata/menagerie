@@ -340,19 +340,13 @@
 		"timerPrefix": "Approvazione automatica abilitata. Selezione tra {{seconds}}s…"
 	},
 	"announcement": {
-		"title": "Rilasciato Zoo Code {{version}}",
-		"support": "Sostieni Zoo Code lasciandoci una stella su <githubLink>GitHub</githubLink>.",
+		"title": "Menagerie {{version}}",
+		"support": "Read the full release notes and report issues on <githubLink>GitHub</githubLink>.",
 		"release": {
-			"heading": "Novità:",
-			"highlight1": "✨ Aggiunti nuovi modelli SOTA: Usa GPT-6 Sol, GPT-6 Luna e Claude Opus 5.5 con i provider supportati.",
-			"highlight2": "🧭 Attività e sottoattività più affidabili: Mantieni isolati i mode delegati, conserva i collegamenti alle sottoattività dopo Stop ripetuti e proteggi le impostazioni dell'orchestrator quando i comandi slash cambiano mode.",
-			"highlight3": "🛠️ Comportamento più affidabile di terminale, provider e ricerca del codice: Migliora il terminale su Windows e negli ambienti non in inglese, rafforza le risposte e l'annullamento dei provider e fai in modo che la ricerca del codice utilizzi più coerentemente il workspace corretto."
-		},
-		"cloudAgents": {
-			"heading": "Novità nel Cloud:",
-			"specialized": "Presentazione di <bold>Explainer</bold>, <bold>Planner</bold> e <bold>Coder</bold> - tre agenti cloud specializzati per migliorare i tuoi flussi di lavoro.",
-			"description": "Gli agenti lavorano insieme nel cloud e possono essere attivati dal web o tramite Slack.",
-			"tryButton": "Prova gli Agenti Cloud"
+			"heading": "What's new in Menagerie:",
+			"highlight1": "🧭 Task board: summaries, expandable details, pause/resume/restart/cancel, and tasks that recover after a reload.",
+			"highlight2": "❓ Fewer interruptions: answered questions are remembered, and your original request and project docs are checked before you are asked again.",
+			"highlight3": "🧪 Spec-driven workflows: import and approve spec revisions, run strict batches in a patch sandbox, and route cost tiers through OmniRoute."
 		}
 	},
 	"costs": {

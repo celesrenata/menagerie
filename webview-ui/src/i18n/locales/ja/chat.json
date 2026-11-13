@@ -340,19 +340,13 @@
 		"timerPrefix": "自動承認が有効です。{{seconds}}秒後に選択中…"
 	},
 	"announcement": {
-		"title": "Zoo Code {{version}} リリース",
-		"support": "<githubLink>GitHub</githubLink>でスターを付けて Zoo Code を応援してください。",
+		"title": "Menagerie {{version}}",
+		"support": "Read the full release notes and report issues on <githubLink>GitHub</githubLink>.",
 		"release": {
-			"heading": "新機能:",
-			"highlight1": "✨ 新しい SOTA モデルを追加: 対応プロバイダーで GPT-6 Sol、GPT-6 Luna、Claude Opus 5.5 を利用できます。",
-			"highlight2": "🧭 タスクとサブタスクの信頼性を向上: 委任されたモードを分離し、Stop を繰り返した後もサブタスクのリンクを維持し、スラッシュコマンドによるモード切り替え時にオーケストレーターの設定を保護します。",
-			"highlight3": "🛠️ ターミナル、プロバイダー、コード検索の動作をさらに安定化: Windows や英語以外の環境でのターミナル動作、プロバイダーの応答とキャンセル処理を改善し、コード検索が正しいワークスペースをより確実に使用するようにしました。"
-		},
-		"cloudAgents": {
-			"heading": "クラウドの新機能:",
-			"specialized": "<bold>Explainer</bold>、<bold>Planner</bold>、<bold>Coder</bold> の 3 つの専門クラウドエージェントを紹介します。ワークフローを強化します。",
-			"description": "エージェントはクラウドで連携して動作し、Web または Slack からトリガーできます。",
-			"tryButton": "クラウドエージェントを試す"
+			"heading": "What's new in Menagerie:",
+			"highlight1": "🧭 Task board: summaries, expandable details, pause/resume/restart/cancel, and tasks that recover after a reload.",
+			"highlight2": "❓ Fewer interruptions: answered questions are remembered, and your original request and project docs are checked before you are asked again.",
+			"highlight3": "🧪 Spec-driven workflows: import and approve spec revisions, run strict batches in a patch sandbox, and route cost tiers through OmniRoute."
 		}
 	},
 	"costs": {

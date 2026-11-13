@@ -158,14 +158,6 @@ export const stories: Record<string, Story> = {
 		const { default: RooHero } = await import("@/components/welcome/RooHero")
 		return <RooHero />
 	},
-	"telemetry-banner": async () => {
-		const [{ TelemetryBannerFixture }, { visualTestI18nReady }] = await Promise.all([
-			import("@/components/common/__tests__/TelemetryBanner.visual.fixture"),
-			import("@/components/common/__tests__/TelemetryBanner.visual.i18n"),
-		])
-		await visualTestI18nReady
-		return <TelemetryBannerFixture />
-	},
 	"theme-aware-controls": async () => {
 		const [{ SelectDropdown }, { default: UpdateTodoListToolBlock }] = await Promise.all([
 			import("@/components/ui/select-dropdown"),

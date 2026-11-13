@@ -369,19 +369,13 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
-		"title": "Zoo Code {{version}} Dirilis",
-		"support": "Dukung Zoo Code dengan memberi kami bintang di <githubLink>GitHub</githubLink>.",
+		"title": "Menagerie {{version}}",
+		"support": "Read the full release notes and report issues on <githubLink>GitHub</githubLink>.",
 		"release": {
-			"heading": "Yang Baru:",
-			"highlight1": "✨ Model SOTA baru ditambahkan: Gunakan GPT-6 Sol, GPT-6 Luna, dan Claude Opus 5.5 melalui provider yang didukung.",
-			"highlight2": "🧭 Task dan subtask yang lebih andal: Jaga mode yang didelegasikan tetap terisolasi, pertahankan tautan subtask setelah Stop berulang, dan lindungi pengaturan orchestrator saat slash command mengganti mode.",
-			"highlight3": "🛠️ Perilaku terminal, provider, dan pencarian kode yang lebih andal: Tingkatkan terminal di Windows dan lingkungan non-Inggris, perkuat respons serta pembatalan provider, dan pastikan pencarian kode lebih konsisten menggunakan workspace yang tepat."
-		},
-		"cloudAgents": {
-			"heading": "Baru di Cloud:",
-			"specialized": "Memperkenalkan <bold>Explainer</bold>, <bold>Planner</bold>, dan <bold>Coder</bold> - tiga agen cloud khusus untuk meningkatkan alur kerja Anda.",
-			"description": "Agen bekerja bersama di cloud dan dapat dipicu dari web atau melalui Slack.",
-			"tryButton": "Coba Agen Cloud"
+			"heading": "What's new in Menagerie:",
+			"highlight1": "🧭 Task board: summaries, expandable details, pause/resume/restart/cancel, and tasks that recover after a reload.",
+			"highlight2": "❓ Fewer interruptions: answered questions are remembered, and your original request and project docs are checked before you are asked again.",
+			"highlight3": "🧪 Spec-driven workflows: import and approve spec revisions, run strict batches in a patch sandbox, and route cost tiers through OmniRoute."
 		}
 	},
 	"reasoning": {

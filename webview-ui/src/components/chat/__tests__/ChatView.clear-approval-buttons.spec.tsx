@@ -89,9 +89,6 @@ vi.mock("@src/components/welcome/RooHero", () => ({
 	default: () => <div data-testid="roo-hero">Hero content</div>,
 }))
 
-vi.mock("../common/TelemetryBanner", () => ({
-	default: () => null,
-}))
 
 // The i18n mock returns the key itself, so button labels render as their keys.
 vi.mock("react-i18next", () => ({

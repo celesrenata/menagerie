@@ -42,7 +42,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 			}
 
 			if (key === "chat:announcement.title") {
-				return `Zoo Code ${options?.version ?? ""} Released`
+				return `Menagerie ${options?.version ?? ""}`
 			}
 
 			return translations[key] ?? key
@@ -54,7 +54,7 @@ describe("Announcement", () => {
 	it("renders the announcement title and highlights", () => {
 		render(<Announcement hideAnnouncement={vi.fn()} />)
 
-		expect(screen.getByText("Zoo Code 3.84.0 Released")).toBeInTheDocument()
+		expect(screen.getByText("Menagerie 3.84.0")).toBeInTheDocument()
 		expect(
 			screen.getByText(
 				"✨ New SOTA models added: Use GPT-6 Sol, GPT-6 Luna, and Claude Opus 5.5 across supported providers.",
@@ -78,7 +78,7 @@ describe("Announcement", () => {
 		expect(screen.getAllByRole("listitem")).toHaveLength(3)
 	})
 
-	it("links support users to the Zoo Code GitHub repository", () => {
+	it("links users to the Menagerie GitHub repository", () => {
 		render(<Announcement hideAnnouncement={vi.fn()} />)
 
 		expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", EXTERNAL_LINKS.GITHUB_REPO)
@@ -88,21 +88,10 @@ describe("Announcement", () => {
 		render(<Announcement hideAnnouncement={vi.fn()} />)
 
 		fireEvent.click(screen.getByRole("link", { name: "GitHub" }))
-		fireEvent.click(screen.getByRole("link", { name: "X" }))
-		fireEvent.click(screen.getByRole("link", { name: "Discord" }))
-		fireEvent.click(screen.getByRole("link", { name: "Reddit" }))
-
-		expect(vscode.postMessage).toHaveBeenCalledTimes(4)
+		fireEvent.click(screen.getByRole("link", { name: "Release notes" }))
+		expect(vscode.postMessage).toHaveBeenCalledTimes(2)
 		expect(vscode.postMessage).toHaveBeenNthCalledWith(1, { type: "openExternal", url: EXTERNAL_LINKS.GITHUB_REPO })
-		expect(vscode.postMessage).toHaveBeenNthCalledWith(2, { type: "openExternal", url: "https://x.com/ZooCodeDev" })
-		expect(vscode.postMessage).toHaveBeenNthCalledWith(3, {
-			type: "openExternal",
-			url: "https://discord.gg/VxfP4Vx3gX",
-		})
-		expect(vscode.postMessage).toHaveBeenNthCalledWith(4, {
-			type: "openExternal",
-			url: "https://www.reddit.com/r/ZooCode/",
-		})
+		expect(vscode.postMessage).toHaveBeenNthCalledWith(2, { type: "openExternal", url: EXTERNAL_LINKS.RELEASES })
 	})
 
 	// VS Code's webview bootstrap intercepts clicks on any anchor with an href

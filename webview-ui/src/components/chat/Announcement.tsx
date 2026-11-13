@@ -1,6 +1,6 @@
 import { memo, type MouseEvent, type ReactNode, useState } from "react"
 import { Trans } from "react-i18next"
-import { SiDiscord, SiReddit, SiX } from "react-icons/si"
+import { SiGithub } from "react-icons/si"
 
 import { Package } from "@roo/package"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -53,19 +53,9 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 					<div className="mt-4 text-sm text-center text-vscode-descriptionForeground">
 						<div className="flex items-center justify-center gap-4">
 							<SocialLink
-								icon={<SiX className="w-4 h-4" aria-hidden />}
-								label="X"
-								href="https://x.com/ZooCodeDev"
-							/>
-							<SocialLink
-								icon={<SiDiscord className="w-4 h-4" aria-hidden />}
-								label="Discord"
-								href="https://discord.gg/VxfP4Vx3gX"
-							/>
-							<SocialLink
-								icon={<SiReddit className="w-4 h-4" aria-hidden />}
-								label="Reddit"
-								href="https://www.reddit.com/r/ZooCode/"
+								icon={<SiGithub className="w-4 h-4" aria-hidden />}
+								label="Release notes"
+								href={EXTERNAL_LINKS.RELEASES}
 							/>
 						</div>
 					</div>
