@@ -78,7 +78,7 @@ function carryReasoningIntent(
 export function carryCognitionMetadata(spec: ParallelTaskSpec): CognitionMetadataEnvelope {
 	return {
 		...carryReasoningIntent(spec.reasoning),
-		...(spec.verification !== undefined ? { verification: spec.verification } : {}),
+		...(spec.verification != null ? { verification: spec.verification } : {}),
 		// `mode` is the worker's role/kind of work — a cognition concern, not placement.
 		executionIntent: spec.mode,
 	}

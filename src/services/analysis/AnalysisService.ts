@@ -9,7 +9,13 @@ import { AnalysisExecutor } from "./AnalysisExecutor"
 import { analysisMetricsSnapshot, recordAnalysisEscalation, recordAnalysisEvent } from "./analysisMetrics"
 import { AnalysisQueue } from "./AnalysisQueue"
 import { evidencePacketToAnalysisEvidence, workerResultToEvidencePacket } from "./evidenceAdapter"
-import { GraniteAnalysisClient, OMNIROUTE_ANALYSIS_HEADERS } from "./GraniteAnalysisClient"
+import {
+	AnalysisTransportError,
+	GraniteAnalysisClient,
+	OMNIROUTE_ANALYSIS_HEADERS,
+	type AnalysisChatMessage,
+	type AnalysisCompletion,
+} from "./GraniteAnalysisClient"
 import { summarizeOutcomeForParent } from "./summarizeForParent"
 import { createWorkspaceEvidenceVerifier } from "./workspaceEvidenceVerifier"
 
@@ -50,6 +56,7 @@ export interface AnalysisRunner {
 }
 
 interface Runtime {
+	client: GraniteAnalysisClient
 	queue: AnalysisQueue
 	runner: (namespace: string, workspaceRoot: string) => AnalysisRunner
 	/** Last time the service looked down (unavailable / timeout). */
@@ -68,6 +75,7 @@ function runtimeFor(config: AnalysisRouteConfig): Runtime {
 		const queue = new AnalysisQueue({ maxActive: config.maxActive, maxQueued: config.maxQueued })
 		const cache = new AnalysisCache()
 		const created: Runtime = {
+			client,
 			queue,
 			lastUnavailableAt: 0,
 			runner: (namespace, workspaceRoot) =>
@@ -215,4 +223,49 @@ export async function analyzeReaderResults(args: AnalyzeArgs): Promise<AnalysisA
 		return { status: "escalate", lane: "reader.deep", reason: "required analysis produced no valid result", items }
 	}
 	return { status: "analyzed", items }
+}
+
+export type RouteCompletion =
+	| { kind: "ok"; content: string; modelId: string }
+	| { kind: "unavailable"; reason: string }
+export interface CompleteOnRouteArgs {
+	messages: AnalysisChatMessage[]
+	maxTokens: number
+	env?: Readonly<Record<string, string | undefined>>
+	signal?: AbortSignal
+	/** Test seam: replaces the HTTP client and queue. */
+	complete?: (messages: AnalysisChatMessage[], maxTokens: number, signal?: AbortSignal) => Promise<AnalysisCompletion>
+}
+/**
+ * One bounded, non-streaming, tool-less completion on the published analysis route, sharing the
+ * process-wide 2-slot queue and health window. For callers that build their own prompt and
+ * validate the reply themselves (the reader-assisted question flow). Never throws for expected
+ * conditions: every transport failure is reported as `unavailable` with a short cause.
+ */
+export async function completeOnAnalysisRoute(args: CompleteOnRouteArgs): Promise<RouteCompletion> {
+	if (args.complete) {
+		try {
+			const done = await args.complete(args.messages, args.maxTokens, args.signal)
+			return { kind: "ok", content: done.content, modelId: "injected" }
+		} catch (error) {
+			return { kind: "unavailable", reason: error instanceof Error ? error.message.slice(0, 200) : "unexpected error" }
+		}
+	}
+	const config = resolveAnalysisRouteConfig(args.env ?? process.env)
+	if (!config) return { kind: "unavailable", reason: "no analysis route published" }
+	const runtime = runtimeFor(config)
+	if (Date.now() - runtime.lastUnavailableAt <= UNHEALTHY_WINDOW_MS) return { kind: "unavailable", reason: "analysis route unhealthy" }
+	try {
+		const done = await runtime.queue.run((signal) => runtime.client.complete(args.messages, args.maxTokens, signal), {
+			deadlineMs: config.timeoutMs,
+			signal: args.signal,
+		})
+		return { kind: "ok", content: done.content, modelId: config.model }
+	} catch (error) {
+		if (error instanceof AnalysisTransportError) {
+			if (error.kind === "unavailable" || error.kind === "timeout") runtime.lastUnavailableAt = Date.now()
+			return { kind: "unavailable", reason: `${error.kind}: ${error.message}`.slice(0, 200) }
+		}
+		return { kind: "unavailable", reason: error instanceof Error ? error.message.slice(0, 200) : "unexpected error" }
+	}
 }

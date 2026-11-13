@@ -80,6 +80,38 @@ describe("attemptCompletionTool", () => {
 		}
 	})
 
+	describe("background task guard", () => {
+		const block: AttemptCompletionToolUse = {
+			type: "tool_use",
+			name: "attempt_completion",
+			params: { result: "done" },
+			nativeArgs: { result: "done" },
+			partial: false,
+		}
+		const callbacksFor = (): AttemptCompletionCallbacks => ({
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+			askFinishSubTaskApproval: mockAskFinishSubTaskApproval,
+			toolDescription: mockToolDescription,
+		})
+		it("refuses completion while background workers are active", async () => {
+			const hasActive = vi.fn().mockReturnValue(true)
+			mockTask.providerRef = { deref: () => ({ backgroundBatches: { hasActive } }) } as unknown as Task["providerRef"]
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacksFor())
+			expect(hasActive).toHaveBeenCalledWith("task_1")
+			expect(mockTask.recordToolError).toHaveBeenCalledWith("attempt_completion")
+			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("background_tasks"))
+			expect(mockTask.say).not.toHaveBeenCalledWith("completion_result", expect.anything(), expect.anything())
+		})
+		it("does not block completion when nothing is active", async () => {
+			mockTask.providerRef = {
+				deref: () => ({ backgroundBatches: { hasActive: () => false } }),
+			} as unknown as Task["providerRef"]
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacksFor())
+			expect(mockTask.recordToolError).not.toHaveBeenCalled()
+		})
+	})
 	describe("todo list validation", () => {
 		it("should allow completion when there is no todo list", async () => {
 			const block: AttemptCompletionToolUse = {

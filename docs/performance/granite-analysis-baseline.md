@@ -55,3 +55,17 @@ Probed through the published OmniRoute `/v1` (key read from the host secret file
   prose deterministically, and every candidate is re-read and digest-pinned before the model sees it.
 - Offline CI never uses this endpoint. The live check is `AnalysisService.live.spec.ts`, gated on
   `MENAGERIE_ANALYSIS_BASE_URL` and `MENAGERIE_ANALYSIS_MODEL`.
+
+## Tool-call probe
+Direct `POST /v1/chat/completions` to the operator-reported service, `granite-4.2-8b`, `temperature: 0`, non-streaming
+(commands and raw outputs are in `.agents/tasks/bg-subtasks-skillhub/granite-toolcall-findings.md`).
+- One function tool, `tool_choice: auto`: HTTP 200, `finish_reason: "tool_calls"`, `message.tool_calls[0]` is a structured
+  `function` call with valid JSON `arguments`, `content: null`.
+- Three tools plus a system message: a structured `search_docs` call with valid arguments.
+- Follow-up turn with an assistant `tool_calls` message and a `role: "tool"` result: Granite answered from the result.
+- So the earlier "prompt tokens 16 -> 236" is the chat template rendering the tool block, which is how function calling is
+  delivered, and the "tool-role acceptance is text-only" claim is not supported. The system-message boundary bug was not
+  observed with tools present either.
+- Forced `tool_choice` (`{"type":"function","function":{"name":...}}`) was ignored: the model replied in prose.
+- Not tested: multi-tool loops of more than one round, 8k+ contexts, concurrency 2, streaming tool calls, n=1 per probe.
+Decision: the analyzer stays tool-less (ADR constraints unchanged). Tool-capable discovery stays with `project-reader`.

@@ -77,6 +77,17 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			return
 		}
 
+		// Detached background workers must be steered, cancelled, waited on, or collected first.
+		if (!task.parallelWorker && task.providerRef?.deref()?.backgroundBatches?.hasActive(task.taskId)) {
+			task.consecutiveMistakeCount++
+			task.recordToolError("attempt_completion")
+			pushToolResult(
+				formatResponse.toolError(
+					"Cannot complete while background tasks are running or have results you have not seen. Use background_tasks with action wait, steer, or cancel, then complete.",
+				),
+			)
+			return
+		}
 		try {
 			if (!result) {
 				task.consecutiveMistakeCount++

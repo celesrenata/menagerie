@@ -20,7 +20,11 @@ It does not add an agent, scheduler or task database. Granite never replaces the
 - Served window 32,768 tokens (the checkpoint's 131,072 is not served). Output reserve and a 10% margin are
   deducted before admission; oversize input is refused or chunked, never silently truncated.
 - `stream:false`, no `tools`/`tool_choice`/`temperature`. The live service accepts `stream:true` and `tools`
-  without error, so these are enforced by the client, not trusted to the server.
+  without error, so these are enforced by the client, not trusted to the server. Leaving tools out is a design choice,
+  not a service limit: the live service can emit structured `tool_calls` (see "Tool-call probe" in
+  `docs/performance/granite-analysis-baseline.md`). The analyzer stays tool-less because the host already selects
+  the evidence, each tool round would cost another generation against the 2-slot, 32,768-token budget, and tool output
+  is an extra injection surface.
 - At most 2 active generations. One process-wide queue per (base URL, model), separate from the reader pool,
   with a finite waiting list, deadlines and cancellation. KV prefix reuse is a speed hint only; the result
   cache is keyed by workspace namespace plus a digest of operation, evidence, versions and model.
@@ -50,6 +54,18 @@ Typed outcomes cover unavailable, timeout, queue-full, cancelled, non-JSON, inva
 stale-evidence. One bounded format retry is allowed and the first failure stays visible. Quality signals from an
 outcome map onto the existing `readerEscalationDecision` inputs via `analysisOutcomeToEscalationSignals`.
 
+## Reader-assisted follow-up questions
+When `ask_followup_question` finds nothing in memory or by lexical overlap, and `readerAssistedQuestions` is on (default),
+a reader looks before the user is interrupted (`src/core/questions/readerAnswer.ts`, `assistWithReader`):
+1. Low lane: the host builds excerpts (the original request, earlier replies, README/AGENTS, steering, specs, `docs/`
+   design docs; secret-looking text excluded) and Granite answers from them through the same bounded, tool-less path
+   (`completeOnAnalysisRoute`, shared 2-slot queue). Every citation quote must appear verbatim in the excerpt it names.
+2. `readerEscalationDecision.decide` judges the answer. Low confidence (< 0.5) or no grounded citation escalates.
+3. High lane: one tool-capable `project-reader` subtask forced onto `reader.deep`. Its answer counts only if it names a
+   file that exists inside the workspace.
+4. Otherwise, or if the service is down, the user is asked as before. The question is marked handled before any reader runs,
+   so a repeat always reaches the user, and reader output is never stored as a user answer in question memory.
+
 ## Authoring and approving a spec (user-driven)
 1. Write a draft at `.kiro/specs/<id>/spec.draft.json`: the revision content without `revisionId`
    (`specId`, `policy`, `sourceRevision`, `requirements`, `decisions`, `tasks`, `acceptance`, `checks`; see
@@ -61,19 +77,29 @@ outcome map onto the existing `readerEscalationDecision` inputs via `analysisOut
    `approvedBy: "user"`. Editing the spec means importing a new revision, which needs its own approval.
 4. Compile tasks with `compileSpec` (they carry `specTrace`) and dispatch under the `strict` policy.
 5. After you integrate the returned patches, run **Verify Spec Revision**: it runs the approved checks in your real workspace and
-   ticks the Kiro checkboxes from the evidence. Fixers are advised, not scheduled automatically (a fixer would not see
-   unintegrated patches).
+   ticks the Kiro checkboxes from the evidence. Per-worker audit and rework already happen during the batch (see Known gaps);
+   the strict host-run checks stay the authority for spec criteria.
 
 ## Known gaps (see tasks.md for the authoritative list)
 - Readers that return prose without structured file citations produce `no-file-evidence`.
 - Checks run host-side (`SpecCheckRunner`): `execFile` with no shell, refused shells, timeout, output cap, scrubbed
   environment, and only for a revision the user approved (that approval is consent to the exact argv). This is outside the
   Capability Broker by design because a worker's exit code would be a model-reported assertion.
-- `runParallelTasks` does not schedule the existing verifier workers, `decideFixerLoop` or `produceDeeperLaneFollowUp` at
-  runtime, so in `strict` the independent verification is the host-run checks. Automatic fixer scheduling was deliberately
-  not added (see step 5 above).
-- Escalation and fixer advice are reported in the tool result and Observatory; nothing schedules a deeper reader, fixer or
-  verifier worker because those pure components have no runtime caller in `runParallelTasks`.
+- `runParallelTasks` now audits workers at runtime (`src/core/task/auditLoop.ts`, built on `decideVerifierScheduling`,
+  `gateParentOutcome`, `decideFixerLoop` and `produceDeeperLaneFollowUp`). A worker with `verification.required`, or any
+  edit-capable worker when `workerAuditMode` is `edits` (the default), is checked by an independent read-only verifier
+  in its own kept worktree. On FAIL the same worker is sent back with the verifier's findings, up to 2 rounds, and then
+  re-verified. After the rounds are used, one deeper-lane follow-up (`reader.deep` or `reasoning.escalation`) runs if the
+  routing gates allow it, and its summary is recorded as advice. The outcome then stays `not-successfully-verified`;
+  the audit never upgrades it to `pass`. DAG dependents unlock only after the audit finishes. Blocking and background
+  batches share this path. The result carries an `audit` record (`rounds`, `verifierTaskIds`, `outcome`, `escalation`).
+- Granite constraint unchanged: the audit module has no input for analysis output, verifier routing never uses the analysis
+  route, and only a completed verifier `WorkerResult` (or the host-run checks in `strict`) can produce a PASS. Granite or
+  reader summaries, including the escalation advice, are never evidence that a check passed.
+- The audit verifier is a model worker judging the workspace, so it is not the host-run `SpecCheckRunner`. For spec
+  criteria the host-run checks remain the authority. The post-batch strict gate still only advises on fixers.
+- Not done: the verifier does not run in a separate scratch checkout from the worker, and reworked output is only
+  visible in the worker's worktree until you integrate the patch.
 - No host E2E (it needs a full extension bundle, a VS Code download and recorded model traffic); restart rehydration is
   covered at the store layer. Observatory spec status is a display cache, also persisted under `.kiro/specs/.status` and restored after a restart.
 - Quality evidence: `docs/performance/granite-analysis-quality.md` (50 cases x 6 runs). Contradiction finding is
