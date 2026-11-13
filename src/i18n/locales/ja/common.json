@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Menagerie",
 		"description": "エディター内のAIデベロッパーチーム全体。"
 	},
 	"number_format": {
@@ -154,11 +154,11 @@
 	"warnings": {
 		"no_terminal_content": "選択されたターミナルコンテンツがありません",
 		"missing_task_files": "このタスクのファイルが見つかりません。タスクリストから削除しますか？",
-		"auto_import_failed": "ZooCode設定の自動インポートに失敗しました：{{error}}",
+		"auto_import_failed": "Menagerie設定の自動インポートに失敗しました：{{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "{{domain}}からインポートするRoo Codeのタスク履歴が見つかりませんでした。",
-			"alreadyImported_one": "{{count}}件のRoo Codeタスク履歴はすでにZoo Codeにインポート済みです。",
-			"alreadyImported_other": "{{count}}件のRoo Codeタスク履歴はすでにZoo Codeにインポート済みです。"
+			"alreadyImported_one": "{{count}}件のRoo Codeタスク履歴はすでにMenagerieにインポート済みです。",
+			"alreadyImported_other": "{{count}}件のRoo Codeタスク履歴はすでにMenagerieにインポート済みです。"
 		}
 	},
 	"info": {
@@ -168,7 +168,7 @@
 		"custom_storage_path_set": "カスタムストレージパスが設定されました：{{path}}",
 		"default_storage_path": "デフォルトのストレージパスに戻りました",
 		"settings_imported": "設定が正常にインポートされました。",
-		"auto_import_success": "ZooCode設定が{{filename}}から自動インポートされました",
+		"auto_import_success": "Menagerie設定が{{filename}}から自動インポートされました",
 		"share_link_copied": "共有リンクがクリップボードにコピーされました",
 		"image_copied_to_clipboard": "画像データURIがクリップボードにコピーされました",
 		"image_saved": "画像を{{path}}に保存しました",
@@ -180,8 +180,8 @@
 			"signInUnavailable": "Roo Code Cloud へのサインインは現在利用できません。続行するには別のプロバイダーを設定してください。"
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。",
-			"success_other": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。"
+			"success_one": "{{count}}件のRoo CodeタスクをMenagerieにインポートしました。",
+			"success_other": "{{count}}件のRoo CodeタスクをMenagerieにインポートしました。"
 		}
 	},
 	"answers": {
@@ -208,8 +208,8 @@
 	},
 	"storage": {
 		"prompt_custom_path": "会話履歴のカスタムストレージパスを入力してください。デフォルトの場所を使用する場合は空のままにしてください",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "絶対パスを入力してください（例：D:\\ZooCodeStorage または /home/user/storage）",
+		"path_placeholder": "D:\\MenagerieStorage",
+		"enter_absolute_path": "絶対パスを入力してください（例：D:\\MenagerieStorage または /home/user/storage）",
 		"enter_valid_path": "有効なパスを入力してください"
 	},
 	"input": {
@@ -295,9 +295,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Codeで説明",
-		"fix": "Zoo Codeで修正",
-		"improve": "Zoo Codeで改善",
-		"addToContext": "Zoo Codeに追加"
+		"explain": "Menagerieで説明",
+		"fix": "Menagerieで修正",
+		"improve": "Menagerieで改善",
+		"addToContext": "Menagerieに追加"
 	}
 }

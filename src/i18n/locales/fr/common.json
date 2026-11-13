@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Menagerie",
 		"description": "Une équipe complète de développeurs IA dans votre éditeur."
 	},
 	"number_format": {
@@ -154,11 +154,11 @@
 	"warnings": {
 		"no_terminal_content": "Aucun contenu de terminal sélectionné",
 		"missing_task_files": "Les fichiers de cette tâche sont introuvables. Souhaitez-vous la supprimer de la liste des tâches ?",
-		"auto_import_failed": "Échec de l'importation automatique des paramètres ZooCode : {{error}}",
+		"auto_import_failed": "Échec de l'importation automatique des paramètres Menagerie : {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "Aucun historique de tâches Roo Code trouvé à importer depuis {{domain}}.",
-			"alreadyImported_one": "L'historique de {{count}} tâche Roo Code a déjà été importé dans Zoo Code.",
-			"alreadyImported_other": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Zoo Code."
+			"alreadyImported_one": "L'historique de {{count}} tâche Roo Code a déjà été importé dans Menagerie.",
+			"alreadyImported_other": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Menagerie."
 		}
 	},
 	"info": {
@@ -168,7 +168,7 @@
 		"custom_storage_path_set": "Chemin de stockage personnalisé défini : {{path}}",
 		"default_storage_path": "Retour au chemin de stockage par défaut",
 		"settings_imported": "Paramètres importés avec succès.",
-		"auto_import_success": "Paramètres ZooCode importés automatiquement depuis {{filename}}",
+		"auto_import_success": "Paramètres Menagerie importés automatiquement depuis {{filename}}",
 		"share_link_copied": "Lien de partage copié dans le presse-papiers",
 		"image_copied_to_clipboard": "URI de données d'image copiée dans le presse-papiers",
 		"image_saved": "Image enregistrée dans {{path}}",
@@ -180,8 +180,8 @@
 			"signInUnavailable": "La connexion à Roo Code Cloud n'est pas disponible pour le moment. Configure un autre fournisseur pour continuer."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} historique de tâche Roo Code importé dans Zoo Code.",
-			"success_other": "{{count}} historiques de tâches Roo Code importés dans Zoo Code."
+			"success_one": "{{count}} historique de tâche Roo Code importé dans Menagerie.",
+			"success_other": "{{count}} historiques de tâches Roo Code importés dans Menagerie."
 		}
 	},
 	"answers": {
@@ -208,12 +208,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "Entrez le chemin de stockage personnalisé pour l'historique des conversations, laissez vide pour utiliser l'emplacement par défaut",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "Veuillez entrer un chemin absolu (ex. D:\\ZooCodeStorage ou /home/user/storage)",
+		"path_placeholder": "D:\\MenagerieStorage",
+		"enter_absolute_path": "Veuillez entrer un chemin absolu (ex. D:\\MenagerieStorage ou /home/user/storage)",
 		"enter_valid_path": "Veuillez entrer un chemin valide"
 	},
 	"input": {
-		"task_prompt": "Que doit faire Zoo ?",
+		"task_prompt": "Que doit faire Menagerie ?",
 		"task_placeholder": "Écris ta tâche ici"
 	},
 	"settings": {
@@ -295,9 +295,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Expliquer avec Zoo Code",
-		"fix": "Corriger avec Zoo Code",
-		"improve": "Améliorer avec Zoo Code",
-		"addToContext": "Ajouter à Zoo Code"
+		"explain": "Expliquer avec Menagerie",
+		"fix": "Corriger avec Menagerie",
+		"improve": "Améliorer avec Menagerie",
+		"addToContext": "Ajouter à Menagerie"
 	}
 }

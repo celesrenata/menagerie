@@ -1,5 +1,5 @@
 {
-	"greeting": "Добро пожаловать в Zoo Code!",
+	"greeting": "Добро пожаловать в Menagerie!",
 	"task": {
 		"title": "Задача",
 		"expand": "Развернуть задачу",
@@ -98,7 +98,7 @@
 	"enqueueMessage": "Добавить сообщение в очередь (будет отправлено после завершения текущей задачи)",
 	"scrollToBottom": "Прокрутить чат вниз",
 	"scrollToLatestCheckpoint": "Прокрутить к предыдущему чекпоинту",
-	"about": "Zoo Code — это целая команда разработчиков ИИ в вашем редакторе.",
+	"about": "Menagerie — это целая команда разработчиков ИИ в вашем редакторе.",
 	"docs": "Ознакомьтесь с нашей <DocsLink>документацией</DocsLink>, чтобы узнать больше.",
 	"onboarding": "Ваш список задач в этом рабочем пространстве пуст.",
 	"rooTips": {
@@ -121,7 +121,7 @@
 		"title": "Режимы",
 		"marketplace": "Маркетплейс режимов",
 		"settings": "Настройки режимов",
-		"description": "Специализированные персоны, которые настраивают поведение Zoo.",
+		"description": "Специализированные персоны, которые настраивают поведение Menagerie.",
 		"searchPlaceholder": "Поиск режимов...",
 		"noResults": "Ничего не найдено"
 	},
@@ -157,7 +157,7 @@
 			"500": "Ошибка сервера провайдера. На стороне провайдера что-то пошло не так, с вашим запросом все в порядке.",
 			"docs": "Документация",
 			"goToSettings": "Настройки",
-			"unknown": "Неизвестная ошибка API. Пожалуйста, свяжитесь с поддержкой Zoo Code.",
+			"unknown": "Unknown API error. Please report it on the Menagerie GitHub issue tracker.",
 			"connection": "Ошибка подключения. Убедитесь, что у вас есть рабочее подключение к Интернету.",
 			"claudeCodeNotAuthenticated": "Вам необходимо войти в систему, чтобы использовать Claude Code. Перейдите в Настройки и нажмите «Войти в Claude Code» для аутентификации."
 		}
@@ -185,40 +185,40 @@
 		"wantsToFetch": "Zoo хочет получить подробные инструкции для помощи с текущей задачей"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo хочет прочитать этот файл",
-		"wantsToReadOutsideWorkspace": "Zoo хочет прочитать этот файл вне рабочей области",
-		"didRead": "Zoo прочитал этот файл",
-		"wantsToEdit": "Zoo хочет отредактировать этот файл",
-		"wantsToEditOutsideWorkspace": "Zoo хочет отредактировать этот файл вне рабочей области",
-		"wantsToEditProtected": "Zoo хочет отредактировать защищённый файл конфигурации",
-		"wantsToCreate": "Zoo хочет создать новый файл",
+		"wantsToRead": "Menagerie хочет прочитать этот файл",
+		"wantsToReadOutsideWorkspace": "Menagerie хочет прочитать этот файл вне рабочей области",
+		"didRead": "Menagerie прочитал этот файл",
+		"wantsToEdit": "Menagerie хочет отредактировать этот файл",
+		"wantsToEditOutsideWorkspace": "Menagerie хочет отредактировать этот файл вне рабочей области",
+		"wantsToEditProtected": "Menagerie хочет отредактировать защищённый файл конфигурации",
+		"wantsToCreate": "Menagerie хочет создать новый файл",
 		"wantsToSearchReplace": "Zoo хочет выполнить поиск и замену в этом файле",
 		"didSearchReplace": "Zoo выполнил поиск и замену в этом файле",
-		"wantsToInsert": "Zoo хочет вставить содержимое в этот файл",
-		"wantsToInsertWithLineNumber": "Zoo хочет вставить содержимое в этот файл на строку {{lineNumber}}",
-		"wantsToInsertAtEnd": "Zoo хочет добавить содержимое в конец этого файла",
-		"wantsToReadAndXMore": "Zoo хочет прочитать этот файл и еще {{count}}",
-		"wantsToReadMultiple": "Zoo хочет прочитать несколько файлов",
-		"wantsToApplyBatchChanges": "Zoo хочет применить изменения к нескольким файлам",
-		"wantsToGenerateImage": "Zoo хочет сгенерировать изображение",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo хочет сгенерировать изображение вне рабочего пространства",
-		"wantsToGenerateImageProtected": "Zoo хочет сгенерировать изображение в защищённом месте",
-		"didGenerateImage": "Zoo сгенерировал изображение"
+		"wantsToInsert": "Menagerie хочет вставить содержимое в этот файл",
+		"wantsToInsertWithLineNumber": "Menagerie хочет вставить содержимое в этот файл на строку {{lineNumber}}",
+		"wantsToInsertAtEnd": "Menagerie хочет добавить содержимое в конец этого файла",
+		"wantsToReadAndXMore": "Menagerie хочет прочитать этот файл и еще {{count}}",
+		"wantsToReadMultiple": "Menagerie хочет прочитать несколько файлов",
+		"wantsToApplyBatchChanges": "Menagerie хочет применить изменения к нескольким файлам",
+		"wantsToGenerateImage": "Menagerie хочет сгенерировать изображение",
+		"wantsToGenerateImageOutsideWorkspace": "Menagerie хочет сгенерировать изображение вне рабочего пространства",
+		"wantsToGenerateImageProtected": "Menagerie хочет сгенерировать изображение в защищённом месте",
+		"didGenerateImage": "Menagerie сгенерировал изображение"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo хочет просмотреть файлы верхнего уровня в этой директории",
-		"didViewTopLevel": "Zoo просмотрел файлы верхнего уровня в этой директории",
-		"wantsToViewRecursive": "Zoo хочет рекурсивно просмотреть все файлы в этой директории",
-		"didViewRecursive": "Zoo рекурсивно просмотрел все файлы в этой директории",
-		"wantsToSearch": "Zoo хочет выполнить поиск в этой директории по <code>{{regex}}</code>",
-		"didSearch": "Zoo выполнил поиск в этой директории по <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo хочет выполнить поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo выполнил поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo хочет просмотреть файлы верхнего уровня в этой директории (вне рабочего пространства)",
-		"didViewTopLevelOutsideWorkspace": "Zoo просмотрел файлы верхнего уровня в этой директории (вне рабочего пространства)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo хочет рекурсивно просмотреть все файлы в этой директории (вне рабочего пространства)",
-		"didViewRecursiveOutsideWorkspace": "Zoo рекурсивно просмотрел все файлы в этой директории (вне рабочего пространства)",
-		"wantsToViewMultipleDirectories": "Zoo хочет просмотреть несколько директорий"
+		"wantsToViewTopLevel": "Menagerie хочет просмотреть файлы верхнего уровня в этой директории",
+		"didViewTopLevel": "Menagerie просмотрел файлы верхнего уровня в этой директории",
+		"wantsToViewRecursive": "Menagerie хочет рекурсивно просмотреть все файлы в этой директории",
+		"didViewRecursive": "Menagerie рекурсивно просмотрел все файлы в этой директории",
+		"wantsToSearch": "Menagerie хочет выполнить поиск в этой директории по <code>{{regex}}</code>",
+		"didSearch": "Menagerie выполнил поиск в этой директории по <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Menagerie хочет выполнить поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Menagerie выполнил поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Menagerie хочет просмотреть файлы верхнего уровня в этой директории (вне рабочего пространства)",
+		"didViewTopLevelOutsideWorkspace": "Menagerie просмотрел файлы верхнего уровня в этой директории (вне рабочего пространства)",
+		"wantsToViewRecursiveOutsideWorkspace": "Menagerie хочет рекурсивно просмотреть все файлы в этой директории (вне рабочего пространства)",
+		"didViewRecursiveOutsideWorkspace": "Menagerie рекурсивно просмотрел все файлы в этой директории (вне рабочего пространства)",
+		"wantsToViewMultipleDirectories": "Menagerie хочет просмотреть несколько директорий"
 	},
 	"commandOutput": "Вывод команды",
 	"commandExecution": {
@@ -243,24 +243,24 @@
 	"response": "Ответ",
 	"arguments": "Аргументы",
 	"text": {
-		"rooSaid": "Zoo сказал"
+		"rooSaid": "Menagerie сказал"
 	},
 	"feedback": {
 		"youSaid": "Вы сказали"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo хочет использовать инструмент на сервере MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo хочет получить доступ к ресурсу на сервере MCP {{serverName}}"
+		"wantsToUseTool": "Menagerie хочет использовать инструмент на сервере MCP {{serverName}}",
+		"wantsToAccessResource": "Menagerie хочет получить доступ к ресурсу на сервере MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo хочет переключиться в режим {{mode}}",
-		"wantsToSwitchWithReason": "Zoo хочет переключиться в режим {{mode}}, потому что: {{reason}}",
-		"didSwitch": "Zoo переключился в режим {{mode}}",
-		"didSwitchWithReason": "Zoo переключился в режим {{mode}}, потому что: {{reason}}"
+		"wantsToSwitch": "Menagerie хочет переключиться в режим {{mode}}",
+		"wantsToSwitchWithReason": "Menagerie хочет переключиться в режим {{mode}}, потому что: {{reason}}",
+		"didSwitch": "Menagerie переключился в режим {{mode}}",
+		"didSwitchWithReason": "Menagerie переключился в режим {{mode}}, потому что: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo хочет создать новую подзадачу в режиме {{mode}}",
-		"wantsToFinish": "Zoo хочет завершить эту подзадачу",
+		"wantsToCreate": "Menagerie хочет создать новую подзадачу в режиме {{mode}}",
+		"wantsToFinish": "Menagerie хочет завершить эту подзадачу",
 		"newTaskContent": "Инструкции по подзадаче",
 		"completionContent": "Подзадача завершена",
 		"resultContent": "Результаты подзадачи",
@@ -269,7 +269,7 @@
 		"goToSubtask": "Просмотреть задачу"
 	},
 	"questions": {
-		"hasQuestion": "У Zoo есть вопрос"
+		"hasQuestion": "У Menagerie есть вопрос"
 	},
 	"taskCompleted": "Задача завершена",
 	"error": "Ошибка",
@@ -283,14 +283,14 @@
 	"diffError": {
 		"title": "Не удалось выполнить редактирование"
 	},
-	"troubleMessage": "У Zoo возникли проблемы...",
+	"troubleMessage": "У Menagerie возникли проблемы...",
 	"errorDetails": {
 		"link": "Подробности",
 		"title": "Детали ошибки",
 		"copyToClipboard": "Скопировать в буфер обмена",
 		"copied": "Скопировано!",
 		"diagnostics": "Получить подробную информацию об ошибке",
-		"proxyProvider": "Похоже, ты используешь провайдера на основе прокси. Убедись, что ты проверил его логи и что он не переписывает запросы Zoo."
+		"proxyProvider": "Похоже, ты используешь провайдера на основе прокси. Убедись, что ты проверил его логи и что он не переписывает запросы Menagerie."
 	},
 	"powershell": {
 		"issues": "Похоже, у вас проблемы с Windows PowerShell, пожалуйста, ознакомьтесь с этим"
@@ -343,8 +343,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo хочет загрузить навык",
-		"didLoad": "Zoo загрузил навык"
+		"wantsToLoad": "Menagerie хочет загрузить навык",
+		"didLoad": "Menagerie загрузил навык"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Скопировать во ввод (то же, что shift + клик)",
@@ -365,24 +365,24 @@
 	"profileViolationWarning": "Текущий профиль несовместим с настройками вашей организации",
 	"shellIntegration": {
 		"title": "Предупреждение о выполнении команды",
-		"description": "Ваша команда выполняется без интеграции оболочки терминала VSCode. Чтобы скрыть это предупреждение, вы можете отключить интеграцию оболочки в разделе <strong>Terminal</strong> в <settingsLink>настройках Zoo Code</settingsLink> или устранить проблемы с интеграцией терминала VSCode, используя ссылку ниже.",
+		"description": "Ваша команда выполняется без интеграции оболочки терминала VSCode. Чтобы скрыть это предупреждение, вы можете отключить интеграцию оболочки в разделе <strong>Terminal</strong> в <settingsLink>настройках Menagerie</settingsLink> или устранить проблемы с интеграцией терминала VSCode, используя ссылку ниже.",
 		"troubleshooting": "Нажмите здесь для просмотра документации по интеграции оболочки."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Достигнут лимит автоматически одобренных запросов",
-			"description": "Zoo достиг автоматически одобренного лимита в {{count}} API-запрос(ов). Хотите сбросить счетчик и продолжить задачу?",
+			"description": "Menagerie достиг автоматически одобренного лимита в {{count}} API-запрос(ов). Хотите сбросить счетчик и продолжить задачу?",
 			"button": "Сбросить и продолжить"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "Достигнут лимит автоматически одобряемых расходов",
 			"button": "Сбросить и продолжить",
-			"description": "Zoo достиг автоматически утвержденного лимита расходов в размере ${{count}}. Хотите сбросить расходы и продолжить выполнение задачи?"
+			"description": "Menagerie достиг автоматически утвержденного лимита расходов в размере ${{count}}. Хотите сбросить расходы и продолжить выполнение задачи?"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo хочет выполнить поиск в кодовой базе по <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo хочет выполнить поиск в кодовой базе по <code>{{query}}</code> в <code>{{path}}</code>",
+		"wantsToSearch": "Menagerie хочет выполнить поиск в кодовой базе по <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Menagerie хочет выполнить поиск в кодовой базе по <code>{{query}}</code> в <code>{{path}}</code>",
 		"didSearch_one": "Найден 1 результат",
 		"didSearch_other": "Найдено {{count}} результатов",
 		"resultTooltip": "Оценка схожести: {{score}} (нажмите, чтобы открыть файл)"
@@ -464,8 +464,8 @@
 		"clickToEdit": "Нажмите, чтобы редактировать сообщение"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo хочет выполнить слеш-команду",
-		"didRun": "Zoo выполнил слеш-команду"
+		"wantsToRun": "Menagerie хочет выполнить слеш-команду",
+		"didRun": "Menagerie выполнил слеш-команду"
 	},
 	"todo": {
 		"partial": "{{completed}} из {{total}} задач выполнено",
@@ -484,7 +484,7 @@
 		"openMcpSettings": "Открыть настройки MCP"
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Menagerie read command output"
 	},
 	"retiredProvider": {
 		"title": "Провайдер больше не поддерживается",

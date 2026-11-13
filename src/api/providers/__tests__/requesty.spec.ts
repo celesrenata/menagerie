@@ -132,9 +132,9 @@ describe("RequestyHandler", () => {
 			baseURL: "https://router.requesty.ai/v1",
 			apiKey: mockOptions.requestyApiKey,
 			defaultHeaders: {
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
-				"User-Agent": `ZooCode/${Package.version}`,
+				"HTTP-Referer": "https://github.com/celesrenata/menagerie",
+				"X-Title": "Menagerie",
+				"User-Agent": `Menagerie/${Package.version}`,
 			},
 			timeout: MOCK_TIMEOUT_MS,
 		})
@@ -148,9 +148,9 @@ describe("RequestyHandler", () => {
 			baseURL: "https://custom.requesty.ai/v1",
 			apiKey: mockOptions.requestyApiKey,
 			defaultHeaders: {
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
-				"User-Agent": `ZooCode/${Package.version}`,
+				"HTTP-Referer": "https://github.com/celesrenata/menagerie",
+				"X-Title": "Menagerie",
+				"User-Agent": `Menagerie/${Package.version}`,
 			},
 			timeout: MOCK_TIMEOUT_MS,
 		})

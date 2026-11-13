@@ -34,9 +34,9 @@
 	"settings.vsCodeLmModelSelector.description": "Pengaturan untuk API Model Bahasa VSCode",
 	"settings.vsCodeLmModelSelector.vendor.description": "Vendor dari model bahasa (misalnya copilot)",
 	"settings.vsCodeLmModelSelector.family.description": "Keluarga dari model bahasa (misalnya gpt-4)",
-	"settings.customStoragePath.description": "Path penyimpanan kustom. Biarkan kosong untuk menggunakan lokasi default. Mendukung path absolut (misalnya 'D:\\ZooCodeStorage')",
-	"settings.enableCodeActions.description": "Aktifkan perbaikan cepat Zoo Code.",
-	"settings.autoImportSettingsPath.description": "Path ke file konfigurasi ZooCode untuk diimpor secara otomatis saat ekstensi dimulai. Mendukung path absolut dan path relatif terhadap direktori home (misalnya '~/Documents/zoo-code-settings.json'). Biarkan kosong untuk menonaktifkan impor otomatis.",
+	"settings.customStoragePath.description": "Path penyimpanan kustom. Biarkan kosong untuk menggunakan lokasi default. Mendukung path absolut (misalnya 'D:\\MenagerieStorage')",
+	"settings.enableCodeActions.description": "Aktifkan perbaikan cepat Menagerie.",
+	"settings.autoImportSettingsPath.description": "Path ke file konfigurasi Menagerie untuk diimpor secara otomatis saat ekstensi dimulai. Mendukung path absolut dan path relatif terhadap direktori home (misalnya '~/Documents/menagerie-settings.json'). Biarkan kosong untuk menonaktifkan impor otomatis.",
 	"settings.maximumIndexedFilesForFileSearch.description": "Jumlah maksimum file yang akan diindeks untuk fitur pencarian file @. Nilai yang lebih besar memberikan hasil pencarian yang lebih baik di proyek besar tetapi mungkin menggunakan lebih banyak memori. Default: 10.000.",
 	"settings.useAgentRules.description": "Aktifkan pemuatan file AGENTS.md untuk aturan khusus agen (lihat https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "Batas waktu respons API (detik, default: 600, rentang: 1–3600). Nilai lebih tinggi direkomendasikan untuk penyedia lokal. Penyedia tidak didukung: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
@@ -47,7 +47,7 @@
 	"settings.debugProxy.enabled.description": "**Aktifkan Debug Proxy** — Arahkan semua permintaan jaringan keluar lewat proxy untuk debugging MITM. Hanya aktif saat kamu berjalan dalam mode debug (F5).",
 	"settings.debugProxy.serverUrl.description": "URL proxy (mis. `http://127.0.0.1:8888`). Hanya digunakan ketika **Debug Proxy** diaktifkan.",
 	"settings.debugProxy.tlsInsecure.description": "Terima sertifikat self-signed dari proxy. **Diperlukan untuk inspeksi MITM.** ⚠️ Tidak aman — gunakan hanya untuk debugging lokal.",
-	"settings.workspace.rootResolution.description": "Bagaimana Zoo menentukan root workspace di workspace multi-root. Root digunakan untuk menemukan `.roomodes`, `.roo/mcp.json`, `.roo/rules/`, dan konfigurasi lain yang bersifat project-scoped. Mengubah pengaturan ini hanya memengaruhi pencarian berikutnya; task yang sedang berjalan tetap memakai root aslinya.",
+	"settings.workspace.rootResolution.description": "Bagaimana Menagerie menentukan root workspace di workspace multi-root. Root digunakan untuk menemukan `.roomodes`, `.roo/mcp.json`, `.roo/rules/`, dan konfigurasi lain yang bersifat project-scoped. Mengubah pengaturan ini hanya memengaruhi pencarian berikutnya; task yang sedang berjalan tetap memakai root aslinya.",
 	"settings.workspace.rootResolution.activeEditor.description": "Gunakan folder workspace yang berisi editor aktif; kembali ke folder workspace pertama. (Default — mempertahankan perilaku lama.)",
 	"settings.workspace.rootResolution.firstFolder.description": "Selalu gunakan folder workspace pertama (workspaceFolders[0]). Deterministik — tidak bergantung pada file mana yang sedang difokuskan."
 }

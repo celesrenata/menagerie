@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Menagerie",
 		"description": "Düzenleyicinizde tam bir AI geliştirici ekibi."
 	},
 	"number_format": {
@@ -154,11 +154,11 @@
 	"warnings": {
 		"no_terminal_content": "Seçili terminal içeriği yok",
 		"missing_task_files": "Bu görevin dosyaları eksik. Görev listesinden kaldırmak istiyor musunuz?",
-		"auto_import_failed": "ZooCode ayarları otomatik olarak içe aktarılamadı: {{error}}",
+		"auto_import_failed": "Menagerie ayarları otomatik olarak içe aktarılamadı: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "{{domain}} kaynağından içe aktarılacak Roo Code görev geçmişi bulunamadı.",
-			"alreadyImported_one": "{{count}} Roo Code görev geçmişinin tamamı zaten Zoo Code'a aktarılmış.",
-			"alreadyImported_other": "{{count}} Roo Code görev geçmişinin tamamı zaten Zoo Code'a aktarılmış."
+			"alreadyImported_one": "{{count}} Roo Code görev geçmişinin tamamı zaten Menagerie'a aktarılmış.",
+			"alreadyImported_other": "{{count}} Roo Code görev geçmişinin tamamı zaten Menagerie'a aktarılmış."
 		}
 	},
 	"info": {
@@ -168,7 +168,7 @@
 		"custom_storage_path_set": "Özel depolama yolu ayarlandı: {{path}}",
 		"default_storage_path": "Varsayılan depolama yoluna geri dönüldü",
 		"settings_imported": "Ayarlar başarıyla içe aktarıldı.",
-		"auto_import_success": "ZooCode ayarları {{filename}} dosyasından otomatik olarak içe aktarıldı",
+		"auto_import_success": "Menagerie ayarları {{filename}} dosyasından otomatik olarak içe aktarıldı",
 		"share_link_copied": "Paylaşım bağlantısı panoya kopyalandı",
 		"image_copied_to_clipboard": "Resim veri URI'si panoya kopyalandı",
 		"image_saved": "Resim {{path}} konumuna kaydedildi",
@@ -180,8 +180,8 @@
 			"signInUnavailable": "Roo Code Cloud girişi şu anda kullanılamıyor. Devam etmek için farklı bir sağlayıcı yapılandırın."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı.",
-			"success_other": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı."
+			"success_one": "{{count}} Roo Code görev geçmişi Menagerie'a aktarıldı.",
+			"success_other": "{{count}} Roo Code görev geçmişi Menagerie'a aktarıldı."
 		}
 	},
 	"answers": {
@@ -208,12 +208,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "Konuşma geçmişi için özel depolama yolunu girin, varsayılan konumu kullanmak için boş bırakın",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "Lütfen mutlak bir yol girin (örn. D:\\ZooCodeStorage veya /home/user/storage)",
+		"path_placeholder": "D:\\MenagerieStorage",
+		"enter_absolute_path": "Lütfen mutlak bir yol girin (örn. D:\\MenagerieStorage veya /home/user/storage)",
 		"enter_valid_path": "Lütfen geçerli bir yol girin"
 	},
 	"input": {
-		"task_prompt": "Zoo ne yapsın?",
+		"task_prompt": "Menagerie ne yapsın?",
 		"task_placeholder": "Görevini buraya yaz"
 	},
 	"settings": {
@@ -295,9 +295,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Code ile açıkla",
-		"fix": "Zoo Code ile düzelt",
-		"improve": "Zoo Code ile iyileştir",
-		"addToContext": "Zoo Code'a ekle"
+		"explain": "Menagerie ile açıkla",
+		"fix": "Menagerie ile düzelt",
+		"improve": "Menagerie ile iyileştir",
+		"addToContext": "Menagerie'a ekle"
 	}
 }

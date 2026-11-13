@@ -76,8 +76,8 @@ export class OpenRouterEmbedder implements IEmbedder {
 				baseURL: this.baseUrl,
 				apiKey: apiKey,
 				defaultHeaders: {
-					"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-					"X-Title": "Zoo Code",
+					"HTTP-Referer": "https://github.com/celesrenata/menagerie",
+					"X-Title": "Menagerie",
 				},
 			})
 		} catch (error) {

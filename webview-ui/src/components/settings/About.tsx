@@ -139,8 +139,7 @@ export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
 							<Trans
 								i18nKey="settings:about.community"
 								components={{
-									redditLink: <VSCodeLink href={EXTERNAL_LINKS.REDDIT} />,
-									discordLink: <VSCodeLink href={EXTERNAL_LINKS.DISCORD} />,
+									githubLink: <VSCodeLink href={EXTERNAL_LINKS.GITHUB_ISSUES} />,
 								}}
 							/>
 						</span>

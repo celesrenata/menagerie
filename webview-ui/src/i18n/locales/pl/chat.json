@@ -1,5 +1,5 @@
 {
-	"greeting": "Witamy w Zoo Code!",
+	"greeting": "Witamy w Menagerie!",
 	"task": {
 		"title": "Zadanie",
 		"expand": "Rozwiń zadanie",
@@ -98,7 +98,7 @@
 	"enqueueMessage": "Dodaj wiadomość do kolejki (zostanie wysłana po zakończeniu bieżącego zadania)",
 	"scrollToBottom": "Przewiń do dołu czatu",
 	"scrollToLatestCheckpoint": "Przewiń do poprzedniego punktu kontrolnego",
-	"about": "Zoo Code to cały zespół deweloperów AI w Twoim edytorze.",
+	"about": "Menagerie to cały zespół deweloperów AI w Twoim edytorze.",
 	"docs": "Sprawdź naszą <DocsLink>dokumentację</DocsLink>, aby dowiedzieć się więcej.",
 	"onboarding": "Twoja lista zadań w tym obszarze roboczym jest pusta.",
 	"rooTips": {
@@ -130,7 +130,7 @@
 		"title": "Tryby",
 		"marketplace": "Marketplace Trybów",
 		"settings": "Ustawienia Trybów",
-		"description": "Wyspecjalizowane persony, które dostosowują zachowanie Zoo.",
+		"description": "Wyspecjalizowane persony, które dostosowują zachowanie Menagerie.",
 		"searchPlaceholder": "Szukaj trybów...",
 		"noResults": "Nie znaleziono wyników"
 	},
@@ -144,7 +144,7 @@
 	"diffError": {
 		"title": "Edycja nieudana"
 	},
-	"troubleMessage": "Zoo ma problemy...",
+	"troubleMessage": "Menagerie ma problemy...",
 	"apiRequest": {
 		"title": "Zapytanie API",
 		"failed": "Zapytanie API nie powiodło się",
@@ -162,7 +162,7 @@
 			"500": "Błąd serwera dostawcy. Po stronie dostawcy coś się nie powiodło, w Twoim żądaniu nie ma nic złego.",
 			"docs": "Dokumentacja",
 			"goToSettings": "Ustawienia",
-			"unknown": "Nieznany błąd API. Skontaktuj się z pomocą techniczną Zoo Code.",
+			"unknown": "Unknown API error. Please report it on the Menagerie GitHub issue tracker.",
 			"connection": "Błąd połączenia. Upewnij się, że masz działające połączenie internetowe.",
 			"claudeCodeNotAuthenticated": "Musisz się zalogować, aby korzystać z Claude Code. Przejdź do Ustawień i kliknij \"Zaloguj się do Claude Code\", aby się uwierzytelnić."
 		}
@@ -190,40 +190,40 @@
 		"wantsToFetch": "Zoo chce pobrać szczegółowe instrukcje, aby pomóc w bieżącym zadaniu"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo chce przeczytać ten plik",
-		"wantsToReadOutsideWorkspace": "Zoo chce przeczytać ten plik poza obszarem roboczym",
-		"didRead": "Zoo przeczytał ten plik",
-		"wantsToEdit": "Zoo chce edytować ten plik",
-		"wantsToEditOutsideWorkspace": "Zoo chce edytować ten plik poza obszarem roboczym",
-		"wantsToEditProtected": "Zoo chce edytować chroniony plik konfiguracyjny",
-		"wantsToCreate": "Zoo chce utworzyć nowy plik",
+		"wantsToRead": "Menagerie chce przeczytać ten plik",
+		"wantsToReadOutsideWorkspace": "Menagerie chce przeczytać ten plik poza obszarem roboczym",
+		"didRead": "Menagerie przeczytał ten plik",
+		"wantsToEdit": "Menagerie chce edytować ten plik",
+		"wantsToEditOutsideWorkspace": "Menagerie chce edytować ten plik poza obszarem roboczym",
+		"wantsToEditProtected": "Menagerie chce edytować chroniony plik konfiguracyjny",
+		"wantsToCreate": "Menagerie chce utworzyć nowy plik",
 		"wantsToSearchReplace": "Zoo chce wykonać wyszukiwanie i zamianę w tym pliku",
 		"didSearchReplace": "Zoo wykonał wyszukiwanie i zamianę w tym pliku",
-		"wantsToInsert": "Zoo chce wstawić zawartość do tego pliku",
-		"wantsToInsertWithLineNumber": "Zoo chce wstawić zawartość do tego pliku w linii {{lineNumber}}",
-		"wantsToInsertAtEnd": "Zoo chce dodać zawartość na końcu tego pliku",
-		"wantsToReadAndXMore": "Zoo chce przeczytać ten plik i {{count}} więcej",
-		"wantsToReadMultiple": "Zoo chce odczytać wiele plików",
-		"wantsToApplyBatchChanges": "Zoo chce zastosować zmiany do wielu plików",
-		"wantsToGenerateImage": "Zoo chce wygenerować obraz",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo chce wygenerować obraz poza obszarem roboczym",
-		"wantsToGenerateImageProtected": "Zoo chce wygenerować obraz w chronionym miejscu",
-		"didGenerateImage": "Zoo wygenerował obraz"
+		"wantsToInsert": "Menagerie chce wstawić zawartość do tego pliku",
+		"wantsToInsertWithLineNumber": "Menagerie chce wstawić zawartość do tego pliku w linii {{lineNumber}}",
+		"wantsToInsertAtEnd": "Menagerie chce dodać zawartość na końcu tego pliku",
+		"wantsToReadAndXMore": "Menagerie chce przeczytać ten plik i {{count}} więcej",
+		"wantsToReadMultiple": "Menagerie chce odczytać wiele plików",
+		"wantsToApplyBatchChanges": "Menagerie chce zastosować zmiany do wielu plików",
+		"wantsToGenerateImage": "Menagerie chce wygenerować obraz",
+		"wantsToGenerateImageOutsideWorkspace": "Menagerie chce wygenerować obraz poza obszarem roboczym",
+		"wantsToGenerateImageProtected": "Menagerie chce wygenerować obraz w chronionym miejscu",
+		"didGenerateImage": "Menagerie wygenerował obraz"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo chce zobaczyć pliki najwyższego poziomu w tym katalogu",
-		"didViewTopLevel": "Zoo zobaczył pliki najwyższego poziomu w tym katalogu",
-		"wantsToViewRecursive": "Zoo chce rekurencyjnie zobaczyć wszystkie pliki w tym katalogu",
-		"didViewRecursive": "Zoo rekurencyjnie zobaczył wszystkie pliki w tym katalogu",
-		"wantsToSearch": "Zoo chce przeszukać ten katalog w poszukiwaniu <code>{{regex}}</code>",
-		"didSearch": "Zoo przeszukał ten katalog w poszukiwaniu <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo chce przeszukać ten katalog (poza obszarem roboczym) w poszukiwaniu <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo przeszukał ten katalog (poza obszarem roboczym) w poszukiwaniu <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo chce zobaczyć pliki najwyższego poziomu w tym katalogu (poza obszarem roboczym)",
-		"didViewTopLevelOutsideWorkspace": "Zoo zobaczył pliki najwyższego poziomu w tym katalogu (poza obszarem roboczym)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo chce rekurencyjnie zobaczyć wszystkie pliki w tym katalogu (poza obszarem roboczym)",
-		"didViewRecursiveOutsideWorkspace": "Zoo rekurencyjnie zobaczył wszystkie pliki w tym katalogu (poza obszarem roboczym)",
-		"wantsToViewMultipleDirectories": "Zoo chce wyświetlić wiele katalogów"
+		"wantsToViewTopLevel": "Menagerie chce zobaczyć pliki najwyższego poziomu w tym katalogu",
+		"didViewTopLevel": "Menagerie zobaczył pliki najwyższego poziomu w tym katalogu",
+		"wantsToViewRecursive": "Menagerie chce rekurencyjnie zobaczyć wszystkie pliki w tym katalogu",
+		"didViewRecursive": "Menagerie rekurencyjnie zobaczył wszystkie pliki w tym katalogu",
+		"wantsToSearch": "Menagerie chce przeszukać ten katalog w poszukiwaniu <code>{{regex}}</code>",
+		"didSearch": "Menagerie przeszukał ten katalog w poszukiwaniu <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Menagerie chce przeszukać ten katalog (poza obszarem roboczym) w poszukiwaniu <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Menagerie przeszukał ten katalog (poza obszarem roboczym) w poszukiwaniu <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Menagerie chce zobaczyć pliki najwyższego poziomu w tym katalogu (poza obszarem roboczym)",
+		"didViewTopLevelOutsideWorkspace": "Menagerie zobaczył pliki najwyższego poziomu w tym katalogu (poza obszarem roboczym)",
+		"wantsToViewRecursiveOutsideWorkspace": "Menagerie chce rekurencyjnie zobaczyć wszystkie pliki w tym katalogu (poza obszarem roboczym)",
+		"didViewRecursiveOutsideWorkspace": "Menagerie rekurencyjnie zobaczył wszystkie pliki w tym katalogu (poza obszarem roboczym)",
+		"wantsToViewMultipleDirectories": "Menagerie chce wyświetlić wiele katalogów"
 	},
 	"commandOutput": "Wyjście polecenia",
 	"commandExecution": {
@@ -247,24 +247,24 @@
 	"response": "Odpowiedź",
 	"arguments": "Argumenty",
 	"text": {
-		"rooSaid": "Zoo powiedział"
+		"rooSaid": "Menagerie powiedział"
 	},
 	"feedback": {
 		"youSaid": "Powiedziałeś"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo chce użyć narzędzia na serwerze MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo chce uzyskać dostęp do zasobu na serwerze MCP {{serverName}}"
+		"wantsToUseTool": "Menagerie chce użyć narzędzia na serwerze MCP {{serverName}}",
+		"wantsToAccessResource": "Menagerie chce uzyskać dostęp do zasobu na serwerze MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo chce przełączyć się na tryb <code>{{mode}}</code>",
-		"wantsToSwitchWithReason": "Zoo chce przełączyć się na tryb <code>{{mode}}</code> ponieważ: {{reason}}",
-		"didSwitch": "Zoo przełączył się na tryb <code>{{mode}}</code>",
-		"didSwitchWithReason": "Zoo przełączył się na tryb <code>{{mode}}</code> ponieważ: {{reason}}"
+		"wantsToSwitch": "Menagerie chce przełączyć się na tryb <code>{{mode}}</code>",
+		"wantsToSwitchWithReason": "Menagerie chce przełączyć się na tryb <code>{{mode}}</code> ponieważ: {{reason}}",
+		"didSwitch": "Menagerie przełączył się na tryb <code>{{mode}}</code>",
+		"didSwitchWithReason": "Menagerie przełączył się na tryb <code>{{mode}}</code> ponieważ: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo chce utworzyć nowe podzadanie w trybie <code>{{mode}}</code>",
-		"wantsToFinish": "Zoo chce zakończyć to podzadanie",
+		"wantsToCreate": "Menagerie chce utworzyć nowe podzadanie w trybie <code>{{mode}}</code>",
+		"wantsToFinish": "Menagerie chce zakończyć to podzadanie",
 		"newTaskContent": "Instrukcje podzadania",
 		"completionContent": "Podzadanie zakończone",
 		"resultContent": "Wyniki podzadania",
@@ -273,7 +273,7 @@
 		"goToSubtask": "Wyświetl zadanie"
 	},
 	"questions": {
-		"hasQuestion": "Zoo ma pytanie"
+		"hasQuestion": "Menagerie ma pytanie"
 	},
 	"taskCompleted": "Zadanie zakończone",
 	"modelResponseIncomplete": "Odpowiedź modelu niekompletna",
@@ -289,7 +289,7 @@
 		"copyToClipboard": "Kopiuj do schowka",
 		"copied": "Skopiowano!",
 		"diagnostics": "Uzyskaj szczegółowe informacje o błędzie",
-		"proxyProvider": "Wygląda na to, że używasz dostawcy opartego na proxy. Pamiętaj, aby sprawdzić jego dzienniki i upewnić się, że nie przepisuje żądań Zoo."
+		"proxyProvider": "Wygląda na to, że używasz dostawcy opartego na proxy. Pamiętaj, aby sprawdzić jego dzienniki i upewnić się, że nie przepisuje żądań Menagerie."
 	},
 	"powershell": {
 		"issues": "Wygląda na to, że masz problemy z Windows PowerShell, proszę zapoznaj się z tym"
@@ -332,8 +332,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo chce załadować umiejętność",
-		"didLoad": "Zoo załadował umiejętność"
+		"wantsToLoad": "Menagerie chce załadować umiejętność",
+		"didLoad": "Menagerie załadował umiejętność"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Kopiuj do pola wprowadzania (lub Shift + kliknięcie)",
@@ -364,24 +364,24 @@
 	"profileViolationWarning": "Bieżący profil nie jest kompatybilny z ustawieniami Twojej organizacji",
 	"shellIntegration": {
 		"title": "Ostrzeżenie wykonania polecenia",
-		"description": "Twoje polecenie jest wykonywane bez integracji powłoki terminala VSCode. Aby ukryć to ostrzeżenie, możesz wyłączyć integrację powłoki w sekcji <strong>Terminal</strong> w <settingsLink>ustawieniach Zoo Code</settingsLink> lub rozwiązać problemy z integracją terminala VSCode korzystając z poniższego linku.",
+		"description": "Twoje polecenie jest wykonywane bez integracji powłoki terminala VSCode. Aby ukryć to ostrzeżenie, możesz wyłączyć integrację powłoki w sekcji <strong>Terminal</strong> w <settingsLink>ustawieniach Menagerie</settingsLink> lub rozwiązać problemy z integracją terminala VSCode korzystając z poniższego linku.",
 		"troubleshooting": "Kliknij tutaj, aby zobaczyć dokumentację integracji powłoki."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Osiągnięto limit automatycznie zatwierdzonych żądań",
-			"description": "Zoo osiągnął automatycznie zatwierdzony limit {{count}} żądania/żądań API. Czy chcesz zresetować licznik i kontynuować zadanie?",
+			"description": "Menagerie osiągnął automatycznie zatwierdzony limit {{count}} żądania/żądań API. Czy chcesz zresetować licznik i kontynuować zadanie?",
 			"button": "Zresetuj i kontynuuj"
 		},
 		"autoApprovedCostLimitReached": {
 			"button": "Zresetuj i Kontynuuj",
 			"title": "Osiągnięto limit kosztów z automatycznym zatwierdzaniem",
-			"description": "Zoo osiągnął automatycznie zatwierdzony limit kosztów wynoszący ${{count}}. Czy chcesz zresetować koszt i kontynuować zadanie?"
+			"description": "Menagerie osiągnął automatycznie zatwierdzony limit kosztów wynoszący ${{count}}. Czy chcesz zresetować koszt i kontynuować zadanie?"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo chce przeszukać bazę kodu w poszukiwaniu <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo chce przeszukać bazę kodu w poszukiwaniu <code>{{query}}</code> w <code>{{path}}</code>",
+		"wantsToSearch": "Menagerie chce przeszukać bazę kodu w poszukiwaniu <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Menagerie chce przeszukać bazę kodu w poszukiwaniu <code>{{query}}</code> w <code>{{path}}</code>",
 		"didSearch_one": "Znaleziono 1 wynik",
 		"didSearch_other": "Znaleziono {{count}} wyników",
 		"resultTooltip": "Wynik podobieństwa: {{score}} (kliknij, aby otworzyć plik)"
@@ -463,8 +463,8 @@
 		"clickToEdit": "Kliknij, aby edytować wiadomość"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo chce uruchomić komendę slash",
-		"didRun": "Zoo uruchomił komendę slash"
+		"wantsToRun": "Menagerie chce uruchomić komendę slash",
+		"didRun": "Menagerie uruchomił komendę slash"
 	},
 	"todo": {
 		"partial": "Ukończono {{completed}} z {{total}} zadań do wykonania",
@@ -483,7 +483,7 @@
 		"openMcpSettings": "Otwórz ustawienia MCP"
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Menagerie read command output"
 	},
 	"retiredProvider": {
 		"title": "Dostawca nie jest już obsługiwany",

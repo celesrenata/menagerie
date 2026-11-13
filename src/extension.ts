@@ -99,7 +99,7 @@ async function checkWorktreeAutoOpen(
 			// Clear the state first to prevent re-triggering
 			await context.globalState.update("worktreeAutoOpenPath", undefined)
 
-			outputChannel.appendLine(`[Worktree] Auto-opening Zoo Code sidebar for worktree: ${worktreeAutoOpenPath}`)
+			outputChannel.appendLine(`[Worktree] Auto-opening Menagerie sidebar for worktree: ${worktreeAutoOpenPath}`)
 
 			// Open the Zoo Code sidebar with a slight delay to ensure UI is ready
 			setTimeout(async () => {

@@ -76,7 +76,7 @@ function showOverlay(reason: string) {
 
 	const title = document.createElement("h2")
 	title.style.cssText = "margin:0;font-size:15px;color:var(--destructive, #ff6b6b)"
-	title.textContent = `Zoo Code webview crashed — ${reason}`
+	title.textContent = `Menagerie webview crashed — ${reason}`
 
 	const hint = document.createElement("p")
 	hint.style.cssText = "margin:0;color:var(--muted-foreground, #aaa);font-size:12px"

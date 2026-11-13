@@ -1,5 +1,5 @@
 {
-	"greeting": "Benvingut a Zoo Code!",
+	"greeting": "Benvingut a Menagerie!",
 	"task": {
 		"title": "Tasca",
 		"expand": "Expandir tasca",
@@ -98,7 +98,7 @@
 	"enqueueMessage": "Afegeix el missatge a la cua (s'enviarà quan acabi la tasca actual)",
 	"scrollToBottom": "Desplaça't al final del xat",
 	"scrollToLatestCheckpoint": "Desplaça't al checkpoint anterior",
-	"about": "Zoo Code és tot un equip de desenvolupament d'IA al teu editor.",
+	"about": "Menagerie és tot un equip de desenvolupament d'IA al teu editor.",
 	"docs": "Consulta els nostres <DocsLink>documents</DocsLink> per a més informació.",
 	"onboarding": "La teva llista de tasques en aquest espai de treball està buida.",
 	"rooTips": {
@@ -130,7 +130,7 @@
 		"title": "Modes",
 		"marketplace": "Marketplace de Modes",
 		"settings": "Configuració de Modes",
-		"description": "Personalitats especialitzades que adapten el comportament de Zoo.",
+		"description": "Personalitats especialitzades que adapten el comportament de Menagerie.",
 		"searchPlaceholder": "Cerca modes...",
 		"noResults": "No s'han trobat resultats"
 	},
@@ -144,7 +144,7 @@
 	"diffError": {
 		"title": "Edició fallida"
 	},
-	"troubleMessage": "Zoo està tenint problemes...",
+	"troubleMessage": "Menagerie està tenint problemes...",
 	"apiRequest": {
 		"title": "Sol·licitud API",
 		"failed": "Sol·licitud API ha fallat",
@@ -162,7 +162,7 @@
 			"500": "Error del servidor del proveïdor. Quelcom va malament del costat del proveïdor, no hi ha res de malament amb la teva sol·licitud.",
 			"docs": "Documentació",
 			"goToSettings": "Configuració",
-			"unknown": "Error API desconegut. Si us plau, contacta amb el suport de Zoo Code.",
+			"unknown": "Unknown API error. Please report it on the Menagerie GitHub issue tracker.",
 			"connection": "Error de connexió. Assegureu-vos que teniu una connexió a Internet funcional.",
 			"claudeCodeNotAuthenticated": "Has d'iniciar sessió per utilitzar Claude Code. Vés a Configuració i fes clic a \"Iniciar sessió a Claude Code\" per autenticar-te."
 		}
@@ -190,40 +190,40 @@
 		"wantsToFetch": "Zoo vol obtenir instruccions detallades per ajudar amb la tasca actual."
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo vol llegir aquest fitxer",
-		"wantsToReadOutsideWorkspace": "Zoo vol llegir aquest fitxer fora de l'espai de treball",
-		"didRead": "Zoo ha llegit aquest fitxer",
-		"wantsToEdit": "Zoo vol editar aquest fitxer",
-		"wantsToEditOutsideWorkspace": "Zoo vol editar aquest fitxer fora de l'espai de treball",
-		"wantsToEditProtected": "Zoo vol editar un fitxer de configuració protegit",
-		"wantsToCreate": "Zoo vol crear un nou fitxer",
+		"wantsToRead": "Menagerie vol llegir aquest fitxer",
+		"wantsToReadOutsideWorkspace": "Menagerie vol llegir aquest fitxer fora de l'espai de treball",
+		"didRead": "Menagerie ha llegit aquest fitxer",
+		"wantsToEdit": "Menagerie vol editar aquest fitxer",
+		"wantsToEditOutsideWorkspace": "Menagerie vol editar aquest fitxer fora de l'espai de treball",
+		"wantsToEditProtected": "Menagerie vol editar un fitxer de configuració protegit",
+		"wantsToCreate": "Menagerie vol crear un nou fitxer",
 		"wantsToSearchReplace": "Zoo vol realitzar cerca i substitució en aquest fitxer",
 		"didSearchReplace": "Zoo ha realitzat cerca i substitució en aquest fitxer",
-		"wantsToInsert": "Zoo vol inserir contingut en aquest fitxer",
-		"wantsToInsertWithLineNumber": "Zoo vol inserir contingut a la línia {{lineNumber}} d'aquest fitxer",
-		"wantsToInsertAtEnd": "Zoo vol afegir contingut al final d'aquest fitxer",
-		"wantsToReadAndXMore": "En Zoo vol llegir aquest fitxer i {{count}} més",
-		"wantsToReadMultiple": "Zoo vol llegir diversos fitxers",
-		"wantsToApplyBatchChanges": "Zoo vol aplicar canvis a múltiples fitxers",
-		"wantsToGenerateImage": "Zoo vol generar una imatge",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo vol generar una imatge fora de l'espai de treball",
-		"wantsToGenerateImageProtected": "Zoo vol generar una imatge en una ubicació protegida",
-		"didGenerateImage": "Zoo ha generat una imatge"
+		"wantsToInsert": "Menagerie vol inserir contingut en aquest fitxer",
+		"wantsToInsertWithLineNumber": "Menagerie vol inserir contingut a la línia {{lineNumber}} d'aquest fitxer",
+		"wantsToInsertAtEnd": "Menagerie vol afegir contingut al final d'aquest fitxer",
+		"wantsToReadAndXMore": "En Menagerie vol llegir aquest fitxer i {{count}} més",
+		"wantsToReadMultiple": "Menagerie vol llegir diversos fitxers",
+		"wantsToApplyBatchChanges": "Menagerie vol aplicar canvis a múltiples fitxers",
+		"wantsToGenerateImage": "Menagerie vol generar una imatge",
+		"wantsToGenerateImageOutsideWorkspace": "Menagerie vol generar una imatge fora de l'espai de treball",
+		"wantsToGenerateImageProtected": "Menagerie vol generar una imatge en una ubicació protegida",
+		"didGenerateImage": "Menagerie ha generat una imatge"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo vol veure els fitxers de nivell superior en aquest directori",
-		"didViewTopLevel": "Zoo ha vist els fitxers de nivell superior en aquest directori",
-		"wantsToViewRecursive": "Zoo vol veure recursivament tots els fitxers en aquest directori",
-		"didViewRecursive": "Zoo ha vist recursivament tots els fitxers en aquest directori",
-		"wantsToSearch": "Zoo vol cercar en aquest directori <code>{{regex}}</code>",
-		"didSearch": "Zoo ha cercat en aquest directori <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo vol cercar en aquest directori (fora de l'espai de treball) <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo ha cercat en aquest directori (fora de l'espai de treball) <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo vol veure els fitxers de nivell superior en aquest directori (fora de l'espai de treball)",
-		"didViewTopLevelOutsideWorkspace": "Zoo ha vist els fitxers de nivell superior en aquest directori (fora de l'espai de treball)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo vol veure recursivament tots els fitxers en aquest directori (fora de l'espai de treball)",
-		"didViewRecursiveOutsideWorkspace": "Zoo ha vist recursivament tots els fitxers en aquest directori (fora de l'espai de treball)",
-		"wantsToViewMultipleDirectories": "Zoo vol veure diversos directoris"
+		"wantsToViewTopLevel": "Menagerie vol veure els fitxers de nivell superior en aquest directori",
+		"didViewTopLevel": "Menagerie ha vist els fitxers de nivell superior en aquest directori",
+		"wantsToViewRecursive": "Menagerie vol veure recursivament tots els fitxers en aquest directori",
+		"didViewRecursive": "Menagerie ha vist recursivament tots els fitxers en aquest directori",
+		"wantsToSearch": "Menagerie vol cercar en aquest directori <code>{{regex}}</code>",
+		"didSearch": "Menagerie ha cercat en aquest directori <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Menagerie vol cercar en aquest directori (fora de l'espai de treball) <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Menagerie ha cercat en aquest directori (fora de l'espai de treball) <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Menagerie vol veure els fitxers de nivell superior en aquest directori (fora de l'espai de treball)",
+		"didViewTopLevelOutsideWorkspace": "Menagerie ha vist els fitxers de nivell superior en aquest directori (fora de l'espai de treball)",
+		"wantsToViewRecursiveOutsideWorkspace": "Menagerie vol veure recursivament tots els fitxers en aquest directori (fora de l'espai de treball)",
+		"didViewRecursiveOutsideWorkspace": "Menagerie ha vist recursivament tots els fitxers en aquest directori (fora de l'espai de treball)",
+		"wantsToViewMultipleDirectories": "Menagerie vol veure diversos directoris"
 	},
 	"commandOutput": "Sortida de la comanda",
 	"commandExecution": {
@@ -247,24 +247,24 @@
 	"response": "Resposta",
 	"arguments": "Arguments",
 	"text": {
-		"rooSaid": "En Zoo ha dit"
+		"rooSaid": "En Menagerie ha dit"
 	},
 	"feedback": {
 		"youSaid": "Has dit"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo vol utilitzar una eina al servidor MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo vol accedir a un recurs al servidor MCP {{serverName}}"
+		"wantsToUseTool": "Menagerie vol utilitzar una eina al servidor MCP {{serverName}}",
+		"wantsToAccessResource": "Menagerie vol accedir a un recurs al servidor MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo vol canviar a mode <code>{{mode}}</code>",
-		"wantsToSwitchWithReason": "Zoo vol canviar a mode <code>{{mode}}</code> perquè: {{reason}}",
-		"didSwitch": "Zoo ha canviat a mode <code>{{mode}}</code>",
-		"didSwitchWithReason": "Zoo ha canviat a mode <code>{{mode}}</code> perquè: {{reason}}"
+		"wantsToSwitch": "Menagerie vol canviar a mode <code>{{mode}}</code>",
+		"wantsToSwitchWithReason": "Menagerie vol canviar a mode <code>{{mode}}</code> perquè: {{reason}}",
+		"didSwitch": "Menagerie ha canviat a mode <code>{{mode}}</code>",
+		"didSwitchWithReason": "Menagerie ha canviat a mode <code>{{mode}}</code> perquè: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo vol crear una nova subtasca en mode <code>{{mode}}</code>",
-		"wantsToFinish": "Zoo vol finalitzar aquesta subtasca",
+		"wantsToCreate": "Menagerie vol crear una nova subtasca en mode <code>{{mode}}</code>",
+		"wantsToFinish": "Menagerie vol finalitzar aquesta subtasca",
 		"newTaskContent": "Instruccions de la subtasca",
 		"completionContent": "Subtasca completada",
 		"resultContent": "Resultats de la subtasca",
@@ -273,7 +273,7 @@
 		"goToSubtask": "Veure tasca"
 	},
 	"questions": {
-		"hasQuestion": "Zoo té una pregunta"
+		"hasQuestion": "Menagerie té una pregunta"
 	},
 	"taskCompleted": "Tasca completada",
 	"modelResponseIncomplete": "Resposta del model incompleta",
@@ -289,7 +289,7 @@
 		"copyToClipboard": "Copiar al porta-retalls",
 		"copied": "Copiat!",
 		"diagnostics": "Obtenir informació d'error detallada",
-		"proxyProvider": "Sembla que estàs utilitzant un proveïdor basat en proxy. Assegura't de comprovar els seus registres i de garantir que no estàs reescrivint les sol·licituds de Zoo."
+		"proxyProvider": "Sembla que estàs utilitzant un proveïdor basat en proxy. Assegura't de comprovar els seus registres i de garantir que no estàs reescrivint les sol·licituds de Menagerie."
 	},
 	"powershell": {
 		"issues": "Sembla que estàs tenint problemes amb Windows PowerShell, si us plau consulta aquesta documentació per a més informació."
@@ -332,8 +332,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "En Zoo vol carregar una habilitat",
-		"didLoad": "En Zoo ha carregat una habilitat"
+		"wantsToLoad": "En Menagerie vol carregar una habilitat",
+		"didLoad": "En Menagerie ha carregat una habilitat"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Copiar a l'entrada (o Shift + clic)",
@@ -364,24 +364,24 @@
 	"profileViolationWarning": "El perfil actual no és compatible amb la configuració de la teva organització",
 	"shellIntegration": {
 		"title": "Advertència d'execució d'ordres",
-		"description": "La teva ordre s'està executant sense la integració de shell del terminal VSCode. Per suprimir aquest advertiment, pots desactivar la integració de shell a la secció <strong>Terminal</strong> de la <settingsLink>configuració de Zoo Code</settingsLink> o solucionar problemes d'integració del terminal VSCode utilitzant l'enllaç de sota.",
+		"description": "La teva ordre s'està executant sense la integració de shell del terminal VSCode. Per suprimir aquest advertiment, pots desactivar la integració de shell a la secció <strong>Terminal</strong> de la <settingsLink>configuració de Menagerie</settingsLink> o solucionar problemes d'integració del terminal VSCode utilitzant l'enllaç de sota.",
 		"troubleshooting": "Fes clic aquí per a la documentació d'integració de shell."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "S'ha arribat al límit de sol·licituds aprovades automàticament",
-			"description": "Zoo ha arribat al límit aprovat automàticament de {{count}} sol·licitud(s) d'API. Vols reiniciar el comptador i continuar amb la tasca?",
+			"description": "Menagerie ha arribat al límit aprovat automàticament de {{count}} sol·licitud(s) d'API. Vols reiniciar el comptador i continuar amb la tasca?",
 			"button": "Reiniciar i continuar"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "S'ha arribat al límit de cost d'aprovació automàtica",
 			"button": "Restableix i continua",
-			"description": "Zoo ha arribat al límit de cost aprovat automàticament de ${{count}}. Vols restablir el cost i continuar amb la tasca?"
+			"description": "Menagerie ha arribat al límit de cost aprovat automàticament de ${{count}}. Vols restablir el cost i continuar amb la tasca?"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo vol cercar a la base de codi <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo vol cercar a la base de codi <code>{{query}}</code> a <code>{{path}}</code>",
+		"wantsToSearch": "Menagerie vol cercar a la base de codi <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Menagerie vol cercar a la base de codi <code>{{query}}</code> a <code>{{path}}</code>",
 		"didSearch_one": "S'ha trobat 1 resultat",
 		"didSearch_other": "S'han trobat {{count}} resultats",
 		"resultTooltip": "Puntuació de similitud: {{score}} (fes clic per obrir el fitxer)"
@@ -457,8 +457,8 @@
 		"clickToEdit": "Feu clic per editar el missatge"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo vol executar una comanda slash",
-		"didRun": "Zoo ha executat una comanda slash"
+		"wantsToRun": "Menagerie vol executar una comanda slash",
+		"didRun": "Menagerie ha executat una comanda slash"
 	},
 	"contextMenu": {
 		"noResults": "Sense resultats",
@@ -483,7 +483,7 @@
 		"openMcpSettings": "Obrir configuració de MCP"
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Menagerie read command output"
 	},
 	"retiredProvider": {
 		"title": "Proveïdor ja no compatible",

@@ -70,8 +70,8 @@ export async function generateImageWithProvider(options: ImageGenerationOptions)
 			headers: {
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
+				"HTTP-Referer": "https://github.com/celesrenata/menagerie",
+				"X-Title": "Menagerie",
 			},
 			body: JSON.stringify({
 				model,
@@ -216,8 +216,8 @@ export async function generateImageWithImagesApi(options: ImagesApiOptions): Pro
 			headers: {
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
+				"HTTP-Referer": "https://github.com/celesrenata/menagerie",
+				"X-Title": "Menagerie",
 			},
 			body: JSON.stringify(requestBody),
 		}

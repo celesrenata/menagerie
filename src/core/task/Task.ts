@@ -1876,7 +1876,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 										.slice(0, 72)
 									provider.revealChat()
 									void vscode.window
-										.showWarningMessage(`Zoo needs input${title ? `: ${title}` : ""}`, "Open chat")
+										.showWarningMessage(`Menagerie needs input${title ? `: ${title}` : ""}`, "Open chat")
 										.then(
 											(choice) => {
 												if (choice === "Open chat") provider.revealChat()

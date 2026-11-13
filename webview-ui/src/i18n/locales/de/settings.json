@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "Experimentell",
 		"language": "Sprache",
-		"about": "Über Zoo Code",
+		"about": "Über Menagerie",
 		"skills": "Skills",
 		"rules": "Regeln"
 	},
@@ -57,7 +57,7 @@
 			"label": "Sicherheitslücke entdeckt?",
 			"link": "Folge unserem Offenlegungsprozess"
 		},
-		"community": "Möchtest du Tipps oder dich einfach mit anderen Zoo Code-Nutzern austauschen? Tritt <redditLink>reddit.com/r/ZooCode</redditLink> oder <discordLink>discord.gg/VxfP4Vx3gX</discordLink> bei",
+		"community": "Questions, ideas or bugs? Open an issue or start a discussion on <githubLink>GitHub</githubLink>.",
 		"contactAndCommunity": "Kontakt & Community",
 		"manageSettings": "Einstellungen verwalten",
 		"debugMode": {
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Verlauf aus Roo Code importieren",
 			"cardTitle": "Roo Code-Verlauf",
-			"cardDescription": "Gespeicherte Roo Code-Gespräche in Zoo Code kopieren.",
+			"cardDescription": "Gespeicherte Roo Code-Gespräche in Menagerie kopieren.",
 			"statusImporting": "Verlauf wird importiert",
 			"statusFailed": "Import fehlgeschlagen",
 			"statusComplete": "Import abgeschlossen",
@@ -119,7 +119,7 @@
 		"footer": "Nutze Slash-Befehle, um schnell auf häufig verwendete Prompts und Workflows zuzugreifen."
 	},
 	"rules": {
-		"description": "Verwalte Zoo Code-Regeldateien aus globalen und Workspace-.roo/rules-Verzeichnissen. Erstelle allgemeine oder modusspezifische Regeln, ohne manuell durch Konfigurationsordner zu navigieren.",
+		"description": "Verwalte Menagerie-Regeldateien aus globalen und Workspace-.roo/rules-Verzeichnissen. Erstelle allgemeine oder modusspezifische Regeln, ohne manuell durch Konfigurationsordner zu navigieren.",
 		"workspaceRules": "Workspace-Regeln",
 		"globalRules": "Globale Regeln",
 		"noWorkspaceRules": "Noch keine Regeln in diesem Projekt.",
@@ -165,7 +165,7 @@
 		"footer": "Regeln laden modusspezifische Anweisungen vor allgemeinen Anweisungen. Globale Regeln werden vor Workspace-Regeln geladen."
 	},
 	"prompts": {
-		"description": "Konfiguriere Support-Prompts, die für schnelle Aktionen wie das Verbessern von Prompts, das Erklären von Code und das Beheben von Problemen verwendet werden. Diese Prompts helfen Zoo dabei, bessere Unterstützung für häufige Entwicklungsaufgaben zu bieten."
+		"description": "Konfiguriere Support-Prompts, die für schnelle Aktionen wie das Verbessern von Prompts, das Erklären von Code und das Beheben von Problemen verwendet werden. Diese Prompts helfen Menagerie dabei, bessere Unterstützung für häufige Entwicklungsaufgaben zu bieten."
 	},
 	"codeIndex": {
 		"title": "Codebase-Indexierung",
@@ -283,16 +283,16 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "Du kannst <SettingsLink>in deinen IDE-Einstellungen</SettingsLink> einen globalen Shortcut für diese Einstellung konfigurieren.",
-		"description": "Erlaubt Zoo, Operationen automatisch ohne Genehmigung durchzuführen. Aktiviere diese Einstellungen nur, wenn du der KI vollständig vertraust und die damit verbundenen Sicherheitsrisiken verstehst.",
+		"description": "Erlaubt Menagerie, Operationen automatisch ohne Genehmigung durchzuführen. Aktiviere diese Einstellungen nur, wenn du der KI vollständig vertraust und die damit verbundenen Sicherheitsrisiken verstehst.",
 		"enabled": "Auto-Genehmigung aktiviert",
 		"toggleAriaLabel": "Automatische Genehmigung umschalten",
 		"disabledAriaLabel": "Automatische Genehmigung deaktiviert - zuerst Optionen auswählen",
 		"readOnly": {
 			"label": "Lesen",
-			"description": "Wenn aktiviert, wird Zoo automatisch Verzeichnisinhalte anzeigen und Dateien lesen, ohne dass du auf die Genehmigen-Schaltfläche klicken musst.",
+			"description": "Wenn aktiviert, wird Menagerie automatisch Verzeichnisinhalte anzeigen und Dateien lesen, ohne dass du auf die Genehmigen-Schaltfläche klicken musst.",
 			"outsideWorkspace": {
 				"label": "Dateien außerhalb des Arbeitsbereichs einbeziehen",
-				"description": "Zoo erlauben, Dateien außerhalb des aktuellen Arbeitsbereichs ohne Genehmigung zu lesen."
+				"description": "Menagerie erlauben, Dateien außerhalb des aktuellen Arbeitsbereichs ohne Genehmigung zu lesen."
 			}
 		},
 		"write": {
@@ -301,11 +301,11 @@
 			"delayLabel": "Verzögerung nach Schreibvorgängen, damit Diagnosefunktionen potenzielle Probleme erkennen können",
 			"outsideWorkspace": {
 				"label": "Dateien außerhalb des Arbeitsbereichs einbeziehen",
-				"description": "Zoo erlauben, Dateien außerhalb des aktuellen Arbeitsbereichs ohne Genehmigung zu erstellen und zu bearbeiten."
+				"description": "Menagerie erlauben, Dateien außerhalb des aktuellen Arbeitsbereichs ohne Genehmigung zu erstellen und zu bearbeiten."
 			},
 			"protected": {
 				"label": "Geschützte Dateien einbeziehen",
-				"description": "Zoo erlauben, geschützte Dateien (wie .rooignore und .roo/ Konfigurationsdateien) ohne Genehmigung zu erstellen und zu bearbeiten."
+				"description": "Menagerie erlauben, geschützte Dateien (wie .rooignore und .roo/ Konfigurationsdateien) ohne Genehmigung zu erstellen und zu bearbeiten."
 			}
 		},
 		"allowlists": {
@@ -313,12 +313,12 @@
 			"description": "Erteile Zugriff auf einzelne Dateien, ohne eine ganze Kategorie von Aktionen automatisch zu genehmigen. Ein Muster pro Zeile, in .gitignore-inspirierter Syntax: \"notes.md\" passt auf diese Datei in jedem Verzeichnis des Workspace, \"docs/scratch/**\" auf alles unter diesem Verzeichnis und \"*.md\" auf jede Markdown-Datei. Ein Muster benennt immer Dateien, niemals Verzeichnisse: \"docs\" erlaubt nur eine Datei namens \"docs\"; für den Inhalt eines Verzeichnisses schreibe \"docs/**\". Ein führendes \"./\" meint das Workspace-Wurzelverzeichnis, ein führendes \"/\" dagegen die Wurzel des Dateisystems, sodass \"/tmp/notes.md\" über den Workspace hinausreicht, ebenso \"~/notes.md\", wo ein führendes \"~/\" für dein Home-Verzeichnis steht. Ein \"!\" vor einem Muster nimmt aus, was eine frühere Zeile erfasst hat; wie in .gitignore gewinnt die letzte passende Zeile, die Reihenfolge zählt also. Workspace-relative Muster werden ignoriert, solange kein Ordner geöffnet ist. Groß- und Kleinschreibung werden unterschieden, außer unter Windows. Solange \"Auto-Genehmigung\" oben aus ist, wird nichts automatisch genehmigt.",
 			"readFiles": {
 				"label": "Muster der Lese-Zulassungsliste",
-				"description": "Dateien, die Zoo ohne Genehmigung lesen darf, auch wenn \"Lesen\" oben aus ist. Dateien aus der Schreib-Zulassungsliste unten dürfen immer auch gelesen werden und müssen daher nicht zweimal aufgeführt werden. Verzeichnisauflistungen und Suchen folgen immer der \"Lesen\"-Einstellung. Von .rooignore ausgeschlossene Dateien bleiben trotzdem nicht lesbar.",
+				"description": "Dateien, die Menagerie ohne Genehmigung lesen darf, auch wenn \"Lesen\" oben aus ist. Dateien aus der Schreib-Zulassungsliste unten dürfen immer auch gelesen werden und müssen daher nicht zweimal aufgeführt werden. Verzeichnisauflistungen und Suchen folgen immer der \"Lesen\"-Einstellung. Von .rooignore ausgeschlossene Dateien bleiben trotzdem nicht lesbar.",
 				"placeholder": "Ein Muster pro Zeile, z.B. notes.md"
 			},
 			"writeFiles": {
 				"label": "Muster der Schreib-Zulassungsliste",
-				"description": "Dateien, die Zoo ohne Genehmigung erstellen und bearbeiten darf, auch wenn \"Schreiben\" oben aus ist. Geschützte Dateien brauchen weiterhin eine Genehmigung, sofern \"Geschützte Dateien einbeziehen\" nicht aktiviert ist (in den Einstellungen der \"Schreiben\"-Auto-Genehmigung). Von .rooignore ausgeschlossene Dateien bleiben trotzdem nicht beschreibbar.",
+				"description": "Dateien, die Menagerie ohne Genehmigung erstellen und bearbeiten darf, auch wenn \"Schreiben\" oben aus ist. Geschützte Dateien brauchen weiterhin eine Genehmigung, sofern \"Geschützte Dateien einbeziehen\" nicht aktiviert ist (in den Einstellungen der \"Schreiben\"-Auto-Genehmigung). Von .rooignore ausgeschlossene Dateien bleiben trotzdem nicht beschreibbar.",
 				"placeholder": "Ein Muster pro Zeile, z.B. notes.md"
 			}
 		},
@@ -344,7 +344,7 @@
 			"description": "Erlaubte Terminal-Befehle automatisch ohne Genehmigung ausführen",
 			"destructiveCommandGuard": {
 				"label": "Schutz vor destruktiven Befehlen aktivieren",
-				"description": "Lädt Destructive Command Guard (DCG) für diese Plattform herunter und verwendet es. Von DCG erlaubte Befehle werden automatisch ausgeführt. Von DCG blockierte Befehle benötigen deine Zustimmung. Die Befehlslisten von Zoo sind währenddessen deaktiviert. Die heruntergeladene ausführbare Datei bleibt erhalten, wenn du die Option ausschaltest."
+				"description": "Lädt Destructive Command Guard (DCG) für diese Plattform herunter und verwendet es. Von DCG erlaubte Befehle werden automatisch ausgeführt. Von DCG blockierte Befehle benötigen deine Zustimmung. Die Befehlslisten von Menagerie sind währenddessen deaktiviert. Die heruntergeladene ausführbare Datei bleibt erhalten, wenn du die Option ausschaltest."
 			},
 			"allowedCommands": "Erlaubte Auto-Ausführungsbefehle",
 			"allowedCommandsDescription": "Befehlspräfixe, die automatisch ausgeführt werden können, wenn 'Ausführungsoperationen immer genehmigen' aktiviert ist. Fügen Sie * hinzu, um alle Befehle zu erlauben (mit Vorsicht verwenden).",
@@ -461,7 +461,7 @@
 		"headerValue": "Header-Wert",
 		"noCustomHeaders": "Keine benutzerdefinierten Headers definiert. Klicke auf die + Schaltfläche, um einen hinzuzufügen.",
 		"extraBody": "Zusätzlicher Body",
-		"extraBodyDescription": "Optionales JSON-Objekt, das mit API-Anfrage-Bodys zusammengeführt wird. Von Zoo Code verwaltete Felder wie model, messages, tools und stream können nicht überschrieben werden. Füge keine Geheimnisse ein.",
+		"extraBodyDescription": "Optionales JSON-Objekt, das mit API-Anfrage-Bodys zusammengeführt wird. Von Menagerie verwaltete Felder wie model, messages, tools und stream können nicht überschrieben werden. Füge keine Geheimnisse ein.",
 		"unboundApiKey": "Unbound API-Schlüssel",
 		"getUnboundApiKey": "Unbound API-Schlüssel erhalten",
 		"requestyApiKey": "Requesty API-Schlüssel",
@@ -589,7 +589,7 @@
 			"draftModelDesc": "Das Entwurfsmodell muss aus derselben Modellfamilie stammen, damit das spekulative Dekodieren korrekt funktioniert.",
 			"selectDraftModel": "Entwurfsmodell auswählen",
 			"noModelsFound": "Keine Entwurfsmodelle gefunden. Bitte stelle sicher, dass LM Studio mit aktiviertem Servermodus läuft.",
-			"description": "LM Studio ermöglicht es dir, Modelle lokal auf deinem Computer auszuführen. Eine Anleitung zum Einstieg findest du in ihrem <a>Schnellstart-Guide</a>. Du musst auch die <b>lokale Server</b>-Funktion von LM Studio starten, um es mit dieser Erweiterung zu verwenden. <span>Hinweis:</span> Zoo Code verwendet komplexe Prompts und funktioniert am besten mit Claude-Modellen. Weniger leistungsfähige Modelle funktionieren möglicherweise nicht wie erwartet."
+			"description": "LM Studio ermöglicht es dir, Modelle lokal auf deinem Computer auszuführen. Eine Anleitung zum Einstieg findest du in ihrem <a>Schnellstart-Guide</a>. Du musst auch die <b>lokale Server</b>-Funktion von LM Studio starten, um es mit dieser Erweiterung zu verwenden. <span>Hinweis:</span> Menagerie verwendet komplexe Prompts und funktioniert am besten mit Claude-Modellen. Weniger leistungsfähige Modelle funktionieren möglicherweise nicht wie erwartet."
 		},
 		"ollama": {
 			"baseUrl": "Basis-URL (optional)",
@@ -601,7 +601,7 @@
 			"thinking": "Denken aktivieren",
 			"thinkingHelp": "Aktiviere das native Denken von Ollama für Reasoning-Modelle (z. B. qwen3, deepseek-r1). Wenn aktiviert, wird das Reasoning des Modells separat gestreamt und angezeigt. Nicht unterstützte Modelle ignorieren diese Einstellung.",
 			"description": "Ollama ermöglicht es dir, Modelle lokal auf deinem Computer auszuführen. Eine Anleitung zum Einstieg findest du im Schnellstart-Guide.",
-			"warning": "Hinweis: Zoo Code verwendet komplexe Prompts und funktioniert am besten mit Claude-Modellen. Weniger leistungsfähige Modelle funktionieren möglicherweise nicht wie erwartet."
+			"warning": "Hinweis: Menagerie verwendet komplexe Prompts und funktioniert am besten mit Claude-Modellen. Weniger leistungsfähige Modelle funktionieren möglicherweise nicht wie erwartet."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -611,7 +611,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Konfiguriere die Fähigkeiten und Preise für dein benutzerdefiniertes OpenAI-kompatibles Modell. Sei vorsichtig bei der Angabe der Modellfähigkeiten, da diese beeinflussen können, wie Zoo Code funktioniert.",
+			"capabilities": "Konfiguriere die Fähigkeiten und Preise für dein benutzerdefiniertes OpenAI-kompatibles Modell. Sei vorsichtig bei der Angabe der Modellfähigkeiten, da diese beeinflussen können, wie Menagerie funktioniert.",
 			"maxTokens": {
 				"label": "Maximale Ausgabe-Tokens",
 				"description": "Maximale Anzahl von Tokens, die das Modell in einer Antwort generieren kann. (Geben Sie -1 an, damit der Server die maximalen Tokens festlegt.)"
@@ -658,7 +658,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Fehler- & Wiederholungslimit",
-			"description": "Anzahl aufeinanderfolgender Fehler oder wiederholter Aktionen, bevor der Dialog 'Zoo hat Probleme' angezeigt wird. Auf 0 setzen, um diesen Sicherheitsmechanismus zu deaktivieren (er wird niemals ausgelöst).",
+			"description": "Anzahl aufeinanderfolgender Fehler oder wiederholter Aktionen, bevor der Dialog 'Menagerie hat Probleme' angezeigt wird. Auf 0 setzen, um diesen Sicherheitsmechanismus zu deaktivieren (er wird niemals ausgelöst).",
 			"unlimitedDescription": "Unbegrenzte Wiederholungen aktiviert (automatisches Fortfahren). Der Dialog wird niemals angezeigt.",
 			"warning": "⚠️ Das Setzen auf 0 erlaubt unbegrenzte Wiederholungen, was zu erheblichem API-Verbrauch führen kann"
 		},
@@ -702,18 +702,18 @@
 		},
 		"enable": {
 			"label": "Automatische Kontrollpunkte aktivieren",
-			"description": "Wenn aktiviert, erstellt Zoo automatisch Kontrollpunkte während der Aufgabenausführung, was die Überprüfung von Änderungen oder die Rückkehr zu früheren Zuständen erleichtert. <0>Mehr erfahren</0>"
+			"description": "Wenn aktiviert, erstellt Menagerie automatisch Kontrollpunkte während der Aufgabenausführung, was die Überprüfung von Änderungen oder die Rückkehr zu früheren Zuständen erleichtert. <0>Mehr erfahren</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Soundeffekte aktivieren",
-			"description": "Wenn aktiviert, spielt Zoo Soundeffekte für Benachrichtigungen und Ereignisse ab.",
+			"description": "Wenn aktiviert, spielt Menagerie Soundeffekte für Benachrichtigungen und Ereignisse ab.",
 			"volumeLabel": "Lautstärke"
 		},
 		"tts": {
 			"label": "Text-zu-Sprache aktivieren",
-			"description": "Wenn aktiviert, liest Zoo seine Antworten mit Text-zu-Sprache laut vor.",
+			"description": "Wenn aktiviert, liest Menagerie seine Antworten mit Text-zu-Sprache laut vor.",
 			"speedLabel": "Geschwindigkeit"
 		}
 	},
@@ -721,7 +721,7 @@
 		"description": "Steuern Sie, welche Informationen im KI-Kontextfenster enthalten sind, was den Token-Verbrauch und die Antwortqualität beeinflusst",
 		"autoCondenseContextPercent": {
 			"label": "Schwellenwert für intelligente Kontextkomprimierung",
-			"description": "Wenn das Kontextfenster diesen Schwellenwert erreicht, wird Zoo es automatisch komprimieren."
+			"description": "Wenn das Kontextfenster diesen Schwellenwert erreicht, wird Menagerie es automatisch komprimieren."
 		},
 		"condensingApiConfiguration": {
 			"label": "API-Konfiguration für Kontextkomprimierung",
@@ -737,7 +737,7 @@
 		},
 		"autoCondenseContext": {
 			"name": "Intelligente Kontextkomprimierung automatisch auslösen",
-			"description": "Wenn aktiviert, wird Zoo automatisch den Kontext komprimieren, wenn der Schwellenwert erreicht wird. Wenn deaktiviert, können Sie die Kontextkomprimierung weiterhin manuell auslösen."
+			"description": "Wenn aktiviert, wird Menagerie automatisch den Kontext komprimieren, wenn der Schwellenwert erreicht wird. Wenn deaktiviert, können Sie die Kontextkomprimierung weiterhin manuell auslösen."
 		},
 		"openTabs": {
 			"label": "Geöffnete Tabs Kontextlimit",
@@ -757,7 +757,7 @@
 		},
 		"maxReadFile": {
 			"label": "Schwellenwert für automatische Dateilesekürzung",
-			"description": "Zoo liest diese Anzahl von Zeilen, wenn das Modell keine Start-/Endwerte angibt. Wenn diese Zahl kleiner als die Gesamtzahl der Zeilen ist, erstellt Zoo einen Zeilennummernindex der Codedefinitionen. Spezialfälle: -1 weist Zoo an, die gesamte Datei zu lesen (ohne Indexierung), und 0 weist an, keine Zeilen zu lesen und nur Zeilenindizes für minimalen Kontext bereitzustellen. Niedrigere Werte minimieren die anfängliche Kontextnutzung und ermöglichen präzise nachfolgende Zeilenbereich-Lesungen. Explizite Start-/End-Anfragen sind von dieser Einstellung nicht begrenzt.",
+			"description": "Menagerie liest diese Anzahl von Zeilen, wenn das Modell keine Start-/Endwerte angibt. Wenn diese Zahl kleiner als die Gesamtzahl der Zeilen ist, erstellt Menagerie einen Zeilennummernindex der Codedefinitionen. Spezialfälle: -1 weist Menagerie an, die gesamte Datei zu lesen (ohne Indexierung), und 0 weist an, keine Zeilen zu lesen und nur Zeilenindizes für minimalen Kontext bereitzustellen. Niedrigere Werte minimieren die anfängliche Kontextnutzung und ermöglichen präzise nachfolgende Zeilenbereich-Lesungen. Explizite Start-/End-Anfragen sind von dieser Einstellung nicht begrenzt.",
 			"lines": "Zeilen",
 			"always_full_read": "Immer die gesamte Datei lesen"
 		},
@@ -830,15 +830,15 @@
 		},
 		"outputLineLimit": {
 			"label": "Terminal-Ausgabelimit",
-			"description": "Behält erste und letzte Zeilen und verwirft die mittleren, um unter dem Limit zu bleiben. Niedriger für Token-Ersparnis; höher für mehr Details aus der Mitte für Zoo. Zoo sieht einen Platzhalter, wo Inhalt übersprungen wird.<0>Mehr erfahren</0>"
+			"description": "Behält erste und letzte Zeilen und verwirft die mittleren, um unter dem Limit zu bleiben. Niedriger für Token-Ersparnis; höher für mehr Details aus der Mitte für Menagerie. Menagerie sieht einen Platzhalter, wo Inhalt übersprungen wird.<0>Mehr erfahren</0>"
 		},
 		"outputCharacterLimit": {
 			"label": "Terminal-Zeichenlimit",
-			"description": "Überschreibt das Zeilenlimit, um Speicherprobleme durch eine harte Obergrenze für die Ausgabegröße zu vermeiden. Bei Überschreitung behält es Anfang und Ende und zeigt Zoo einen Platzhalter, wo Inhalt übersprungen wird. <0>Mehr erfahren</0>"
+			"description": "Überschreibt das Zeilenlimit, um Speicherprobleme durch eine harte Obergrenze für die Ausgabegröße zu vermeiden. Bei Überschreitung behält es Anfang und Ende und zeigt Menagerie einen Platzhalter, wo Inhalt übersprungen wird. <0>Mehr erfahren</0>"
 		},
 		"outputPreviewSize": {
 			"label": "Befehlsausgabe-Vorschaugröße",
-			"description": "Steuert, wie viel Befehlsausgabe Zoo direkt sieht. Die vollständige Ausgabe wird immer gespeichert und ist bei Bedarf zugänglich.",
+			"description": "Steuert, wie viel Befehlsausgabe Menagerie direkt sieht. Die vollständige Ausgabe wird immer gespeichert und ist bei Bedarf zugänglich.",
 			"options": {
 				"small": "Klein (5KB)",
 				"medium": "Mittel (10KB)",
@@ -851,7 +851,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Inline-Terminal verwenden (empfohlen)",
-			"description": "Führe Befehle im Inline-Terminal (Chat) aus, um Shell-Profile/Integration für schnellere, zuverlässigere Läufe zu umgehen. Wenn deaktiviert, nutzt Zoo das VS Code-Terminal mit deinem Shell-Profil, Prompts und Plugins. <0>Mehr erfahren</0>"
+			"description": "Führe Befehle im Inline-Terminal (Chat) aus, um Shell-Profile/Integration für schnellere, zuverlässigere Läufe zu umgehen. Wenn deaktiviert, nutzt Menagerie das VS Code-Terminal mit deinem Shell-Profil, Prompts und Plugins. <0>Mehr erfahren</0>"
 		},
 		"commandDelay": {
 			"label": "Terminal-Befehlsverzögerung",
@@ -882,9 +882,9 @@
 			"description": "Schalte dies ein, um Umgebungsvariablen vom übergeordneten VS Code-Prozess zu erben. <0>Mehr erfahren</0>"
 		},
 		"profile": {
-			"label": "Shell für Zoo Code",
+			"label": "Shell für Menagerie",
 			"followVscode": "VS Code-Profil folgen (empfohlen)",
-			"description": "Standardmäßig verwendet Zoo Code die in VS Code konfigurierte Shell. Wähle ein Shell-Profil aus der Liste, um ein pfadbasiertes Shell-Profil zu verwenden, das VS Code bereitstellt. Quellenbasierte Profile (z. B. der integrierte PowerShell-Eintrag) können hier nicht aufgelistet werden. <0>Mehr erfahren</0>",
+			"description": "Standardmäßig verwendet Menagerie die in VS Code konfigurierte Shell. Wähle ein Shell-Profil aus der Liste, um ein pfadbasiertes Shell-Profil zu verwenden, das VS Code bereitstellt. Quellenbasierte Profile (z. B. der integrierte PowerShell-Eintrag) können hier nicht aufgelistet werden. <0>Mehr erfahren</0>",
 			"configureButton": "Standardprofil in VS Code auswählen",
 			"noProfiles": "(keine pfadbasierten Profile in terminal.integrated.profiles gefunden)"
 		}
@@ -895,7 +895,7 @@
 	"advanced": {
 		"diff": {
 			"label": "Bearbeitung durch Diffs aktivieren",
-			"description": "Wenn aktiviert, kann Zoo Dateien schneller bearbeiten und lehnt automatisch abgeschnittene vollständige Dateischreibvorgänge ab",
+			"description": "Wenn aktiviert, kann Menagerie Dateien schneller bearbeiten und lehnt automatisch abgeschnittene vollständige Dateischreibvorgänge ab",
 			"strategy": {
 				"label": "Diff-Strategie",
 				"options": {
@@ -912,7 +912,7 @@
 		},
 		"todoList": {
 			"label": "Todo-Listen-Tool aktivieren",
-			"description": "Wenn aktiviert, kann Zoo Todo-Listen erstellen und verwalten, um den Aufgabenfortschritt zu verfolgen. Dies hilft, komplexe Aufgaben in überschaubare Schritte zu organisieren."
+			"description": "Wenn aktiviert, kann Menagerie Todo-Listen erstellen und verwalten, um den Aufgabenfortschritt zu verfolgen. Dies hilft, komplexe Aufgaben in überschaubare Schritte zu organisieren."
 		}
 	},
 	"experimental": {
@@ -922,15 +922,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Experimentelles Inhalts-Einfügewerkzeug verwenden",
-			"description": "Aktiviere das experimentelle Inhalts-Einfügewerkzeug, mit dem Zoo Inhalte an bestimmten Zeilennummern einfügen kann, ohne einen Diff erstellen zu müssen."
+			"description": "Aktiviere das experimentelle Inhalts-Einfügewerkzeug, mit dem Menagerie Inhalte an bestimmten Zeilennummern einfügen kann, ohne einen Diff erstellen zu müssen."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Gleichzeitiges Lesen von Dateien aktivieren",
-			"description": "Wenn aktiviert, kann Zoo mehrere Dateien in einer einzigen Anfrage lesen. Wenn deaktiviert, muss Zoo Dateien einzeln lesen. Das Deaktivieren kann hilfreich sein, wenn mit weniger fähigen Modellen gearbeitet wird oder wenn du mehr Kontrolle über den Dateizugriff haben möchtest."
+			"description": "Wenn aktiviert, kann Menagerie mehrere Dateien in einer einzigen Anfrage lesen. Wenn deaktiviert, muss Menagerie Dateien einzeln lesen. Das Deaktivieren kann hilfreich sein, wenn mit weniger fähigen Modellen gearbeitet wird oder wenn du mehr Kontrolle über den Dateizugriff haben möchtest."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Experimentelles Multi-Block-Diff-Tool verwenden",
-			"description": "Wenn aktiviert, wird Zoo das Multi-Block-Diff-Tool verwenden. Dies wird versuchen, mehrere Codeblöcke in der Datei in einer Anfrage zu aktualisieren."
+			"description": "Wenn aktiviert, wird Menagerie das Multi-Block-Diff-Tool verwenden. Dies wird versuchen, mehrere Codeblöcke in der Datei in einer Anfrage zu aktualisieren."
 		},
 		"MARKETPLACE": {
 			"name": "Marktplatz aktivieren",
@@ -938,7 +938,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Hintergrundbearbeitung",
-			"description": "Verhindert Editor-Fokus-Störungen wenn aktiviert. Dateibearbeitungen erfolgen im Hintergrund ohne Öffnung von Diff-Ansichten oder Fokus-Diebstahl. Du kannst ungestört weiterarbeiten, während Zoo Änderungen vornimmt. Dateien können ohne Fokus geöffnet werden, um Diagnosen zu erfassen oder vollständig geschlossen bleiben."
+			"description": "Verhindert Editor-Fokus-Störungen wenn aktiviert. Dateibearbeitungen erfolgen im Hintergrund ohne Öffnung von Diff-Ansichten oder Fokus-Diebstahl. Du kannst ungestört weiterarbeiten, während Menagerie Änderungen vornimmt. Dateien können ohne Fokus geöffnet werden, um Diagnosen zu erfassen oder vollständig geschlossen bleiben."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Neuen Nachrichtenparser verwenden",
@@ -950,7 +950,7 @@
 		},
 		"IMAGE_GENERATION": {
 			"name": "KI-Bildgenerierung aktivieren",
-			"description": "Wenn aktiviert, kann Zoo Bilder aus Textprompts mit Bildgenerierungsmodellen erstellen.",
+			"description": "Wenn aktiviert, kann Menagerie Bilder aus Textprompts mit Bildgenerierungsmodellen erstellen.",
 			"providerLabel": "Anbieter",
 			"providerDescription": "Wähle den Anbieter für die Bildgenerierung.",
 			"openRouterApiKeyLabel": "OpenRouter API-Schlüssel",
@@ -963,11 +963,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Modellinitierte Slash-Befehle aktivieren",
-			"description": "Wenn aktiviert, kann Zoo deine Slash-Befehle ausführen, um Workflows zu starten."
+			"description": "Wenn aktiviert, kann Menagerie deine Slash-Befehle ausführen, um Workflows zu starten."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Benutzerdefinierte Tools aktivieren",
-			"description": "Wenn aktiviert, kann Zoo benutzerdefinierte TypeScript/JavaScript-Tools aus dem .roo/tools-Verzeichnis deines Projekts oder ~/.roo/tools für globale Tools laden und verwenden. Hinweis: Diese Tools werden automatisch genehmigt.",
+			"description": "Wenn aktiviert, kann Menagerie benutzerdefinierte TypeScript/JavaScript-Tools aus dem .roo/tools-Verzeichnis deines Projekts oder ~/.roo/tools für globale Tools laden und verwenden. Hinweis: Diese Tools werden automatisch genehmigt.",
 			"toolsHeader": "Verfügbare benutzerdefinierte Tools",
 			"noTools": "Keine benutzerdefinierten Tools geladen. Füge .ts- oder .js-Dateien zum .roo/tools-Verzeichnis deines Projekts oder ~/.roo/tools für globale Tools hinzu.",
 			"refreshButton": "Aktualisieren",
@@ -979,7 +979,7 @@
 	},
 	"promptCaching": {
 		"label": "Prompt-Caching deaktivieren",
-		"description": "Wenn aktiviert, wird Zoo für dieses Modell kein Prompt-Caching verwenden."
+		"description": "Wenn aktiviert, wird Menagerie für dieses Modell kein Prompt-Caching verwenden."
 	},
 	"temperature": {
 		"useCustom": "Benutzerdefinierte Temperatur verwenden",
@@ -1009,7 +1009,7 @@
 		}
 	},
 	"modelPicker": {
-		"automaticFetch": "Die Erweiterung ruft automatisch die neueste Liste der auf <serviceLink>{{serviceName}}</serviceLink> verfügbaren Modelle ab. Wenn du dir nicht sicher bist, welches Modell du wählen sollst, funktioniert Zoo Code am besten mit <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Du kannst auch versuchen, nach \"kostenlos\" zu suchen, um die derzeit verfügbaren kostenlosen Optionen zu finden.",
+		"automaticFetch": "Die Erweiterung ruft automatisch die neueste Liste der auf <serviceLink>{{serviceName}}</serviceLink> verfügbaren Modelle ab. Wenn du dir nicht sicher bist, welches Modell du wählen sollst, funktioniert Menagerie am besten mit <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Du kannst auch versuchen, nach \"kostenlos\" zu suchen, um die derzeit verfügbaren kostenlosen Optionen zu finden.",
 		"label": "Modell",
 		"searchPlaceholder": "Suchen",
 		"noMatchFound": "Keine Übereinstimmung gefunden",
@@ -1041,7 +1041,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "Der zusätzliche Body muss gültiges JSON enthalten.",
 			"objectRequired": "Der zusätzliche Body muss ein JSON-Objekt sein.",
-			"reservedKeys": "Der zusätzliche Body kann von Zoo Code verwaltete Felder nicht überschreiben: {{keys}}."
+			"reservedKeys": "Der zusätzliche Body kann von Menagerie verwaltete Felder nicht überschreiben: {{keys}}."
 		},
 		"arn": {
 			"invalidFormat": "Ungültiges ARN-Format. Bitte überprüfe die Formatanforderungen.",
@@ -1124,20 +1124,20 @@
 		},
 		"chatFontSize": {
 			"label": "Chat-Schriftgröße",
-			"description": "Lege die Schriftgröße (in Pixeln) für den Zoo Code-Chat fest. Belasse den Standardwert, um die Schriftgröße von VS Code zu übernehmen.",
+			"description": "Lege die Schriftgröße (in Pixeln) für den Menagerie-Chat fest. Belasse den Standardwert, um die Schriftgröße von VS Code zu übernehmen.",
 			"reset": "VS Code-Standard verwenden"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Von Zoo geöffnete Dateien automatisch schließen",
-			"description": "Wenn aktiviert, werden Editor-Tabs, die Zoo vorübergehend für einen Diff geöffnet hat, nach dem Akzeptieren oder Ablehnen der Änderung automatisch geschlossen. Tabs, die der Nutzer bereits vor der Bearbeitung geöffnet hatte, werden nie automatisch geschlossen."
+			"label": "Von Menagerie geöffnete Dateien automatisch schließen",
+			"description": "Wenn aktiviert, werden Editor-Tabs, die Menagerie vorübergehend für einen Diff geöffnet hat, nach dem Akzeptieren oder Ablehnen der Änderung automatisch geschlossen. Tabs, die der Nutzer bereits vor der Bearbeitung geöffnet hatte, werden nie automatisch geschlossen."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Auch nach Nutzer-Interaktion automatisch schließen",
-			"description": "Wenn aktiviert, werden von Zoo geöffnete Tabs auch dann geschlossen, wenn der Nutzer während der Bearbeitung in die Datei oder den Diff geklickt oder getippt hat. Hat keine Auswirkung, wenn 'Von Zoo geöffnete Dateien automatisch schließen' deaktiviert ist."
+			"description": "Wenn aktiviert, werden von Menagerie geöffnete Tabs auch dann geschlossen, wenn der Nutzer während der Bearbeitung in die Datei oder den Diff geklickt oder getippt hat. Hat keine Auswirkung, wenn 'Von Menagerie geöffnete Dateien automatisch schließen' deaktiviert ist."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Neu erstellte Dateien automatisch schließen",
-			"description": "Wenn aktiviert, werden Tabs für Dateien, die Zoo neu erstellt hat (anstatt sie zu bearbeiten), nach dem Akzeptieren der Änderung ebenfalls automatisch geschlossen."
+			"description": "Wenn aktiviert, werden Tabs für Dateien, die Menagerie neu erstellt hat (anstatt sie zu bearbeiten), nach dem Akzeptieren der Änderung ebenfalls automatisch geschlossen."
 		}
 	},
 	"skills": {

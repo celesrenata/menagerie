@@ -1,5 +1,5 @@
 {
-	"greeting": "Zoo Code へようこそ！",
+	"greeting": "Menagerie へようこそ！",
 	"task": {
 		"title": "タスク",
 		"expand": "タスクを展開",
@@ -98,7 +98,7 @@
 	"enqueueMessage": "メッセージをキューに追加（現在のタスク完了後に送信されます）",
 	"scrollToBottom": "チャットの最下部にスクロール",
 	"scrollToLatestCheckpoint": "前のチェックポイントまでスクロール",
-	"about": "Zoo Codeは、エディタに常駐するAI開発チームです。",
+	"about": "Menagerieは、エディタに常駐するAI開発チームです。",
 	"docs": "詳細については、<DocsLink>ドキュメント</DocsLink>をご確認ください。",
 	"onboarding": "このワークスペースのタスクリストは空です。",
 	"rooTips": {
@@ -162,7 +162,7 @@
 			"500": "プロバイダー サーバー エラー。プロバイダー側に問題があり、リクエスト自体に問題はありません。",
 			"docs": "ドキュメント",
 			"goToSettings": "設定",
-			"unknown": "不明な API エラーです。Zoo Code サポートにお問い合わせください。",
+			"unknown": "Unknown API error. Please report it on the Menagerie GitHub issue tracker.",
 			"connection": "接続エラー。インターネット接続が機能していることを確認してください。",
 			"claudeCodeNotAuthenticated": "Claude Codeを使用するにはサインインが必要です。設定に移動して「Claude Codeにサインイン」をクリックして認証してください。"
 		}
@@ -202,7 +202,7 @@
 		"wantsToInsert": "Zooはこのファイルにコンテンツを挿入したい",
 		"wantsToInsertWithLineNumber": "Zooはこのファイルの{{lineNumber}}行目にコンテンツを挿入したい",
 		"wantsToInsertAtEnd": "Zooはこのファイルの末尾にコンテンツを追加したい",
-		"wantsToReadAndXMore": "Zoo はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
+		"wantsToReadAndXMore": "Menagerie はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
 		"wantsToReadMultiple": "Zooは複数のファイルを読み取ろうとしています",
 		"wantsToApplyBatchChanges": "Zooは複数のファイルに変更を適用したい",
 		"wantsToGenerateImage": "Zooは画像を生成したい",
@@ -223,7 +223,7 @@
 		"didViewTopLevelOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示しました",
 		"wantsToViewRecursiveOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示したい",
 		"didViewRecursiveOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示しました",
-		"wantsToViewMultipleDirectories": "Zoo は複数のディレクトリを表示したい"
+		"wantsToViewMultipleDirectories": "Menagerie は複数のディレクトリを表示したい"
 	},
 	"commandOutput": "コマンド出力",
 	"commandExecution": {
@@ -364,7 +364,7 @@
 	"profileViolationWarning": "現在のプロファイルは組織の設定と互換性がありません",
 	"shellIntegration": {
 		"title": "コマンド実行警告",
-		"description": "コマンドはVSCodeターミナルシェル統合なしで実行されています。この警告を非表示にするには、<settingsLink>Zoo Code 設定</settingsLink>の<strong>Terminal</strong>セクションでシェル統合を無効にするか、以下のリンクを使用してVSCodeターミナル統合のトラブルシューティングを行ってください。",
+		"description": "コマンドはVSCodeターミナルシェル統合なしで実行されています。この警告を非表示にするには、<settingsLink>Menagerie 設定</settingsLink>の<strong>Terminal</strong>セクションでシェル統合を無効にするか、以下のリンクを使用してVSCodeターミナル統合のトラブルシューティングを行ってください。",
 		"troubleshooting": "シェル統合のドキュメントはこちらをクリック"
 	},
 	"ask": {

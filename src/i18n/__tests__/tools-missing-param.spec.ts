@@ -36,11 +36,11 @@ describe("tools:missingToolParameter locales", () => {
 		}
 	})
 
-	it("brands the English messages as Zoo, not Roo", () => {
+	it("brands the English messages as Menagerie, not Roo", () => {
 		const tools = loadTools("en")
-		expect(tools.missingToolParameter).toContain("Zoo")
+		expect(tools.missingToolParameter).toContain("Menagerie")
 		expect(tools.missingToolParameter).not.toContain("Roo")
-		expect(tools.missingToolParameterWithPath).toContain("Zoo")
+		expect(tools.missingToolParameterWithPath).toContain("Menagerie")
 		expect(tools.missingToolParameterWithPath).not.toContain("Roo")
 	})
 })

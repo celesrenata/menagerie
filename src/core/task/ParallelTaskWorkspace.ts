@@ -24,12 +24,12 @@ export async function snapshotWorkingTree(cwd: string, storage: string): Promise
 		await warnOnOmittedTopLevelDirectories(root, tree, env)
 		const { stdout: commit } = await execa("git", ["commit-tree", tree, ...(head ? ["-p", head] : [])], {
 			cwd: root,
-			input: "Zoo parallel task snapshot\n",
+			input: "Menagerie parallel task snapshot\n",
 			env: {
 				...env,
-				GIT_AUTHOR_NAME: "Zoo Code",
+				GIT_AUTHOR_NAME: "Menagerie",
 				GIT_AUTHOR_EMAIL: "parallel@localhost",
-				GIT_COMMITTER_NAME: "Zoo Code",
+				GIT_COMMITTER_NAME: "Menagerie",
 				GIT_COMMITTER_EMAIL: "parallel@localhost",
 			},
 		})

@@ -34,9 +34,9 @@
 	"settings.vsCodeLmModelSelector.description": "VSCode dil modeli API'si için ayarlar",
 	"settings.vsCodeLmModelSelector.vendor.description": "Dil modelinin sağlayıcısı (örn: copilot)",
 	"settings.vsCodeLmModelSelector.family.description": "Dil modelinin ailesi (örn: gpt-4)",
-	"settings.customStoragePath.description": "Özel depolama yolu. Varsayılan konumu kullanmak için boş bırakın. Mutlak yolları destekler (örn: 'D:\\ZooCodeStorage')",
-	"settings.enableCodeActions.description": "Zoo Code hızlı düzeltmeleri etkinleştir.",
-	"settings.autoImportSettingsPath.description": "Uzantı başlangıcında otomatik olarak içe aktarılacak bir ZooCode yapılandırma dosyasının yolu. Mutlak yolları ve ana dizine göreli yolları destekler (ör. '~/Documents/zoo-code-settings.json'). Otomatik içe aktarmayı devre dışı bırakmak için boş bırakın.",
+	"settings.customStoragePath.description": "Özel depolama yolu. Varsayılan konumu kullanmak için boş bırakın. Mutlak yolları destekler (örn: 'D:\\MenagerieStorage')",
+	"settings.enableCodeActions.description": "Menagerie hızlı düzeltmeleri etkinleştir.",
+	"settings.autoImportSettingsPath.description": "Uzantı başlangıcında otomatik olarak içe aktarılacak bir Menagerie yapılandırma dosyasının yolu. Mutlak yolları ve ana dizine göreli yolları destekler (ör. '~/Documents/menagerie-settings.json'). Otomatik içe aktarmayı devre dışı bırakmak için boş bırakın.",
 	"settings.maximumIndexedFilesForFileSearch.description": "@ dosya arama özelliği için dizinlenecek maksimum dosya sayısı. Daha yüksek değerler büyük projelerde daha iyi arama sonuçları sağlar ancak daha fazla bellek kullanabilir. Varsayılan: 10.000.",
 	"settings.useAgentRules.description": "Aracıya özgü kurallar için AGENTS.md dosyalarının yüklenmesini etkinleştirin (bkz. https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "API yanıt zaman aşımı (saniye, varsayılan: 600, aralık: 1–3600). Yerel sağlayıcılar için daha yüksek değerler önerilir. Desteklenmeyen sağlayıcılar: Amazon Bedrock, Google Gemini(directly or through the Vertex AI platform), Mistral, Moonshot, Ollama, Poe, VS Code LM API.",
@@ -47,7 +47,7 @@
 	"settings.debugProxy.enabled.description": "**Debug Proxy'yi etkinleştir** — Tüm giden ağ isteklerini MITM hata ayıklaması için bir proxy üzerinden yönlendir. Yalnızca debug modunda (F5) çalıştırırken aktiftir.",
 	"settings.debugProxy.serverUrl.description": "Proxy URL'si (ör. `http://127.0.0.1:8888`). Yalnızca **Debug Proxy** etkin olduğunda kullanılır.",
 	"settings.debugProxy.tlsInsecure.description": "Proxy'den gelen self-signed sertifikaları kabul et. **MITM incelemesi için gerekli.** ⚠️ Güvensiz — yalnızca lokal debugging için kullan.",
-	"settings.workspace.rootResolution.description": "Zoo'nun çok köklü bir çalışma alanında çalışma alanı kökünü nasıl belirlediği. Kök; `.roomodes`, `.roo/mcp.json`, `.roo/rules/` ve diğer proje kapsamındaki yapılandırmayı bulmak için kullanılır. Bu ayarı değiştirmek yalnızca sonraki aramaları etkiler; çalışan görevler özgün köklerini korur.",
+	"settings.workspace.rootResolution.description": "Menagerie'nun çok köklü bir çalışma alanında çalışma alanı kökünü nasıl belirlediği. Kök; `.roomodes`, `.roo/mcp.json`, `.roo/rules/` ve diğer proje kapsamındaki yapılandırmayı bulmak için kullanılır. Bu ayarı değiştirmek yalnızca sonraki aramaları etkiler; çalışan görevler özgün köklerini korur.",
 	"settings.workspace.rootResolution.activeEditor.description": "Aktif düzenleyiciyi içeren çalışma alanı klasörünü kullan; ilk çalışma alanı klasörüne geri dön. (Varsayılan — eski davranışı korur.)",
 	"settings.workspace.rootResolution.firstFolder.description": "Her zaman ilk çalışma alanı klasörünü (workspaceFolders[0]) kullan. Deterministik — o anda hangi dosyanın odakta olduğundan bağımsız."
 }

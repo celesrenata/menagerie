@@ -58,7 +58,7 @@ describe("crashGuard", () => {
 
 		const overlay = document.getElementById("crash-guard-overlay")
 		expect(overlay).not.toBeNull()
-		expect(overlay?.textContent).toContain("Zoo Code webview crashed")
+		expect(overlay?.textContent).toContain("Menagerie webview crashed")
 	})
 
 	it("hides the overlay again once React re-renders into #root", async () => {

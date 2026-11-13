@@ -6,10 +6,10 @@
 		"imageTooLarge": "File gambar terlalu besar ({{size}} MB). Ukuran maksimum yang diizinkan adalah {{max}} MB.",
 		"imageWithSize": "File gambar ({{size}} KB)"
 	},
-	"toolRepetitionLimitReached": "Zoo tampaknya terjebak dalam loop, mencoba aksi yang sama ({{toolName}}) berulang kali. Ini mungkin menunjukkan masalah dengan strategi saat ini. Pertimbangkan untuk mengubah frasa tugas, memberikan instruksi yang lebih spesifik, atau mengarahkannya ke pendekatan yang berbeda.",
-	"unknownToolError": "Zoo mencoba menggunakan alat yang tidak dikenal: \"{{toolName}}\". Mencoba lagi...",
-	"missingToolParameter": "Zoo mencoba menggunakan {{toolName}} tanpa nilai untuk parameter wajib '{{paramName}}'. Mencoba lagi...",
-	"missingToolParameterWithPath": "Zoo mencoba menggunakan {{toolName}} untuk '{{relPath}}' tanpa nilai untuk parameter wajib '{{paramName}}'. Mencoba lagi...",
+	"toolRepetitionLimitReached": "Menagerie tampaknya terjebak dalam loop, mencoba aksi yang sama ({{toolName}}) berulang kali. Ini mungkin menunjukkan masalah dengan strategi saat ini. Pertimbangkan untuk mengubah frasa tugas, memberikan instruksi yang lebih spesifik, atau mengarahkannya ke pendekatan yang berbeda.",
+	"unknownToolError": "Menagerie mencoba menggunakan alat yang tidak dikenal: \"{{toolName}}\". Mencoba lagi...",
+	"missingToolParameter": "Menagerie mencoba menggunakan {{toolName}} tanpa nilai untuk parameter wajib '{{paramName}}'. Mencoba lagi...",
+	"missingToolParameterWithPath": "Menagerie mencoba menggunakan {{toolName}} untuk '{{relPath}}' tanpa nilai untuk parameter wajib '{{paramName}}'. Mencoba lagi...",
 	"codebaseSearch": {
 		"approval": "Mencari '{{query}}' di codebase..."
 	},

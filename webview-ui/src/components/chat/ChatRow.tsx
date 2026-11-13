@@ -1143,7 +1143,7 @@ export const ChatRowContent = ({
 								// Non-HTTP-status-code error message - store full text as errorDetails
 								body = t("chat:apiRequest.errorMessage.unknown")
 								docsURL =
-									"mailto:support@zoocode.dev?subject=Unknown API Error&body=[Please include full error details]"
+									"https://github.com/celesrenata/menagerie/issues/new?template=bug_report.yml"
 							}
 						}
 

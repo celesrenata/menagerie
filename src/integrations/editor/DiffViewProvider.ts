@@ -23,7 +23,7 @@ import { DecorationController } from "./DecorationController"
 import { applyFileWrite, EditConflictError } from "./EditTransactionService"
 
 export const DIFF_VIEW_URI_SCHEME = "cline-diff"
-export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Zoo's Changes"
+export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Menagerie's Changes"
 
 // TODO: https://github.com/cline/cline/pull/3354
 export class DiffViewProvider {

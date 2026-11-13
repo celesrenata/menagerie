@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Menagerie",
 		"description": "您編輯器中的完整 AI 開發團隊。"
 	},
 	"number_format": {
@@ -154,11 +154,11 @@
 	"warnings": {
 		"no_terminal_content": "沒有選擇終端機內容",
 		"missing_task_files": "此工作的檔案遺失。您想從工作列表中刪除它嗎？",
-		"auto_import_failed": "自動匯入 ZooCode 設定失敗：{{error}}",
+		"auto_import_failed": "自動匯入 Menagerie 設定失敗：{{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "未找到可從 {{domain}} 匯入的 Roo Code 工作歷史記錄。",
-			"alreadyImported_one": "全部 {{count}} 筆 Roo Code 工作歷史記錄已匯入 Zoo Code。",
-			"alreadyImported_other": "全部 {{count}} 筆 Roo Code 工作歷史記錄已匯入 Zoo Code。"
+			"alreadyImported_one": "全部 {{count}} 筆 Roo Code 工作歷史記錄已匯入 Menagerie。",
+			"alreadyImported_other": "全部 {{count}} 筆 Roo Code 工作歷史記錄已匯入 Menagerie。"
 		}
 	},
 	"info": {
@@ -168,7 +168,7 @@
 		"custom_storage_path_set": "自訂儲存路徑已設定：{{path}}",
 		"default_storage_path": "已恢復使用預設儲存路徑",
 		"settings_imported": "設定已成功匯入。",
-		"auto_import_success": "已自動匯入 ZooCode 設定：{{filename}}",
+		"auto_import_success": "已自動匯入 Menagerie 設定：{{filename}}",
 		"share_link_copied": "分享連結已複製到剪貼簿",
 		"image_copied_to_clipboard": "圖片資料 URI 已複製到剪貼簿",
 		"image_saved": "圖片已儲存至 {{path}}",
@@ -180,8 +180,8 @@
 			"signInUnavailable": "Roo Code Cloud 登入目前無法使用。請設定其他提供者以繼續。"
 		},
 		"rooHistoryImport": {
-			"success_one": "已將 {{count}} 筆 Roo Code 工作歷史記錄匯入 Zoo Code。",
-			"success_other": "已將 {{count}} 筆 Roo Code 工作歷史記錄匯入 Zoo Code。"
+			"success_one": "已將 {{count}} 筆 Roo Code 工作歷史記錄匯入 Menagerie。",
+			"success_other": "已將 {{count}} 筆 Roo Code 工作歷史記錄匯入 Menagerie。"
 		}
 	},
 	"answers": {
@@ -208,12 +208,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "輸入自訂會話歷史儲存路徑，留空以使用預設位置",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "請輸入絕對路徑（例如 D:\\ZooCodeStorage 或 /home/user/storage）",
+		"path_placeholder": "D:\\MenagerieStorage",
+		"enter_absolute_path": "請輸入絕對路徑（例如 D:\\MenagerieStorage 或 /home/user/storage）",
 		"enter_valid_path": "請輸入有效的路徑"
 	},
 	"input": {
-		"task_prompt": "讓 Zoo 做什麼？",
+		"task_prompt": "讓 Menagerie 做什麼？",
 		"task_placeholder": "在這裡輸入工作"
 	},
 	"settings": {
@@ -295,9 +295,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "使用 Zoo Code 解釋",
-		"fix": "使用 Zoo Code 修復",
-		"improve": "使用 Zoo Code 改進",
-		"addToContext": "新增至 Zoo Code"
+		"explain": "使用 Menagerie 解釋",
+		"fix": "使用 Menagerie 修復",
+		"improve": "使用 Menagerie 改進",
+		"addToContext": "新增至 Menagerie"
 	}
 }

@@ -216,7 +216,7 @@ describe("convertToVsCodeLmMessages", () => {
 
 		expect(result).toHaveLength(1)
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
-			"Zoo Code <Language Model API>: Failed to parse object:",
+			"Menagerie <Language Model API>: Failed to parse object:",
 			expect.any(Error),
 		)
 
@@ -618,7 +618,7 @@ describe("extractTextCountFromMessage", () => {
 		// Should still return the tool name and callId even when input stringify fails
 		expect(result).toBe("broken-toolcall-id")
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
-			"Zoo Code <Language Model API>: Failed to stringify tool call input:",
+			"Menagerie <Language Model API>: Failed to stringify tool call input:",
 			expect.any(Error),
 		)
 

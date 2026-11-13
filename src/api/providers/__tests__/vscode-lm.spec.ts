@@ -174,7 +174,7 @@ describe("VsCodeLmHandler", () => {
 			;(vscode.lm.selectChatModels as Mock).mockRejectedValueOnce(new Error("network down"))
 
 			await expect(handler["createClient"]({ vendor: "test" })).rejects.toThrow(
-				"Zoo Code <Language Model API>: Failed to select model: network down",
+				"Menagerie <Language Model API>: Failed to select model: network down",
 			)
 		})
 	})
@@ -859,7 +859,7 @@ describe("VsCodeLmHandler", () => {
 				expect.any(Array),
 				expect.objectContaining({
 					justification:
-						"Zoo Code would like to use 'Test Model' from 'test-vendor', Click 'Allow' to proceed.",
+						"Menagerie would like to use 'Test Model' from 'test-vendor', Click 'Allow' to proceed.",
 				}),
 				expect.anything(),
 			)
@@ -877,7 +877,7 @@ describe("VsCodeLmHandler", () => {
 			mockLanguageModelChat.sendRequest.mockRejectedValueOnce(new vscode.CancellationError())
 
 			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow(
-				"Zoo Code <Language Model API>: Request cancelled by user",
+				"Menagerie <Language Model API>: Request cancelled by user",
 			)
 		})
 
@@ -895,11 +895,11 @@ describe("VsCodeLmHandler", () => {
 			mockLanguageModelChat.sendRequest.mockRejectedValueOnce({ code: "STREAM_ERROR", details: "broken" })
 
 			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow(
-				"Zoo Code <Language Model API>: Response stream error:",
+				"Menagerie <Language Model API>: Response stream error:",
 			)
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Stream error object:",
+				"Menagerie <Language Model API>: Stream error object:",
 				expect.stringContaining("STREAM_ERROR"),
 			)
 
@@ -929,7 +929,7 @@ describe("VsCodeLmHandler", () => {
 			}
 
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Unknown chunk type received:",
+				"Menagerie <Language Model API>: Unknown chunk type received:",
 				expect.objectContaining({ type: "unknown" }),
 			)
 
@@ -961,7 +961,7 @@ describe("VsCodeLmHandler", () => {
 			}
 
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Invalid text part value received:",
+				"Menagerie <Language Model API>: Invalid text part value received:",
 				42,
 			)
 
@@ -993,7 +993,7 @@ describe("VsCodeLmHandler", () => {
 			}
 
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Invalid tool callId received:",
+				"Menagerie <Language Model API>: Invalid tool callId received:",
 				123,
 			)
 
@@ -1029,7 +1029,7 @@ describe("VsCodeLmHandler", () => {
 			}
 
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Invalid tool input received:",
+				"Menagerie <Language Model API>: Invalid tool input received:",
 				"not-an-object",
 			)
 
@@ -1072,7 +1072,7 @@ describe("VsCodeLmHandler", () => {
 			}
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Failed to process tool call:",
+				"Menagerie <Language Model API>: Failed to process tool call:",
 				expect.any(Error),
 			)
 
@@ -1091,7 +1091,7 @@ describe("VsCodeLmHandler", () => {
 			await handler["getClient"]()
 
 			expect(consoleDebugSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Creating client with selector:",
+				"Menagerie <Language Model API>: Creating client with selector:",
 				expect.any(Object),
 			)
 
@@ -1105,11 +1105,11 @@ describe("VsCodeLmHandler", () => {
 
 			// @ts-ignore – access private method for coverage
 			await expect(handler["getClient"]()).rejects.toThrow(
-				"Zoo Code <Language Model API>: Failed to create client:",
+				"Menagerie <Language Model API>: Failed to create client:",
 			)
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Client creation failed:",
+				"Menagerie <Language Model API>: Client creation failed:",
 				expect.stringContaining("network error"),
 			)
 
@@ -1124,7 +1124,7 @@ describe("VsCodeLmHandler", () => {
 			handler["client"] = mockLanguageModelChat
 			await handler.initializeClient()
 
-			expect(consoleDebugSpy).toHaveBeenCalledWith("Zoo Code <Language Model API>: Client already initialized")
+			expect(consoleDebugSpy).toHaveBeenCalledWith("Menagerie <Language Model API>: Client already initialized")
 
 			consoleDebugSpy.mockRestore()
 		})
@@ -1138,7 +1138,7 @@ describe("VsCodeLmHandler", () => {
 			await handler.initializeClient()
 
 			expect(consoleDebugSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Client initialized successfully",
+				"Menagerie <Language Model API>: Client initialized successfully",
 			)
 
 			consoleDebugSpy.mockRestore()
@@ -1152,10 +1152,10 @@ describe("VsCodeLmHandler", () => {
 			// Catch the unhandled rejection that may occur from the constructor's async call
 			const initPromise = handler.initializeClient()
 
-			await expect(initPromise).rejects.toThrow("Zoo Code <Language Model API>: Failed to initialize client:")
+			await expect(initPromise).rejects.toThrow("Menagerie <Language Model API>: Failed to initialize client:")
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Client initialization failed:",
+				"Menagerie <Language Model API>: Client initialization failed:",
 				expect.stringContaining("select failed"),
 			)
 
@@ -1187,7 +1187,7 @@ describe("VsCodeLmHandler", () => {
 			expect(model.id).toBe("test-vendor/test-family")
 			expect(model.info).toBeDefined()
 			expect(consoleDebugSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: No client available, using fallback model info",
+				"Menagerie <Language Model API>: No client available, using fallback model info",
 			)
 
 			consoleDebugSpy.mockRestore()
@@ -1341,7 +1341,7 @@ describe("VsCodeLmHandler", () => {
 
 			expect(result).toBe(0)
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: No client available for token counting",
+				"Menagerie <Language Model API>: No client available for token counting",
 			)
 
 			consoleWarnSpy.mockRestore()
@@ -1369,7 +1369,7 @@ describe("VsCodeLmHandler", () => {
 
 			expect(result).toBe(0)
 			expect(consoleDebugSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Empty text provided for token counting",
+				"Menagerie <Language Model API>: Empty text provided for token counting",
 			)
 
 			consoleDebugSpy.mockRestore()
@@ -1386,7 +1386,7 @@ describe("VsCodeLmHandler", () => {
 
 			expect(result).toBe(0)
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Non-numeric token count received:",
+				"Menagerie <Language Model API>: Non-numeric token count received:",
 				"not-a-number",
 			)
 
@@ -1404,7 +1404,7 @@ describe("VsCodeLmHandler", () => {
 
 			expect(result).toBe(0)
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				"Zoo Code <Language Model API>: Negative token count received:",
+				"Menagerie <Language Model API>: Negative token count received:",
 				-5,
 			)
 

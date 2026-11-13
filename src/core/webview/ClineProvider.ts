@@ -3904,7 +3904,7 @@ export class ClineProvider
 		const elapsedMs = Date.now() - startedAt
 		const messagesBytes = JSON.stringify(state.clineMessages).length
 		this.log(
-			`[Zoo Code] Webview visible again; reposted state.\n` +
+			`[Menagerie] Webview visible again; reposted state.\n` +
 				`  taskId:        ${task?.taskId ?? "none"}\n` +
 				`  messageCount:  ${messageCount}\n` +
 				`  messagesBytes: ${messagesBytes}\n` +
@@ -3919,7 +3919,7 @@ export class ClineProvider
 			return
 		}
 		this.log(
-			`[Zoo Code] Webview hidden during active task.\n` +
+			`[Menagerie] Webview hidden during active task.\n` +
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
 				`  stackDepth:   ${this.taskRegistry.length}\n` +
@@ -3998,7 +3998,7 @@ export class ClineProvider
 		try {
 			const panel = createWorkerPanelIfNeeded(
 				presentation,
-				`Zoo: ${spec.name}`,
+				`Menagerie: ${spec.name}`,
 				this.context.extensionUri,
 				ClineProvider.tabPanelId,
 			)
