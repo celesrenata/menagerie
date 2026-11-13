@@ -1,17 +1,17 @@
 <pr_template_instructions>
   <overview>
-    This file contains the official Zoo Code PR template that must be used when creating pull requests.
+    This file contains the official Menagerie PR template that must be used when creating pull requests.
     All PRs must follow this exact format to ensure consistency and proper documentation.
   </overview>
 
   <pr_body_template>
     <description>
-      The PR body must follow this exact Zoo Code PR template with all required sections.
+      The PR body must follow this exact Menagerie PR template with all required sections.
       Replace placeholder content in square brackets with actual information.
     </description>
     <template><![CDATA[
 <!--
-Thank you for contributing to Zoo Code!
+Thank you for contributing to Menagerie!
 
 Before submitting your PR, please ensure:
 - It's linked to an approved GitHub Issue.
@@ -154,9 +154,9 @@ gh repo fork [owner]/[repo] --clone=false
         <example>123</example>
       </placeholder>
       <placeholder name="TASK_CONTEXT">
-        <description>Optional Zoo Code task links if used during development</description>
+        <description>Optional Menagerie task links if used during development</description>
         <example>https://app.zoocode.dev/share/task-abc123</example>
-        <default>_No Zoo Code task context for this PR_</default>
+        <default>_No Menagerie task context for this PR_</default>
       </placeholder>
       <placeholder name="DESCRIPTION_CONTENT">
         <description>Detailed explanation of implementation approach</description>

@@ -1,5 +1,5 @@
 ---
-description: "Prepare a new release of the Zoo Code extension"
+description: "Prepare a new release of the Menagerie extension"
 argument-hint: patch | minor | major
 mode: code
 ---
@@ -25,7 +25,7 @@ mode: code
 4. Summarize the changes. If the user did not specify a release type, ask whether this should be a major, minor, or patch release.
 
     - Before choosing the target release version, treat the nightly pre-release lane as separate from the stable lane.
-    - Zoo Code nightlies should stay on `major.ODD_NUMBER.patch` and use a large patch number for CI-generated pre-releases.
+    - Menagerie nightlies should stay on `major.ODD_NUMBER.patch` and use a large patch number for CI-generated pre-releases.
     - Stable releases should stay on `major.EVEN_NUMBER.patch`.
     - When preparing a stable release after an odd-minor pre-release line, advance to the next even minor instead of reusing the odd-minor pre-release lane.
 
@@ -34,7 +34,7 @@ mode: code
     - Treat root `README.md` as the source of truth for Marketplace content.
     - Update the "What's New" section for the release when appropriate.
     - Do not manually edit `src/README.md`; the extension bundle step copies root `README.md` into `src/README.md`.
-    - Check for stale upstream Roo Code wording that should now say Zoo Code.
+    - Check for stale upstream Roo Code wording that should now say Menagerie.
 
 6. Write the release notes directly into `CHANGELOG.md` on the release branch.
 
@@ -113,13 +113,13 @@ mode: code
 
 15. As the final stable extension release step, open a separate documentation PR in `Zoo-Code-Org/Zoo-Code-Docs`.
 
-    - Run this step only after the marketplace workflow for the exact stable tag has succeeded, the corresponding GitHub release exists, and step 14 has added the Zoo Code release PR to the merge queue. This step does not apply to nightly, CLI, npm, or types releases.
-    - Retain the exact Zoo Code changelog section, complete merged-PR inventory, release PR URL, tag and GitHub release URL, marketplace workflow URL, successful publication timestamp, and release PR merge-queue state as inputs to the docs work and final report.
+    - Run this step only after the marketplace workflow for the exact stable tag has succeeded, the corresponding GitHub release exists, and step 14 has added the Menagerie release PR to the merge queue. This step does not apply to nightly, CLI, npm, or types releases.
+    - Retain the exact Menagerie changelog section, complete merged-PR inventory, release PR URL, tag and GitHub release URL, marketplace workflow URL, successful publication timestamp, and release PR merge-queue state as inputs to the docs work and final report.
 
     **Preflight and checkout**
 
     - Verify local GitHub authentication and access and push permission for `Zoo-Code-Org/Zoo-Code-Docs` (for example, with `gh auth status`, `gh repo view`, and an authenticated permission query). Do not assume or claim that `GITHUB_TOKEN` has cross-repository access.
-    - Prefer the portable sibling checkout `../Zoo-Code-Docs`. If it is absent, create a clean temporary directory and clone `https://github.com/Zoo-Code-Org/Zoo-Code-Docs.git` there. Do not modify the docs repository from the Zoo Code checkout.
+    - Prefer the portable sibling checkout `../Zoo-Code-Docs`. If it is absent, create a clean temporary directory and clone `https://github.com/Zoo-Code-Org/Zoo-Code-Docs.git` there. Do not modify the docs repository from the Menagerie checkout.
     - In an existing checkout, read `AGENTS.md` and `.roorules` when present, abort if the worktree is dirty, verify `origin` is `Zoo-Code-Org/Zoo-Code-Docs` and its default branch is `main`, fetch `origin`, switch to local `main`, and fast-forward it only to the exact `origin/main` with `git merge --ff-only origin/main`. Never stash or reset work, and never change remotes. The fallback clone must likewise use `origin/main` as its clean base.
 
     **Idempotency and branch safety**
@@ -138,7 +138,7 @@ mode: code
 
         Verify that `package.json` equals the stable extension version, that no tag was created, and that `pnpm-lock.yaml` did not change solely from the version bump. Do not downgrade a newer docs version.
 
-    - Always assess and create or update `docs/update-notes/v[version].md`, register that exact version newest-first in both `docs/update-notes/index.md` and `sidebars.ts`, and use the stable publication date, Zoo Code branding, and the docs project's existing linking conventions.
+    - Always assess and create or update `docs/update-notes/v[version].md`, register that exact version newest-first in both `docs/update-notes/index.md` and `sidebars.ts`, and use the stable publication date, Menagerie branding, and the docs project's existing linking conventions.
         - Document only the current release; do not backfill missing historical releases.
         - If the current release's `major.minor` group is absent, insert a new newest-first `### Version major.minor` section in `docs/update-notes/index.md` and a matching newest-first sidebar category immediately after `update-notes/index`.
         - If the `major.minor` group exists, add the exact patch release newest-first within that group in both files.
@@ -160,9 +160,9 @@ mode: code
 
     - Inspect build warnings explicitly. Block the PR on newly introduced broken-link, document, MDX, sidebar, or content warnings. Verify the changed and staged scope contains only intended source files and no generated output.
     - Commit as `docs(release): document v[version]`, push normally (never force-push) to `docs/release-v[version]`, and stop rather than overwrite a remote race.
-    - Open or reuse a PR in `Zoo-Code-Org/Zoo-Code-Docs` with base `main` and title `[Docs] Update documentation for Zoo Code v[version]`. Its body must include the source release and tag, Zoo Code release PR, marketplace workflow and successful publication timestamp, summary, package version synchronization, per-PR impact matrix and exclusions, evergreen changes or no-change rationale, validation results and warning review, and an explicit statement that this is a separate docs PR and will not be auto-merged. Never enable auto-merge for this PR.
+    - Open or reuse a PR in `Zoo-Code-Org/Zoo-Code-Docs` with base `main` and title `[Docs] Update documentation for Menagerie v[version]`. Its body must include the source release and tag, Menagerie release PR, marketplace workflow and successful publication timestamp, summary, package version synchronization, per-PR impact matrix and exclusions, evergreen changes or no-change rationale, validation results and warning review, and an explicit statement that this is a separate docs PR and will not be auto-merged. Never enable auto-merge for this PR.
 
     **Reporting and partial failure**
 
-    - Docs failure cannot roll back or invalidate the published extension. A failure report must begin: `Zoo Code v[version] is already published and docs PR completion is pending.` Then report the failed checkpoint, checkout path, branch, PR URL/state when present, failure details, and the safe recovery action.
-    - The final release report must include release/tag/workflow URLs and the successful publication timestamp, the Zoo Code release PR merge-queue state, docs PR URL/state, docs branch and commit SHA, package-version synchronization status, release-note/index/sidebar status, evergreen documentation status, validation results and inspected warnings, and confirmation that the separate docs PR was not auto-merged.
+    - Docs failure cannot roll back or invalidate the published extension. A failure report must begin: `Menagerie v[version] is already published and docs PR completion is pending.` Then report the failed checkpoint, checkout path, branch, PR URL/state when present, failure details, and the safe recovery action.
+    - The final release report must include release/tag/workflow URLs and the successful publication timestamp, the Menagerie release PR merge-queue state, docs PR URL/state, docs branch and commit SHA, package-version synchronization status, release-note/index/sidebar status, evergreen documentation status, validation results and inspected warnings, and confirmation that the separate docs PR was not auto-merged.

@@ -23,7 +23,7 @@ describe("parallel_tasks", () => {
 		const { description, parameters } = (parallelTasks as FunctionTool).function
 
 		expect(parameters).toMatchObject({ properties: { tasks: { minItems: 1, maxItems: 4 } } })
-		expect(description).toContain("Run 1–4 independent full Zoo tasks")
+		expect(description).toContain("Run 1–4 independent full Menagerie tasks")
 		expect(description).toContain("a single task runs as one isolated worker")
 		expect(description).toContain("retry parallel_tasks with a full array of 1–4 tasks")
 		expect(description).not.toContain("Run 2–4")

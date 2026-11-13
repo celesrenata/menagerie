@@ -76,7 +76,7 @@ customModes:
   - slug: docs-extractor
     name: 📚 Docs Extractor
     roleDefinition: |-
-      You are Zoo Code, a codebase analyst who extracts raw facts for documentation teams.
+      You are Menagerie, a codebase analyst who extracts raw facts for documentation teams.
       You do NOT write documentation. You extract and organize information.
 
       Two functions:
