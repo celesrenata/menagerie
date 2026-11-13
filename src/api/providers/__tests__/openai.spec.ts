@@ -384,6 +384,29 @@ describe("OpenAiHandler", () => {
 			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "hybrid/code" }), {})
 		})
 
+		it("overrides hybrid/<role> to pool/tier<N>/<role> when an OmniRoute cost tier is set", async () => {
+			const omniRouteHandler = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: true,
+				openAiModelId: "hybrid/planner",
+				omniRouteTier: 3,
+			})
+			await collectStream(omniRouteHandler.createMessage(systemPrompt, messages))
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "pool/tier3/planner" }), {})
+		})
+		it("keeps the mode's route when no cost tier is set or the profile is not OmniRoute", async () => {
+			const unset = new OpenAiHandler({ ...mockOptions, openAiIsOmniRoute: true, openAiModelId: "hybrid/planner" })
+			await collectStream(unset.createMessage(systemPrompt, messages))
+			expect(mockCreate).toHaveBeenLastCalledWith(expect.objectContaining({ model: "hybrid/planner" }), {})
+			const plain = new OpenAiHandler({
+				...mockOptions,
+				openAiIsOmniRoute: false,
+				openAiModelId: "hybrid/planner",
+				omniRouteTier: 3,
+			})
+			await collectStream(plain.createMessage(systemPrompt, messages))
+			expect(mockCreate).toHaveBeenLastCalledWith(expect.objectContaining({ model: "hybrid/planner" }), {})
+		})
 		it("sends the full OmniRoute combo id as the chat model field (non-streaming)", async () => {
 			const omniRouteHandler = new OpenAiHandler({
 				...mockOptions,

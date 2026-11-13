@@ -93,6 +93,39 @@ export function clampWorkerTier(
 	return Math.min(requestedTier, ceilingTier)
 }
 
+/** Service types (roles) that exist as `pool/tier{1-5}/<role>` combos on the OmniRoute server. */
+export const OMNIROUTE_POOL_ROLES: ReadonlySet<string> = new Set([
+	"code",
+	"tester",
+	"reviewer",
+	"planner",
+	"long",
+	"research",
+	"fast",
+	"tiny",
+	"reader",
+	"any",
+	"frontier",
+])
+
+const OMNIROUTE_TIERED_ROUTE = /^(?:hybrid|pool\/tier\d+b?)\/([a-z]+)$/
+
+/**
+ * Apply the cost-tier override to an OmniRoute route id.
+ *
+ * Tier ladder: unset => the mode's own route (`hybrid/<role>`, server decides);
+ * 1..5 => `pool/tier<N>/<role>`. The role (service type) is taken from the mode's
+ * configured route, so a mode on `hybrid/planner` or `pool/tier2/planner` becomes
+ * `pool/tier3/planner` at tier 3. Anything that is not a `hybrid/<role>` or
+ * `pool/tierN/<role>` route with a known role (e.g. `auto/*`, `local/*`) is returned
+ * untouched. Pure: the stored profile is never rewritten.
+ */
+export function applyOmniRouteTierToModel(modelId: string, tier: number | undefined): string {
+	if (!omniRouteTierSchema.safeParse(tier).success) return modelId
+	const role = OMNIROUTE_TIERED_ROUTE.exec(modelId)?.[1]
+	if (!role || !OMNIROUTE_POOL_ROLES.has(role)) return modelId
+	return `pool/tier${tier}/${role}`
+}
 /**
  * True iff this profile is an OmniRoute connection: an OpenAI-compatible provider
  * with the `openAiIsOmniRoute` flag enabled. No URL parsing, no address literal.

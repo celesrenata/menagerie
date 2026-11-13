@@ -26,6 +26,7 @@ import { getModelParams } from "../transform/model-params"
 import { DEFAULT_HEADERS, NOT_PROVIDED } from "./constants"
 import {
 	isOmniRoute,
+	applyOmniRouteTierToModel,
 	omniRouteRequestHeaders,
 	refreshPublishedCatalogIfStale,
 	resolveOmniRouteContextWindow,
@@ -100,7 +101,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	): ApiStream {
 		const { info: modelInfo, reasoning } = this.getModel()
 		const modelUrl = this.options.openAiBaseUrl ?? ""
-		const modelId = this.options.openAiModelId ?? ""
+		const modelId = this.getEffectiveModelId()
 		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
 		const isAzureAiInference = this._isAzureAiInference(modelUrl)
 		const deepseekReasoner = modelId.includes("deepseek-reasoner") || enabledR1Format
@@ -304,8 +305,18 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 	}
 
-	override getModel() {
+	/**
+	 * The model id actually sent upstream. For an OmniRoute profile with a cost tier set, the
+	 * mode's `hybrid/<role>` route is overridden to `pool/tier<N>/<role>`; otherwise unchanged.
+	 */
+	private getEffectiveModelId(): string {
 		const id = this.options.openAiModelId ?? ""
+		return isOmniRoute({ ...this.options, apiProvider: providerIdentifiers.openai })
+			? applyOmniRouteTierToModel(id, this.options.omniRouteTier)
+			: id
+	}
+	override getModel() {
+		const id = this.getEffectiveModelId()
 		const baseInfo: ModelInfo = this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
 		// OmniRoute routes reach reasoning backends (e.g. GLM-5.3 on ds4) that keep the
 		// prior turn's reasoning in their live KV cache. Sending it back verbatim keeps

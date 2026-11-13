@@ -6,6 +6,7 @@ import { providerIdentifiers, omniRouteCatalogEntrySchema, omniRouteComboEntrySc
 
 import {
 	fetchOmniRouteCatalog,
+	applyOmniRouteTierToModel,
 	isOmniRoute,
 	omniRouteRequestHeaders,
 	omniRouteTokenizedBaseUrl,
@@ -527,5 +528,27 @@ describe("resolveOmniRouteContextWindow", () => {
 			refreshPublishedCatalogIfStale("   ")
 			expect(fetchCatalog).not.toHaveBeenCalled()
 		})
+	})
+})
+
+describe("applyOmniRouteTierToModel", () => {
+	it("maps hybrid/<role> to pool/tier<N>/<role> for every tier", () => {
+		for (const tier of [1, 2, 3, 4, 5]) {
+			expect(applyOmniRouteTierToModel("hybrid/reader", tier)).toBe(`pool/tier${tier}/reader`)
+		}
+	})
+	it("re-tiers an already pooled route and keeps the role", () => {
+		expect(applyOmniRouteTierToModel("pool/tier2/code", 5)).toBe("pool/tier5/code")
+		expect(applyOmniRouteTierToModel("pool/tier1b/code", 4)).toBe("pool/tier4/code")
+	})
+	it("returns the id unchanged when the tier is unset or invalid", () => {
+		expect(applyOmniRouteTierToModel("hybrid/code", undefined)).toBe("hybrid/code")
+		expect(applyOmniRouteTierToModel("hybrid/code", 0)).toBe("hybrid/code")
+		expect(applyOmniRouteTierToModel("hybrid/code", 6)).toBe("hybrid/code")
+	})
+	it("leaves non-tiered or unknown-role routes untouched", () => {
+		expect(applyOmniRouteTierToModel("auto/best-coding", 3)).toBe("auto/best-coding")
+		expect(applyOmniRouteTierToModel("local/m5-reader", 3)).toBe("local/m5-reader")
+		expect(applyOmniRouteTierToModel("hybrid/unknownrole", 3)).toBe("hybrid/unknownrole")
 	})
 })
