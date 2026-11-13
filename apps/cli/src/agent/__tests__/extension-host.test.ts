@@ -262,7 +262,7 @@ describe("ExtensionHost", () => {
 
 				host.markWebviewReady()
 
-				expect(setRuntimeConfigValues).toHaveBeenCalledWith("zoo-code", expect.any(Object))
+				expect(setRuntimeConfigValues).toHaveBeenCalledWith("menagerie", expect.any(Object))
 			})
 
 			it("should force terminalShellIntegrationDisabled when terminalShell is provided", () => {

@@ -59,7 +59,7 @@ async function main(): Promise<void> {
 	const extensionTestsPath = path.resolve(__dirname, "extension")
 	const fixtureDirectory = path.join(repositoryRoot, "webview-ui", "playwright", "themes")
 	const vscodeVersion = await readPinnedVSCodeVersion(packageRoot)
-	const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "zoo-code-theme-fixtures-"))
+	const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "menagerie-theme-fixtures-"))
 	const workspacePath = path.join(temporaryRoot, "workspace")
 	const userDataPath = path.join(temporaryRoot, "user-data")
 	const extensionsPath = path.join(temporaryRoot, "extensions")

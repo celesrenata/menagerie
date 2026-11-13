@@ -119,7 +119,7 @@ jobs:
             - name: Upload test VSIX
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: zoo-code-vsix-pr-${{ github.event.pull_request.number }}
+                  name: menagerie-vsix-pr-${{ github.event.pull_request.number }}
                   path: bin/*.vsix
                   if-no-files-found: error
                   retention-days: 7
@@ -161,16 +161,16 @@ jobs:
             # authoritative coverage lane.
             - name: Run non-extension package coverage
               if: matrix.collect-coverage
-              run: pnpm turbo run test:coverage --filter="!@roo-code/core" --filter="!zoo-code" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage --filter="!@roo-code/core" --filter="!menagerie" --log-order grouped --output-logs new-only
             - name: Run non-extension package tests
               if: ${{ !matrix.collect-coverage }}
-              run: pnpm turbo run test --filter="!@roo-code/core" --filter="!zoo-code" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test --filter="!@roo-code/core" --filter="!menagerie" --log-order grouped --output-logs new-only
             - name: Run extension coverage lanes
               if: matrix.collect-coverage
-              run: pnpm turbo run test:coverage:api test:coverage:core test:coverage:services test:coverage:misc test:coverage:tree-sitter --filter="zoo-code" --concurrency=2 --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage:api test:coverage:core test:coverage:services test:coverage:misc test:coverage:tree-sitter --filter="menagerie" --concurrency=2 --log-order grouped --output-logs new-only
             - name: Run extension test lanes
               if: ${{ !matrix.collect-coverage }}
-              run: pnpm turbo run test:api test:core test:services test:misc test:tree-sitter --filter="zoo-code" --concurrency=2 --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:api test:core test:services test:misc test:tree-sitter --filter="menagerie" --concurrency=2 --log-order grouped --output-logs new-only
             # Runs outside Turbo so changes to .coderabbit.yaml and
             # .github/workflows/label-pr-review-state.yml always bust the
             # result — those files are outside the src/ package boundary and
@@ -181,7 +181,7 @@ jobs:
               if: matrix.collect-coverage
               run: pnpm --dir src run verify:coverage-contract
             - name: Run extension dist smoke test
-              run: pnpm turbo run test:dist --filter="zoo-code" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:dist --filter="menagerie" --log-order grouped --output-logs new-only
             - name: Run core unit coverage
               if: matrix.collect-coverage
               run: pnpm turbo run test:coverage:unit --filter="@roo-code/core" --log-order grouped --output-logs new-only

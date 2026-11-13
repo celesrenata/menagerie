@@ -49,13 +49,13 @@ export async function run(): Promise<void> {
 		throw new Error(`Expected VS Code ${expectedVersion}, launched ${vscode.version}`)
 	}
 
-	const extension = vscode.extensions.getExtension<RooCodeTestAPI>("ZooCodeOrganization.zoo-code")
+	const extension = vscode.extensions.getExtension<RooCodeTestAPI>("celesrenata.menagerie")
 	if (!extension) {
 		throw new Error("Zoo Code extension not found")
 	}
 	const api = extension.isActive ? extension.exports : await extension.activate()
 
-	await vscode.commands.executeCommand("zoo-code.SidebarProvider.focus")
+	await vscode.commands.executeCommand("menagerie.SidebarProvider.focus")
 	await poll(async () => api.isReady(), Boolean, "Zoo Code webview activation")
 
 	const captures: Record<string, WebviewThemeFixture> = {}

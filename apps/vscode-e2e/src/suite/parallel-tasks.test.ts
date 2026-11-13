@@ -135,7 +135,7 @@ suite("Native parallel tasks", function () {
 						// A structural barrier proves all three requests are in flight together.
 						if (held.length === 3) {
 							simultaneous = held.length
-							void vscode.commands.executeCommand<typeof board>("zoo-code.getTaskBoard").then(
+							void vscode.commands.executeCommand<typeof board>("menagerie.getTaskBoard").then(
 								(snapshot) => {
 									board = snapshot
 									held.splice(0).forEach((send) => send())
@@ -228,7 +228,7 @@ suite("Native parallel tasks", function () {
 			assert.equal(workers.length, 3)
 			assert.deepEqual(workers.map((task) => task.mode).sort(), ["ask", "code", "code"])
 			assert.ok(workers.every((task) => boardTasks.some((parent) => parent.id === task.parentTaskId)))
-			await vscode.commands.executeCommand("zoo-code.showTaskBoard")
+			await vscode.commands.executeCommand("menagerie.showTaskBoard")
 			assert.deepEqual(Object.fromEntries(profiles), { A: "native-code", B: "native-code", C: "native-long" })
 			assert.ok(result)
 			assert.equal(result.tasks.length, 3)

@@ -50,7 +50,7 @@ vi.mock("../../core/webview/ClineProvider")
 
 vi.mock("../../shared/package", () => ({
 	Package: {
-		name: "zoo-code",
+		name: "menagerie",
 	},
 }))
 
@@ -200,7 +200,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("settingsButtonClicked posts both settingsButtonClicked and didBecomeVisible actions", () => {
-		handlers["zoo-code.settingsButtonClicked"]()
+		handlers["menagerie.settingsButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
@@ -216,13 +216,13 @@ describe("registerCommands handlers", () => {
 	it("settingsButtonClicked is a no-op when no visible provider", () => {
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
-		handlers["zoo-code.settingsButtonClicked"]()
+		handlers["menagerie.settingsButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
 
 	it("historyButtonClicked posts historyButtonClicked action", () => {
-		handlers["zoo-code.historyButtonClicked"]()
+		handlers["menagerie.historyButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
@@ -231,7 +231,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("marketplaceButtonClicked posts marketplaceButtonClicked action", () => {
-		handlers["zoo-code.marketplaceButtonClicked"]()
+		handlers["menagerie.marketplaceButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
@@ -240,7 +240,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("acceptInput posts acceptInput message", () => {
-		handlers["zoo-code.acceptInput"]()
+		handlers["menagerie.acceptInput"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "acceptInput",
@@ -259,7 +259,7 @@ describe("registerCommands handlers", () => {
 		})
 		mockVisibleProvider.postMessageToWebview.mockReturnValueOnce(postPromise)
 
-		const handlerPromise = handlers["zoo-code.toggleAutoApprove"]() as Promise<unknown>
+		const handlerPromise = handlers["menagerie.toggleAutoApprove"]() as Promise<unknown>
 		let settled = false
 		void handlerPromise.then(() => {
 			settled = true
@@ -291,7 +291,7 @@ describe("registerCommands handlers", () => {
 		})
 		mockProvider.postMessageToWebview.mockReturnValueOnce(postPromise)
 
-		const handlerPromise = handlers["zoo-code.focusInput"]() as Promise<unknown>
+		const handlerPromise = handlers["menagerie.focusInput"]() as Promise<unknown>
 		let settled = false
 		void handlerPromise.then(() => {
 			settled = true
@@ -310,7 +310,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("focusInput does not post when no sidebar panel is active", async () => {
-		await handlers["zoo-code.focusInput"]()
+		await handlers["menagerie.focusInput"]()
 
 		expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
@@ -324,10 +324,10 @@ describe("registerCommands handlers", () => {
 	// remain unambiguous; the prefix is per-handler, not per-call (both of
 	// settingsButtonClicked's posts share the same prefix).
 	it.each([
-		{ command: "zoo-code.settingsButtonClicked", prefix: "settingsButtonClicked", expectedCalls: 2 },
-		{ command: "zoo-code.historyButtonClicked", prefix: "historyButtonClicked", expectedCalls: 1 },
-		{ command: "zoo-code.marketplaceButtonClicked", prefix: "marketplaceButtonClicked", expectedCalls: 1 },
-		{ command: "zoo-code.acceptInput", prefix: "acceptInput", expectedCalls: 1 },
+		{ command: "menagerie.settingsButtonClicked", prefix: "settingsButtonClicked", expectedCalls: 2 },
+		{ command: "menagerie.historyButtonClicked", prefix: "historyButtonClicked", expectedCalls: 1 },
+		{ command: "menagerie.marketplaceButtonClicked", prefix: "marketplaceButtonClicked", expectedCalls: 1 },
+		{ command: "menagerie.acceptInput", prefix: "acceptInput", expectedCalls: 1 },
 	])(
 		"$command logs to outputChannel when postMessageToWebview rejects",
 		async ({ command, prefix, expectedCalls }) => {
@@ -356,7 +356,7 @@ describe("registerCommands handlers", () => {
 		mockVisibleProvider.postMessageToWebview.mockReset()
 		mockVisibleProvider.postMessageToWebview.mockRejectedValue(boom)
 
-		await handlers["zoo-code.toggleAutoApprove"]()
+		await handlers["menagerie.toggleAutoApprove"]()
 
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledTimes(1)
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
@@ -370,7 +370,7 @@ describe("registerCommands handlers", () => {
 		;(mockVisibleProvider as any).evictCurrentTask = evictCurrentTask
 		;(mockVisibleProvider as any).refreshWorkspace = refreshWorkspace
 
-		await handlers["zoo-code.plusButtonClicked"]()
+		await handlers["menagerie.plusButtonClicked"]()
 
 		expect(evictCurrentTask).toHaveBeenCalledTimes(1)
 	})
@@ -379,7 +379,7 @@ describe("registerCommands handlers", () => {
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
 		// Should not throw even with no visible provider
-		await handlers["zoo-code.plusButtonClicked"]()
+		await handlers["menagerie.plusButtonClicked"]()
 	})
 })
 
@@ -418,12 +418,12 @@ describe("openClineInNewTab", () => {
 		setPanel(undefined, "tab")
 	})
 
-	it("creates a webview panel with title 'Zoo Code'", async () => {
+	it("creates a webview panel with title 'Menagerie'", async () => {
 		await openClineInNewTab({ context: mockContext, outputChannel: mockOutputChannel })
 
 		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
-			"zoo-code.TabPanelProvider",
-			"Zoo Code",
+			"menagerie.TabPanelProvider",
+			"Menagerie",
 			expect.any(Number),
 			expect.objectContaining({
 				enableScripts: true,

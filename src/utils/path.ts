@@ -123,14 +123,14 @@ export const toRelativePath = (filePath: string, cwd: string) => {
  *   (`vscode.workspace.workspaceFolders[0]`). Deterministic — independent of
  *   which file is currently focused.
  *
- * Surfaced to users via the `zoo-code.workspace.rootResolution` setting.
+ * Surfaced to users via the `menagerie.workspace.rootResolution` setting.
  */
 export type WorkspaceRootResolution = "activeEditor" | "firstFolder"
 
 const DEFAULT_ROOT_RESOLUTION: WorkspaceRootResolution = "activeEditor"
 
 /**
- * Read the `zoo-code.workspace.rootResolution` setting safely.
+ * Read the `menagerie.workspace.rootResolution` setting safely.
  *
  * Wrapped in try/catch because:
  *   1. `vscode.workspace.getConfiguration` is unavailable in some test/CLI

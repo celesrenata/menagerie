@@ -124,7 +124,7 @@ export async function getRipgrepDiagnostic(vscodeAppRoot: string): Promise<strin
 }
 
 /**
- * Registers the `zoo-code.showRipgrepDiagnostic` command. Thin wrapper —
+ * Registers the `menagerie.showRipgrepDiagnostic` command. Thin wrapper —
  * runs `getRipgrepDiagnostic`, shows the result in an output channel,
  * copies it to the clipboard, and shows an info toast. The OutputChannel
  * is created once at registration and disposed alongside the command via

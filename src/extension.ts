@@ -41,6 +41,7 @@ import { migrateSettings } from "./utils/migrateSettings"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 import { registerTaskBoard } from "./activate/taskBoard"
+import { migrateFromZooCode } from "./activate/migrateFromZooCode"
 import { registerObservatory } from "./activate/observatory"
 import { TaskSessionRegistry } from "./core/task/session/TaskSessionRegistry"
 
@@ -103,7 +104,7 @@ async function checkWorktreeAutoOpen(
 			// Open the Zoo Code sidebar with a slight delay to ensure UI is ready
 			setTimeout(async () => {
 				try {
-					await vscode.commands.executeCommand("zoo-code.plusButtonClicked")
+					await vscode.commands.executeCommand(`${Package.name}.plusButtonClicked`)
 				} catch (error) {
 					outputChannel.appendLine(
 						`[Worktree] Error auto-opening sidebar: ${error instanceof Error ? error.message : String(error)}`,
@@ -133,6 +134,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Set extension path for custom tool registry to find bundled esbuild
 	customToolRegistry.setExtensionPath(context.extensionPath)
+
+	// Import history and settings from the Zoo Code extension this fork used to ship as.
+	// Must run before any provider initializes its task history store.
+	await migrateFromZooCode(context, Package.name, (message) => outputChannel.appendLine(message))
 
 	// Migrate old settings to new
 	await migrateSettings(context, outputChannel)

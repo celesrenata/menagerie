@@ -23,7 +23,7 @@ const result = spawnSync(
 		"test:coverage:misc",
 		"test:coverage:tree-sitter",
 		"test:dist",
-		"--filter=zoo-code",
+		"--filter=menagerie",
 		"--dry=json",
 	],
 	{ encoding: "utf8" },
@@ -36,15 +36,15 @@ if (result.status !== 0) {
 const graph = JSON.parse(result.stdout)
 const ownershipLanes = ["api", "core", "services", "misc"]
 const ownershipTasks = ownershipLanes.map((lane) =>
-	graph.tasks.find(({ taskId }) => taskId === `zoo-code#test:coverage:${lane}`),
+	graph.tasks.find(({ taskId }) => taskId === `menagerie#test:coverage:${lane}`),
 )
-const treeSitterTask = graph.tasks.find(({ taskId }) => taskId === "zoo-code#test:coverage:tree-sitter")
-const distTask = graph.tasks.find(({ taskId }) => taskId === "zoo-code#test:dist")
+const treeSitterTask = graph.tasks.find(({ taskId }) => taskId === "menagerie#test:coverage:tree-sitter")
+const distTask = graph.tasks.find(({ taskId }) => taskId === "menagerie#test:dist")
 if (ownershipTasks.some((task) => !task) || !treeSitterTask) throw new Error("Extension coverage lane missing")
-if (graph.tasks.some(({ taskId }) => taskId === "zoo-code#prepare:tree-sitter-wasms"))
+if (graph.tasks.some(({ taskId }) => taskId === "menagerie#prepare:tree-sitter-wasms"))
 	throw new Error("Removed WASM preparation task remains in the graph")
 for (const task of [...ownershipTasks, treeSitterTask]) {
-	if (task.dependencies.includes("zoo-code#bundle")) throw new Error("Coverage lanes must not depend on bundle")
+	if (task.dependencies.includes("menagerie#bundle")) throw new Error("Coverage lanes must not depend on bundle")
 	if (!Object.hasOwn(task.inputs, "package.json")) throw new Error("Coverage lanes must hash package.json")
 	if (!task.hashOfExternalDependencies) throw new Error("Coverage lanes must hash external dependencies")
 }
@@ -84,7 +84,7 @@ if (!Object.hasOwn(treeSitterTask.inputs, "services/tree-sitter/index.ts"))
 	throw new Error("Tree-sitter coverage must hash tree-sitter sources")
 if (Object.hasOwn(treeSitterTask.inputs, "core/task/Task.ts"))
 	throw new Error("Tree-sitter coverage must not hash unrelated core sources")
-if (!distTask?.dependencies.includes("zoo-code#bundle")) throw new Error("Dist smoke test must depend on bundle")
+if (!distTask?.dependencies.includes("menagerie#bundle")) throw new Error("Dist smoke test must depend on bundle")
 
 const root = resolve(import.meta.dirname, "..")
 const testPattern = /\.(?:test|spec)\.(?:[cm]?[jt]sx?)$/
@@ -119,7 +119,7 @@ const laneCounts = Object.groupBy(testFiles, laneForTest)
 if (Object.values(laneCounts).flat().length !== testFiles.length)
 	throw new Error("Coverage lanes do not form an exact test partition")
 
-const collectionDirectory = mkdtempSync(resolve(tmpdir(), "zoo-code-coverage-contract-"))
+const collectionDirectory = mkdtempSync(resolve(tmpdir(), "menagerie-coverage-contract-"))
 try {
 	const execFileAsync = promisify(execFile)
 	const collect = async (config) => {

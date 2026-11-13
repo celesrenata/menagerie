@@ -4,6 +4,7 @@ import path from "node:path"
 import crypto from "node:crypto"
 import type { TodoItem } from "@roo-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { Package } from "../shared/package"
 import { createHeadlessTaskProvider, openTaskInNewTab } from "./registerCommands"
 import {
 	TASK_BOARD_ROSTER_KEY,
@@ -19,7 +20,7 @@ import {
 import { HOST_ID_KEY, LAST_SELECTED_TASK_ID_KEY, TaskCommandRouter, type TaskOwnerHandle } from "./taskCommandRouter"
 import type { TaskCommand, TaskRef } from "../core/task/session/types"
 
-const OPEN_TASK_COMMAND = "zoo-code.openTask"
+const OPEN_TASK_COMMAND = `${Package.name}.openTask`
 
 export function resolveHostId(context: vscode.ExtensionContext): string {
 	const existing = context.globalState.get<string>(HOST_ID_KEY)
@@ -76,7 +77,7 @@ export function createTaskCommandRouter(context: vscode.ExtensionContext, hostId
 		hostId,
 		listOwners: () => listLiveTaskOwners(hostId, context),
 		rememberNavigation: () =>
-			vscode.workspace.getConfiguration("zoo-code").get<boolean>("rememberTaskNavigation") !== false,
+			vscode.workspace.getConfiguration(Package.name).get<boolean>("rememberTaskNavigation") !== false,
 		persistSelection: (taskId) => {
 			void context.globalState.update(LAST_SELECTED_TASK_ID_KEY, taskId)
 		},
@@ -381,7 +382,7 @@ export function registerTaskBoard(context: vscode.ExtensionContext, recovery?: T
 			return item
 		},
 	}
-	const view = vscode.window.createTreeView("zoo-code.taskBoard", {
+	const view = vscode.window.createTreeView(`${Package.name}.taskBoard`, {
 		treeDataProvider: dataProvider,
 		showCollapseAll: true,
 	})
@@ -488,17 +489,17 @@ export function registerTaskBoard(context: vscode.ExtensionContext, recovery?: T
 		markCancelled: (taskId) => saveRoster(markCancelled(roster, taskId)),
 	}
 	context.subscriptions.push(
-		vscode.commands.registerCommand("zoo-code.getTaskBoard", snapshot),
-		vscode.commands.registerCommand("zoo-code.taskBoardShowDetails", () => {
+		vscode.commands.registerCommand(`${Package.name}.getTaskBoard`, snapshot),
+		vscode.commands.registerCommand(`${Package.name}.taskBoardShowDetails`, () => {
 			// Compat/debug stub: the Menagerie Task Observatory webview is the primary
 			// inspection surface. This command refreshes the on-disk snapshot only.
 			void refresh()
 		}),
-		vscode.commands.registerCommand("zoo-code.showTaskBoard", async () => {
+		vscode.commands.registerCommand(`${Package.name}.showTaskBoard`, async () => {
 			await refresh()
-			await vscode.commands.executeCommand("zoo-code.taskBoard.focus")
+			await vscode.commands.executeCommand(`${Package.name}.taskBoard.focus`)
 		}),
-		vscode.commands.registerCommand("zoo-code.exportTaskBoard", async () => {
+		vscode.commands.registerCommand(`${Package.name}.exportTaskBoard`, async () => {
 			await refresh()
 			await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(vscode.Uri.file(snapshotPath)))
 		}),
@@ -576,6 +577,6 @@ function registerTaskActionCommands(
 		await refresh()
 	}
 	return (["resume", "pause", "restart", "cancel"] as const).map((kind) =>
-		vscode.commands.registerCommand(`zoo-code.taskBoard.${kind}`, (node?: Node) => run(kind, node)),
+		vscode.commands.registerCommand(`${Package.name}.taskBoard.${kind}`, (node?: Node) => run(kind, node)),
 	)
 }

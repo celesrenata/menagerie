@@ -28,7 +28,7 @@ describe("getApiRequestTimeout", () => {
 
 		const timeout = getApiRequestTimeout()
 
-		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("zoo-code")
+		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("menagerie")
 		expect(mockGetConfig).toHaveBeenCalledWith("apiRequestTimeout", 1800)
 		expect(timeout).toBe(1800000) // 1800 seconds (30 min) in milliseconds
 	})
@@ -144,7 +144,7 @@ describe("getApiStreamIdleTimeout", () => {
 
 		const timeout = getApiStreamIdleTimeout()
 
-		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("zoo-code")
+		expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("menagerie")
 		expect(mockGetConfig).toHaveBeenCalledWith("apiStreamIdleTimeout", 1800)
 		expect(timeout).toBe(1800000)
 	})

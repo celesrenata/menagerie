@@ -2,6 +2,10 @@
 
 import type * as vscode from "vscode"
 
+vi.mock("../activate/migrateFromZooCode", () => ({
+	migrateFromZooCode: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("vscode", () => ({
 	window: {
 		createOutputChannel: vi.fn().mockReturnValue({

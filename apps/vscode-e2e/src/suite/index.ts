@@ -9,7 +9,7 @@ import { RooCodeEventName, type RooCodeAPI } from "@roo-code/types"
 import { isCompletedAsk, waitFor } from "./utils"
 
 export async function run() {
-	const extension = vscode.extensions.getExtension<RooCodeAPI>("ZooCodeOrganization.zoo-code")
+	const extension = vscode.extensions.getExtension<RooCodeAPI>("celesrenata.menagerie")
 
 	if (!extension) {
 		throw new Error("Extension not found")
@@ -29,7 +29,7 @@ export async function run() {
 		...(aimockUrl && { openRouterBaseUrl: `${aimockUrl}/v1` }),
 	})
 
-	await vscode.commands.executeCommand("zoo-code.SidebarProvider.focus")
+	await vscode.commands.executeCommand("menagerie.SidebarProvider.focus")
 	await waitFor(() => api.isReady())
 
 	// Automatically approve completion_result asks so tests don't stall waiting

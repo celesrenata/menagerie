@@ -1,8 +1,8 @@
 {
-	"name": "zoo-code",
+	"name": "menagerie",
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
-	"publisher": "ZooCodeOrganization",
+	"publisher": "celesrenata",
 	"version": "3.84.5",
 	"icon": "assets/icons/menagerie.png",
 	"galleryBanner": {
@@ -53,21 +53,21 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "zoo-code-ActivityBar",
+					"id": "menagerie-ActivityBar",
 					"title": "%views.activitybar.title%",
 					"icon": "assets/icons/menagerie-activitybar.png"
 				}
 			]
 		},
 		"views": {
-			"zoo-code-ActivityBar": [
+			"menagerie-ActivityBar": [
 				{
 					"type": "webview",
-					"id": "zoo-code.SidebarProvider",
+					"id": "menagerie.SidebarProvider",
 					"name": "%views.sidebar.name%"
 				},
 				{
-					"id": "zoo-code.taskBoard",
+					"id": "menagerie.taskBoard",
 					"name": "Task Board",
 					"visibility": "visible"
 				}
@@ -75,280 +75,280 @@
 		},
 		"commands": [
 			{
-				"command": "zoo-code.plusButtonClicked",
+				"command": "menagerie.plusButtonClicked",
 				"title": "%command.newTask.title%",
 				"icon": "$(edit)"
 			},
 			{
-				"command": "zoo-code.historyButtonClicked",
+				"command": "menagerie.historyButtonClicked",
 				"title": "%command.history.title%",
 				"icon": "$(history)"
 			},
 			{
-				"command": "zoo-code.marketplaceButtonClicked",
+				"command": "menagerie.marketplaceButtonClicked",
 				"title": "%command.marketplace.title%",
 				"icon": "$(extensions)"
 			},
 			{
-				"command": "zoo-code.popoutButtonClicked",
+				"command": "menagerie.popoutButtonClicked",
 				"title": "%command.openInEditor.title%",
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "zoo-code.settingsButtonClicked",
+				"command": "menagerie.settingsButtonClicked",
 				"title": "%command.settings.title%",
 				"icon": "$(settings-gear)"
 			},
 			{
-				"command": "zoo-code.openInNewTab",
+				"command": "menagerie.openInNewTab",
 				"title": "%command.openInNewTab.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.explainCode",
+				"command": "menagerie.explainCode",
 				"title": "%command.explainCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.fixCode",
+				"command": "menagerie.fixCode",
 				"title": "%command.fixCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.improveCode",
+				"command": "menagerie.improveCode",
 				"title": "%command.improveCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.addToContext",
+				"command": "menagerie.addToContext",
 				"title": "%command.addToContext.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.newTask",
+				"command": "menagerie.newTask",
 				"title": "%command.newTask.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.terminalAddToContext",
+				"command": "menagerie.terminalAddToContext",
 				"title": "%command.terminal.addToContext.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.terminalFixCommand",
+				"command": "menagerie.terminalFixCommand",
 				"title": "%command.terminal.fixCommand.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.terminalExplainCommand",
+				"command": "menagerie.terminalExplainCommand",
 				"title": "%command.terminal.explainCommand.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.setCustomStoragePath",
+				"command": "menagerie.setCustomStoragePath",
 				"title": "%command.setCustomStoragePath.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.importSettings",
+				"command": "menagerie.importSettings",
 				"title": "%command.importSettings.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.focusInput",
+				"command": "menagerie.focusInput",
 				"title": "%command.focusInput.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.acceptInput",
+				"command": "menagerie.acceptInput",
 				"title": "%command.acceptInput.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.importSpecDraft",
+				"command": "menagerie.importSpecDraft",
 				"title": "%command.importSpecDraft.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.verifySpecRevision",
+				"command": "menagerie.verifySpecRevision",
 				"title": "%command.verifySpecRevision.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.approveSpecRevision",
+				"command": "menagerie.approveSpecRevision",
 				"title": "%command.approveSpecRevision.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.showRipgrepDiagnostic",
+				"command": "menagerie.showRipgrepDiagnostic",
 				"title": "%command.showRipgrepDiagnostic.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.toggleAutoApprove",
+				"command": "menagerie.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.showTaskBoard",
+				"command": "menagerie.showTaskBoard",
 				"title": "Menagerie: Show Task Board"
 			},
 			{
-				"command": "zoo-code.exportTaskBoard",
+				"command": "menagerie.exportTaskBoard",
 				"title": "Menagerie: Export Task Board JSON"
 			},
 			{
-				"command": "zoo-code.openTask",
+				"command": "menagerie.openTask",
 				"title": "Menagerie: Open Task"
 			},
 			{
-				"command": "zoo-code.taskBoard.resume",
+				"command": "menagerie.taskBoard.resume",
 				"title": "Resume",
 				"icon": "$(debug-continue)"
 			},
 			{
-				"command": "zoo-code.taskBoard.pause",
+				"command": "menagerie.taskBoard.pause",
 				"title": "Pause",
 				"icon": "$(debug-pause)"
 			},
 			{
-				"command": "zoo-code.taskBoard.restart",
+				"command": "menagerie.taskBoard.restart",
 				"title": "Restart",
 				"icon": "$(debug-restart)"
 			},
 			{
-				"command": "zoo-code.taskBoard.cancel",
+				"command": "menagerie.taskBoard.cancel",
 				"title": "Cancel",
 				"icon": "$(debug-stop)"
 			}
 		],
 		"menus": {
 			"commandPalette": [
-				{ "command": "zoo-code.taskBoard.resume", "when": "false" },
-				{ "command": "zoo-code.taskBoard.pause", "when": "false" },
-				{ "command": "zoo-code.taskBoard.restart", "when": "false" },
-				{ "command": "zoo-code.taskBoard.cancel", "when": "false" }
+				{ "command": "menagerie.taskBoard.resume", "when": "false" },
+				{ "command": "menagerie.taskBoard.pause", "when": "false" },
+				{ "command": "menagerie.taskBoard.restart", "when": "false" },
+				{ "command": "menagerie.taskBoard.cancel", "when": "false" }
 			],
 			"view/item/context": [
 				{
-					"command": "zoo-code.taskBoard.restart",
-					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused|stopped|completed|recovered)$/",
+					"command": "menagerie.taskBoard.restart",
+					"when": "view == menagerie.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused|stopped|completed|recovered)$/",
 					"group": "1_control@1"
 				},
 				{
-					"command": "zoo-code.taskBoard.resume",
-					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(paused|stopped|recovered)$/",
+					"command": "menagerie.taskBoard.resume",
+					"when": "view == menagerie.taskBoard && viewItem =~ /^menagerieTask\\.(paused|stopped|recovered)$/",
 					"group": "1_control@2"
 				},
 				{
-					"command": "zoo-code.taskBoard.pause",
-					"when": "view == zoo-code.taskBoard && viewItem == menagerieTask.running",
+					"command": "menagerie.taskBoard.pause",
+					"when": "view == menagerie.taskBoard && viewItem == menagerieTask.running",
 					"group": "1_control@3"
 				},
 				{
-					"command": "zoo-code.taskBoard.cancel",
-					"when": "view == zoo-code.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused|recovered|recoveredWorker)$/",
+					"command": "menagerie.taskBoard.cancel",
+					"when": "view == menagerie.taskBoard && viewItem =~ /^menagerieTask\\.(running|paused|recovered|recoveredWorker)$/",
 					"group": "2_cancel@1"
 				}
 			],
 			"editor/context": [
 				{
-					"submenu": "zoo-code.contextMenu",
+					"submenu": "menagerie.contextMenu",
 					"group": "1"
 				}
 			],
-			"zoo-code.contextMenu": [
+			"menagerie.contextMenu": [
 				{
-					"command": "zoo-code.addToContext",
+					"command": "menagerie.addToContext",
 					"group": "1_actions@1"
 				},
 				{
-					"command": "zoo-code.explainCode",
+					"command": "menagerie.explainCode",
 					"group": "1_actions@2"
 				},
 				{
-					"command": "zoo-code.improveCode",
+					"command": "menagerie.improveCode",
 					"group": "1_actions@3"
 				}
 			],
 			"terminal/context": [
 				{
-					"submenu": "zoo-code.terminalMenu",
+					"submenu": "menagerie.terminalMenu",
 					"group": "2"
 				}
 			],
-			"zoo-code.terminalMenu": [
+			"menagerie.terminalMenu": [
 				{
-					"command": "zoo-code.terminalAddToContext",
+					"command": "menagerie.terminalAddToContext",
 					"group": "1_actions@1"
 				},
 				{
-					"command": "zoo-code.terminalFixCommand",
+					"command": "menagerie.terminalFixCommand",
 					"group": "1_actions@2"
 				},
 				{
-					"command": "zoo-code.terminalExplainCommand",
+					"command": "menagerie.terminalExplainCommand",
 					"group": "1_actions@3"
 				}
 			],
 			"view/title": [
 				{
-					"command": "zoo-code.plusButtonClicked",
+					"command": "menagerie.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == menagerie.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.settingsButtonClicked",
+					"command": "menagerie.settingsButtonClicked",
 					"group": "navigation@2",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == menagerie.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.marketplaceButtonClicked",
+					"command": "menagerie.marketplaceButtonClicked",
 					"group": "navigation@3",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == menagerie.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "menagerie.historyButtonClicked",
 					"group": "overflow@1",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == menagerie.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.popoutButtonClicked",
+					"command": "menagerie.popoutButtonClicked",
 					"group": "overflow@2",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == menagerie.SidebarProvider"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "zoo-code.plusButtonClicked",
+					"command": "menagerie.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == menagerie.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.settingsButtonClicked",
+					"command": "menagerie.settingsButtonClicked",
 					"group": "navigation@2",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == menagerie.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.marketplaceButtonClicked",
+					"command": "menagerie.marketplaceButtonClicked",
 					"group": "navigation@3",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == menagerie.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "menagerie.historyButtonClicked",
 					"group": "overflow@1",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == menagerie.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.popoutButtonClicked",
+					"command": "menagerie.popoutButtonClicked",
 					"group": "overflow@2",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == menagerie.TabPanelProvider"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "zoo-code.addToContext",
+				"command": "menagerie.addToContext",
 				"key": "cmd+k cmd+a",
 				"mac": "cmd+k cmd+a",
 				"win": "ctrl+k ctrl+a",
@@ -356,7 +356,7 @@
 				"when": "editorTextFocus && editorHasSelection"
 			},
 			{
-				"command": "zoo-code.toggleAutoApprove",
+				"command": "menagerie.toggleAutoApprove",
 				"key": "cmd+alt+a",
 				"mac": "cmd+alt+a",
 				"win": "ctrl+alt+a",
@@ -365,18 +365,18 @@
 		],
 		"submenus": [
 			{
-				"id": "zoo-code.contextMenu",
+				"id": "menagerie.contextMenu",
 				"label": "%views.contextMenu.label%"
 			},
 			{
-				"id": "zoo-code.terminalMenu",
+				"id": "menagerie.terminalMenu",
 				"label": "%views.terminalMenu.label%"
 			}
 		],
 		"configuration": {
 			"title": "%configuration.title%",
 			"properties": {
-				"zoo-code.allowedCommands": {
+				"menagerie.allowedCommands": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -388,7 +388,7 @@
 					],
 					"description": "%commands.allowedCommands.description%"
 				},
-				"zoo-code.deniedCommands": {
+				"menagerie.deniedCommands": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -396,14 +396,14 @@
 					"default": [],
 					"description": "%commands.deniedCommands.description%"
 				},
-				"zoo-code.commandExecutionTimeout": {
+				"menagerie.commandExecutionTimeout": {
 					"type": "number",
 					"default": 0,
 					"minimum": 0,
 					"maximum": 600,
 					"description": "%commands.commandExecutionTimeout.description%"
 				},
-				"zoo-code.commandTimeoutAllowlist": {
+				"menagerie.commandTimeoutAllowlist": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -411,12 +411,12 @@
 					"default": [],
 					"description": "%commands.commandTimeoutAllowlist.description%"
 				},
-				"zoo-code.preventCompletionWithOpenTodos": {
+				"menagerie.preventCompletionWithOpenTodos": {
 					"type": "boolean",
 					"default": false,
 					"description": "%commands.preventCompletionWithOpenTodos.description%"
 				},
-				"zoo-code.vsCodeLmModelSelector": {
+				"menagerie.vsCodeLmModelSelector": {
 					"type": "object",
 					"properties": {
 						"vendor": {
@@ -430,83 +430,83 @@
 					},
 					"description": "%settings.vsCodeLmModelSelector.description%"
 				},
-				"zoo-code.customStoragePath": {
+				"menagerie.customStoragePath": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.customStoragePath.description%"
 				},
-				"zoo-code.enableCodeActions": {
+				"menagerie.enableCodeActions": {
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.enableCodeActions.description%"
 				},
-				"zoo-code.autoImportSettingsPath": {
+				"menagerie.autoImportSettingsPath": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.autoImportSettingsPath.description%"
 				},
-				"zoo-code.maximumIndexedFilesForFileSearch": {
+				"menagerie.maximumIndexedFilesForFileSearch": {
 					"type": "number",
 					"default": 10000,
 					"minimum": 5000,
 					"maximum": 500000,
 					"description": "%settings.maximumIndexedFilesForFileSearch.description%"
 				},
-				"zoo-code.useAgentRules": {
+				"menagerie.useAgentRules": {
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.useAgentRules.description%"
 				},
-				"zoo-code.apiRequestTimeout": {
+				"menagerie.apiRequestTimeout": {
 					"type": "integer",
 					"default": 600,
 					"minimum": 1,
 					"maximum": 3600,
 					"description": "%settings.apiRequestTimeout.description%"
 				},
-				"zoo-code.apiStreamIdleTimeout": {
+				"menagerie.apiStreamIdleTimeout": {
 					"type": "integer",
 					"default": 300,
 					"minimum": 0,
 					"maximum": 3600,
 					"description": "%settings.apiStreamIdleTimeout.description%"
 				},
-				"zoo-code.newTaskRequireTodos": {
+				"menagerie.newTaskRequireTodos": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.newTaskRequireTodos.description%"
 				},
-				"zoo-code.codeIndex.embeddingBatchSize": {
+				"menagerie.codeIndex.embeddingBatchSize": {
 					"type": "number",
 					"default": 60,
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
 				},
-				"zoo-code.debug": {
+				"menagerie.debug": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debug.description%"
 				},
-				"zoo-code.debugProxy.enabled": {
+				"menagerie.debugProxy.enabled": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debugProxy.enabled.description%",
 					"markdownDescription": "%settings.debugProxy.enabled.description%"
 				},
-				"zoo-code.debugProxy.serverUrl": {
+				"menagerie.debugProxy.serverUrl": {
 					"type": "string",
 					"default": "http://127.0.0.1:8888",
 					"description": "%settings.debugProxy.serverUrl.description%",
 					"markdownDescription": "%settings.debugProxy.serverUrl.description%"
 				},
-				"zoo-code.debugProxy.tlsInsecure": {
+				"menagerie.debugProxy.tlsInsecure": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debugProxy.tlsInsecure.description%",
 					"markdownDescription": "%settings.debugProxy.tlsInsecure.description%"
 				},
-				"zoo-code.workspace.rootResolution": {
+				"menagerie.workspace.rootResolution": {
 					"type": "string",
 					"enum": [
 						"activeEditor",
@@ -551,8 +551,8 @@
 		"bundle": "node esbuild.mjs",
 		"vscode:prepublish": "pnpm bundle --production",
 		"vsix": "mkdirp ../bin && vsce package --no-dependencies --out ../bin",
-		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/zoo-code-$npm_package_version.vsix",
-		"publish:ovsx": "pnpm exec ovsx publish ../bin/zoo-code-$npm_package_version.vsix --skip-duplicate",
+		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/menagerie-$npm_package_version.vsix",
+		"publish:ovsx": "pnpm exec ovsx publish ../bin/menagerie-$npm_package_version.vsix --skip-duplicate",
 		"publish:marketplace": "pnpm vsix && pnpm publish:vsce && pnpm publish:ovsx",
 		"watch:bundle": "pnpm bundle --watch",
 		"watch:tsc": "cd .. && tsc --noEmit --watch --project src/tsconfig.json",

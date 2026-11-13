@@ -46,34 +46,10 @@ export interface CarveOutEntry {
  * branding leak.
  */
 export const carveOutAllowlist: readonly CarveOutEntry[] = [
-	// Extension_Identity fields (Requirement 3.1).
-	{
-		token: "zoo-code",
-		reason: "extension-identity",
-		location: "src/package.json#name",
-	},
-	{
-		token: "ZooCodeOrganization",
-		reason: "extension-identity",
-		location: "src/package.json#publisher",
-	},
-	// Persisted_Identifier: the views container id (Requirement 3.2).
-	{
-		token: "zoo-code-ActivityBar",
-		reason: "persisted-identifier",
-		location: "src/package.json#contributes.viewsContainers/views container id",
-	},
-	// Persisted_Identifier: retained zoo-code.* command/view IDs (Requirement 3.2).
-	{
-		token: "zoo-code.SidebarProvider",
-		reason: "persisted-identifier",
-		location: "src/package.json#contributes.views view id",
-	},
-	{
-		token: "zoo-code.taskBoard",
-		reason: "persisted-identifier",
-		location: "src/package.json#contributes.views view id",
-	},
+	// The Extension_Identity and zoo-code.* Persisted_Identifier entries were removed when
+	// Menagerie took its own extension id (celesrenata.menagerie) and the menagerie.* prefix.
+	// Zoo Code data is imported once at activation (src/activate/migrateFromZooCode.ts), so no
+	// zoo-code identifier needs to survive in a scanned surface.
 	// NOTE: the former "zoo-code.taskBoardTaskDetails" webview panel view type was
 	// removed when the task detail panel was dropped in the taskBoard refactor, so
 	// it no longer appears in any surface. It is intentionally omitted here: the

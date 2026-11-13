@@ -104,7 +104,7 @@ async function startScene(
 	scenario: VisualScenario,
 	testInfo: TestInfo,
 ): Promise<RunningScene> {
-	const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "zoo-code-electron-visual-"))
+	const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "menagerie-electron-visual-"))
 	const workspacePath = path.join(temporaryRoot, "workspace")
 	const userDataPath = path.join(temporaryRoot, "user-data")
 	const extensionsPath = path.join(temporaryRoot, "extensions")
@@ -219,12 +219,12 @@ for (const scenario of scenarios) {
 				.poll(() =>
 					running.page
 						.frames()
-						.some((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code")),
+						.some((frame) => frame.url().includes("extensionId=celesrenata.menagerie")),
 				)
 				.toBe(true)
 			const parentFrame = running.page
 				.frames()
-				.find((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code"))
+				.find((frame) => frame.url().includes("extensionId=celesrenata.menagerie"))
 			const contentFrame = parentFrame?.childFrames().find((frame) => frame.url().includes("/fake.html"))
 			if (!contentFrame) throw new Error("Zoo Code webview content frame not found")
 			await contentFrame
@@ -241,7 +241,7 @@ for (const scenario of scenarios) {
 
 			// Mask the dynamic token counter so system-prompt changes that alter
 			// token counts do not cause pixel diffs when layout is unchanged.
-			const webviewFrame = running.page.frameLocator('iframe[src*="extensionId=ZooCodeOrganization.zoo-code"]')
+			const webviewFrame = running.page.frameLocator('iframe[src*="extensionId=celesrenata.menagerie"]')
 			const tokenCountMask = webviewFrame
 				.frameLocator("iframe")
 				.locator('[data-testid="context-tokens-count"],[data-testid="context-window-size"]')
@@ -250,7 +250,7 @@ for (const scenario of scenarios) {
 			})
 
 			if (scenario.webviewSnapshot) {
-				const webview = running.page.locator('iframe[src*="extensionId=ZooCodeOrganization.zoo-code"]')
+				const webview = running.page.locator('iframe[src*="extensionId=celesrenata.menagerie"]')
 				await expect(webview).toHaveCount(1)
 				await expect(webview).toHaveScreenshot(scenario.webviewSnapshot)
 			}

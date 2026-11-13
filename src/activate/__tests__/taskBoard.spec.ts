@@ -164,7 +164,7 @@ describe("Task Board registration", () => {
 
 		registerTaskBoard(context)
 		expect(vscode.window.createTreeView).toHaveBeenCalledWith(
-			"zoo-code.taskBoard",
+			"menagerie.taskBoard",
 			expect.objectContaining({ treeDataProvider: expect.any(Object) }),
 		)
 		await vi.advanceTimersByTimeAsync(0)
@@ -220,11 +220,11 @@ describe("Task Board registration", () => {
 		registerTaskBoard(context)
 		await vi.advanceTimersByTimeAsync(0)
 
-		expect(mockProviders.commandHandlers.has("zoo-code.getTaskBoard")).toBe(true)
-		expect(mockProviders.commandHandlers.has("zoo-code.taskBoardShowDetails")).toBe(true)
-		expect(mockProviders.commandHandlers.has("zoo-code.showTaskBoard")).toBe(true)
-		expect(mockProviders.commandHandlers.has("zoo-code.exportTaskBoard")).toBe(true)
-		expect(mockProviders.commandHandlers.has("zoo-code.openTask")).toBe(true)
+		expect(mockProviders.commandHandlers.has("menagerie.getTaskBoard")).toBe(true)
+		expect(mockProviders.commandHandlers.has("menagerie.taskBoardShowDetails")).toBe(true)
+		expect(mockProviders.commandHandlers.has("menagerie.showTaskBoard")).toBe(true)
+		expect(mockProviders.commandHandlers.has("menagerie.exportTaskBoard")).toBe(true)
+		expect(mockProviders.commandHandlers.has("menagerie.openTask")).toBe(true)
 
 		const treeViewCall = vi.mocked(vscode.window.createTreeView).mock.calls[0]
 		if (!treeViewCall) throw new Error("Task Board view was not created")
@@ -234,7 +234,7 @@ describe("Task Board registration", () => {
 		const item = await Promise.resolve(treeViewCall[1].treeDataProvider.getTreeItem(firstTask))
 		expect(item.collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed)
 		expect(item.command).toEqual({
-			command: "zoo-code.openTask",
+			command: "menagerie.openTask",
 			title: "Open Task",
 			arguments: [
 				{
@@ -263,7 +263,7 @@ describe("Task Board registration", () => {
 			},
 		]
 		const taskIdArg = item.command?.arguments?.[0]
-		await mockProviders.commandHandlers.get("zoo-code.openTask")?.(taskIdArg)
+		await mockProviders.commandHandlers.get("menagerie.openTask")?.(taskIdArg)
 		expect(revealChat).toHaveBeenCalledOnce()
 		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
 		expect(createTask).not.toHaveBeenCalled()
@@ -352,7 +352,7 @@ describe("Task Board recovery after reload", () => {
 		const item = await Promise.resolve(treeViewCall[1].treeDataProvider.getTreeItem(recovered))
 		expect(item.contextValue).toBe("menagerieTask.recovered")
 
-		await mockProviders.commandHandlers.get("zoo-code.taskBoard.resume")?.(recovered as never)
+		await mockProviders.commandHandlers.get("menagerie.taskBoard.resume")?.(recovered as never)
 		expect(headless.createTaskWithHistoryItem).toHaveBeenCalledWith(historyItem)
 		expect(headless.resumeCurrentTask).toHaveBeenCalled()
 

@@ -80,7 +80,7 @@ const worktreeCommit = () => stashCommit(spawnSync("git", ["stash", "create"], {
 const turboTasks = () => {
 	const result = spawnSync(
 		command,
-		[...args, "turbo", "--cwd", probeRoot, "run", ...taskNames, "--filter=zoo-code", "--dry=json", "--no-daemon"],
+		[...args, "turbo", "--cwd", probeRoot, "run", ...taskNames, "--filter=menagerie", "--dry=json", "--no-daemon"],
 		{ cwd: root, encoding: "utf8" },
 	)
 	if (result.status !== 0) {
@@ -100,7 +100,7 @@ const turboTasks = () => {
 	}
 	const graph = JSON.parse(lines.slice(jsonStart).join("\n"))
 	return taskNames.map((taskName) => {
-		const task = graph.tasks.find(({ taskId }) => taskId === `zoo-code#${taskName}`)
+		const task = graph.tasks.find(({ taskId }) => taskId === `menagerie#${taskName}`)
 		if (!task) throw new Error(`Extension lane missing from Turbo graph: ${taskName}`)
 		return task
 	})
@@ -171,7 +171,7 @@ test("stash commit probe rejects git failures and keeps the clean-tree fallback"
 })
 
 test("coverage cache input contract", async (context) => {
-	probeRoot = mkdtempSync(resolve(tmpdir(), "zoo-code-coverage-cache-inputs-"))
+	probeRoot = mkdtempSync(resolve(tmpdir(), "menagerie-coverage-cache-inputs-"))
 	let worktreeAdded = false
 	let cleaned = false
 	const cleanup = () => {
