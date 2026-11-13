@@ -289,6 +289,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * in which case `attemptApiRequest` holds no Menagerie lease.
 	 */
 	public inferenceLeaseProvider?: InferenceLeaseProvider
+	/**
+	 * Set on a background worker: returns (and consumes) steering text the parent queued
+	 * for it. Rendered into the worker's next request as `# Steering from parent`.
+	 */
+	public steeringDrain?: () => string[]
 	private releaseCurrentGenerationLease?: () => void
 	/** Consecutive failed API attempts for a parallel worker; reset when a request streams assistant content to completion. */
 	private parallelWorkerApiFailures = 0
@@ -305,7 +310,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return this.lifetimeController.signal
 	}
 	public getDisabledTools(disabled?: string[]): string[] | undefined {
-		return this.parallelWorker ? [...(disabled ?? []), "new_task", "parallel_tasks"] : disabled
+		return this.parallelWorker ? [...(disabled ?? []), "new_task", "parallel_tasks", "background_tasks"] : disabled
 	}
 
 	/**
@@ -4840,6 +4845,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				applied?.disabledTools,
 			)
 
+			const hubSkills = await this.resolveHubSkillsForPrompt(provider, mode ?? defaultModeSlug)
+
 			return SYSTEM_PROMPT(
 				provider.context,
 				this.cwd,
@@ -4868,8 +4875,32 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				provider.getSkillsManager(),
 				effectiveDisabledTools,
 				modelInfo,
+				hubSkills,
 			)
 		})()
+	}
+
+	/**
+	 * OmniRoute Skill Hub skills for this task: manual-on first, then auto matches for the task text.
+	 * Bounded by a short timeout and never throws, so a slow or down hub cannot delay or fail a turn.
+	 */
+	private async resolveHubSkillsForPrompt(provider: ClineProvider, mode: string) {
+		const timeoutMs = 3_000
+		let timer: ReturnType<typeof setTimeout> | undefined
+		try {
+			const localNames = (provider.getSkillsManager()?.getSkillsForMode(mode) ?? []).map((skill) => skill.name)
+			const resolved = provider
+				.getHubSkillsProvider()
+				.resolveForTask(this.taskId, (this.metadata.task ?? "").slice(0, 500), localNames)
+			const timeout = new Promise<[]>((resolve) => {
+				timer = setTimeout(() => resolve([]), timeoutMs)
+			})
+			return await Promise.race([resolved, timeout])
+		} catch {
+			return []
+		} finally {
+			clearTimeout(timer)
+		}
 	}
 
 	/**
