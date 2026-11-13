@@ -1,5 +1,5 @@
 import React from "react"
-import { Zap } from "lucide-react"
+import { Workflow } from "lucide-react"
 
 import { PARALLELISM_MODES, type ParallelismMode } from "@roo-code/types"
 
@@ -96,7 +96,7 @@ export const ParallelismControl = ({
 						disabled ? "opacity-50 cursor-not-allowed" : enabledSelectorTriggerClassName,
 						triggerClassName,
 					)}>
-					<Zap className="size-3 flex-shrink-0" />
+					<Workflow className="size-3 flex-shrink-0" />
 					<span className="truncate min-w-0">{selectedLabel}</span>
 				</PopoverTrigger>
 			</StandardTooltip>

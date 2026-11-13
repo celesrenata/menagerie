@@ -1,5 +1,5 @@
 import React from "react"
-import { ListChecks, LayoutList, Settings, CheckCheck, X, Zap } from "lucide-react"
+import { ListChecks, LayoutList, Settings, CheckCheck, X, Rocket } from "lucide-react"
 
 import { vscode } from "@/utils/vscode"
 
@@ -175,7 +175,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						triggerClassName,
 					)}>
 					{yoloModeEnabled ? (
-						<Zap className="size-3 flex-shrink-0" />
+						<Rocket className="size-3 flex-shrink-0" />
 					) : !effectiveAutoApprovalEnabled ? (
 						<X className="size-3 flex-shrink-0" />
 					) : (
@@ -284,7 +284,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 									onClick={handleYoloToggle}
 									data-testid="auto-approve-yolo"
 									className="gap-1 px-2 py-1 text-base font-bold h-auto">
-									<Zap className="w-3.5 h-3.5" />
+									<Rocket className="w-3.5 h-3.5" />
 									<span>{t("chat:autoApprove.yolo")}</span>
 								</Button>
 							</StandardTooltip>
