@@ -232,6 +232,52 @@ export const DEFAULT_DIFF_FUZZY_THRESHOLD = 1.0
 export const DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED = false
 
 /**
+ * Destructive Command Guard strength levels. `dcgGuardLevel` supersedes the
+ * legacy boolean `destructiveCommandGuardEnabled` (see `dcgGuardLevelSchema`
+ * and `DEFAULT_DCG_GUARD_LEVEL`); it is exposed as the "Destructive command
+ * guard" selector in the YOLO settings section.
+ */
+export const DCG_GUARD_LEVELS = ["off", "relaxed", "standard", "strict"] as const
+export type DcgGuardLevel = (typeof DCG_GUARD_LEVELS)[number]
+export const dcgGuardLevelSchema = z.enum(DCG_GUARD_LEVELS)
+
+/**
+ * Default guard level. `undefined` (never set) resolves to the legacy
+ * `destructiveCommandGuardEnabled` boolean, preserving today's behavior:
+ * the guard stays off unless the user turns it on (or enables YOLO).
+ */
+export const DEFAULT_DCG_GUARD_LEVEL: DcgGuardLevel = "off"
+
+/** Default number of Tenacity retries ("X tries") when the user sets a finite cap. */
+export const DEFAULT_TENACITY_MAX_TRIES = 10
+/** Inclusive upper bound of the Tenacity tries control (1–1000). */
+export const TENACITY_MAX_TRIES_LIMIT = 1000
+
+/**
+ * Resolves the effective DCG guard level from the saved `dcgGuardLevel`, the
+ * legacy `destructiveCommandGuardEnabled` boolean, and the YOLO toggle.
+ *
+ * - A set `dcgGuardLevel` always wins (including `"off"`), so a user who
+ *   explicitly turned the guard off keeps it off even if the legacy boolean is
+ *   still true.
+ * - When `dcgGuardLevel` is unset, the legacy boolean is consulted: `true`
+ *   means `relaxed` (today's behavior), `false`/unset means `off`.
+ * - YOLO forces at least `relaxed`, so a guarded command is never unattended-
+ *   approved while YOLO runs.
+ */
+export function resolveEffectiveDcgGuardLevel(
+	storedLevel: DcgGuardLevel | undefined,
+	legacyEnabled: boolean,
+	yoloEnabled: boolean,
+): DcgGuardLevel {
+	const level = storedLevel ?? (legacyEnabled ? "relaxed" : "off")
+	if (yoloEnabled && level === "off") {
+		return "relaxed"
+	}
+	return level
+}
+
+/**
  * Default automatic condensation threshold.
  *
  * 100% leaves no runway for the summarizer itself, transient token-count
@@ -316,6 +362,19 @@ export const globalSettingsSchema = z.object({
 	autoApprovalEnabled: z.boolean().optional(),
 	// Temporary high-autonomy policy layered over the saved BRRR toggles.
 	yoloModeEnabled: z.boolean().optional(),
+	/**
+	 * Tenacity mode: when enabled, Menagerie keeps retrying instead of giving
+	 * up early. Overrides BOTH the per-provider consecutive-mistake limit (the
+	 * "Menagerie is having trouble" dialog) and a parallel worker's 8-retry API
+	 * cap, across all models and parallel batches. A finite `tenacityMaxTries`
+	 * (1–{@link TENACITY_MAX_TRIES_LIMIT}) is the normal case; when
+	 * `tenacityUnlimited` is true the worker/task never gives up.
+	 * `undefined` means off (today's default behavior is unchanged).
+	 */
+	tenacityEnabled: z.boolean().optional(),
+	tenacityMaxTries: z.number().int().min(1).max(TENACITY_MAX_TRIES_LIMIT).optional(),
+	/** True = never give up, even past `tenacityMaxTries`. */
+	tenacityUnlimited: z.boolean().optional(),
 	/**
 	 * Per-request OmniRoute cost-tier ceiling ($..$$$$$), selected beside the YOLO
 	 * control and sent as `X-OmniRoute-Tier` on OmniRoute chat requests (FEAT-005).
@@ -424,6 +483,14 @@ export const globalSettingsSchema = z.object({
 	alwaysAllowSubtasks: z.boolean().optional(),
 	alwaysAllowExecute: z.boolean().optional(),
 	destructiveCommandGuardEnabled: z.boolean().optional(),
+	/**
+	 * Destructive Command Guard strength level (YOLO section). Supersedes the
+	 * legacy `destructiveCommandGuardEnabled` boolean: `off` disables the guard,
+	 * `relaxed` blocks on DCG `deny` only (today's behavior), `standard` also
+	 * blocks on `warn`, and `strict` blocks on anything DCG does not positively
+	 * `allow`. An unset level falls back to the legacy boolean.
+	 */
+	dcgGuardLevel: dcgGuardLevelSchema.optional(),
 	alwaysAllowFollowupQuestions: z.boolean().optional(),
 	followupAutoApproveTimeoutMs: z.number().optional(),
 	allowedCommands: z.array(z.string()).optional(),

@@ -1,8 +1,21 @@
 import { spawn } from "child_process"
 
+import { type DcgGuardLevel } from "@roo-code/types"
+
 import { DCG_MAX_OUTPUT_BYTES, DCG_RUN_TIMEOUT_MS } from "./constants"
 
-export type DcgDecision = { decision: "allow" } | { decision: "deny"; reason?: string; ruleId?: string }
+/**
+ * Severity of a DCG verdict, derived from the decision string DCG emits
+ * (`allow` / `log` / `warn` / `deny`). Callers map this onto a guard level:
+ * `relaxed` blocks on `deny`, `standard` also on `warn`, `strict` on anything
+ * that is not a positive `allow`.
+ */
+export type DcgSeverity = "allow" | "log" | "warn" | "deny"
+
+export type DcgDecision = { decision: "allow" | "deny"; reason?: string; ruleId?: string } & {
+	/** Raw severity reported by DCG (allow/log/warn/deny). */
+	severity: DcgSeverity
+}
 
 type DcgJsonOutput = {
 	schema_version?: number | string
@@ -11,6 +24,25 @@ type DcgJsonOutput = {
 	rule_id?: string
 	pattern_name?: string
 	pack_id?: string
+}
+
+/**
+ * Maps a DCG severity onto a guard level: whether the verdict blocks the
+ * command. `off` never blocks (guard disabled); `relaxed` blocks on `deny`
+ * only (today's behavior); `standard` also blocks on `warn`; `strict` blocks on
+ * anything DCG does not positively `allow` (`deny`, `warn`, `log`).
+ */
+export function isDcgDecisionBlocked(severity: DcgSeverity, level: DcgGuardLevel): boolean {
+	switch (level) {
+		case "off":
+			return false
+		case "relaxed":
+			return severity === "deny"
+		case "standard":
+			return severity === "deny" || severity === "warn"
+		case "strict":
+			return severity !== "allow"
+	}
 }
 
 const DCG_ENV_KEYS = ["HOME", "PATH", "TEMP", "TMPDIR", "TMP", "USERPROFILE", "SystemRoot", "WINDIR"] as const
@@ -116,12 +148,13 @@ function runDcgOnce(binaryPath: string, command: string, cwd: string): Promise<D
 			if ((payload.decision === "allow" || payload.decision === "warn" || payload.decision === "log") && code === 0) {
 				settled = true
 				clearTimeout(timer)
-				resolve({ decision: "allow" })
+				resolve({ decision: "allow", severity: (payload.decision ?? "allow") as DcgSeverity })
 			} else if (payload.decision === "deny" && code === 1) {
 				settled = true
 				clearTimeout(timer)
 				resolve({
 					decision: "deny",
+					severity: "deny",
 					reason: payload.reason,
 					ruleId:
 						payload.rule_id ??

@@ -51,6 +51,7 @@ import {
 	isResumableAsk,
 	QueuedMessage,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
+	DEFAULT_TENACITY_MAX_TRIES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	MAX_CHECKPOINT_TIMEOUT_SECONDS,
 	MIN_CHECKPOINT_TIMEOUT_SECONDS,
@@ -3109,6 +3110,49 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
+	 * Tenacity (unattended tenacity / "never give up early"): resolves the
+	 * effective consecutive-mistake limit for this task from the saved
+	 * `tenacityEnabled` / `tenacityMaxTries` / `tenacityUnlimited` settings,
+	 * honoring the YOLO toggle (which implies unlimited tenacity). Returns
+	 * `0` when tenacity is unlimited (the mistake-limit flow is disabled), the
+	 * finite `tenacityMaxTries` when tenacity caps it, or the task's
+	 * provider-derived `consecutiveMistakeLimit` when tenacity is off. This is
+	 * consulted per task-loop entry so the user's choice (or a YOLO toggle
+	 * mid-run) takes effect on the very next iteration, across all models.
+	 */
+	private async getEffectiveMistakeLimit(): Promise<number> {
+		if (await this.isTenacityUnlimited()) {
+			return 0
+		}
+		const tenacityEnabled =
+			this.providerRef.deref()?.contextProxy.getValue("tenacityEnabled") === true
+		if (tenacityEnabled) {
+			const tries = this.providerRef.deref()?.contextProxy.getValue("tenacityMaxTries")
+			return typeof tries === "number" && tries >= 1 ? tries : DEFAULT_TENACITY_MAX_TRIES
+		}
+		return this.consecutiveMistakeLimit
+	}
+
+	/**
+	 * True when tenacity must never give up: the user set `tenacityUnlimited`
+	 * or turned on YOLO (which implies "run until done"). Consulted by the
+	 * parallel-worker retry cap so a YOLO worker retries API failures without
+	 * the fixed {@link PARALLEL_WORKER_MAX_API_RETRIES} ceiling.
+	 */
+	private async isTenacityUnlimited(): Promise<boolean> {
+		const proxy = this.providerRef.deref()?.contextProxy
+		if (proxy?.getValue("tenacityUnlimited") === true) {
+			return true
+		}
+		if (proxy?.getValue("tenacityEnabled") === true) {
+			// Finite tenacity caps retries; only the explicit unlimited flag (or
+			// YOLO) lifts the ceiling.
+			return false
+		}
+		return proxy?.getValue("yoloModeEnabled") === true
+	}
+
+	/**
 	 * Counts a failed API attempt against a parallel worker's retry cap. Returns true when
 	 * the cap is exhausted and the worker has been failed. Cancellations are not API failures.
 	 */
@@ -3116,6 +3160,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (!this.parallelWorker || this.abort) return false
 
 		this.parallelWorkerApiFailures++
+		if (await this.isTenacityUnlimited()) {
+			// Tenacity: a YOLO / unlimited worker never gives up on API failures;
+			// keep retrying regardless of how many have failed.
+			return false
+		}
 		if (this.parallelWorkerApiFailures <= PARALLEL_WORKER_MAX_API_RETRIES) {
 			return false
 		}
@@ -3453,17 +3502,28 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 
-			if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {
+			// Tenacity: resolve the effective consecutive-mistake limit from the
+			// saved `tenacityEnabled` / `tenacityMaxTries` / `tenacityUnlimited`
+			// settings (and YOLO implies unlimited). When Tenacity is off, this
+			// is the task's provider-derived `consecutiveMistakeLimit` (today's
+			// behavior). When Tenacity is on with a finite cap, it uses the
+			// user's `tenacityMaxTries` (default 10). When unlimited (explicit
+			// flag or YOLO), the limit is 0 and the gate below never fires.
+			// Consulted per iteration so a user's toggle takes effect on the
+			// very next loop entry, across all models and parallel batches.
+			const effectiveMistakeLimit = await this.getEffectiveMistakeLimit()
+
+			if (effectiveMistakeLimit > 0 && this.consecutiveMistakeCount >= effectiveMistakeLimit) {
 				// Track consecutive mistake errors in telemetry via event and PostHog exception tracking.
 				// The reason is "no_tools_used" because this limit is reached via initiateTaskLoop
 				// which increments consecutiveMistakeCount when the model doesn't use any tools.
 				TelemetryService.instance.captureConsecutiveMistakeError(this.taskId)
 				TelemetryService.instance.captureException(
 					new ConsecutiveMistakeError(
-						`Task reached consecutive mistake limit (${this.consecutiveMistakeLimit})`,
+						`Task reached consecutive mistake limit (${effectiveMistakeLimit})`,
 						this.taskId,
 						this.consecutiveMistakeCount,
-						this.consecutiveMistakeLimit,
+						effectiveMistakeLimit,
 						"no_tools_used",
 						this.apiConfiguration.apiProvider,
 						getModelId(this.apiConfiguration),
@@ -3472,7 +3532,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				// Nobody can answer a parallel worker's ask; fail it instead of blocking the batch.
 				if (this.parallelWorker) {
-					await this.failParallelWorker(`Stopped after ${this.consecutiveMistakeLimit} consecutive mistakes`)
+					await this.failParallelWorker(`Stopped after ${effectiveMistakeLimit} consecutive mistakes`)
 					return true
 				}
 
@@ -4603,10 +4663,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// consecutive mistake count to the limit so the existing mistake-limit flow
 						// (user ask, or parallel-worker fail) handles it on the next loop entry,
 						// instead of retrying the empty-response prompt indefinitely.
-						if (noToolDecision.askUser && this.consecutiveMistakeLimit > 0) {
+						// Uses the Tenacity-resolved effective limit so the "X tries" cap (or
+						// unlimited/YOLO) takes effect on this gate, not just the mistake-limit check.
+						if (noToolDecision.askUser && effectiveMistakeLimit > 0) {
 							this.consecutiveMistakeCount = Math.max(
 								this.consecutiveMistakeCount,
-								this.consecutiveMistakeLimit,
+								effectiveMistakeLimit,
 							)
 						}
 

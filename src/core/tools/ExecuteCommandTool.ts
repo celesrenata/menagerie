@@ -131,26 +131,42 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 			const provider = await task.providerRef.deref()
 			let dcgBlocked = false
 			let dcgBlockMessage: string | undefined
-			if (
-				provider?.contextProxy.getValue("destructiveCommandGuardEnabled") === true ||
-				provider?.contextProxy.getValue("yoloModeEnabled") === true
-			) {
-				const { ensureDcgInstalled, runDcg } = await import("../../services/destructive-command-guard")
-				// Resolve through the managed installer on use so an extension update
-				// automatically installs the newly pinned and verified DCG version.
-				const binaryPath = await ensureDcgInstalled(provider.context.globalStorageUri.fsPath)
-				if (!binaryPath) {
-					throw new Error(t("common:errors.destructiveCommandGuard.unavailable"))
-				}
-				const workingDirectory = customCwd
-					? path.isAbsolute(customCwd)
-						? customCwd
-						: path.resolve(task.cwd, customCwd)
-					: task.cwd
-				const dcgResult = await runDcg(binaryPath, canonicalCommand, workingDirectory)
-				dcgBlocked = dcgResult.decision === "deny"
-				if (dcgResult.decision === "deny") {
-					dcgBlockMessage = formatDcgBlockedMessage(dcgResult.reason, dcgResult.ruleId)
+			if (provider) {
+				const { ensureDcgInstalled, runDcg, isDcgDecisionBlocked } = await import(
+					"../../services/destructive-command-guard"
+				)
+				const { resolveEffectiveDcgGuardLevel } = await import("@roo-code/types")
+
+				// Resolve the DCG guard level from the saved `dcgGuardLevel`
+				// setting, the legacy `destructiveCommandGuardEnabled` boolean,
+				// and the YOLO toggle (forces at least `relaxed`).
+				const level = resolveEffectiveDcgGuardLevel(
+					provider.contextProxy.getValue("dcgGuardLevel"),
+					provider.contextProxy.getValue("destructiveCommandGuardEnabled") === true,
+					provider.contextProxy.getValue("yoloModeEnabled") === true,
+				)
+
+				if (level !== "off") {
+					// Resolve through the managed installer on use so an
+					// extension update automatically installs the newly pinned
+					// and verified DCG version.
+					const binaryPath = await ensureDcgInstalled(provider.context.globalStorageUri.fsPath)
+					if (!binaryPath) {
+						throw new Error(t("common:errors.destructiveCommandGuard.unavailable"))
+					}
+					const workingDirectory = customCwd
+						? path.isAbsolute(customCwd)
+							? customCwd
+							: path.resolve(task.cwd, customCwd)
+						: task.cwd
+					const dcgResult = await runDcg(binaryPath, canonicalCommand, workingDirectory)
+					// The guard "blocks" the command when its severity hits the
+					// level's threshold: relaxed (deny only) / standard (deny +
+					// warn) / strict (anything not a positive allow).
+					dcgBlocked = isDcgDecisionBlocked(dcgResult.severity, level)
+					if (dcgBlocked) {
+						dcgBlockMessage = formatDcgBlockedMessage(dcgResult.reason, dcgResult.ruleId)
+					}
 				}
 			}
 
