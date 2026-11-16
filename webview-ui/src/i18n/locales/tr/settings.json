@@ -31,6 +31,7 @@
 		"mcp": "MCP Sunucuları",
 		"worktrees": "Worktrees",
 		"autoApprove": "Oto-Onay",
+		"yolo": "YOLO",
 		"checkpoints": "Kontrol Noktaları",
 		"notifications": "Bildirimler",
 		"contextManagement": "Bağlam",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "Açıklama en fazla 1024 karakter olmalıdır"
 		},
 		"footer": "Skill Writer modu ile kendi becerilerinizi oluşturun. <MarketplaceLink>Modes Marketplace</MarketplaceLink>'de mevcut."
+	},
+	"yolo": {
+		"description": "Gözetimsiz çalıştırma seçenekleri. YOLO seçenekleri yalnızca YOLO modu açıkken etkilidir (sohbet açılır menüsü). Tenacity YOLO ile veya YOLO olmadan çalışır.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Tenacity'yi etkinleştir",
+				"description": "Hatalar, boş yanıtlar, döngü durmaları ve bağlam hatalarından sonra erken pes etmek yerine görevleri ve paralel worker'ları sürdürür. Tüm modeller ve worker'lar için geçerlidir."
+			},
+			"maxTries": {
+				"label": "Maks. deneme",
+				"description": "OmniRoute pool/tier1/* üzerine kilitli olmayan her şey (ücretli katmanlar para harcar) ve Sınırsız kapalıyken tier1 için yeniden deneme sınırı. 1-1000, varsayılan 10."
+			},
+			"unlimited": {
+				"label": "Sınırsız",
+				"description": "Asla pes etme. Yalnızca OmniRoute pool/tier1/* üzerine kilitliyken geçerlidir; başka bir katmanda veya sağlayıcıda yok sayılır ve Maks. deneme uygulanır."
+			}
+		},
+		"guard": {
+			"heading": "Yıkıcı komut koruması",
+			"level": {
+				"label": "Koruma düzeyi",
+				"description": "Yıkıcı komut korumasının ne kadarını engelleyeceği.",
+				"options": {
+					"hangLoose": "Hang loose: yalnızca kritik komutları engelle",
+					"relaxed": "Relaxed: korumanın reddettiği her komutu engelle",
+					"standard": "Standard: uyarı verilen komutları da engelle",
+					"strict": "Strict: açıkça izin verilmeyen her şeyi engelle"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO seçenekleri",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Çalışma alanı dışını otomatik onayla",
+				"description": "YOLO açıkken çalışma alanı dışındaki dosya okuma ve yazmalarını onaylar."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "İstek ve maliyet duraklamalarını atla",
+				"description": "YOLO açıkken maks. istek veya maks. maliyet sınırlarında duraklama."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Takip sorularını otomatik yanıtla",
+				"description": "YOLO açıkken takip sorularında önerilen yanıtı seçer."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Worker'lar herhangi bir aracı kullanabilir",
+				"description": "YOLO açıkken paralel worker'lar moddan bağımsız olarak herhangi bir araç grubundaki araçları kullanabilir. Devre dışı araçlar ve fan-out sınırları geçerli kalır."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Komut zaman aşımı yok",
+				"description": "YOLO açıkken ajanın çalıştırdığı komutları asla zaman aşımına uğratma."
+			}
+		}
 	}
 }

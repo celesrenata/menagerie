@@ -31,6 +31,7 @@
 		"mcp": "Serwery MCP",
 		"worktrees": "Worktrees",
 		"autoApprove": "Auto-zatwierdzanie",
+		"yolo": "YOLO",
 		"checkpoints": "Punkty kontrolne",
 		"notifications": "Powiadomienia",
 		"contextManagement": "Kontekst",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "Opis musi mieć maksymalnie 1024 znaki"
 		},
 		"footer": "Twórz własne umiejętności za pomocą trybu Skill Writer, dostępnego w <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"yolo": {
+		"description": "Opcje działania bez nadzoru. Opcje YOLO działają tylko przy włączonym trybie YOLO (menu czatu). Tenacity działa z YOLO lub bez niego.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Włącz Tenacity",
+				"description": "Utrzymuje zadania i równoległych workerów po błędach, pustych odpowiedziach, zatrzymaniach pętli i błędach kontekstu, zamiast poddawać się wcześnie. Dotyczy wszystkich modeli i workerów."
+			},
+			"maxTries": {
+				"label": "Maks. prób",
+				"description": "Limit ponowień dla wszystkiego, co nie jest zablokowane na OmniRoute pool/tier1/* (płatne poziomy kosztują) oraz dla tier1, gdy Bez limitu jest wyłączone. 1-1000, domyślnie 10."
+			},
+			"unlimited": {
+				"label": "Bez limitu",
+				"description": "Nigdy się nie poddawaj. Uwzględniane tylko przy blokadzie na OmniRoute pool/tier1/*; na każdym innym poziomie lub u dostawcy jest ignorowane i obowiązuje Maks. prób."
+			}
+		},
+		"guard": {
+			"heading": "Ochrona przed destrukcyjnymi poleceniami",
+			"level": {
+				"label": "Poziom ochrony",
+				"description": "Jak wiele blokuje ochrona przed destrukcyjnymi poleceniami.",
+				"options": {
+					"hangLoose": "Hang loose: blokuj tylko polecenia krytyczne",
+					"relaxed": "Relaxed: blokuj każde polecenie odrzucone przez ochronę",
+					"standard": "Standard: blokuj także polecenia z ostrzeżeniem",
+					"strict": "Strict: blokuj wszystko, co nie jest wyraźnie dozwolone"
+				}
+			}
+		},
+		"options": {
+			"heading": "Opcje YOLO",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Automatycznie zatwierdzaj poza obszarem roboczym",
+				"description": "Zatwierdzaj odczyt i zapis plików poza obszarem roboczym, gdy YOLO jest włączone."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Pomijaj pauzy żądań i kosztów",
+				"description": "Nie zatrzymuj się na limitach maks. żądań lub kosztów, gdy YOLO jest włączone."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Automatycznie odpowiadaj na pytania uzupełniające",
+				"description": "Wybieraj sugerowaną odpowiedź na pytania uzupełniające, gdy YOLO jest włączone."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Workery mogą używać dowolnego narzędzia",
+				"description": "Równoległe workery mogą używać narzędzi z dowolnej grupy niezależnie od trybu, gdy YOLO jest włączone. Wyłączone narzędzia i limity fan-out nadal obowiązują."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Brak limitu czasu poleceń",
+				"description": "Nigdy nie przerywaj poleceń uruchamianych przez agenta po czasie, gdy YOLO jest włączone."
+			}
+		}
 	}
 }

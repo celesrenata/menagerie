@@ -31,6 +31,7 @@
 		"mcp": "Serveurs MCP",
 		"worktrees": "Worktrees",
 		"autoApprove": "Auto-approbation",
+		"yolo": "YOLO",
 		"checkpoints": "Points de contrôle",
 		"notifications": "Notifications",
 		"contextManagement": "Contexte",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "La description doit contenir au maximum 1024 caractères"
 		},
 		"footer": "Créez vos propres skills avec le mode Skill Writer, disponible dans le <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"yolo": {
+		"description": "Options pour l'exécution sans surveillance. Les options YOLO ne s'appliquent que lorsque le mode YOLO est activé (menu du chat). Tenacity fonctionne avec ou sans YOLO.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Activer Tenacity",
+				"description": "Maintient les tâches et les workers parallèles en marche après des erreurs, réponses vides, arrêts de boucle et échecs de contexte, au lieu d'abandonner tôt. S'applique à tous les modèles et workers."
+			},
+			"maxTries": {
+				"label": "Essais max",
+				"description": "Limite de tentatives pour tout ce qui n'est pas verrouillé sur OmniRoute pool/tier1/* (les niveaux payants coûtent de l'argent) et pour tier1 quand Illimité est désactivé. 1-1000, 10 par défaut."
+			},
+			"unlimited": {
+				"label": "Illimité",
+				"description": "Ne jamais abandonner. Pris en compte uniquement en étant verrouillé sur OmniRoute pool/tier1/* ; sur tout autre niveau ou fournisseur, il est ignoré et Essais max s'applique."
+			}
+		},
+		"guard": {
+			"heading": "Garde des commandes destructrices",
+			"level": {
+				"label": "Niveau de garde",
+				"description": "Niveau de blocage de la garde des commandes destructrices.",
+				"options": {
+					"hangLoose": "Hang loose : bloquer uniquement les commandes critiques",
+					"relaxed": "Relaxed : bloquer toute commande refusée par la garde",
+					"standard": "Standard : bloquer aussi les commandes avec avertissement",
+					"strict": "Strict : bloquer tout ce qui n'est pas explicitement autorisé"
+				}
+			}
+		},
+		"options": {
+			"heading": "Options YOLO",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Approuver automatiquement hors de l'espace de travail",
+				"description": "Approuve les lectures et écritures de fichiers hors de l'espace de travail quand YOLO est activé."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Ignorer les pauses de requêtes et de coût",
+				"description": "Ne pas faire de pause aux limites de requêtes ou de coût max quand YOLO est activé."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Répondre automatiquement aux questions de suivi",
+				"description": "Choisit la réponse suggérée aux questions de suivi quand YOLO est activé."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Les workers peuvent utiliser n'importe quel outil",
+				"description": "Les workers parallèles peuvent utiliser les outils de tout groupe quel que soit le mode quand YOLO est activé. Les outils désactivés et les limites de fan-out restent appliqués."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Pas de délai d'expiration des commandes",
+				"description": "Ne jamais expirer les commandes exécutées par l'agent quand YOLO est activé."
+			}
+		}
 	}
 }

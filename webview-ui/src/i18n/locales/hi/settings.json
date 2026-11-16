@@ -31,6 +31,7 @@
 		"mcp": "एमसीपी सर्वर",
 		"worktrees": "Worktrees",
 		"autoApprove": "अनुमोदन",
+		"yolo": "YOLO",
 		"checkpoints": "चेकपॉइंट",
 		"notifications": "सूचनाएँ",
 		"contextManagement": "संदर्भ",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "विवरण 1024 वर्णों से अधिक नहीं होना चाहिए"
 		},
 		"footer": "Skill Writer मोड के साथ अपने स्वयं के Skills बनाएं, <MarketplaceLink>Modes Marketplace</MarketplaceLink> में उपलब्ध।"
+	},
+	"yolo": {
+		"description": "बिना निगरानी चलाने के विकल्प। YOLO विकल्प केवल तब लागू होते हैं जब YOLO मोड चालू हो (चैट ड्रॉपडाउन)। Tenacity YOLO के साथ या उसके बिना काम करता है।",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Tenacity सक्षम करें",
+				"description": "त्रुटियों, खाली प्रतिक्रियाओं, लूप रुकने और संदर्भ विफलताओं के बाद जल्दी हार मानने के बजाय कार्यों और समानांतर workers को चालू रखता है। सभी मॉडल और workers पर लागू।"
+			},
+			"maxTries": {
+				"label": "अधिकतम प्रयास",
+				"description": "OmniRoute pool/tier1/* पर लॉक न होने वाली हर चीज़ के लिए (सशुल्क टियर पैसे खर्च करते हैं), और असीमित बंद होने पर tier1 के लिए पुनः प्रयास सीमा। 1-1000, डिफ़ॉल्ट 10।"
+			},
+			"unlimited": {
+				"label": "असीमित",
+				"description": "कभी हार न मानें। केवल OmniRoute pool/tier1/* पर लॉक होने पर मान्य; किसी अन्य टियर या प्रदाता पर इसे अनदेखा किया जाता है और अधिकतम प्रयास लागू होता है।"
+			}
+		},
+		"guard": {
+			"heading": "विनाशकारी कमांड गार्ड",
+			"level": {
+				"label": "गार्ड स्तर",
+				"description": "विनाशकारी कमांड गार्ड कितना ब्लॉक करता है।",
+				"options": {
+					"hangLoose": "Hang loose: केवल गंभीर कमांड ब्लॉक करें",
+					"relaxed": "Relaxed: गार्ड द्वारा अस्वीकृत हर कमांड ब्लॉक करें",
+					"standard": "Standard: चेतावनी वाले कमांड भी ब्लॉक करें",
+					"strict": "Strict: जो स्पष्ट रूप से अनुमत नहीं है उसे ब्लॉक करें"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO विकल्प",
+			"yoloApproveOutsideWorkspace": {
+				"label": "कार्यक्षेत्र के बाहर स्वतः स्वीकृत करें",
+				"description": "YOLO चालू होने पर कार्यक्षेत्र के बाहर फ़ाइल पढ़ने और लिखने को स्वीकृत करें।"
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "अनुरोध और लागत विराम छोड़ें",
+				"description": "YOLO चालू होने पर अधिकतम अनुरोध या अधिकतम लागत सीमा पर न रुकें।"
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "अनुवर्ती प्रश्नों का स्वतः उत्तर दें",
+				"description": "YOLO चालू होने पर अनुवर्ती प्रश्नों के सुझाए गए उत्तर चुनें।"
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Workers कोई भी टूल उपयोग कर सकते हैं",
+				"description": "YOLO चालू होने पर समानांतर workers अपने मोड की परवाह किए बिना किसी भी टूल समूह के टूल उपयोग कर सकते हैं। अक्षम टूल और fan-out सीमाएँ फिर भी लागू रहती हैं।"
+			},
+			"yoloNoCommandTimeout": {
+				"label": "कमांड टाइमआउट नहीं",
+				"description": "YOLO चालू होने पर एजेंट द्वारा चलाए गए कमांड का कभी टाइमआउट न करें।"
+			}
+		}
 	}
 }

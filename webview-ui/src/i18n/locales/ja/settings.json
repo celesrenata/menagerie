@@ -31,6 +31,7 @@
 		"mcp": "MCPサーバー",
 		"worktrees": "Worktrees",
 		"autoApprove": "自動承認",
+		"yolo": "YOLO",
 		"checkpoints": "チェックポイント",
 		"notifications": "通知",
 		"contextManagement": "コンテキスト",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "説明は1024文字以内である必要があります"
 		},
 		"footer": "スキルライターモードで独自のスキルを作成します。<MarketplaceLink>モードマーケットプレイス</MarketplaceLink>で入手可能です。"
+	},
+	"yolo": {
+		"description": "無人実行のためのオプションです。YOLOオプションはYOLOモードがオンの間のみ有効です（チャットのドロップダウン）。TenacityはYOLOの有無にかかわらず動作します。",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Tenacityを有効にする",
+				"description": "エラー、空の応答、ループ停止、コンテキスト障害の後でも、早く諦めずにタスクと並列ワーカーを続行します。すべてのモデルとワーカーに適用されます。"
+			},
+			"maxTries": {
+				"label": "最大試行回数",
+				"description": "OmniRoute pool/tier1/* に固定されていないもの（有料ティアは料金がかかります）、および無制限がオフのときのtier1の再試行上限です。1〜1000、既定値は10。"
+			},
+			"unlimited": {
+				"label": "無制限",
+				"description": "決して諦めません。OmniRoute pool/tier1/* に固定されている間のみ有効で、それ以外のティアやプロバイダーでは無視され、最大試行回数が適用されます。"
+			}
+		},
+		"guard": {
+			"heading": "破壊的コマンドガード",
+			"level": {
+				"label": "ガードレベル",
+				"description": "破壊的コマンドガードがどこまでブロックするかを指定します。",
+				"options": {
+					"hangLoose": "Hang loose：重大なコマンドのみブロック",
+					"relaxed": "Relaxed：ガードが拒否するコマンドをすべてブロック",
+					"standard": "Standard：警告対象のコマンドもブロック",
+					"strict": "Strict：明示的に許可されていないものをすべてブロック"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLOオプション",
+			"yoloApproveOutsideWorkspace": {
+				"label": "ワークスペース外を自動承認",
+				"description": "YOLOがオンの間、ワークスペース外のファイル読み書きを承認します。"
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "リクエストとコストの一時停止をスキップ",
+				"description": "YOLOがオンの間、最大リクエスト数や最大コストの上限で一時停止しません。"
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "フォローアップ質問に自動回答",
+				"description": "YOLOがオンの間、フォローアップ質問の提案された回答を選択します。"
+			},
+			"yoloWorkersAnyTool": {
+				"label": "ワーカーが任意のツールを使用可能",
+				"description": "YOLOがオンの間、並列ワーカーはモードに関係なく任意のツールグループのツールを使えます。無効化されたツールとファンアウト制限は引き続き適用されます。"
+			},
+			"yoloNoCommandTimeout": {
+				"label": "コマンドのタイムアウトなし",
+				"description": "YOLOがオンの間、エージェントが実行するコマンドをタイムアウトさせません。"
+			}
+		}
 	}
 }

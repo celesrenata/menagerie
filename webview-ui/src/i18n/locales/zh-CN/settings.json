@@ -31,6 +31,7 @@
 		"mcp": "MCP 服务",
 		"worktrees": "Worktrees",
 		"autoApprove": "自动批准",
+		"yolo": "YOLO",
 		"checkpoints": "存档点",
 		"notifications": "通知",
 		"contextManagement": "上下文",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "描述不得超过1024个字符"
 		},
 		"footer": "使用技能编写器模式创建您自己的技能，可在 <MarketplaceLink>模式市集</MarketplaceLink> 中获得。"
+	},
+	"yolo": {
+		"description": "无人值守运行选项。YOLO 选项仅在 YOLO 模式开启时生效（聊天下拉菜单）。Tenacity 无论是否启用 YOLO 都可使用。",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "启用 Tenacity",
+				"description": "在出现错误、空响应、循环停止和上下文失败后，继续运行任务和并行 worker，而不是过早放弃。适用于所有模型和 worker。"
+			},
+			"maxTries": {
+				"label": "最大尝试次数",
+				"description": "适用于未锁定到 OmniRoute pool/tier1/* 的所有情况（付费层级会产生费用），以及关闭“无限制”时的 tier1 的重试上限。1-1000，默认 10。"
+			},
+			"unlimited": {
+				"label": "无限制",
+				"description": "永不放弃。仅在锁定到 OmniRoute pool/tier1/* 时生效；在其他层级或提供商上会被忽略，改用“最大尝试次数”。"
+			}
+		},
+		"guard": {
+			"heading": "破坏性命令防护",
+			"level": {
+				"label": "防护级别",
+				"description": "破坏性命令防护的拦截范围。",
+				"options": {
+					"hangLoose": "Hang loose：仅拦截关键命令",
+					"relaxed": "Relaxed：拦截防护拒绝的所有命令",
+					"standard": "Standard：同时拦截带警告的命令",
+					"strict": "Strict：拦截所有未明确允许的内容"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO 选项",
+			"yoloApproveOutsideWorkspace": {
+				"label": "工作区外自动批准",
+				"description": "YOLO 开启时，批准工作区外的文件读取和写入。"
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "跳过请求和费用暂停",
+				"description": "YOLO 开启时，不在最大请求数或最大费用限制处暂停。"
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "自动回答后续问题",
+				"description": "YOLO 开启时，自动选择后续问题的建议答案。"
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Worker 可使用任何工具",
+				"description": "YOLO 开启时，并行 worker 可不受模式限制使用任何工具组的工具。已禁用的工具和 fan-out 限制仍然生效。"
+			},
+			"yoloNoCommandTimeout": {
+				"label": "命令无超时",
+				"description": "YOLO 开启时，永不使代理运行的命令超时。"
+			}
+		}
 	}
 }

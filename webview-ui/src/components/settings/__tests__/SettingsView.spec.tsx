@@ -1009,3 +1009,42 @@ describe("SettingsView - Skill Hub settings", () => {
 		expect(lastUpdatedSettings()).not.toHaveProperty("skillHubApiKey")
 	})
 })
+
+describe("SettingsView - YOLO section", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	const updateSettingsCalls = () =>
+		(vscode.postMessage as any).mock.calls.filter((c: any[]) => c[0]?.type === "updateSettings")
+
+	it("buffers YOLO edits in cachedState and posts them only on Save", () => {
+		const { activateTab } = renderSettingsView()
+		activateTab("yolo")
+
+		fireEvent.click(screen.getByTestId("tenacity-enabled-checkbox"))
+		fireEvent.click(screen.getByTestId("yolo-workers-any-tool-checkbox"))
+		expect(updateSettingsCalls()).toHaveLength(0)
+
+		fireEvent.click(screen.getByTestId("save-button"))
+		const calls = updateSettingsCalls()
+		expect(calls).toHaveLength(1)
+		expect(calls[0][0].updatedSettings).toMatchObject({
+			tenacityEnabled: true,
+			yoloWorkersAnyTool: true,
+		})
+	})
+
+	it("round-trips saved true and false values", async () => {
+		const { activateTab } = renderSettingsView({
+			tenacityEnabled: true,
+			yoloApproveOutsideWorkspace: false,
+			settingsImportedAt: new Date().toISOString(),
+		})
+		activateTab("yolo")
+		await waitFor(() =>
+			expect((screen.getByTestId("tenacity-enabled-checkbox") as HTMLInputElement).checked).toBe(true),
+		)
+		expect((screen.getByTestId("yolo-approve-outside-workspace-checkbox") as HTMLInputElement).checked).toBe(false)
+	})
+})

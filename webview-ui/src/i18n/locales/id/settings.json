@@ -31,6 +31,7 @@
 		"mcp": "Server MCP",
 		"worktrees": "Worktrees",
 		"autoApprove": "Auto-Approve",
+		"yolo": "YOLO",
 		"checkpoints": "Checkpoint",
 		"notifications": "Notifikasi",
 		"contextManagement": "Konteks",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "Deskripsi harus 1024 karakter atau kurang"
 		},
 		"footer": "Buat skills Anda sendiri dengan mode Skill Writer, tersedia di <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"yolo": {
+		"description": "Opsi untuk menjalankan tanpa pengawasan. Opsi YOLO hanya berlaku saat mode YOLO aktif (dropdown chat). Tenacity berfungsi dengan atau tanpa YOLO.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Aktifkan Tenacity",
+				"description": "Menjaga tugas dan worker paralel tetap berjalan setelah error, respons kosong, penghentian loop, dan kegagalan konteks, alih-alih menyerah lebih awal. Berlaku untuk semua model dan worker."
+			},
+			"maxTries": {
+				"label": "Maks. percobaan",
+				"description": "Batas percobaan ulang untuk semua yang tidak terkunci ke OmniRoute pool/tier1/* (tier berbayar memakan biaya), dan untuk tier1 saat Tanpa batas nonaktif. 1-1000, default 10."
+			},
+			"unlimited": {
+				"label": "Tanpa batas",
+				"description": "Jangan pernah menyerah. Hanya berlaku saat terkunci ke OmniRoute pool/tier1/*; pada tier atau penyedia lain diabaikan dan Maks. percobaan berlaku."
+			}
+		},
+		"guard": {
+			"heading": "Penjaga perintah destruktif",
+			"level": {
+				"label": "Tingkat penjaga",
+				"description": "Seberapa banyak penjaga perintah destruktif memblokir.",
+				"options": {
+					"hangLoose": "Hang loose: blokir hanya perintah kritis",
+					"relaxed": "Relaxed: blokir setiap perintah yang ditolak penjaga",
+					"standard": "Standard: blokir juga perintah yang diberi peringatan",
+					"strict": "Strict: blokir semua yang tidak diizinkan secara eksplisit"
+				}
+			}
+		},
+		"options": {
+			"heading": "Opsi YOLO",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Setujui otomatis di luar workspace",
+				"description": "Setujui pembacaan dan penulisan file di luar workspace saat YOLO aktif."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Lewati jeda permintaan dan biaya",
+				"description": "Jangan berhenti pada batas permintaan atau biaya maksimum saat YOLO aktif."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Jawab otomatis pertanyaan lanjutan",
+				"description": "Pilih jawaban yang disarankan untuk pertanyaan lanjutan saat YOLO aktif."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Worker dapat memakai alat apa pun",
+				"description": "Worker paralel dapat memakai alat dari grup mana pun apa pun modenya saat YOLO aktif. Alat yang dinonaktifkan dan batas fan-out tetap berlaku."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Tanpa batas waktu perintah",
+				"description": "Jangan pernah menghentikan perintah yang dijalankan agen karena waktu habis saat YOLO aktif."
+			}
+		}
 	}
 }

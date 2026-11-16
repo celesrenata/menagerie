@@ -33,6 +33,7 @@
 		"worktrees": "Worktrees",
 		"skills": "Skills",
 		"autoApprove": "Auto-Approve",
+		"yolo": "YOLO",
 		"checkpoints": "Checkpoints",
 		"notifications": "Notifications",
 		"contextManagement": "Context",
@@ -1267,6 +1268,60 @@
 			"input": "Input",
 			"output": "Output",
 			"cacheReads": "Cache reads"
+		}
+	},
+	"yolo": {
+		"description": "Options for running unattended. YOLO options only take effect while YOLO mode is on (chat dropdown). Tenacity works with or without YOLO.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Enable Tenacity",
+				"description": "Keep tasks and parallel workers going after errors, empty responses, loop stops and context failures, instead of giving up early. Applies to all models and all workers."
+			},
+			"maxTries": {
+				"label": "Max tries",
+				"description": "Retry cap for anything that is not locked to OmniRoute pool/tier1/* (paid tiers cost money), and for tier1 when Unlimited is off. 1-1000, default 10."
+			},
+			"unlimited": {
+				"label": "Unlimited",
+				"description": "Never give up. Honored only while locked to OmniRoute pool/tier1/*; on any other tier or provider it is ignored and Max tries applies."
+			}
+		},
+		"guard": {
+			"heading": "Destructive command guard",
+			"level": {
+				"label": "Guard level",
+				"description": "How much the destructive command guard blocks.",
+				"options": {
+					"hangLoose": "Hang loose: block only critical commands",
+					"relaxed": "Relaxed: block every command the guard denies",
+					"standard": "Standard: also block commands the guard warns about",
+					"strict": "Strict: block anything not explicitly allowed"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO options",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Auto-approve outside workspace",
+				"description": "Approve file reads and writes outside the workspace while YOLO is on."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Skip request and cost pauses",
+				"description": "Do not pause at the max requests or max cost limits while YOLO is on."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Auto-answer follow-up questions",
+				"description": "Pick the suggested answer to follow-up questions while YOLO is on."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Workers can use any tool",
+				"description": "Parallel workers may use tools from any tool group regardless of their mode while YOLO is on. Disabled tools and fan-out limits still apply."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "No command timeout",
+				"description": "Never time out commands run by the agent while YOLO is on."
+			}
 		}
 	}
 }

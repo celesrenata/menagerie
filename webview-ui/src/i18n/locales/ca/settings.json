@@ -31,6 +31,7 @@
 		"mcp": "Servidors MCP",
 		"worktrees": "Worktrees",
 		"autoApprove": "Auto-aprovació",
+		"yolo": "YOLO",
 		"checkpoints": "Punts de control",
 		"notifications": "Notificacions",
 		"contextManagement": "Context",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "La descripció ha de tenir com a màxim 1024 caràcters"
 		},
 		"footer": "Crea les teves pròpies skills amb el mode Skill Writer, disponible al <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"yolo": {
+		"description": "Opcions per executar sense supervisió. Les opcions de YOLO només s'apliquen mentre el mode YOLO està activat (menú del xat). Tenacity funciona amb YOLO o sense.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Activa Tenacity",
+				"description": "Manté les tasques i els workers paral·lels en marxa després d'errors, respostes buides, aturades per bucle i errors de context, en lloc d'abandonar aviat. S'aplica a tots els models i workers."
+			},
+			"maxTries": {
+				"label": "Intents màxims",
+				"description": "Límit de reintents per a tot el que no estigui bloquejat a OmniRoute pool/tier1/* (els nivells de pagament costen diners) i per a tier1 quan Il·limitat està desactivat. 1-1000, per defecte 10."
+			},
+			"unlimited": {
+				"label": "Il·limitat",
+				"description": "No abandonis mai. Només s'aplica mentre estigui bloquejat a OmniRoute pool/tier1/*; en qualsevol altre nivell o proveïdor s'ignora i s'aplica Intents màxims."
+			}
+		},
+		"guard": {
+			"heading": "Protecció d'ordres destructives",
+			"level": {
+				"label": "Nivell de protecció",
+				"description": "Quant bloqueja la protecció d'ordres destructives.",
+				"options": {
+					"hangLoose": "Hang loose: bloqueja només les ordres crítiques",
+					"relaxed": "Relaxed: bloqueja totes les ordres que la protecció denega",
+					"standard": "Standard: bloqueja també les ordres amb avís",
+					"strict": "Strict: bloqueja tot el que no estigui permès explícitament"
+				}
+			}
+		},
+		"options": {
+			"heading": "Opcions de YOLO",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Aprova automàticament fora de l'espai de treball",
+				"description": "Aprova lectures i escriptures fora de l'espai de treball mentre YOLO està activat."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Omet pauses de sol·licituds i cost",
+				"description": "No facis pausa en els límits de sol·licituds o cost màxims mentre YOLO està activat."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Respon automàticament les preguntes de seguiment",
+				"description": "Tria la resposta suggerida a les preguntes de seguiment mentre YOLO està activat."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Els workers poden usar qualsevol eina",
+				"description": "Els workers paral·lels poden usar eines de qualsevol grup independentment del mode mentre YOLO està activat. Les eines desactivades i els límits de fan-out continuen aplicant-se."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Sense límit de temps d'ordres",
+				"description": "No esgotis mai el temps de les ordres executades per l'agent mentre YOLO està activat."
+			}
+		}
 	}
 }

@@ -31,6 +31,7 @@
 		"mcp": "Máy chủ MCP",
 		"worktrees": "Worktrees",
 		"autoApprove": "Phê duyệt",
+		"yolo": "YOLO",
 		"checkpoints": "Điểm kiểm tra",
 		"notifications": "Thông báo",
 		"contextManagement": "Ngữ cảnh",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "Mô tả phải có tối đa 1024 ký tự"
 		},
 		"footer": "Tạo các skill của riêng bạn với chế độ Skill Writer, có sẵn tại <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"yolo": {
+		"description": "Tùy chọn để chạy không cần giám sát. Tùy chọn YOLO chỉ có hiệu lực khi chế độ YOLO bật (menu thả xuống của chat). Tenacity hoạt động có hoặc không có YOLO.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Bật Tenacity",
+				"description": "Giữ tác vụ và worker song song tiếp tục chạy sau lỗi, phản hồi rỗng, dừng vòng lặp và lỗi ngữ cảnh, thay vì bỏ cuộc sớm. Áp dụng cho mọi mô hình và worker."
+			},
+			"maxTries": {
+				"label": "Số lần thử tối đa",
+				"description": "Giới hạn thử lại cho mọi thứ không bị khóa vào OmniRoute pool/tier1/* (tầng trả phí tốn tiền) và cho tier1 khi Không giới hạn tắt. 1-1000, mặc định 10."
+			},
+			"unlimited": {
+				"label": "Không giới hạn",
+				"description": "Không bao giờ bỏ cuộc. Chỉ có hiệu lực khi bị khóa vào OmniRoute pool/tier1/*; ở tầng hoặc nhà cung cấp khác sẽ bị bỏ qua và áp dụng Số lần thử tối đa."
+			}
+		},
+		"guard": {
+			"heading": "Bảo vệ lệnh phá hủy",
+			"level": {
+				"label": "Mức bảo vệ",
+				"description": "Mức độ chặn của bảo vệ lệnh phá hủy.",
+				"options": {
+					"hangLoose": "Hang loose: chỉ chặn lệnh nghiêm trọng",
+					"relaxed": "Relaxed: chặn mọi lệnh bị bảo vệ từ chối",
+					"standard": "Standard: chặn cả lệnh có cảnh báo",
+					"strict": "Strict: chặn mọi thứ không được cho phép rõ ràng"
+				}
+			}
+		},
+		"options": {
+			"heading": "Tùy chọn YOLO",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Tự động phê duyệt ngoài không gian làm việc",
+				"description": "Phê duyệt đọc và ghi tệp ngoài không gian làm việc khi YOLO bật."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Bỏ qua tạm dừng yêu cầu và chi phí",
+				"description": "Không tạm dừng tại giới hạn yêu cầu hoặc chi phí tối đa khi YOLO bật."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Tự động trả lời câu hỏi tiếp theo",
+				"description": "Chọn câu trả lời được gợi ý cho câu hỏi tiếp theo khi YOLO bật."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Worker có thể dùng mọi công cụ",
+				"description": "Worker song song có thể dùng công cụ của bất kỳ nhóm nào bất kể chế độ khi YOLO bật. Công cụ bị tắt và giới hạn fan-out vẫn áp dụng."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Không giới hạn thời gian lệnh",
+				"description": "Không bao giờ hết thời gian chờ các lệnh do agent chạy khi YOLO bật."
+			}
+		}
 	}
 }

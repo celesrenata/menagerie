@@ -31,6 +31,7 @@
 		"mcp": "MCP-servers",
 		"worktrees": "Worktrees",
 		"autoApprove": "Auto-goedkeuren",
+		"yolo": "YOLO",
 		"checkpoints": "Checkpoints",
 		"notifications": "Meldingen",
 		"contextManagement": "Context",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "Beschrijving moet maximaal 1024 tekens zijn"
 		},
 		"footer": "Maak je eigen skills met de Skill Writer modus, beschikbaar in de <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"yolo": {
+		"description": "Opties voor onbeheerd draaien. YOLO-opties werken alleen als de YOLO-modus aan staat (chat-dropdown). Tenacity werkt met of zonder YOLO.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Tenacity inschakelen",
+				"description": "Houdt taken en parallelle workers draaiende na fouten, lege antwoorden, lus-stops en contextfouten, in plaats van vroeg op te geven. Geldt voor alle modellen en workers."
+			},
+			"maxTries": {
+				"label": "Max. pogingen",
+				"description": "Limiet voor herhaalpogingen voor alles wat niet vergrendeld is op OmniRoute pool/tier1/* (betaalde tiers kosten geld), en voor tier1 als Onbeperkt uit staat. 1-1000, standaard 10."
+			},
+			"unlimited": {
+				"label": "Onbeperkt",
+				"description": "Geef nooit op. Alleen van kracht zolang vergrendeld op OmniRoute pool/tier1/*; bij elke andere tier of provider wordt het genegeerd en geldt Max. pogingen."
+			}
+		},
+		"guard": {
+			"heading": "Bescherming tegen destructieve opdrachten",
+			"level": {
+				"label": "Beschermingsniveau",
+				"description": "Hoeveel de bescherming tegen destructieve opdrachten blokkeert.",
+				"options": {
+					"hangLoose": "Hang loose: alleen kritieke opdrachten blokkeren",
+					"relaxed": "Relaxed: elke door de bescherming geweigerde opdracht blokkeren",
+					"standard": "Standard: ook opdrachten met waarschuwing blokkeren",
+					"strict": "Strict: alles blokkeren wat niet expliciet is toegestaan"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO-opties",
+			"yoloApproveOutsideWorkspace": {
+				"label": "Automatisch goedkeuren buiten werkruimte",
+				"description": "Keur bestanden lezen en schrijven buiten de werkruimte goed zolang YOLO aan staat."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "Pauzes voor verzoeken en kosten overslaan",
+				"description": "Niet pauzeren bij de limieten voor max. verzoeken of max. kosten zolang YOLO aan staat."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "Vervolgvragen automatisch beantwoorden",
+				"description": "Kies het voorgestelde antwoord op vervolgvragen zolang YOLO aan staat."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Workers mogen elk hulpmiddel gebruiken",
+				"description": "Parallelle workers mogen hulpmiddelen uit elke groep gebruiken, ongeacht hun modus, zolang YOLO aan staat. Uitgeschakelde hulpmiddelen en fan-outlimieten blijven gelden."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "Geen opdracht-timeout",
+				"description": "Laat door de agent uitgevoerde opdrachten nooit verlopen zolang YOLO aan staat."
+			}
+		}
 	}
 }

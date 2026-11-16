@@ -31,6 +31,7 @@
 		"mcp": "MCP 서버",
 		"worktrees": "Worktrees",
 		"autoApprove": "자동 승인",
+		"yolo": "YOLO",
 		"checkpoints": "체크포인트",
 		"notifications": "알림",
 		"contextManagement": "컨텍스트",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "설명은 1024자 이하여야 합니다"
 		},
 		"footer": "스킬 작성자 모드로 자신만의 스킬을 만들 수 있습니다. <MarketplaceLink>모드 마켓플레이스</MarketplaceLink>에서 사용 가능합니다."
+	},
+	"yolo": {
+		"description": "무인 실행 옵션입니다. YOLO 옵션은 YOLO 모드가 켜져 있을 때만 적용됩니다(채팅 드롭다운). Tenacity는 YOLO와 관계없이 작동합니다.",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "Tenacity 사용",
+				"description": "오류, 빈 응답, 루프 중단, 컨텍스트 실패 후에도 일찍 포기하지 않고 작업과 병렬 워커를 계속 진행합니다. 모든 모델과 워커에 적용됩니다."
+			},
+			"maxTries": {
+				"label": "최대 시도 횟수",
+				"description": "OmniRoute pool/tier1/*에 고정되지 않은 모든 경우(유료 티어는 비용 발생)와 무제한이 꺼져 있을 때의 tier1에 대한 재시도 한도입니다. 1-1000, 기본값 10."
+			},
+			"unlimited": {
+				"label": "무제한",
+				"description": "절대 포기하지 않습니다. OmniRoute pool/tier1/*에 고정된 동안에만 적용되며, 다른 티어나 공급자에서는 무시되고 최대 시도 횟수가 적용됩니다."
+			}
+		},
+		"guard": {
+			"heading": "파괴적 명령 가드",
+			"level": {
+				"label": "가드 수준",
+				"description": "파괴적 명령 가드가 차단하는 범위입니다.",
+				"options": {
+					"hangLoose": "Hang loose: 치명적인 명령만 차단",
+					"relaxed": "Relaxed: 가드가 거부하는 모든 명령 차단",
+					"standard": "Standard: 경고 명령도 차단",
+					"strict": "Strict: 명시적으로 허용되지 않은 모든 것 차단"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO 옵션",
+			"yoloApproveOutsideWorkspace": {
+				"label": "작업 공간 외부 자동 승인",
+				"description": "YOLO가 켜져 있을 때 작업 공간 외부의 파일 읽기와 쓰기를 승인합니다."
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "요청 및 비용 일시 중지 건너뛰기",
+				"description": "YOLO가 켜져 있을 때 최대 요청 수나 최대 비용 한도에서 멈추지 않습니다."
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "후속 질문 자동 답변",
+				"description": "YOLO가 켜져 있을 때 후속 질문의 제안된 답변을 선택합니다."
+			},
+			"yoloWorkersAnyTool": {
+				"label": "워커가 모든 도구 사용 가능",
+				"description": "YOLO가 켜져 있을 때 병렬 워커는 모드와 관계없이 모든 도구 그룹의 도구를 사용할 수 있습니다. 비활성화된 도구와 팬아웃 제한은 계속 적용됩니다."
+			},
+			"yoloNoCommandTimeout": {
+				"label": "명령 시간 제한 없음",
+				"description": "YOLO가 켜져 있을 때 에이전트가 실행하는 명령을 시간 초과시키지 않습니다."
+			}
+		}
 	}
 }

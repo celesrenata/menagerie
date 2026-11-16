@@ -31,6 +31,7 @@
 		"mcp": "MCP 伺服器",
 		"worktrees": "Worktree",
 		"autoApprove": "自動核准",
+		"yolo": "YOLO",
 		"checkpoints": "檢查點",
 		"notifications": "通知",
 		"contextManagement": "上下文",
@@ -1192,5 +1193,59 @@
 			"descriptionTooLong": "說明不得超過1024個字元"
 		},
 		"footer": "使用技能編寫器模式建立您自己的技能，可在 <MarketplaceLink>模式市集</MarketplaceLink> 中取得。"
+	},
+	"yolo": {
+		"description": "無人值守執行選項。YOLO 選項僅在 YOLO 模式開啟時生效（聊天下拉選單）。Tenacity 無論是否啟用 YOLO 都可使用。",
+		"tenacity": {
+			"heading": "Tenacity",
+			"enabled": {
+				"label": "啟用 Tenacity",
+				"description": "在發生錯誤、空回應、迴圈停止和上下文失敗後，繼續執行任務和平行 worker，而不是過早放棄。適用於所有模型和 worker。"
+			},
+			"maxTries": {
+				"label": "最大嘗試次數",
+				"description": "適用於未鎖定到 OmniRoute pool/tier1/* 的所有情況（付費層級會產生費用），以及關閉「無限制」時的 tier1 的重試上限。1-1000，預設 10。"
+			},
+			"unlimited": {
+				"label": "無限制",
+				"description": "永不放棄。僅在鎖定到 OmniRoute pool/tier1/* 時生效；在其他層級或提供者上會被忽略，改用「最大嘗試次數」。"
+			}
+		},
+		"guard": {
+			"heading": "破壞性指令防護",
+			"level": {
+				"label": "防護等級",
+				"description": "破壞性指令防護的攔截範圍。",
+				"options": {
+					"hangLoose": "Hang loose：僅攔截關鍵指令",
+					"relaxed": "Relaxed：攔截防護拒絕的所有指令",
+					"standard": "Standard：同時攔截帶警告的指令",
+					"strict": "Strict：攔截所有未明確允許的內容"
+				}
+			}
+		},
+		"options": {
+			"heading": "YOLO 選項",
+			"yoloApproveOutsideWorkspace": {
+				"label": "工作區外自動核准",
+				"description": "YOLO 開啟時，核准工作區外的檔案讀取和寫入。"
+			},
+			"yoloSkipRequestCostPauses": {
+				"label": "略過請求和費用暫停",
+				"description": "YOLO 開啟時，不在最大請求數或最大費用限制處暫停。"
+			},
+			"yoloAutoAnswerFollowups": {
+				"label": "自動回答後續問題",
+				"description": "YOLO 開啟時，自動選擇後續問題的建議答案。"
+			},
+			"yoloWorkersAnyTool": {
+				"label": "Worker 可使用任何工具",
+				"description": "YOLO 開啟時，平行 worker 可不受模式限制使用任何工具群組的工具。已停用的工具和 fan-out 限制仍然生效。"
+			},
+			"yoloNoCommandTimeout": {
+				"label": "指令無逾時",
+				"description": "YOLO 開啟時，永不使代理執行的指令逾時。"
+			}
+		}
 	}
 }

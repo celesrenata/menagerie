@@ -30,6 +30,7 @@ import {
 	GraduationCap,
 	ScrollText,
 	Waypoints,
+	Zap,
 } from "lucide-react"
 
 import {
@@ -77,6 +78,7 @@ import { SectionHeader } from "./SectionHeader"
 import ApiConfigManager from "./ApiConfigManager"
 import ApiOptions from "./ApiOptions"
 import { AutoApproveSettings } from "./AutoApproveSettings"
+import { YoloSettings } from "./YoloSettings"
 import { OmniRouteSettings } from "./OmniRouteSettings"
 import { CheckpointSettings } from "./CheckpointSettings"
 import { NotificationSettings } from "./NotificationSettings"
@@ -113,6 +115,7 @@ export const sectionNames = [
 	"omniroute",
 	"providers",
 	"autoApprove",
+	"yolo",
 	"slashCommands",
 	"skills",
 	"rules",
@@ -175,6 +178,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		language,
 		alwaysAllowExecute,
 		destructiveCommandGuardEnabled,
+		tenacityEnabled,
+		tenacityMaxTries,
+		tenacityUnlimited,
+		dcgGuardLevel,
+		yoloApproveOutsideWorkspace,
+		yoloSkipRequestCostPauses,
+		yoloAutoAnswerFollowups,
+		yoloWorkersAnyTool,
+		yoloNoCommandTimeout,
 		alwaysAllowMcp,
 		alwaysAllowModeSwitch,
 		alwaysAllowSubtasks,
@@ -338,7 +350,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		})
 	}, [])
 
-
 	const setDebug = useCallback((debug: boolean) => {
 		setCachedState((prevState) => {
 			if (prevState.debug === debug) {
@@ -411,6 +422,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					allowedWriteFiles: allowedWriteFiles ?? [],
 					alwaysAllowExecute: alwaysAllowExecute ?? undefined,
 					destructiveCommandGuardEnabled: destructiveCommandGuardEnabled ?? false,
+					tenacityEnabled,
+					tenacityMaxTries,
+					tenacityUnlimited,
+					dcgGuardLevel,
+					yoloApproveOutsideWorkspace,
+					yoloSkipRequestCostPauses,
+					yoloAutoAnswerFollowups,
+					yoloWorkersAnyTool,
+					yoloNoCommandTimeout,
 					alwaysAllowMcp,
 					alwaysAllowModeSwitch,
 					allowedCommands: allowedCommands ?? [],
@@ -589,6 +609,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "slashCommands", icon: SquareSlash },
 			{ id: "rules", icon: ScrollText },
 			{ id: "autoApprove", icon: CheckCheck },
+			{ id: "yolo", icon: Zap },
 			{ id: "mcp", icon: Server },
 			{ id: "checkpoints", icon: GitCommitVertical },
 			{ id: "notifications", icon: Bell },
@@ -904,6 +925,21 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							/>
 						)}
 
+						{/* YOLO Section */}
+						{renderTab === "yolo" && (
+							<YoloSettings
+								tenacityEnabled={tenacityEnabled}
+								tenacityMaxTries={tenacityMaxTries}
+								tenacityUnlimited={tenacityUnlimited}
+								dcgGuardLevel={dcgGuardLevel}
+								yoloApproveOutsideWorkspace={yoloApproveOutsideWorkspace}
+								yoloSkipRequestCostPauses={yoloSkipRequestCostPauses}
+								yoloAutoAnswerFollowups={yoloAutoAnswerFollowups}
+								yoloWorkersAnyTool={yoloWorkersAnyTool}
+								yoloNoCommandTimeout={yoloNoCommandTimeout}
+								setCachedStateField={setCachedStateField}
+							/>
+						)}
 						{/* Slash Commands Section */}
 						{renderTab === "slashCommands" && <SlashCommandsSettings />}
 
@@ -1061,12 +1097,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						)}
 
 						{/* About Section */}
-						{renderTab === "about" && (
-							<About
-								debug={cachedState.debug}
-								setDebug={setDebug}
-							/>
-						)}
+						{renderTab === "about" && <About debug={cachedState.debug} setDebug={setDebug} />}
 					</SearchIndexProvider>
 				</TabContent>
 			</div>
