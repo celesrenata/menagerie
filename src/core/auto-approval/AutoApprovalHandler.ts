@@ -26,7 +26,7 @@ export class AutoApprovalHandler {
 			data: string,
 		) => Promise<{ response: ClineAskResponse; text?: string; images?: string[] }>,
 	): Promise<AutoApprovalResult> {
-		if (state?.yoloModeEnabled === true) {
+		if (state?.yoloModeEnabled === true && state.yoloSkipRequestCostPauses !== false) {
 			return { shouldProceed: true, requiresApproval: false }
 		}
 		// Check request count limit

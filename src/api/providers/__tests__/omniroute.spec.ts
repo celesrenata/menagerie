@@ -2,12 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import axios from "axios"
 
-import { providerIdentifiers, omniRouteCatalogEntrySchema, omniRouteComboEntrySchema } from "@roo-code/types"
+import {
+	providerIdentifiers,
+	omniRouteCatalogEntrySchema,
+	omniRouteComboEntrySchema,
+	type ProviderSettings,
+} from "@roo-code/types"
 
 import {
 	fetchOmniRouteCatalog,
 	applyOmniRouteTierToModel,
 	isOmniRoute,
+	isLockedToOmniRouteTier1,
 	omniRouteRequestHeaders,
 	omniRouteTokenizedBaseUrl,
 	refreshPublishedCatalogIfStale,
@@ -251,9 +257,9 @@ describe("omniRouteComboEntrySchema", () => {
 
 	it("rejects an out-of-range contextWindow and an unknown kind", () => {
 		expect(omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", contextWindow: 0 }).success).toBe(false)
-		expect(
-			omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", contextWindow: 16_777_217 }).success,
-		).toBe(false)
+		expect(omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", contextWindow: 16_777_217 }).success).toBe(
+			false,
+		)
 		expect(omniRouteComboEntrySchema.safeParse({ name: "hybrid/code", kind: "mystery" }).success).toBe(false)
 	})
 })
@@ -337,7 +343,6 @@ describe("fetchOmniRouteCatalog", () => {
 	})
 })
 
-
 describe("resolveOmniRouteContextWindow", () => {
 	afterEach(() => {
 		__resetPublishedCatalogCache()
@@ -411,7 +416,9 @@ describe("resolveOmniRouteContextWindow", () => {
 				}),
 			})
 			refreshPublishedCatalogIfStale(serverUrl)
-			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/nope", undefined, serverUrl)).toBe(7777))
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/nope", undefined, serverUrl)).toBe(7777),
+			)
 			// A different server URL has no cached catalog -> 128k default for the unknown route.
 			expect(resolveOmniRouteContextWindow("hybrid/nope", undefined, "https://other.example")).toBe(
 				OMNIROUTE_DEFAULT_CONTEXT_WINDOW,
@@ -448,7 +455,9 @@ describe("resolveOmniRouteContextWindow", () => {
 			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
 
 			refreshPublishedCatalogIfStale(serverUrl)
-			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000),
+			)
 
 			// Advance 61 minutes: now stale. The refresh is fire-and-forget, so the read
 			// taken on this same tick still returns the OLD cached value (no first-request delay).
@@ -457,7 +466,9 @@ describe("resolveOmniRouteContextWindow", () => {
 			expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000)
 
 			// A later read, after the background fetch resolves, gets the fresh value.
-			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(60000))
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(60000),
+			)
 			expect(fetchCatalog).toHaveBeenCalledTimes(2)
 		})
 
@@ -477,7 +488,9 @@ describe("resolveOmniRouteContextWindow", () => {
 			expect(fetchCatalog).toHaveBeenCalledTimes(1)
 
 			resolveFetch?.({ status: "connected", entries: [{ id: "hybrid/code", contextWindow: 50000 }] })
-			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000),
+			)
 		})
 	})
 
@@ -493,7 +506,9 @@ describe("resolveOmniRouteContextWindow", () => {
 			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
 
 			refreshPublishedCatalogIfStale(serverUrl)
-			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000),
+			)
 
 			clock += 61 * 60 * 1000
 			refreshPublishedCatalogIfStale(serverUrl)
@@ -512,7 +527,9 @@ describe("resolveOmniRouteContextWindow", () => {
 			__setPublishedCatalogDeps({ now: () => clock, fetchCatalog })
 
 			refreshPublishedCatalogIfStale(serverUrl)
-			await vi.waitFor(() => expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000))
+			await vi.waitFor(() =>
+				expect(resolveOmniRouteContextWindow("hybrid/code", undefined, serverUrl)).toBe(50000),
+			)
 
 			clock += 61 * 60 * 1000
 			refreshPublishedCatalogIfStale(serverUrl)
@@ -550,5 +567,25 @@ describe("applyOmniRouteTierToModel", () => {
 		expect(applyOmniRouteTierToModel("auto/best-coding", 3)).toBe("auto/best-coding")
 		expect(applyOmniRouteTierToModel("local/m5-reader", 3)).toBe("local/m5-reader")
 		expect(applyOmniRouteTierToModel("hybrid/unknownrole", 3)).toBe("hybrid/unknownrole")
+	})
+})
+
+describe("isLockedToOmniRouteTier1", () => {
+	const cfg = (openAiModelId: string, omniRouteTier?: number, omni = true): ProviderSettings => ({
+		apiProvider: providerIdentifiers.openai,
+		openAiIsOmniRoute: omni,
+		openAiModelId,
+		omniRouteTier,
+	})
+	it.each([
+		["pool/tier1/code", undefined, true, true],
+		["hybrid/code", 1, true, true],
+		["pool/tier2/code", undefined, true, false],
+		["pool/tier2/code", 1, true, true],
+		["auto/best-coding", 1, true, false],
+		["local/foo", 1, true, false],
+		["pool/tier1/code", undefined, false, false],
+	])("%s tier=%s omni=%s => %s", (model, tier, omni, expected) => {
+		expect(isLockedToOmniRouteTier1(cfg(model, tier, omni))).toBe(expected)
 	})
 })

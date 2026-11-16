@@ -52,6 +52,13 @@ import {
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+	DEFAULT_TENACITY_MAX_TRIES,
+	DEFAULT_YOLO_APPROVE_OUTSIDE_WORKSPACE,
+	DEFAULT_YOLO_SKIP_REQUEST_COST_PAUSES,
+	DEFAULT_YOLO_AUTO_ANSWER_FOLLOWUPS,
+	DEFAULT_YOLO_WORKERS_ANY_TOOL,
+	DEFAULT_YOLO_NO_COMMAND_TIMEOUT,
+	normalizeDcgGuardLevel,
 	DEFAULT_OMNIROUTE_PUBLISHED_LANE_ROUTING,
 	DEFAULT_PARALLELISM_MODE,
 	DEFAULT_GRANITE_WORKFLOW_ENABLED,
@@ -3062,9 +3069,7 @@ export class ClineProvider
 	 * provided field — including an explicit `[]` — replaces that category). An
 	 * unset value is a byte-for-byte no-op of the default.
 	 */
-	public getEffectiveReadDenylist(
-		stored: GlobalSettings["parallelReadDenylist"] | undefined,
-	): ReadDenylistConfig {
+	public getEffectiveReadDenylist(stored: GlobalSettings["parallelReadDenylist"] | undefined): ReadDenylistConfig {
 		return mergeReadDenylist(stored, DEFAULT_READ_DENYLIST)
 	}
 
@@ -3102,6 +3107,15 @@ export class ClineProvider
 			allowedWriteFiles,
 			alwaysAllowExecute,
 			destructiveCommandGuardEnabled,
+			dcgGuardLevel,
+			tenacityEnabled,
+			tenacityMaxTries,
+			tenacityUnlimited,
+			yoloApproveOutsideWorkspace,
+			yoloSkipRequestCostPauses,
+			yoloAutoAnswerFollowups,
+			yoloWorkersAnyTool,
+			yoloNoCommandTimeout,
 			yoloModeEnabled,
 			omniRouteTier,
 			openAiOmniRoutePublishedLaneRouting,
@@ -3286,6 +3300,15 @@ export class ClineProvider
 			allowedWriteFiles: allowedWriteFiles ?? [],
 			alwaysAllowExecute: alwaysAllowExecute ?? false,
 			destructiveCommandGuardEnabled,
+			dcgGuardLevel: normalizeDcgGuardLevel(dcgGuardLevel),
+			tenacityEnabled: tenacityEnabled ?? false,
+			tenacityMaxTries: tenacityMaxTries ?? DEFAULT_TENACITY_MAX_TRIES,
+			tenacityUnlimited: tenacityUnlimited ?? false,
+			yoloApproveOutsideWorkspace: yoloApproveOutsideWorkspace ?? DEFAULT_YOLO_APPROVE_OUTSIDE_WORKSPACE,
+			yoloSkipRequestCostPauses: yoloSkipRequestCostPauses ?? DEFAULT_YOLO_SKIP_REQUEST_COST_PAUSES,
+			yoloAutoAnswerFollowups: yoloAutoAnswerFollowups ?? DEFAULT_YOLO_AUTO_ANSWER_FOLLOWUPS,
+			yoloWorkersAnyTool: yoloWorkersAnyTool ?? DEFAULT_YOLO_WORKERS_ANY_TOOL,
+			yoloNoCommandTimeout: yoloNoCommandTimeout ?? DEFAULT_YOLO_NO_COMMAND_TIMEOUT,
 			yoloModeEnabled: yoloModeEnabled ?? false,
 			// FEAT-005: round-trip the saved cost tier back to the webview (undefined = server default).
 			omniRouteTier,
@@ -3326,8 +3349,7 @@ export class ClineProvider
 			allowedMaxRequests,
 			allowedMaxCost,
 			autoCondenseContext: autoCondenseContext ?? true,
-			autoCondenseContextPercent:
-				autoCondenseContextPercent ?? DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
+			autoCondenseContextPercent: autoCondenseContextPercent ?? DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
@@ -3554,6 +3576,16 @@ export class ClineProvider
 			alwaysAllowExecute: stateValues.alwaysAllowExecute ?? false,
 			destructiveCommandGuardEnabled:
 				stateValues.destructiveCommandGuardEnabled ?? DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
+			dcgGuardLevel: normalizeDcgGuardLevel(stateValues.dcgGuardLevel),
+			tenacityEnabled: stateValues.tenacityEnabled ?? false,
+			tenacityMaxTries: stateValues.tenacityMaxTries ?? DEFAULT_TENACITY_MAX_TRIES,
+			tenacityUnlimited: stateValues.tenacityUnlimited ?? false,
+			yoloApproveOutsideWorkspace:
+				stateValues.yoloApproveOutsideWorkspace ?? DEFAULT_YOLO_APPROVE_OUTSIDE_WORKSPACE,
+			yoloSkipRequestCostPauses: stateValues.yoloSkipRequestCostPauses ?? DEFAULT_YOLO_SKIP_REQUEST_COST_PAUSES,
+			yoloAutoAnswerFollowups: stateValues.yoloAutoAnswerFollowups ?? DEFAULT_YOLO_AUTO_ANSWER_FOLLOWUPS,
+			yoloWorkersAnyTool: stateValues.yoloWorkersAnyTool ?? DEFAULT_YOLO_WORKERS_ANY_TOOL,
+			yoloNoCommandTimeout: stateValues.yoloNoCommandTimeout ?? DEFAULT_YOLO_NO_COMMAND_TIMEOUT,
 			yoloModeEnabled: stateValues.yoloModeEnabled ?? false,
 			// FEAT-005: undefined means "use the OmniRoute server default" (no X-OmniRoute-Tier header).
 			omniRouteTier: stateValues.omniRouteTier,
@@ -3595,8 +3627,7 @@ export class ClineProvider
 			allowedMaxRequests: stateValues.allowedMaxRequests,
 			allowedMaxCost: stateValues.allowedMaxCost,
 			autoCondenseContext: stateValues.autoCondenseContext ?? true,
-			autoCondenseContextPercent:
-				stateValues.autoCondenseContextPercent ?? DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
+			autoCondenseContextPercent: stateValues.autoCondenseContextPercent ?? DEFAULT_AUTO_CONDENSE_CONTEXT_PERCENT,
 			taskHistory: includeTaskHistory ? this.taskHistoryStore.getAll() : [],
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,

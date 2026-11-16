@@ -5,43 +5,62 @@ import { type DcgGuardLevel } from "@roo-code/types"
 import { DCG_MAX_OUTPUT_BYTES, DCG_RUN_TIMEOUT_MS } from "./constants"
 
 /**
- * Severity of a DCG verdict, derived from the decision string DCG emits
- * (`allow` / `log` / `warn` / `deny`). Callers map this onto a guard level:
- * `relaxed` blocks on `deny`, `standard` also on `warn`, `strict` on anything
- * that is not a positive `allow`.
+ * Verdict DCG emits (`allow` / `log` / `warn` / `deny`). Callers map this onto a
+ * guard level (see {@link isDcgDecisionBlocked}).
  */
-export type DcgSeverity = "allow" | "log" | "warn" | "deny"
+export type DcgVerdict = "allow" | "log" | "warn" | "deny"
 
-export type DcgDecision = { decision: "allow" | "deny"; reason?: string; ruleId?: string } & {
-	/** Raw severity reported by DCG (allow/log/warn/deny). */
-	severity: DcgSeverity
+/** Per-rule severity DCG attaches to a verdict. */
+export type DcgRuleSeverity = "critical" | "high" | "medium" | "low"
+
+export type DcgDecision = {
+	decision: "allow" | "deny"
+	reason?: string
+	ruleId?: string
+	/** Raw verdict reported by DCG. */
+	verdict: DcgVerdict
+	/** Rule severity from the payload, when present. */
+	ruleSeverity?: DcgRuleSeverity
 }
 
 type DcgJsonOutput = {
 	schema_version?: number | string
 	decision?: string
+	severity?: string
 	reason?: string
 	rule_id?: string
 	pattern_name?: string
 	pack_id?: string
 }
 
+const RULE_SEVERITIES: readonly string[] = ["critical", "high", "medium", "low"]
+
+function parseRuleSeverity(value: string | undefined): DcgRuleSeverity | undefined {
+	return value !== undefined && RULE_SEVERITIES.includes(value) ? (value as DcgRuleSeverity) : undefined
+}
+
 /**
- * Maps a DCG severity onto a guard level: whether the verdict blocks the
- * command. `off` never blocks (guard disabled); `relaxed` blocks on `deny`
- * only (today's behavior); `standard` also blocks on `warn`; `strict` blocks on
- * anything DCG does not positively `allow` (`deny`, `warn`, `log`).
+ * Whether a DCG decision blocks the command at a guard level. `"off"` never
+ * blocks (guard disabled). `hangLoose` blocks only a `deny` with `critical`
+ * (or missing, fail-safe) rule severity. `relaxed` blocks any `deny`.
+ * `standard` also blocks `warn`. `strict` blocks anything but a positive `allow`.
  */
-export function isDcgDecisionBlocked(severity: DcgSeverity, level: DcgGuardLevel): boolean {
+export function isDcgDecisionBlocked(
+	result: Pick<DcgDecision, "verdict" | "ruleSeverity">,
+	level: DcgGuardLevel | "off",
+): boolean {
+	const { verdict, ruleSeverity } = result
 	switch (level) {
 		case "off":
 			return false
+		case "hangLoose":
+			return verdict === "deny" && (ruleSeverity === undefined || ruleSeverity === "critical")
 		case "relaxed":
-			return severity === "deny"
+			return verdict === "deny"
 		case "standard":
-			return severity === "deny" || severity === "warn"
+			return verdict === "deny" || verdict === "warn"
 		case "strict":
-			return severity !== "allow"
+			return verdict !== "allow"
 	}
 }
 
@@ -68,7 +87,10 @@ export function normalizeNixFlakeRefsForDcg(command: string): string | undefined
 		}
 		return word
 	})
-	if (!foundRef || words.some((word, index) => index >= argsStart && !NIX_FLAKE_REF.test(word) && !PLAIN_NIX_ARG.test(word))) {
+	if (
+		!foundRef ||
+		words.some((word, index) => index >= argsStart && !NIX_FLAKE_REF.test(word) && !PLAIN_NIX_ARG.test(word))
+	) {
 		return undefined
 	}
 	return normalized.join(" ")
@@ -145,16 +167,24 @@ function runDcgOnce(binaryPath: string, command: string, cwd: string): Promise<D
 				fail(new Error("DCG returned an unsupported response schema"), false)
 				return
 			}
-			if ((payload.decision === "allow" || payload.decision === "warn" || payload.decision === "log") && code === 0) {
+			if (
+				(payload.decision === "allow" || payload.decision === "warn" || payload.decision === "log") &&
+				code === 0
+			) {
 				settled = true
 				clearTimeout(timer)
-				resolve({ decision: "allow", severity: (payload.decision ?? "allow") as DcgSeverity })
+				resolve({
+					decision: "allow",
+					verdict: payload.decision as DcgVerdict,
+					ruleSeverity: parseRuleSeverity(payload.severity),
+				})
 			} else if (payload.decision === "deny" && code === 1) {
 				settled = true
 				clearTimeout(timer)
 				resolve({
 					decision: "deny",
-					severity: "deny",
+					verdict: "deny",
+					ruleSeverity: parseRuleSeverity(payload.severity),
 					reason: payload.reason,
 					ruleId:
 						payload.rule_id ??

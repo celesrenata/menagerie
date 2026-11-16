@@ -33,6 +33,8 @@ import {
 	isTelemetryOptedIn,
 	resolveEffectiveParallelismMode,
 	resolveParallelismPolicy,
+	normalizeDcgGuardLevel,
+	TENACITY_MAX_TRIES_LIMIT,
 } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 import { CloudService } from "@roo-code/cloud"
@@ -825,6 +827,20 @@ export const webviewMessageHandler = async (
 					}
 				}
 
+				if (
+					message.updatedSettings.dcgGuardLevel !== undefined &&
+					normalizeDcgGuardLevel(message.updatedSettings.dcgGuardLevel) !== undefined &&
+					(message.updatedSettings.yoloModeEnabled === true ||
+						message.updatedSettings.destructiveCommandGuardEnabled === true)
+				) {
+					// Make sure the guard binary exists when a level is chosen while the guard is on.
+					try {
+						const { ensureDcgInstalled } = await import("../../services/destructive-command-guard")
+						await ensureDcgInstalled(provider.context.globalStorageUri.fsPath)
+					} catch (error) {
+						console.warn("[DCG] ensureDcgInstalled failed", error)
+					}
+				}
 				for (const [key, value] of Object.entries(message.updatedSettings)) {
 					let newValue = value
 
@@ -868,10 +884,19 @@ export const webviewMessageHandler = async (
 							continue
 						}
 						newValue = value.trim()
+					} else if (key === "dcgGuardLevel") {
+						// A legacy/unknown level (notably "off") is dropped, never persisted.
+						newValue = normalizeDcgGuardLevel(value)
+					} else if (key === "tenacityMaxTries") {
+						const parsed =
+							typeof value === "number" && Number.isFinite(value) ? Math.floor(value) : undefined
+						newValue =
+							parsed === undefined ? undefined : Math.min(Math.max(parsed, 1), TENACITY_MAX_TRIES_LIMIT)
 					} else if (key === "skillHubSkillModes") {
 						newValue = normalizeSkillHubSkillModes(value)
 					} else if (key === "skillHubMaxSkills") {
-						const parsed = typeof value === "number" && Number.isFinite(value) ? Math.floor(value) : undefined
+						const parsed =
+							typeof value === "number" && Number.isFinite(value) ? Math.floor(value) : undefined
 						newValue = parsed === undefined ? undefined : Math.min(Math.max(parsed, 0), 50)
 					} else if (key === "ttsEnabled") {
 						newValue = value ?? true

@@ -39,6 +39,18 @@ describe("AutoApprovalHandler", () => {
 			expect(mockAskForApproval).not.toHaveBeenCalled()
 		})
 
+		it.each([[false], [undefined]])(
+			"honors request limits in YOLO when yoloSkipRequestCostPauses is %s only for false",
+			async (flag) => {
+				mockState.yoloModeEnabled = true
+				mockState.yoloSkipRequestCostPauses = flag
+				mockState.allowedMaxRequests = 1
+				mockAskForApproval.mockResolvedValue({ response: "yesButtonClicked" })
+				const messages: ClineMessage[] = [{ type: "say", say: "api_req_started", text: "{}", ts: 1000 }]
+				await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
+				expect(mockAskForApproval.mock.calls.length).toBe(flag === false ? 1 : 0)
+			},
+		)
 		it("should proceed when no limits are set", async () => {
 			const messages: ClineMessage[] = []
 			const result = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)

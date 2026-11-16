@@ -1385,6 +1385,29 @@ describe("webviewMessageHandler - YOLO mode", () => {
 		expect(vscode.window.showErrorMessage).toHaveBeenCalled()
 	})
 
+	it("drops a legacy 'off' dcgGuardLevel and persists valid levels", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { dcgGuardLevel: "off" as never },
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("dcgGuardLevel", undefined)
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { dcgGuardLevel: "hangLoose" },
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("dcgGuardLevel", "hangLoose")
+	})
+	it.each([
+		[0, 1],
+		[5000, 1000],
+		[12.7, 12],
+	])("clamps tenacityMaxTries %s to %s", async (input, expected) => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { tenacityMaxTries: input },
+		})
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("tenacityMaxTries", expected)
+	})
 	it("turns off without changing saved approvals or uninstalling DCG", async () => {
 		await webviewMessageHandler(mockClineProvider, {
 			type: "updateSettings",

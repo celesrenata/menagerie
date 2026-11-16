@@ -49,10 +49,16 @@ vitest.mock("../../prompts/responses")
 const mockRunDcg = vitest.fn()
 const mockEnsureDcgInstalled = vitest.fn()
 
-vitest.mock("../../../services/destructive-command-guard", () => ({
-	runDcg: mockRunDcg,
-	ensureDcgInstalled: mockEnsureDcgInstalled,
-}))
+vitest.mock("../../../services/destructive-command-guard", async () => {
+	const actual = await vitest.importActual<typeof import("../../../services/destructive-command-guard/runner")>(
+		"../../../services/destructive-command-guard/runner",
+	)
+	return {
+		runDcg: mockRunDcg,
+		ensureDcgInstalled: mockEnsureDcgInstalled,
+		isDcgDecisionBlocked: actual.isDcgDecisionBlocked,
+	}
+})
 
 // Import the module
 import * as executeCommandModule from "../ExecuteCommandTool"
@@ -300,6 +306,7 @@ describe("executeCommandTool", () => {
 			})
 			mockRunDcg.mockResolvedValue({
 				decision: "deny",
+				verdict: "deny",
 				reason: "matches a destructive pattern",
 				ruleId: "recursive-delete",
 			})
@@ -324,6 +331,7 @@ describe("executeCommandTool", () => {
 			provider.contextProxy.getValue.mockImplementation((key: string) => key === "yoloModeEnabled")
 			mockRunDcg.mockResolvedValue({
 				decision: "deny",
+				verdict: "deny",
 				reason: "dynamic redirect",
 				ruleId: "redirect-truncate-dynamic-path",
 			})
@@ -346,6 +354,32 @@ describe("executeCommandTool", () => {
 			expect(mockPushToolResult).toHaveBeenCalledTimes(1)
 		})
 
+		it.each([
+			["high", false],
+			["critical", true],
+		])(
+			"hangLoose lets a %s-severity DCG denial through only when not critical (blocked=%s)",
+			async (ruleSeverity, blocked) => {
+				const provider = await mockCline.providerRef.deref()
+				provider.context = { globalStorageUri: { fsPath: "/test/storage" } }
+				provider.contextProxy.getValue.mockImplementation((key: string) =>
+					key === "yoloModeEnabled" ? true : key === "dcgGuardLevel" ? "hangLoose" : false,
+				)
+				mockRunDcg.mockResolvedValue({ decision: "deny", verdict: "deny", ruleSeverity, reason: "r" })
+				mockAskApproval.mockResolvedValue(false)
+				await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
+					askApproval: mockAskApproval as unknown as AskApproval,
+					handleError: mockHandleError as unknown as HandleError,
+					pushToolResult: mockPushToolResult as unknown as PushToolResult,
+				})
+				if (blocked) {
+					expect(mockAskApproval).not.toHaveBeenCalled()
+					expect(mockCline.didToolFailInCurrentTurn).toBe(true)
+				} else {
+					expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test")
+				}
+			},
+		)
 		it("requests normal approval when DCG allows the command", async () => {
 			const provider = await mockCline.providerRef.deref()
 			provider.context = { globalStorageUri: { fsPath: "/test/storage" } }

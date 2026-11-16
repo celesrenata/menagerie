@@ -1,6 +1,7 @@
 import axios from "axios"
 import {
 	omniRouteComboEntrySchema,
+	getModelId,
 	omniRouteTierSchema,
 	providerIdentifiers,
 	type OmniRouteCatalogEntry,
@@ -132,6 +133,19 @@ export function applyOmniRouteTierToModel(modelId: string, tier: number | undefi
  */
 export function isOmniRoute(configuration: ProviderSettings): boolean {
 	return configuration.apiProvider === providerIdentifiers.openai && configuration.openAiIsOmniRoute === true
+}
+const OMNIROUTE_TIER1_ROUTE = /^pool\/tier1\/[a-z]+$/
+/**
+ * True iff this profile is an OmniRoute connection locked to `pool/tier1/*`: the
+ * model id, after the tier ceiling mapping, is a `pool/tier1/<role>` route. An
+ * `auto/*` or `local/*` id with only a tier-1 header is not locked (the server may
+ * route elsewhere). Tenacity "unlimited" is honored only when this is true.
+ */
+export function isLockedToOmniRouteTier1(configuration: ProviderSettings): boolean {
+	if (!isOmniRoute(configuration)) return false
+	const modelId = getModelId(configuration)
+	if (!modelId) return false
+	return OMNIROUTE_TIER1_ROUTE.test(applyOmniRouteTierToModel(modelId, configuration.omniRouteTier))
 }
 
 /**

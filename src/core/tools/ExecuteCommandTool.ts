@@ -132,16 +132,15 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 			let dcgBlocked = false
 			let dcgBlockMessage: string | undefined
 			if (provider) {
-				const { ensureDcgInstalled, runDcg, isDcgDecisionBlocked } = await import(
-					"../../services/destructive-command-guard"
-				)
-				const { resolveEffectiveDcgGuardLevel } = await import("@roo-code/types")
+				const { ensureDcgInstalled, runDcg, isDcgDecisionBlocked } =
+					await import("../../services/destructive-command-guard")
+				const { resolveEffectiveDcgGuardLevel, normalizeDcgGuardLevel } = await import("@roo-code/types")
 
 				// Resolve the DCG guard level from the saved `dcgGuardLevel`
 				// setting, the legacy `destructiveCommandGuardEnabled` boolean,
 				// and the YOLO toggle (forces at least `relaxed`).
 				const level = resolveEffectiveDcgGuardLevel(
-					provider.contextProxy.getValue("dcgGuardLevel"),
+					normalizeDcgGuardLevel(provider.contextProxy.getValue("dcgGuardLevel")),
 					provider.contextProxy.getValue("destructiveCommandGuardEnabled") === true,
 					provider.contextProxy.getValue("yoloModeEnabled") === true,
 				)
@@ -160,10 +159,10 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 							: path.resolve(task.cwd, customCwd)
 						: task.cwd
 					const dcgResult = await runDcg(binaryPath, canonicalCommand, workingDirectory)
-					// The guard "blocks" the command when its severity hits the
-					// level's threshold: relaxed (deny only) / standard (deny +
-					// warn) / strict (anything not a positive allow).
-					dcgBlocked = isDcgDecisionBlocked(dcgResult.severity, level)
+					// The guard "blocks" the command when the verdict hits the level's
+					// threshold: hangLoose (critical deny) / relaxed (deny) /
+					// standard (deny + warn) / strict (anything not a positive allow).
+					dcgBlocked = isDcgDecisionBlocked(dcgResult, level)
 					if (dcgBlocked) {
 						dcgBlockMessage = formatDcgBlockedMessage(dcgResult.reason, dcgResult.ruleId)
 					}
@@ -220,7 +219,12 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 			)
 
 			// Convert seconds to milliseconds for internal use, but skip timeout if command is allowlisted
-			const commandExecutionTimeout = isCommandAllowlisted ? 0 : commandExecutionTimeoutSeconds * 1000
+			// YOLO "no command timeout" option forces no timeout at all.
+			const yoloNoCommandTimeout =
+				provider?.contextProxy.getValue("yoloModeEnabled") === true &&
+				provider.contextProxy.getValue("yoloNoCommandTimeout") === true
+			const commandExecutionTimeout =
+				yoloNoCommandTimeout || isCommandAllowlisted ? 0 : commandExecutionTimeoutSeconds * 1000
 
 			// Convert agent-specified timeout from seconds to milliseconds
 			const agentTimeout = resolveAgentTimeoutMs(timeoutSeconds)

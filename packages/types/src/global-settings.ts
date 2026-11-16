@@ -232,49 +232,62 @@ export const DEFAULT_DIFF_FUZZY_THRESHOLD = 1.0
 export const DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED = false
 
 /**
- * Destructive Command Guard strength levels. `dcgGuardLevel` supersedes the
- * legacy boolean `destructiveCommandGuardEnabled` (see `dcgGuardLevelSchema`
- * and `DEFAULT_DCG_GUARD_LEVEL`); it is exposed as the "Destructive command
- * guard" selector in the YOLO settings section.
+ * Destructive Command Guard strength levels, weakest to strongest. `dcgGuardLevel`
+ * sets how strict the guard is; the legacy boolean `destructiveCommandGuardEnabled`
+ * remains the on/off switch outside YOLO. There is no selectable "off" level.
+ *
+ * - `hangLoose`: block only a DCG `deny` whose rule severity is `critical`
+ *   (or missing, which fails safe).
+ * - `relaxed`: block any DCG `deny` (the pre-levels behavior).
+ * - `standard`: block `deny` and `warn`.
+ * - `strict`: block anything DCG does not positively `allow`.
  */
-export const DCG_GUARD_LEVELS = ["off", "relaxed", "standard", "strict"] as const
+export const DCG_GUARD_LEVELS = ["hangLoose", "relaxed", "standard", "strict"] as const
 export type DcgGuardLevel = (typeof DCG_GUARD_LEVELS)[number]
 export const dcgGuardLevelSchema = z.enum(DCG_GUARD_LEVELS)
 
 /**
- * Default guard level. `undefined` (never set) resolves to the legacy
- * `destructiveCommandGuardEnabled` boolean, preserving today's behavior:
- * the guard stays off unless the user turns it on (or enables YOLO).
+ * Normalizes a stored/posted level. Anything that is not a current level
+ * (notably a legacy `"off"`) becomes `undefined`.
  */
-export const DEFAULT_DCG_GUARD_LEVEL: DcgGuardLevel = "off"
+export function normalizeDcgGuardLevel(value: unknown): DcgGuardLevel | undefined {
+	const parsed = dcgGuardLevelSchema.safeParse(value)
+	return parsed.success ? parsed.data : undefined
+}
 
-/** Default number of Tenacity retries ("X tries") when the user sets a finite cap. */
+/** Default guard level when none is stored. */
+export const DEFAULT_DCG_GUARD_LEVEL: DcgGuardLevel = "relaxed"
+
+/** Default number of Tenacity tries (the finite cap, used on every tier that is not locked to tier1). */
 export const DEFAULT_TENACITY_MAX_TRIES = 10
 /** Inclusive upper bound of the Tenacity tries control (1–1000). */
 export const TENACITY_MAX_TRIES_LIMIT = 1000
+
+/** YOLO option defaults. `undefined` resolves to these. */
+export const DEFAULT_YOLO_APPROVE_OUTSIDE_WORKSPACE = true
+export const DEFAULT_YOLO_SKIP_REQUEST_COST_PAUSES = true
+export const DEFAULT_YOLO_AUTO_ANSWER_FOLLOWUPS = true
+export const DEFAULT_YOLO_WORKERS_ANY_TOOL = false
+export const DEFAULT_YOLO_NO_COMMAND_TIMEOUT = false
 
 /**
  * Resolves the effective DCG guard level from the saved `dcgGuardLevel`, the
  * legacy `destructiveCommandGuardEnabled` boolean, and the YOLO toggle.
  *
- * - A set `dcgGuardLevel` always wins (including `"off"`), so a user who
- *   explicitly turned the guard off keeps it off even if the legacy boolean is
- *   still true.
- * - When `dcgGuardLevel` is unset, the legacy boolean is consulted: `true`
- *   means `relaxed` (today's behavior), `false`/unset means `off`.
- * - YOLO forces at least `relaxed`, so a guarded command is never unattended-
- *   approved while YOLO runs.
+ * - YOLO on: the guard is never off; `storedLevel ?? "relaxed"`.
+ * - YOLO off: the legacy boolean is the on/off switch. Enabled gives
+ *   `storedLevel ?? "relaxed"`; disabled gives `"off"` (internal only, the
+ *   guard is skipped; it is not a selectable level).
  */
 export function resolveEffectiveDcgGuardLevel(
 	storedLevel: DcgGuardLevel | undefined,
 	legacyEnabled: boolean,
 	yoloEnabled: boolean,
-): DcgGuardLevel {
-	const level = storedLevel ?? (legacyEnabled ? "relaxed" : "off")
-	if (yoloEnabled && level === "off") {
-		return "relaxed"
+): DcgGuardLevel | "off" {
+	if (yoloEnabled || legacyEnabled) {
+		return storedLevel ?? DEFAULT_DCG_GUARD_LEVEL
 	}
-	return level
+	return "off"
 }
 
 /**
@@ -367,14 +380,22 @@ export const globalSettingsSchema = z.object({
 	 * up early. Overrides BOTH the per-provider consecutive-mistake limit (the
 	 * "Menagerie is having trouble" dialog) and a parallel worker's 8-retry API
 	 * cap, across all models and parallel batches. A finite `tenacityMaxTries`
-	 * (1–{@link TENACITY_MAX_TRIES_LIMIT}) is the normal case; when
-	 * `tenacityUnlimited` is true the worker/task never gives up.
+	 * (1–{@link TENACITY_MAX_TRIES_LIMIT}, default {@link DEFAULT_TENACITY_MAX_TRIES})
+	 * is the cap on every tier that is not locked to OmniRoute pool/tier1/*.
+	 * `tenacityUnlimited` is honored ONLY while locked to pool/tier1/*; on any
+	 * other tier it is ignored. Tenacity does not depend on YOLO.
 	 * `undefined` means off (today's default behavior is unchanged).
 	 */
 	tenacityEnabled: z.boolean().optional(),
 	tenacityMaxTries: z.number().int().min(1).max(TENACITY_MAX_TRIES_LIMIT).optional(),
-	/** True = never give up, even past `tenacityMaxTries`. */
+	/** True = never give up, but only while locked to OmniRoute pool/tier1/*. */
 	tenacityUnlimited: z.boolean().optional(),
+	// YOLO section options; only take effect while `yoloModeEnabled` is true.
+	yoloApproveOutsideWorkspace: z.boolean().optional(),
+	yoloSkipRequestCostPauses: z.boolean().optional(),
+	yoloAutoAnswerFollowups: z.boolean().optional(),
+	yoloWorkersAnyTool: z.boolean().optional(),
+	yoloNoCommandTimeout: z.boolean().optional(),
 	/**
 	 * Per-request OmniRoute cost-tier ceiling ($..$$$$$), selected beside the YOLO
 	 * control and sent as `X-OmniRoute-Tier` on OmniRoute chat requests (FEAT-005).
@@ -485,12 +506,12 @@ export const globalSettingsSchema = z.object({
 	destructiveCommandGuardEnabled: z.boolean().optional(),
 	/**
 	 * Destructive Command Guard strength level (YOLO section). Supersedes the
-	 * legacy `destructiveCommandGuardEnabled` boolean: `off` disables the guard,
-	 * `relaxed` blocks on DCG `deny` only (today's behavior), `standard` also
-	 * blocks on `warn`, and `strict` blocks on anything DCG does not positively
-	 * `allow`. An unset level falls back to the legacy boolean.
+	 * legacy `destructiveCommandGuardEnabled` boolean: `hangLoose` blocks only
+	 * critical-severity denies, `relaxed` blocks any DCG `deny`, `standard` also
+	 * blocks `warn`, and `strict` blocks anything DCG does not positively
+	 * `allow`. A saved legacy `"off"` parses to `undefined`.
 	 */
-	dcgGuardLevel: dcgGuardLevelSchema.optional(),
+	dcgGuardLevel: z.preprocess((v) => normalizeDcgGuardLevel(v), dcgGuardLevelSchema.optional()),
 	alwaysAllowFollowupQuestions: z.boolean().optional(),
 	followupAutoApproveTimeoutMs: z.number().optional(),
 	allowedCommands: z.array(z.string()).optional(),

@@ -108,10 +108,7 @@ import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 
 // core modules
 import { ProgressAwareLoopDetector } from "../tools/ProgressAwareLoopDetector"
-import {
-	type SemanticExplorationState,
-	createSemanticExplorationState,
-} from "../exploration/semanticExplorationState"
+import { type SemanticExplorationState, createSemanticExplorationState } from "../exploration/semanticExplorationState"
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
@@ -1877,7 +1874,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 										.slice(0, 72)
 									provider.revealChat()
 									void vscode.window
-										.showWarningMessage(`Menagerie needs input${title ? `: ${title}` : ""}`, "Open chat")
+										.showWarningMessage(
+											`Menagerie needs input${title ? `: ${title}` : ""}`,
+											"Open chat",
+										)
 										.then(
 											(choice) => {
 												if (choice === "Open chat") provider.revealChat()
@@ -3113,7 +3113,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Tenacity (unattended tenacity / "never give up early"): resolves the
 	 * effective consecutive-mistake limit for this task from the saved
 	 * `tenacityEnabled` / `tenacityMaxTries` / `tenacityUnlimited` settings,
-	 * honoring the YOLO toggle (which implies unlimited tenacity). Returns
+	 * (YOLO does not imply unlimited). Returns
 	 * `0` when tenacity is unlimited (the mistake-limit flow is disabled), the
 	 * finite `tenacityMaxTries` when tenacity caps it, or the task's
 	 * provider-derived `consecutiveMistakeLimit` when tenacity is off. This is
@@ -3124,8 +3124,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (await this.isTenacityUnlimited()) {
 			return 0
 		}
-		const tenacityEnabled =
-			this.providerRef.deref()?.contextProxy.getValue("tenacityEnabled") === true
+		const tenacityEnabled = this.providerRef.deref()?.contextProxy.getValue("tenacityEnabled") === true
 		if (tenacityEnabled) {
 			const tries = this.providerRef.deref()?.contextProxy.getValue("tenacityMaxTries")
 			return typeof tries === "number" && tries >= 1 ? tries : DEFAULT_TENACITY_MAX_TRIES
@@ -3134,22 +3133,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * True when tenacity must never give up: the user set `tenacityUnlimited`
-	 * or turned on YOLO (which implies "run until done"). Consulted by the
-	 * parallel-worker retry cap so a YOLO worker retries API failures without
-	 * the fixed {@link PARALLEL_WORKER_MAX_API_RETRIES} ceiling.
+	 * True when tenacity must never give up: the user set `tenacityUnlimited`.
+	 * Consulted by the parallel-worker retry cap so the worker retries API
+	 * failures without the fixed {@link PARALLEL_WORKER_MAX_API_RETRIES} ceiling.
 	 */
 	private async isTenacityUnlimited(): Promise<boolean> {
 		const proxy = this.providerRef.deref()?.contextProxy
 		if (proxy?.getValue("tenacityUnlimited") === true) {
 			return true
 		}
-		if (proxy?.getValue("tenacityEnabled") === true) {
-			// Finite tenacity caps retries; only the explicit unlimited flag (or
-			// YOLO) lifts the ceiling.
-			return false
-		}
-		return proxy?.getValue("yoloModeEnabled") === true
+		return false
 	}
 
 	/**
@@ -3161,7 +3154,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		this.parallelWorkerApiFailures++
 		if (await this.isTenacityUnlimited()) {
-			// Tenacity: a YOLO / unlimited worker never gives up on API failures;
+			// Tenacity: an unlimited worker never gives up on API failures;
 			// keep retrying regardless of how many have failed.
 			return false
 		}
@@ -4665,11 +4658,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// instead of retrying the empty-response prompt indefinitely.
 						// Uses the Tenacity-resolved effective limit so the "X tries" cap (or
 						// unlimited/YOLO) takes effect on this gate, not just the mistake-limit check.
-						if (noToolDecision.askUser && effectiveMistakeLimit > 0) {
-							this.consecutiveMistakeCount = Math.max(
-								this.consecutiveMistakeCount,
-								effectiveMistakeLimit,
-							)
+						if (noToolDecision.askUser) {
+							const noToolMistakeLimit = await this.getEffectiveMistakeLimit()
+							if (noToolMistakeLimit > 0) {
+								this.consecutiveMistakeCount = Math.max(
+									this.consecutiveMistakeCount,
+									noToolMistakeLimit,
+								)
+							}
 						}
 
 						// Use the task's locked protocol for consistent behavior
@@ -4900,8 +4896,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// schemas. Absent provider/surface preserves the live-hub behavior, and an
 			// undefined hub (mcp disabled) is never resurrected by the applied view.
 			const applied = this.composedSurfaceProvider?.()
-			const effectiveMcpHub =
-				applied?.mcpHub !== undefined && mcpHub !== undefined ? applied.mcpHub : mcpHub
+			const effectiveMcpHub = applied?.mcpHub !== undefined && mcpHub !== undefined ? applied.mcpHub : mcpHub
 			const effectiveDisabledTools = this.unionDisabledTools(
 				this.getDisabledTools(requestState?.disabledTools),
 				applied?.disabledTools,
@@ -5135,9 +5130,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				...(telemetry.handlerId !== undefined ? { handlerId: telemetry.handlerId } : {}),
 				preTokens: reduction.prevTokens,
 				postTokens: reduction.resultTokens,
-				...(decision.terminalError
-					? { terminal: { classification: CONTEXT_OVERFLOW_NON_RECOVERABLE } }
-					: {}),
+				...(decision.terminalError ? { terminal: { classification: CONTEXT_OVERFLOW_NON_RECOVERABLE } } : {}),
 			}
 			this.recoveryAttempts.push(attempt)
 			return decision

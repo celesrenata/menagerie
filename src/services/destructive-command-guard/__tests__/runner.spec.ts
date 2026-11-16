@@ -4,7 +4,13 @@ import { PassThrough } from "stream"
 import { spawn } from "child_process"
 
 import { DCG_MAX_OUTPUT_BYTES } from "../constants"
-import { normalizeNixFlakeRefsForDcg, runDcg } from "../runner"
+import {
+	isDcgDecisionBlocked,
+	normalizeNixFlakeRefsForDcg,
+	runDcg,
+	type DcgRuleSeverity,
+	type DcgVerdict,
+} from "../runner"
 
 vi.mock("child_process", () => ({ spawn: vi.fn() }))
 
@@ -49,7 +55,10 @@ describe("runDcg", () => {
 	})
 
 	it.each([
-		["nix build .#packages.x86_64-linux.hyte-touch-interface", "nix build '.#packages.x86_64-linux.hyte-touch-interface'"],
+		[
+			"nix build .#packages.x86_64-linux.hyte-touch-interface",
+			"nix build '.#packages.x86_64-linux.hyte-touch-interface'",
+		],
 		["nix eval --raw .#packages.aarch64-darwin.default", "nix eval --raw '.#packages.aarch64-darwin.default'"],
 		["nix flake show .#devShells.default", "nix flake show '.#devShells.default'"],
 		["nix build .#foo && rm -rf /", undefined],
@@ -85,7 +94,7 @@ describe("runDcg", () => {
 		expect(mockSpawn.mock.calls[0][1].at(-1)).toBe(command)
 		expect(mockSpawn.mock.calls[1][1].at(-1)).toBe("nix build '.#packages.x86_64-linux.hyte-touch-interface'")
 		emitResult(second, { schema_version: 2, decision: "allow" }, 0)
-		await expect(result).resolves.toEqual({ decision: "allow" })
+		await expect(result).resolves.toEqual({ decision: "allow", verdict: "allow" })
 		expect(warnSpy).not.toHaveBeenCalledWith("[DCG] Command denied", expect.anything())
 	})
 
@@ -95,10 +104,19 @@ describe("runDcg", () => {
 		mockSpawn.mockReturnValueOnce(first as unknown as ReturnType<typeof spawn>)
 		mockSpawn.mockReturnValueOnce(second as unknown as ReturnType<typeof spawn>)
 		const result = runDcg("/dcg", "nix build .#foo", "/workspace")
-		emitResult(first, { schema_version: 2, decision: "deny", reason: "PowerShell substitution contains comment syntax" }, 1)
+		emitResult(
+			first,
+			{ schema_version: 2, decision: "deny", reason: "PowerShell substitution contains comment syntax" },
+			1,
+		)
 		await Promise.resolve()
 		emitResult(second, { schema_version: 2, decision: "deny", reason: "dangerous", rule_id: "danger" }, 1)
-		await expect(result).resolves.toEqual({ decision: "deny", reason: "dangerous", ruleId: "danger" })
+		await expect(result).resolves.toEqual({
+			decision: "deny",
+			verdict: "deny",
+			reason: "dangerous",
+			ruleId: "danger",
+		})
 		expect(warnSpy).toHaveBeenCalledWith("[DCG] Command denied", "dangerous")
 	})
 
@@ -106,24 +124,33 @@ describe("runDcg", () => {
 		const child = createChild()
 		useChild(child)
 		const result = runDcg("/dcg", "nix build .#foo && rm -rf /", "/workspace")
-		emitResult(child, { schema_version: 2, decision: "deny", reason: "PowerShell substitution contains comment syntax" }, 1)
-		await expect(result).resolves.toEqual({ decision: "deny", reason: "PowerShell substitution contains comment syntax", ruleId: undefined })
+		emitResult(
+			child,
+			{ schema_version: 2, decision: "deny", reason: "PowerShell substitution contains comment syntax" },
+			1,
+		)
+		await expect(result).resolves.toEqual({
+			decision: "deny",
+			verdict: "deny",
+			reason: "PowerShell substitution contains comment syntax",
+			ruleId: undefined,
+		})
 		expect(mockSpawn).toHaveBeenCalledTimes(1)
 	})
 
 	it.each([
-		[{ schema_version: 1, decision: "allow" }, 0, { decision: "allow" }],
-		[{ schema_version: 2, decision: "warn", rule_id: "generated-file" }, 0, { decision: "allow" }],
-		[{ schema_version: 2, decision: "log", rule_id: "generated-file" }, 0, { decision: "allow" }],
+		[{ schema_version: 1, decision: "allow" }, 0, { decision: "allow", verdict: "allow" }],
+		[{ schema_version: 2, decision: "warn", rule_id: "generated-file" }, 0, { decision: "allow", verdict: "warn" }],
+		[{ schema_version: 2, decision: "log", rule_id: "generated-file" }, 0, { decision: "allow", verdict: "log" }],
 		[
 			{ schema_version: 2, decision: "deny", reason: "unsafe", rule_id: "delete" },
 			1,
-			{ decision: "deny", reason: "unsafe", ruleId: "delete" },
+			{ decision: "deny", verdict: "deny", reason: "unsafe", ruleId: "delete" },
 		],
 		[
 			{ schema_version: 2, decision: "deny", pack_id: "core", pattern_name: "delete" },
 			1,
-			{ decision: "deny", ruleId: "core:delete" },
+			{ decision: "deny", verdict: "deny", ruleId: "core:delete" },
 		],
 	])("accepts valid DCG result %#", async (payload, code, expected) => {
 		const child = createChild()
@@ -230,5 +257,32 @@ describe("runDcg", () => {
 
 		await rejection
 		expect(child.kill).toHaveBeenCalledWith("SIGKILL")
+	})
+})
+
+describe("isDcgDecisionBlocked", () => {
+	const d = (verdict: DcgVerdict, ruleSeverity?: DcgRuleSeverity) => ({ verdict, ruleSeverity })
+	it.each([
+		["hangLoose", d("deny", "critical"), true],
+		["hangLoose", d("deny", "high"), false],
+		["hangLoose", d("deny", "medium"), false],
+		["hangLoose", d("deny"), true],
+		["hangLoose", d("warn", "critical"), false],
+		["relaxed", d("deny", "low"), true],
+		["relaxed", d("warn"), false],
+		["standard", d("warn"), true],
+		["standard", d("log"), false],
+		["strict", d("log"), true],
+		["strict", d("allow"), false],
+		["off", d("deny", "critical"), false],
+	] as const)("%s with %j blocks=%s", (level, decision, expected) => {
+		expect(isDcgDecisionBlocked(decision, level)).toBe(expected)
+	})
+	it("reads the rule severity from the DCG payload", async () => {
+		const child = createChild()
+		useChild(child)
+		const result = runDcg("/dcg", "rm -rf ./build", "/workspace")
+		emitResult(child, { schema_version: 2, decision: "deny", severity: "high", reason: "x" }, 1)
+		await expect(result).resolves.toMatchObject({ verdict: "deny", ruleSeverity: "high" })
 	})
 })

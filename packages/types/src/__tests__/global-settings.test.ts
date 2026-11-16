@@ -4,6 +4,9 @@ import {
 	DEFAULT_OPEN_FILES_ON_AGENT_EDIT,
 	DEFAULT_REMEMBER_TASK_NAVIGATION,
 	DEFAULT_TASK_HOME,
+	DCG_GUARD_LEVELS,
+	normalizeDcgGuardLevel,
+	resolveEffectiveDcgGuardLevel,
 	DEFAULT_WORKER_PRESENTATION,
 	GLOBAL_SETTINGS_KEYS,
 	globalSettingsSchema,
@@ -35,9 +38,9 @@ describe("parallelCapacityMap global setting", () => {
 	it("accepts a valid partial map and the empty map", () => {
 		expect(parallelCapacityMapSchema.parse({})).toEqual({})
 		expect(parallelCapacityMapSchema.parse({ reader: 4 })).toEqual({ reader: 4 })
-		expect(parallelCapacityMapSchema.parse({ reader: 4, reasoner: 2, "long-context": 4, general: 1, vision: 2 })).toEqual(
-			{ reader: 4, reasoner: 2, "long-context": 4, general: 1, vision: 2 },
-		)
+		expect(
+			parallelCapacityMapSchema.parse({ reader: 4, reasoner: 2, "long-context": 4, general: 1, vision: 2 }),
+		).toEqual({ reader: 4, reasoner: 2, "long-context": 4, general: 1, vision: 2 })
 	})
 
 	it("rejects zero, negative, and non-integer slot counts (floor-of-1 fail-safe at the boundary)", () => {
@@ -99,5 +102,42 @@ describe("menagerie presentation settings", () => {
 
 	it("rejects unknown presentation values", () => {
 		expect(globalSettingsSchema.safeParse({ workerPresentation: "tabs" }).success).toBe(false)
+	})
+})
+
+describe("dcgGuardLevel and YOLO settings", () => {
+	it("has hangLoose as the weakest level and no off level", () => {
+		expect(DCG_GUARD_LEVELS).toEqual(["hangLoose", "relaxed", "standard", "strict"])
+	})
+	it("parses a saved legacy 'off' to undefined and keeps valid levels", () => {
+		expect(globalSettingsSchema.parse({ dcgGuardLevel: "off" }).dcgGuardLevel).toBeUndefined()
+		expect(globalSettingsSchema.parse({ dcgGuardLevel: "hangLoose" }).dcgGuardLevel).toBe("hangLoose")
+		expect(normalizeDcgGuardLevel("off")).toBeUndefined()
+	})
+	it("never resolves to off when YOLO is on", () => {
+		expect(resolveEffectiveDcgGuardLevel(undefined, false, true)).toBe("relaxed")
+		expect(resolveEffectiveDcgGuardLevel("hangLoose", false, true)).toBe("hangLoose")
+	})
+	it("uses the legacy boolean as the on/off switch outside YOLO", () => {
+		expect(resolveEffectiveDcgGuardLevel(undefined, false, false)).toBe("off")
+		expect(resolveEffectiveDcgGuardLevel("strict", false, false)).toBe("off")
+		expect(resolveEffectiveDcgGuardLevel(undefined, true, false)).toBe("relaxed")
+		expect(resolveEffectiveDcgGuardLevel("standard", true, false)).toBe("standard")
+	})
+	it("accepts the new optional keys and clamps tries range", () => {
+		expect(
+			globalSettingsSchema.parse({
+				tenacityEnabled: true,
+				tenacityMaxTries: 10,
+				tenacityUnlimited: false,
+				yoloApproveOutsideWorkspace: false,
+				yoloSkipRequestCostPauses: false,
+				yoloAutoAnswerFollowups: false,
+				yoloWorkersAnyTool: true,
+				yoloNoCommandTimeout: true,
+			}),
+		).toMatchObject({ yoloWorkersAnyTool: true, yoloNoCommandTimeout: true })
+		expect(() => globalSettingsSchema.parse({ tenacityMaxTries: 0 })).toThrow()
+		expect(() => globalSettingsSchema.parse({ tenacityMaxTries: 1001 })).toThrow()
 	})
 })

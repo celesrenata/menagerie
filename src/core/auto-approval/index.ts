@@ -39,6 +39,8 @@ export type AutoApprovalStateOptions =
 	| "allowedCommands" // For `alwaysAllowExecute`.
 	| "deniedCommands"
 	| "destructiveCommandGuardEnabled"
+	| "yoloApproveOutsideWorkspace"
+	| "yoloAutoAnswerFollowups"
 
 /**
  * Every file a tool action names, as far as the allowlists are concerned.
@@ -177,20 +179,21 @@ export async function checkAutoApproval({
 	// YOLO is a reversible overlay. It does not rewrite the user's saved BRRR
 	// toggles, and the existing protected/outside-workspace checks still apply.
 	if (state?.yoloModeEnabled === true) {
+		const yoloOutside = state.yoloApproveOutsideWorkspace !== false
+		const yoloFollowups = state.yoloAutoAnswerFollowups !== false
 		state = {
 			...state,
 			autoApprovalEnabled: true,
 			alwaysAllowReadOnly: true,
-			alwaysAllowReadOnlyOutsideWorkspace: true,
+			alwaysAllowReadOnlyOutsideWorkspace: yoloOutside,
 			alwaysAllowWrite: true,
-			alwaysAllowWriteOutsideWorkspace: true,
-			alwaysAllowWriteProtected: true,
+			alwaysAllowWriteOutsideWorkspace: yoloOutside,
+			alwaysAllowWriteProtected: yoloOutside,
 			alwaysAllowMcp: true,
 			alwaysAllowModeSwitch: true,
 			alwaysAllowSubtasks: true,
 			alwaysAllowExecute: true,
-			alwaysAllowFollowupQuestions: true,
-			followupAutoApproveTimeoutMs: 1_000,
+			...(yoloFollowups ? { alwaysAllowFollowupQuestions: true, followupAutoApproveTimeoutMs: 1_000 } : {}),
 			destructiveCommandGuardEnabled: true,
 		}
 	}
