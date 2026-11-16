@@ -51,7 +51,6 @@ import {
 	isResumableAsk,
 	QueuedMessage,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
-	DEFAULT_TENACITY_MAX_TRIES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	MAX_CHECKPOINT_TIMEOUT_SECONDS,
 	MIN_CHECKPOINT_TIMEOUT_SECONDS,
@@ -66,7 +65,15 @@ import { CloudService } from "@roo-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
-import { withOmniRouteTier } from "../../api/providers/omniroute"
+import { withOmniRouteTier, isLockedToOmniRouteTier1 } from "../../api/providers/omniroute"
+import {
+	resolveTenacityPolicy,
+	tenacityExtraRetries,
+	TENACITY_KINDS,
+	TENACITY_SMALLER_OUTPUT_NOTE,
+	type TenacityKind,
+	type TenacityPolicy,
+} from "./tenacity"
 import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { OutputTokenLimitError } from "../../api/providers/utils/output-token-limit-error"
@@ -295,6 +302,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private releaseCurrentGenerationLease?: () => void
 	/** Consecutive failed API attempts for a parallel worker; reset when a request streams assistant content to completion. */
 	private parallelWorkerApiFailures = 0
+	/** Tenacity continuations per give-up kind; reset on real progress. */
+	private tenacityCounters: Record<TenacityKind, number> = {
+		no_tool_use: 0,
+		loop_detector: 0,
+		context_recovery: 0,
+		output_token_limit: 0,
+	}
 	/**
 	 * Resilient Context Recovery (Req 6.1–6.6). One `RecoveryAttemptTelemetry` per recovery
 	 * attempt during `handleContextWindowExceededError`, accumulated across attempts for this
@@ -3110,39 +3124,69 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * Tenacity (unattended tenacity / "never give up early"): resolves the
-	 * effective consecutive-mistake limit for this task from the saved
-	 * `tenacityEnabled` / `tenacityMaxTries` / `tenacityUnlimited` settings,
-	 * (YOLO does not imply unlimited). Returns
-	 * `0` when tenacity is unlimited (the mistake-limit flow is disabled), the
-	 * finite `tenacityMaxTries` when tenacity caps it, or the task's
-	 * provider-derived `consecutiveMistakeLimit` when tenacity is off. This is
-	 * consulted per task-loop entry so the user's choice (or a YOLO toggle
-	 * mid-run) takes effect on the very next iteration, across all models.
+	 * Tenacity: resolves the policy from the saved `tenacityEnabled` / `tenacityMaxTries` /
+	 * `tenacityUnlimited` settings. Evaluated live at every give-up decision so a mid-run
+	 * settings, profile, or tier change applies on the next decision. "Unlimited" is honored
+	 * only while the profile is locked to OmniRoute `pool/tier1/*`; any other tier costs money
+	 * and uses the finite `tenacityMaxTries` cap.
 	 */
-	private async getEffectiveMistakeLimit(): Promise<number> {
-		if (await this.isTenacityUnlimited()) {
-			return 0
-		}
-		const tenacityEnabled = this.providerRef.deref()?.contextProxy.getValue("tenacityEnabled") === true
-		if (tenacityEnabled) {
-			const tries = this.providerRef.deref()?.contextProxy.getValue("tenacityMaxTries")
-			return typeof tries === "number" && tries >= 1 ? tries : DEFAULT_TENACITY_MAX_TRIES
-		}
-		return this.consecutiveMistakeLimit
+	public getTenacityPolicy(): TenacityPolicy {
+		const proxy = this.providerRef.deref()?.contextProxy
+		const maxTries = proxy?.getValue("tenacityMaxTries")
+		return resolveTenacityPolicy({
+			enabled: proxy?.getValue("tenacityEnabled") === true,
+			maxTries: typeof maxTries === "number" ? maxTries : undefined,
+			unlimited: proxy?.getValue("tenacityUnlimited") === true,
+			lockedToTier1: isLockedToOmniRouteTier1(this.apiConfiguration),
+		})
 	}
 
 	/**
-	 * True when tenacity must never give up: the user set `tenacityUnlimited`.
-	 * Consulted by the parallel-worker retry cap so the worker retries API
-	 * failures without the fixed {@link PARALLEL_WORKER_MAX_API_RETRIES} ceiling.
+	 * Asks whether Tenacity continues past a give-up point beyond its `legacyLimit` allowance
+	 * (callers invoke this only once the legacy allowance is spent). Counts the continuation
+	 * against `kind`'s counter. Never continues after a cancel/abort. Announces the retry
+	 * informationally (not as an error).
 	 */
-	private async isTenacityUnlimited(): Promise<boolean> {
-		const proxy = this.providerRef.deref()?.contextProxy
-		if (proxy?.getValue("tenacityUnlimited") === true) {
-			return true
+	public async tenacityAllowsRetry(kind: TenacityKind, legacyLimit = 0): Promise<boolean> {
+		if (this.abort || this.abandoned) return false
+		const policy = this.getTenacityPolicy()
+		const extra = tenacityExtraRetries(policy, legacyLimit)
+		if (extra !== undefined && this.tenacityCounters[kind] >= extra) return false
+		this.tenacityCounters[kind]++
+		const of = extra === undefined ? "unlimited" : String(extra)
+		await this.say(
+			"text",
+			`Tenacity: retry ${this.tenacityCounters[kind]} of ${of} (${kind})`,
+			undefined,
+			false,
+			undefined,
+			undefined,
+			{
+				isNonInteractive: true,
+			},
+		).catch(() => {})
+		return true
+	}
+
+	/** Resets Tenacity counters (all kinds when none given) after real progress. */
+	public resetTenacityCounters(...kinds: TenacityKind[]): void {
+		for (const kind of kinds.length > 0 ? kinds : TENACITY_KINDS) {
+			this.tenacityCounters[kind] = 0
 		}
-		return false
+	}
+
+	/**
+	 * Effective consecutive-mistake limit: `consecutiveMistakeLimit` when Tenacity is off,
+	 * `max(legacy, tenacityMaxTries)` when finite (Tenacity never lowers a limit), and `0`
+	 * (gate disabled) when unlimited on tier1.
+	 */
+	private getEffectiveMistakeLimit(): number {
+		const policy = this.getTenacityPolicy()
+		if (policy.mode === "unlimited") return 0
+		if (policy.mode === "finite" && this.consecutiveMistakeLimit > 0) {
+			return Math.max(this.consecutiveMistakeLimit, policy.limit)
+		}
+		return this.consecutiveMistakeLimit
 	}
 
 	/**
@@ -3153,12 +3197,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (!this.parallelWorker || this.abort) return false
 
 		this.parallelWorkerApiFailures++
-		if (await this.isTenacityUnlimited()) {
-			// Tenacity: an unlimited worker never gives up on API failures;
-			// keep retrying regardless of how many have failed.
-			return false
-		}
-		if (this.parallelWorkerApiFailures <= PARALLEL_WORKER_MAX_API_RETRIES) {
+		if (this.abandoned) return false
+		const policy = this.getTenacityPolicy()
+		// Tenacity never lowers the cap: finite => max(8, tries); unlimited (tier1 only) => no cap.
+		if (policy.mode === "unlimited") return false
+		const cap =
+			policy.mode === "finite"
+				? Math.max(PARALLEL_WORKER_MAX_API_RETRIES, policy.limit)
+				: PARALLEL_WORKER_MAX_API_RETRIES
+		if (this.parallelWorkerApiFailures <= cap) {
 			return false
 		}
 
@@ -3168,7 +3215,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				: typeof error === "object" && error !== null && "message" in error
 					? String(error.message)
 					: String(error)
-		await this.failParallelWorker(`API request failed after ${PARALLEL_WORKER_MAX_API_RETRIES} retries: ${message}`)
+		await this.failParallelWorker(`API request failed after ${cap} retries: ${message}`)
 		return true
 	}
 
@@ -3495,16 +3542,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 
-			// Tenacity: resolve the effective consecutive-mistake limit from the
-			// saved `tenacityEnabled` / `tenacityMaxTries` / `tenacityUnlimited`
-			// settings (and YOLO implies unlimited). When Tenacity is off, this
-			// is the task's provider-derived `consecutiveMistakeLimit` (today's
-			// behavior). When Tenacity is on with a finite cap, it uses the
-			// user's `tenacityMaxTries` (default 10). When unlimited (explicit
-			// flag or YOLO), the limit is 0 and the gate below never fires.
-			// Consulted per iteration so a user's toggle takes effect on the
-			// very next loop entry, across all models and parallel batches.
-			const effectiveMistakeLimit = await this.getEffectiveMistakeLimit()
+			// Tenacity: effective consecutive-mistake limit (max(legacy, tries) when
+			// finite, 0 when unlimited on tier1, legacy when off). Consulted per
+			// iteration so a toggle or tier change applies on the next loop entry.
+			const effectiveMistakeLimit = this.getEffectiveMistakeLimit()
 
 			if (effectiveMistakeLimit > 0 && this.consecutiveMistakeCount >= effectiveMistakeLimit) {
 				// Track consecutive mistake errors in telemetry via event and PostHog exception tracking.
@@ -4241,6 +4282,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							// ??= keeps the first reason; a cancel can land during abortStream after cancelReason was already computed.
 							this.abortReason ??= "user_cancelled"
 							await this.abortTask()
+						} else if (
+							error instanceof OutputTokenLimitError &&
+							this.parallelWorker &&
+							(await this.tenacityAllowsRetry("output_token_limit"))
+						) {
+							// Tenacity: retry with a note asking for smaller outputs instead of failing the worker.
+							stack.push({
+								userContent: [
+									...currentUserContent,
+									{ type: "text", text: TENACITY_SMALLER_OUTPUT_NOTE },
+								],
+								includeFileDetails: false,
+								retryAttempt: 0,
+							})
+							continue
 						} else if (error instanceof OutputTokenLimitError) {
 							// Truncation repeats on an identical request, so never auto-retry it
 							// (even with auto-approval); let the user decide once.
@@ -4443,6 +4499,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Reset counter when we get a successful response with content
 					this.consecutiveNoAssistantMessagesCount = 0
 					this.parallelWorkerApiFailures = 0
+					this.resetTenacityCounters("context_recovery", "output_token_limit")
 					// Display grounding sources to the user if they exist
 					if (pendingGroundingSources.length > 0) {
 						const citationLinks = pendingGroundingSources.map((source, i) => `[${i + 1}](${source.url})`)
@@ -4658,8 +4715,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// instead of retrying the empty-response prompt indefinitely.
 						// Uses the Tenacity-resolved effective limit so the "X tries" cap (or
 						// unlimited/YOLO) takes effect on this gate, not just the mistake-limit check.
-						if (noToolDecision.askUser) {
-							const noToolMistakeLimit = await this.getEffectiveMistakeLimit()
+						if (noToolDecision.askUser && !(await this.tenacityAllowsRetry("no_tool_use"))) {
+							const noToolMistakeLimit = this.getEffectiveMistakeLimit()
 							if (noToolMistakeLimit > 0) {
 								this.consecutiveMistakeCount = Math.max(
 									this.consecutiveMistakeCount,
@@ -4676,6 +4733,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					} else {
 						// Reset counter when tools are used successfully
 						this.consecutiveNoToolUseCount = 0
+						this.resetTenacityCounters("no_tool_use")
 					}
 
 					// Push to stack if there's content OR if we're paused waiting for a subtask.
@@ -5917,7 +5975,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.releaseGenerationLease()
 
 				// If it's a context window error and we haven't exceeded max retries for this error type
-				if (isContextWindowExceededError && retryAttempt < MAX_CONTEXT_WINDOW_RETRIES) {
+				if (
+					isContextWindowExceededError &&
+					(retryAttempt < MAX_CONTEXT_WINDOW_RETRIES ||
+						(await this.tenacityAllowsRetry("context_recovery", MAX_CONTEXT_WINDOW_RETRIES)))
+				) {
 					console.warn(
 						`[Task#${this.taskId}] Context window exceeded for model ${this.api.getModel().id}. ` +
 							`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
@@ -5928,6 +5990,22 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Resilient Context Recovery (Req 5.1–5.5): a non-recoverable outcome stops the retry
 					// loop instead of recursing forever. convergentReduction could not bring the irreducible
 					// core under the Servable_Input_Budget, so recovery is terminal.
+					if (
+						!recoveryDecision.retry &&
+						recoveryDecision.terminalError &&
+						(await this.tenacityAllowsRetry("context_recovery"))
+					) {
+						// Tenacity: retry the recovery (each pass reduces further) with backoff instead of giving up.
+						await this.backoffAndAnnounce(retryAttempt, new Error(recoveryDecision.terminalError.message))
+						if (this.abort) {
+							throw new Error(
+								`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted during retry`,
+							)
+						}
+						yield* this.attemptApiRequest(retryAttempt + 1, retryOptions)
+						return
+					}
+
 					if (!recoveryDecision.retry && recoveryDecision.terminalError) {
 						const terminalError: TerminalContextError = recoveryDecision.terminalError
 						if (this.parallelWorker) {

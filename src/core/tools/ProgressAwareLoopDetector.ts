@@ -33,7 +33,8 @@ export function hashArgs(block: ToolUse): string {
 /** Pulls an iteration position from args/result. Order of preference: explicit offset, then line range, then pagination token. */
 export function extractCursor(block: ToolUse, context?: ToolResultContext): string | number | undefined {
 	const args = normalizeArgs(block)
-	if (typeof args["offset"] === "number" || typeof args["offset"] === "string") return args["offset"] as string | number
+	if (typeof args["offset"] === "number" || typeof args["offset"] === "string")
+		return args["offset"] as string | number
 	if (typeof args["start_line"] === "string") return `${args["start_line"]}:${args["end_line"] ?? ""}`
 	const token = /next[_-]?(page|token|cursor)[^A-Za-z0-9]+([A-Za-z0-9=_-]+)/i.exec(context?.resultText ?? "")
 	return token ? token[2] : undefined
@@ -53,10 +54,7 @@ export function extractTarget(block: ToolUse): string | undefined {
  * Numeric comparison for offsets (next > prev); token inequality for pagination tokens.
  * Returns false when either cursor is undefined or they are not comparable.
  */
-export function isCursorAdvanced(
-	prev: string | number | undefined,
-	next: string | number | undefined,
-): boolean {
+export function isCursorAdvanced(prev: string | number | undefined, next: string | number | undefined): boolean {
 	if (prev === undefined || next === undefined) return false
 	if (typeof prev === "number" && typeof next === "number") return next > prev
 	if (typeof prev === "string" && typeof next === "string") {
@@ -226,10 +224,7 @@ export function deriveProgressSignals(
 	}
 
 	// Req 3.7, 3.10, 3.11: external/command/k8s/browser state changed.
-	if (
-		context.externalStateHash !== undefined &&
-		context.externalStateHash !== prevState?.prevExternalStateHash
-	) {
+	if (context.externalStateHash !== undefined && context.externalStateHash !== prevState?.prevExternalStateHash) {
 		progress.push("external_state_changed")
 	}
 
@@ -637,7 +632,7 @@ export class ProgressAwareLoopDetector {
 	 * {@link DEFAULT_ABSOLUTE_BOUND} when the dependency is omitted. Consumed by the
 	 * absolute-backstop guard added in task 12.2.
 	 */
-	private readonly absoluteBound: AbsoluteBound
+	private absoluteBound: AbsoluteBound
 	/**
 	 * Resolved serving context window in tokens (Requirement 10.3), injected via deps so
 	 * the detector never imports OmniRoute. `undefined` when neither `servingContextWindow`
@@ -747,14 +742,7 @@ export class ProgressAwareLoopDetector {
 		const newArgsHash = hashArgs(block)
 
 		const { progress, flags } = deriveProgressSignals(block, context, prevState)
-		const stagnation = deriveStagnationSignals(
-			block,
-			context,
-			prevState,
-			progress,
-			newArgsHash,
-			flags.resultHash,
-		)
+		const stagnation = deriveStagnationSignals(block, context, prevState, progress, newArgsHash, flags.resultHash)
 
 		return {
 			tool: String(block.name),
@@ -824,7 +812,8 @@ export class ProgressAwareLoopDetector {
 
 		// Synthetic fallback carries only the tool name; it is conservatively
 		// non-iterative when no command/polling context is supplied.
-		const scoringBlock: ToolUse = block ?? ({ type: "tool_use", name: captured.tool, params: {}, partial: false } as ToolUse)
+		const scoringBlock: ToolUse =
+			block ?? ({ type: "tool_use", name: captured.tool, params: {}, partial: false } as ToolUse)
 
 		const delta = computeScoreDelta(captured, state, scoringBlock, context)
 		state.noProgressScore = clamp(state.noProgressScore + delta, 0, 100)
@@ -1050,6 +1039,24 @@ export class ProgressAwareLoopDetector {
 		// precondition machinery used by executed tools, so empty-response escalation
 		// behaves consistently.
 		return this.gateByName(id, "__no_tool_use__")
+	}
+
+	/**
+	 * Tenacity: continue past a hard stop instead of giving up. Zeroes the score and
+	 * intervention state and raises the turn ceiling by one default ceiling so the
+	 * absolute backstop does not re-fire on every following call.
+	 */
+	public resetAfterTenacityContinue(taskId?: string): void {
+		const state = this.getState(taskId ?? ProgressAwareLoopDetector.DEFAULT_TASK_ID)
+		state.noProgressScore = 0
+		state.lastBand = "continue"
+		state.pendingIntervention = undefined
+		this.absoluteBound = {
+			...this.absoluteBound,
+			turnCeiling:
+				Math.max(this.absoluteBound.turnCeiling, state.completedExecutions) +
+				DEFAULT_ABSOLUTE_BOUND.turnCeiling,
+		}
 	}
 
 	/**

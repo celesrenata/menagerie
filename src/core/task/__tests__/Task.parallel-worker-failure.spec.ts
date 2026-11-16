@@ -18,6 +18,7 @@ import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { ContextProxy } from "../../config/ContextProxy"
 import { checkContextWindowExceededError } from "../../context/context-management/context-error-handling"
+import { CONTEXT_OVERFLOW_NON_RECOVERABLE } from "../contextRecoveryClassifier"
 import { OutputTokenLimitError } from "../../../api/providers/utils/output-token-limit-error"
 import type { ApiStream, ApiStreamChunk } from "../../../api/transform/stream"
 import { asyncStreamFrom } from "../../../test-utils/stream"
@@ -28,7 +29,9 @@ type TaskTestAccess = {
 	presentAssistantMessageSafe: () => void
 	safeEnsureModelFetched: () => Promise<ModelInfo>
 	backoffAndAnnounce: (retryAttempt: number, error: unknown) => Promise<void>
-	handleContextWindowExceededError: (requestModelInfo: ModelInfo) => Promise<{ retry: boolean; terminalError?: unknown }>
+	handleContextWindowExceededError: (
+		requestModelInfo: ModelInfo,
+	) => Promise<{ retry: boolean; terminalError?: unknown }>
 }
 
 type ProviderState = Awaited<ReturnType<ClineProvider["getState"]>>
@@ -609,5 +612,200 @@ describe("Task parallel worker failure (A4)", () => {
 		expect(task.parallelWorkerFailure).toBe(OUTPUT_LIMIT_REASON)
 		expect(task.lifetimeSignal.aborted).toBe(true)
 		expect(task["parallelWorkerApiFailures"]).toBe(0)
+	})
+
+	describe("Tenacity", () => {
+		const setTenacity = async (values: { enabled?: boolean; tries?: number; unlimited?: boolean }) => {
+			await mockProvider.contextProxy.setValue("tenacityEnabled", values.enabled ?? true)
+			if (values.tries !== undefined) await mockProvider.contextProxy.setValue("tenacityMaxTries", values.tries)
+			if (values.unlimited !== undefined)
+				await mockProvider.contextProxy.setValue("tenacityUnlimited", values.unlimited)
+		}
+		const lockToTier1 = () => {
+			mockApiConfig = {
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+				openAiModelId: "pool/tier1/coder",
+				openAiApiKey: "k",
+				openAiBaseUrl: "http://localhost:1/v1",
+			}
+		}
+		const terminalDecision = {
+			retry: false,
+			terminalError: {
+				classification: CONTEXT_OVERFLOW_NON_RECOVERABLE,
+				irreducibleTokens: 10,
+				budget: 5,
+				message: "context overflow terminal",
+			},
+		} as const
+
+		it("keeps a tier1-locked unlimited worker alive past the legacy cap", async () => {
+			lockToTier1()
+			await setTenacity({ unlimited: true })
+			const { task, steps, createMessage, failParallelWorker, run } = await createLoopTask()
+			steps.push(...times(30, fail503), textResponse)
+
+			await run()
+
+			expect(createMessage).toHaveBeenCalledTimes(32)
+			expect(failParallelWorker).not.toHaveBeenCalled()
+			expect(task.parallelWorkerFailure).toBeUndefined()
+		})
+
+		it("ignores unlimited off tier1 and fails at max(8, tries) + 1", async () => {
+			await setTenacity({ unlimited: true, tries: 12 })
+			const { task, steps, createMessage, run } = await createLoopTask()
+			steps.push(...times(40, fail503))
+
+			await run()
+
+			expect(createMessage).toHaveBeenCalledTimes(13)
+			expect(task.parallelWorkerFailure).toContain("API request failed after 12 retries")
+		})
+
+		it("never lowers the legacy cap when tries is below 8", async () => {
+			await setTenacity({ tries: 3 })
+			const { task, steps, createMessage, run } = await createLoopTask()
+			steps.push(...times(20, fail503))
+
+			await run()
+
+			expect(createMessage).toHaveBeenCalledTimes(9)
+			expect(task.parallelWorkerFailure).toContain(RETRY_CAP_REASON)
+		})
+
+		it("still stops on cancel while retrying unlimited", async () => {
+			lockToTier1()
+			await setTenacity({ unlimited: true })
+			const { task, steps, createMessage, backoffAndAnnounce, run } = await createLoopTask()
+			let backoffs = 0
+			backoffAndAnnounce.mockImplementation(async () => {
+				if (++backoffs === 12) {
+					task.abortReason = "user_cancelled"
+					await task.abortTask()
+				}
+			})
+			steps.push(...times(100, fail503))
+
+			await run()
+
+			expect(createMessage.mock.calls.length).toBeLessThanOrEqual(13)
+			expect(task.parallelWorkerFailure).toBeUndefined()
+		})
+
+		it("raises the mistake gate to max(legacy, tries) and disables it when unlimited on tier1", async () => {
+			await setTenacity({ tries: 10 })
+			const below = await createLoopTask({ consecutiveMistakeLimit: 3 })
+			below.task.consecutiveMistakeCount = 3
+			await below.run()
+			expect(below.failParallelWorker).not.toHaveBeenCalled()
+
+			const at = await createLoopTask({ consecutiveMistakeLimit: 3 })
+			at.task.consecutiveMistakeCount = 10
+			await at.run()
+			expect(at.failParallelWorker).toHaveBeenCalledWith("Stopped after 10 consecutive mistakes")
+
+			lockToTier1()
+			await setTenacity({ unlimited: true })
+			const unlimited = await createLoopTask({ consecutiveMistakeLimit: 3 })
+			unlimited.task.consecutiveMistakeCount = 500
+			await unlimited.run()
+			expect(unlimited.failParallelWorker).not.toHaveBeenCalled()
+		})
+
+		describe("empty no-tool turns (no_tool_use)", () => {
+			const hardStop = {
+				allowExecution: false,
+				askUser: { messageKey: "mistake_limit_reached", messageDetail: "" },
+			} as const
+
+			it("fails the worker at the mistake limit when Tenacity is off", async () => {
+				const { task, steps, failParallelWorker, run } = await createLoopTask({ consecutiveMistakeLimit: 3 })
+				vi.spyOn(task.toolRepetitionDetector, "recordNoToolTurn").mockReturnValue(hardStop)
+				steps.push(textResponse, textResponse)
+
+				await run()
+
+				expect(failParallelWorker).toHaveBeenCalledWith("Stopped after 3 consecutive mistakes")
+			})
+
+			it("continues while the no_tool_use budget lasts, then forces the limit", async () => {
+				await setTenacity({ tries: 2 })
+				const { task, steps, failParallelWorker, run } = await createLoopTask({ consecutiveMistakeLimit: 3 })
+				vi.spyOn(task.toolRepetitionDetector, "recordNoToolTurn").mockReturnValue(hardStop)
+				steps.push(textResponse, textResponse)
+				await run()
+				expect(failParallelWorker).not.toHaveBeenCalled()
+
+				const exhausted = await createLoopTask({ consecutiveMistakeLimit: 3 })
+				vi.spyOn(exhausted.task.toolRepetitionDetector, "recordNoToolTurn").mockReturnValue(hardStop)
+				exhausted.steps.push(textResponse, textResponse, textResponse, textResponse)
+				await exhausted.run()
+				expect(exhausted.failParallelWorker).toHaveBeenCalledWith("Stopped after 3 consecutive mistakes")
+			})
+		})
+
+		describe("output token limit", () => {
+			it("retries a worker with a smaller-output note, then fails when exhausted", async () => {
+				await setTenacity({ tries: 2 })
+				const { task, steps, createMessage, run } = await createLoopTask()
+				steps.push(
+					...times(5, () =>
+						streamThenThrow([{ type: "text", text: "partial" }], new OutputTokenLimitError()),
+					),
+				)
+
+				await run()
+
+				expect(createMessage).toHaveBeenCalledTimes(3)
+				expect(task.parallelWorkerFailure).toBe(OUTPUT_LIMIT_REASON)
+			})
+
+			it("keeps retrying unlimited on tier1", async () => {
+				lockToTier1()
+				await setTenacity({ unlimited: true })
+				const { task, steps, createMessage, run } = await createLoopTask()
+				steps.push(
+					...times(6, () =>
+						streamThenThrow([{ type: "text", text: "partial" }], new OutputTokenLimitError()),
+					),
+					textResponse,
+				)
+
+				await run()
+
+				expect(createMessage).toHaveBeenCalledTimes(8)
+				expect(task.parallelWorkerFailure).toBeUndefined()
+			})
+		})
+
+		describe("terminal context recovery", () => {
+			const contextError = () =>
+				Object.assign(new Error("This model's maximum context length is 8192 tokens"), { status: 400 })
+
+			it("fails the worker immediately when Tenacity is off", async () => {
+				const { task, access, steps, createMessage, run } = await createLoopTask()
+				vi.spyOn(access, "handleContextWindowExceededError").mockResolvedValue(terminalDecision)
+				steps.push(...times(5, () => streamThenThrow([], contextError())))
+
+				await run()
+
+				expect(createMessage).toHaveBeenCalledOnce()
+				expect(task.parallelWorkerFailure).toBe("context overflow terminal")
+			})
+
+			it("retries the recovery while the budget lasts, then fails", async () => {
+				await setTenacity({ tries: 2 })
+				const { task, access, steps, createMessage, run } = await createLoopTask()
+				vi.spyOn(access, "handleContextWindowExceededError").mockResolvedValue(terminalDecision)
+				steps.push(...times(10, () => streamThenThrow([], contextError())))
+
+				await run()
+
+				expect(createMessage).toHaveBeenCalledTimes(3)
+				expect(task.parallelWorkerFailure).toBe("context overflow terminal")
+			})
+		})
 	})
 })

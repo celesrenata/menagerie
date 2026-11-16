@@ -71,7 +71,11 @@ interface MockTask {
 	api: { getModel: () => { id: string; info: Record<string, unknown> } }
 	recordToolUsage: ReturnType<typeof vi.fn>
 	recordToolError: ReturnType<typeof vi.fn>
-	toolRepetitionDetector: { check: ReturnType<typeof vi.fn<(block: ToolUse) => ToolRepetitionCheckResult>> }
+	toolRepetitionDetector: {
+		check: ReturnType<typeof vi.fn<(block: ToolUse) => ToolRepetitionCheckResult>>
+		resetAfterTenacityContinue: ReturnType<typeof vi.fn>
+	}
+	tenacityAllowsRetry: ReturnType<typeof vi.fn<(kind: string) => Promise<boolean>>>
 	providerRef: { deref: () => { getState: () => Promise<unknown> } }
 	say: ReturnType<typeof vi.fn>
 	ask: ReturnType<typeof vi.fn>
@@ -102,7 +106,11 @@ function makeTask(experiments: Record<string, boolean> = {}): MockTask {
 		api: { getModel: () => ({ id: "test-model", info: {} }) },
 		recordToolUsage: vi.fn(),
 		recordToolError: vi.fn(),
-		toolRepetitionDetector: { check: vi.fn<(block: ToolUse) => ToolRepetitionCheckResult>() },
+		toolRepetitionDetector: {
+			check: vi.fn<(block: ToolUse) => ToolRepetitionCheckResult>(),
+			resetAfterTenacityContinue: vi.fn(),
+		},
+		tenacityAllowsRetry: vi.fn<(kind: string) => Promise<boolean>>().mockResolvedValue(false),
 		providerRef: {
 			deref: () => ({
 				getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [], experiments }),
@@ -247,5 +255,42 @@ describe("presentAssistantMessage - tool repetition nudge and escalation", () =>
 		expect(String(results[0].content)).toContain("Tool call repetition limit reached for read_file")
 		expect(TelemetryService.instance.captureConsecutiveMistakeError).toHaveBeenCalledWith("t")
 		expect(TelemetryService.instance.captureException).toHaveBeenCalledTimes(1)
+	})
+
+	describe("with Tenacity", () => {
+		it.each([false, true])(
+			"continues past a hard stop with a replanning result when Tenacity allows it (worker=%s)",
+			async (parallelWorker) => {
+				const task = makeTask()
+				task.parallelWorker = parallelWorker
+				task.assistantMessageContent = [readBlock("call_r1")]
+				task.toolRepetitionDetector.check.mockReturnValue(escalation)
+				task.tenacityAllowsRetry.mockResolvedValue(true)
+
+				await presentAssistantMessage(asTask(task))
+
+				expect(task.tenacityAllowsRetry).toHaveBeenCalledWith("loop_detector")
+				expect(task.toolRepetitionDetector.resetAfterTenacityContinue).toHaveBeenCalledTimes(1)
+				expect(task.failParallelWorker).not.toHaveBeenCalled()
+				expect(task.ask).not.toHaveBeenCalled()
+				expect(readFileTool.handle).not.toHaveBeenCalled()
+				const results = toolResults(task, "call_r1")
+				expect(results).toHaveLength(1)
+				expect(String(results[0].content)).toContain("Stop repeating it")
+			},
+		)
+
+		it("fails the worker when Tenacity is exhausted or off", async () => {
+			const task = makeTask()
+			task.parallelWorker = true
+			task.assistantMessageContent = [readBlock("call_r1")]
+			task.toolRepetitionDetector.check.mockReturnValue(escalation)
+			task.tenacityAllowsRetry.mockResolvedValue(false)
+
+			await presentAssistantMessage(asTask(task))
+
+			expect(task.failParallelWorker).toHaveBeenCalledTimes(1)
+			expect(task.toolRepetitionDetector.resetAfterTenacityContinue).not.toHaveBeenCalled()
+		})
 	})
 })

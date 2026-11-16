@@ -56,6 +56,7 @@ import {
 import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-manager-registry"
 
 import { formatResponse } from "../prompts/responses"
+import { TENACITY_REPLAN_NOTE } from "../task/tenacity"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 import { collectParallelReadBatch, isParallelRead, runReadBatch } from "./parallelReadTools"
 
@@ -800,11 +801,7 @@ export async function executeAssistantMessageBlock(
 						transcriptTokens: cline.getTokenUsage().contextTokens,
 					}
 					cline.didTodoChange = false
-					cline.toolRepetitionDetector.recordResult(
-						block,
-						{ ok: true, body: resultContent },
-						detectorContext,
-					)
+					cline.toolRepetitionDetector.recordResult(block, { ok: true, body: resultContent }, detectorContext)
 				} catch {
 					// Signal capture must never break tool dispatch.
 				}
@@ -1105,6 +1102,13 @@ export async function executeAssistantMessageBlock(
 						const repetitionLimitError = formatResponse.toolError(
 							`Tool call repetition limit reached for ${block.name}. Please try a different approach.`,
 						)
+
+						// Tenacity: treat the hard stop as a replanning nudge and continue while budget remains.
+						if (await cline.tenacityAllowsRetry("loop_detector")) {
+							cline.toolRepetitionDetector.resetAfterTenacityContinue()
+							pushToolResult(formatResponse.toolError(TENACITY_REPLAN_NOTE(block.name)))
+							break
+						}
 
 						// Nobody answers a parallel worker's ask: fail the worker instead.
 						// Answer the tool_use first; failParallelWorker aborts the task.

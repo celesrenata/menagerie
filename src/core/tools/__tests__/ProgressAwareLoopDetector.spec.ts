@@ -926,3 +926,18 @@ describe("ProgressAwareLoopDetector — Absolute_Backstop unit/edge", () => {
 		})
 	})
 })
+
+describe("ProgressAwareLoopDetector.resetAfterTenacityContinue", () => {
+	it("zeroes the score and raises the turn ceiling without mutating the shared default", () => {
+		const detector = new ProgressAwareLoopDetector(3, {
+			absoluteBound: { turnCeiling: 2, transcriptWindowFraction: 0.9 },
+		})
+		for (let i = 0; i < 4; i++) detector.recordNoToolTurn()
+
+		detector.resetAfterTenacityContinue()
+
+		expect(detector["absoluteBound"].turnCeiling).toBeGreaterThanOrEqual(400)
+		expect(DEFAULT_ABSOLUTE_BOUND.turnCeiling).toBe(400)
+		expect(detector.check(createToolUse("read_file", undefined, { path: "a.ts" })).askUser).toBeUndefined()
+	})
+})
