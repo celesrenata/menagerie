@@ -93,6 +93,7 @@ export function filterNativeToolsForMode(
 		todoListEnabled: settings?.todoListEnabled,
 		codeIndexManager,
 		allowedMcpServers,
+		allowAllToolGroups: settings?.allowAllToolGroups === true,
 	})
 
 	// Apply model-specific alias renames (canonical -> alias) to the allowed set.
@@ -164,7 +165,7 @@ export function filterMcpToolsForMode(
 	mode: string | undefined,
 	customModes: ModeConfig[] | undefined,
 	experiments: Record<string, boolean> | undefined,
-	settings?: { disabledTools?: string[]; modelInfo?: ModelInfo },
+	settings?: { disabledTools?: string[]; modelInfo?: ModelInfo; allowAllToolGroups?: boolean },
 ): OpenAI.Chat.ChatCompletionTool[] {
 	const modeSlug = mode ?? defaultModeSlug
 
@@ -176,6 +177,8 @@ export function filterMcpToolsForMode(
 		undefined,
 		undefined,
 		experiments ?? {},
+		undefined,
+		{ allowAllToolGroups: settings?.allowAllToolGroups === true },
 	)
 
 	// The mode check alone would let every mcp--* declaration reach the provider

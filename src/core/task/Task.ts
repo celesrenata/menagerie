@@ -543,6 +543,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Tool Use
 	consecutiveMistakeCount: number = 0
+	/** Consecutive tool calls rejected because the mode lacks the tool's group. Free for the first 3. */
+	consecutiveModeRejections: number = 0
 	consecutiveMistakeLimit: number
 	consecutiveMistakeCountForApplyDiff: Map<string, number> = new Map()
 	consecutiveMistakeCountForEditFile: Map<string, number> = new Map()
@@ -2270,6 +2272,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				disabledTools: this.getDisabledTools(state?.disabledTools),
 				modelInfo: requestModelInfo,
+				allowAllToolGroups: this.isYoloWorkerAnyToolActive(),
 				includeAllToolsWithRestrictions: false,
 			})
 			allTools = toolsResult.tools
@@ -3121,6 +3124,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error(`[Task#failParallelWorker] say failed for ${this.taskId}.${this.instanceId}:`, error)
 		})
 		await this.abortTask()
+	}
+
+	/** True when YOLO and the workers-any-tool setting are on and this task is a parallel worker. */
+	public isYoloWorkerAnyToolActive(): boolean {
+		const proxy = this.providerRef.deref()?.contextProxy
+		return (
+			this.parallelWorker &&
+			proxy?.getValue("yoloModeEnabled") === true &&
+			proxy?.getValue("yoloWorkersAnyTool") === true
+		)
 	}
 
 	/**
@@ -5232,6 +5245,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				disabledTools: this.getDisabledTools(state?.disabledTools),
 				modelInfo,
+				allowAllToolGroups: this.isYoloWorkerAnyToolActive(),
 				includeAllToolsWithRestrictions: false,
 			})
 			allTools = toolsResult.tools
@@ -5674,6 +5688,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						apiConfiguration,
 						disabledTools: this.getDisabledTools(state?.disabledTools),
 						modelInfo: requestModelInfo,
+						allowAllToolGroups: this.isYoloWorkerAnyToolActive(),
 						includeAllToolsWithRestrictions: false,
 					})
 					contextMgmtTools = toolsResult.tools
@@ -5859,6 +5874,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				disabledTools: this.getDisabledTools(state?.disabledTools),
 				modelInfo,
+				allowAllToolGroups: this.isYoloWorkerAnyToolActive(),
 				includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			})
 			allTools = toolsResult.tools

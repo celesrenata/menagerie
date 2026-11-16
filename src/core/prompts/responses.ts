@@ -61,6 +61,22 @@ Otherwise, if you have not completed the task and do not need additional informa
 			: base
 	},
 
+	/**
+	 * Guidance (not a failure) returned when a tool is outside the current mode's tool groups.
+	 * Points the model at reporting its findings or delegating to a mode that can run the tool.
+	 */
+	toolNotAllowedInMode: (toolName: string, mode: string, capableModes: string[], isWorker: boolean) => {
+		const modesText = capableModes.length > 0 ? capableModes.join(", ") : "none of the available modes"
+		const next = isWorker
+			? `Do not retry it. Finish with attempt_completion and report your findings so far, the exact ${toolName} call you wanted to make and why, and which mode (${modesText}) is needed to run it, so the parent task can start that work.`
+			: `Do not retry it. Either use new_task with a mode that can run ${toolName} (${modesText}), or finish with attempt_completion and report your findings, the exact ${toolName} call you wanted to make and why.`
+		return JSON.stringify({
+			status: "guidance",
+			message: `${toolName} is not available in ${mode} mode, so it was not run. This is not an error.`,
+			modesThatCanUseIt: capableModes,
+			next,
+		})
+	},
 	tooManyMistakes: (feedback?: string) =>
 		JSON.stringify({
 			status: "guidance",

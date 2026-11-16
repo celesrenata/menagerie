@@ -32,6 +32,8 @@ interface BuildToolsOptions {
 	 * to pass all tool definitions while restricting callable tools.
 	 */
 	includeAllToolsWithRestrictions?: boolean
+	/** Bypass only the mode's tool-group membership (YOLO workers-any-tool). */
+	allowAllToolGroups?: boolean
 }
 
 interface BuildToolsResult {
@@ -94,6 +96,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		disabledTools,
 		modelInfo,
 		includeAllToolsWithRestrictions,
+		allowAllToolGroups,
 	} = options
 
 	const mcpHub = provider.getMcpHub()
@@ -107,6 +110,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
 		disabledTools,
 		modelInfo,
+		allowAllToolGroups,
 	}
 
 	// Check if the model supports images for read_file tool description.
@@ -142,6 +146,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	const filteredMcpTools = filterMcpToolsForMode(mcpTools, mode, customModes, experiments, {
 		disabledTools,
 		modelInfo,
+		allowAllToolGroups,
 	})
 
 	// Add custom tools if they are available and the experiment is enabled.

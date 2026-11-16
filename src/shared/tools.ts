@@ -314,6 +314,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	generate_image: "generate images",
 	custom_tool: "use custom tools",
 	invalid_tool_call: "invalid tool call",
+	mode_not_allowed: "tool not allowed in mode",
 } as const
 
 // Define available tool groups.

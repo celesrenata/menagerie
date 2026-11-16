@@ -315,6 +315,7 @@ describe("presentAssistantMessage - tool usage attribution", () => {
 			{ path: "test.txt" },
 			undefined,
 			undefined,
+			{ allowAllToolGroups: false },
 		)
 	})
 

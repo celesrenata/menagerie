@@ -49,6 +49,7 @@ export const toolNames = [
 	"generate_image",
 	"custom_tool",
 	"invalid_tool_call",
+	"mode_not_allowed",
 ] as const
 
 export const toolNamesSchema = z.enum(toolNames)

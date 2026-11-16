@@ -8,7 +8,7 @@ import { customToolRegistry } from "@roo-code/core"
 
 import { t } from "../../i18n"
 
-import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
+import { defaultModeSlug, getAllModes, getModeBySlug } from "../../shared/modes"
 import type { ToolParamName, ToolResponse, ToolUse, McpToolUse, TextContent } from "../../shared/tools"
 
 import { AskIgnoredError } from "../task/AskIgnoredError"
@@ -37,7 +37,7 @@ import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
-import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
+import { isToolAllowedForMode, isValidToolName, validateToolUse } from "../tools/validateToolUse"
 import { buildToolRequirements } from "../prompts/tools/effective-tool-policy"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 import type { ToolResultContext } from "../tools/ProgressAwareLoopDetector"
@@ -59,6 +59,11 @@ import { formatResponse } from "../prompts/responses"
 import { TENACITY_REPLAN_NOTE } from "../task/tenacity"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 import { collectParallelReadBatch, isParallelRead, runReadBatch } from "./parallelReadTools"
+
+/** Mode-permission rejection from validateToolUse (matched by name so partial module mocks keep working). */
+function isModeRejection(error: unknown): boolean {
+	return error instanceof Error && error.name === "ToolNotAllowedInModeError"
+}
 
 /**
  * Broad-exploration tools that signal the model is surveying an unseen area of
@@ -601,6 +606,9 @@ export async function executeAssistantMessageBlock(
 			// Read the task-local mode, not the shared provider mode.
 			// A delegated child task may run in a different mode than its parent.
 			const taskMode = await cline.getTaskMode()
+			// YOLO workers-any-tool: bypasses only mode group membership (see validateToolUse).
+			const allowAllToolGroups =
+				cline.parallelWorker === true && state?.yoloModeEnabled === true && state?.yoloWorkersAnyTool === true
 
 			// Safe analytics key for this call. Never key telemetry on the raw,
 			// model-controlled tool name.
@@ -912,8 +920,44 @@ export async function executeAssistantMessageBlock(
 						block.params,
 						stateExperiments,
 						includedTools,
+						{ allowAllToolGroups },
 					)
+					cline.consecutiveModeRejections = 0
 				} catch (error) {
+					if (isModeRejection(error)) {
+						// A mode-permission rejection is guidance, not a failure: no error message,
+						// and free for the first 3 in a row so it cannot burn the mistake budget.
+						cline.consecutiveModeRejections = (cline.consecutiveModeRejections ?? 0) + 1
+						if (cline.consecutiveModeRejections > 3) {
+							cline.consecutiveMistakeCount++
+						}
+						const capableModes = getAllModes(customModes)
+							.filter((m) =>
+								isToolAllowedForMode(
+									block.name,
+									m.slug,
+									customModes ?? [],
+									buildToolRequirements(disabledTools, modelInfo?.info),
+									undefined,
+									stateExperiments,
+									includedTools,
+								),
+							)
+							.map((m) => m.slug)
+						cline.pushToolResultToUserContent({
+							type: "tool_result",
+							tool_use_id: sanitizeToolUseId(toolCallId),
+							content: formatResponse.toolNotAllowedInMode(
+								block.name,
+								taskMode,
+								capableModes,
+								cline.parallelWorker === true,
+							),
+							is_error: true,
+						})
+						cline.recordToolError("mode_not_allowed", error.message)
+						break
+					}
 					cline.consecutiveMistakeCount++
 					// For validation errors (unknown tool, tool not allowed for mode), we need to:
 					// 1. Send a tool_result with the error (required for native tool calling)
@@ -1062,6 +1106,28 @@ export async function executeAssistantMessageBlock(
 				}
 			}
 
+			// Partial blocks: skip side-effect-free when the mode forbids the tool, so no approval
+			// card (e.g. a "Running command" card) is rendered for a call that will be rejected.
+			if (block.partial) {
+				try {
+					const partialModelInfo = cline.api.getModel()
+					const partialIncludedTools = partialModelInfo?.info?.includedTools
+					validateToolUse(
+						block.name as ToolName,
+						taskMode,
+						customModes ?? [],
+						buildToolRequirements(disabledTools, partialModelInfo?.info),
+						undefined,
+						stateExperiments,
+						partialIncludedTools,
+						{ allowAllToolGroups },
+					)
+				} catch (error) {
+					if (isModeRejection(error)) {
+						break
+					}
+				}
+			}
 			// Any throw from dispatch must still answer this tool_use, or the turn never settles.
 			try {
 				// Check for identical consecutive tool calls.

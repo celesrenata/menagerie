@@ -126,6 +126,11 @@ export interface EffectiveToolPolicyInput {
 	 * `access_mcp_resource` based on resources from disallowed servers.
 	 */
 	allowedMcpServers?: string[]
+	/**
+	 * Bypass only the mode's tool-group membership (YOLO workers-any-tool): every tool group's
+	 * tools are advertised. Disabled/excluded tools and the other filters below still apply.
+	 */
+	allowAllToolGroups?: boolean
 }
 
 export interface EffectiveToolPolicy {
@@ -219,6 +224,7 @@ export function resolveEffectiveToolPolicy(input: EffectiveToolPolicyInput): Eff
 		todoListEnabled,
 		codeIndexManager,
 		allowedMcpServers,
+		allowAllToolGroups,
 	} = input
 
 	// 1. Resolve mode config with default-slug fallback (existing behavior).
@@ -226,11 +232,26 @@ export function resolveEffectiveToolPolicy(input: EffectiveToolPolicyInput): Eff
 	const modeConfig = getModeBySlug(modeSlug, customModes) || getModeBySlug(defaultModeSlug, customModes)!
 
 	// 2. Start from all tools granted by the mode's groups (including always-available tools).
-	const allowedToolNames = new Set<string>(getToolsForMode(modeConfig.groups))
+	const allowedToolNames = new Set<string>(
+		getToolsForMode(allowAllToolGroups ? (Object.keys(TOOL_GROUPS) as ToolGroup[]) : modeConfig.groups),
+	)
 
 	// 3. Filter through per-mode permission checks (feature/experiment flags, custom-mode overrides).
 	for (const tool of Array.from(allowedToolNames)) {
-		if (!isToolAllowedForMode(tool, modeSlug, customModes ?? [], undefined, undefined, experiments ?? {})) {
+		if (
+			!isToolAllowedForMode(
+				tool,
+				modeSlug,
+				customModes ?? [],
+				undefined,
+				undefined,
+				experiments ?? {},
+				undefined,
+				{
+					allowAllToolGroups,
+				},
+			)
+		) {
 			allowedToolNames.delete(tool)
 		}
 	}

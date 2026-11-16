@@ -29,6 +29,30 @@ export function isValidToolName(toolName: string, experiments?: Record<string, b
 	return false
 }
 
+/**
+ * Thrown only when a known tool is rejected because the current mode's tool groups
+ * do not include it. Other validation failures (unknown tool, disabled tool, file
+ * restrictions) keep throwing plain errors.
+ */
+export class ToolNotAllowedInModeError extends Error {
+	constructor(
+		public readonly toolName: string,
+		public readonly mode: string,
+	) {
+		super(`Tool "${toolName}" is not allowed in ${mode} mode.`)
+		this.name = "ToolNotAllowedInModeError"
+		this.name = "ToolNotAllowedInModeError"
+	}
+}
+
+export interface ToolModeOptions {
+	/**
+	 * Bypass only the mode's tool-group membership check. Disabled tools, model-excluded
+	 * tools, unknown tools, and the mode's file-restriction regexes still apply.
+	 */
+	allowAllToolGroups?: boolean
+}
+
 export function validateToolUse(
 	toolName: ToolName,
 	mode: Mode,
@@ -37,6 +61,7 @@ export function validateToolUse(
 	toolParams?: Record<string, unknown>,
 	experiments?: Record<string, boolean>,
 	includedTools?: string[],
+	options?: ToolModeOptions,
 ): void {
 	// First, check if the tool name is actually a valid/known tool
 	// This catches completely invalid tool names like "edit_file" that don't exist
@@ -56,9 +81,10 @@ export function validateToolUse(
 			toolParams,
 			experiments,
 			includedTools,
+			options,
 		)
 	) {
-		throw new Error(`Tool "${toolName}" is not allowed in ${mode} mode.`)
+		throw new ToolNotAllowedInModeError(toolName, mode)
 	}
 }
 
@@ -125,7 +151,15 @@ export function isToolAllowedForMode(
 	toolParams?: Record<string, any>, // All tool parameters
 	experiments?: Record<string, boolean>,
 	includedTools?: string[], // Opt-in tools explicitly included (e.g., from modelInfo)
+	options?: ToolModeOptions,
 ): boolean {
+	// Group membership is the last gate. With allowAllToolGroups a tool that exists in any
+	// group passes it; every earlier gate (requirements, experiments, file restrictions) still ran.
+	const notInModeGroups = (): boolean =>
+		options?.allowAllToolGroups === true &&
+		(tool.startsWith("mcp_") ||
+			Object.values(TOOL_GROUPS).some((group) => group.tools.includes(TOOL_ALIASES[tool] ?? tool)))
+
 	// Resolve alias to canonical name (e.g., "search_and_replace" → "edit")
 	const resolvedTool = TOOL_ALIASES[tool] ?? tool
 	const resolvedIncludedTools = includedTools?.map((t) => TOOL_ALIASES[t] ?? t)
@@ -238,5 +272,5 @@ export function isToolAllowedForMode(
 		return true
 	}
 
-	return false
+	return notInModeGroups()
 }

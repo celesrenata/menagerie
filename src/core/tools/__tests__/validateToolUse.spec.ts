@@ -1,11 +1,11 @@
 // npx vitest run src/core/tools/__tests__/validateToolUse.spec.ts
 
-import { toolNamesSchema, type ModeConfig } from "@roo-code/types"
+import { toolNamesSchema, type ModeConfig, type ToolName } from "@roo-code/types"
 
 import { modes } from "../../../shared/modes"
 import { TOOL_GROUPS } from "../../../shared/tools"
 
-import { validateToolUse, isToolAllowedForMode } from "../validateToolUse"
+import { validateToolUse, isToolAllowedForMode, ToolNotAllowedInModeError } from "../validateToolUse"
 
 const codeMode = modes.find((m) => m.slug === "code")?.slug || "code"
 const architectMode = modes.find((m) => m.slug === "architect")?.slug || "architect"
@@ -18,7 +18,9 @@ describe("mode-validator", () => {
 				// Code mode has all groups
 				Object.entries(TOOL_GROUPS).forEach(([_, config]) => {
 					config.tools.forEach((tool: string) => {
-						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(tool !== "parallel_tasks" && tool !== "background_tasks")
+						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(
+							tool !== "parallel_tasks" && tool !== "background_tasks",
+						)
 					})
 				})
 			})
@@ -294,6 +296,97 @@ describe("mode-validator", () => {
 			)
 
 			expect(() => validateToolUse("execute_command", codeMode, [], toolRequirements)).not.toThrow()
+		})
+	})
+	describe("ToolNotAllowedInModeError and allowAllToolGroups", () => {
+		it("throws ToolNotAllowedInModeError only for the mode check", () => {
+			expect(() => validateToolUse("execute_command", architectMode, [])).toThrow(ToolNotAllowedInModeError)
+			expect(() => validateToolUse("execute_command", architectMode, [])).toThrow(
+				'Tool "execute_command" is not allowed in architect mode.',
+			)
+			expect(() => validateToolUse("nonexistent" as ToolName, architectMode, [])).not.toThrow(
+				ToolNotAllowedInModeError,
+			)
+			expect(() => validateToolUse("execute_command", codeMode, [], { execute_command: false })).toThrow(
+				ToolNotAllowedInModeError,
+			)
+		})
+
+		it("allows tools from any group when the flag is on", () => {
+			expect(() =>
+				validateToolUse("execute_command", architectMode, [], undefined, undefined, undefined, undefined, {
+					allowAllToolGroups: true,
+				}),
+			).not.toThrow()
+			expect(
+				isToolAllowedForMode("mcp_server_tool", askMode, [], undefined, undefined, undefined, undefined, {
+					allowAllToolGroups: true,
+				}),
+			).toBe(true)
+		})
+
+		it("rejects with the flag off or unset", () => {
+			expect(
+				isToolAllowedForMode("execute_command", architectMode, [], undefined, undefined, undefined, undefined, {
+					allowAllToolGroups: false,
+				}),
+			).toBe(false)
+			expect(isToolAllowedForMode("execute_command", architectMode, [])).toBe(false)
+		})
+
+		it("keeps disabled tools, unknown tools, and worker fan-out disables rejected with the flag on", () => {
+			const options = { allowAllToolGroups: true }
+			expect(
+				isToolAllowedForMode(
+					"execute_command",
+					architectMode,
+					[],
+					{ execute_command: false },
+					undefined,
+					undefined,
+					undefined,
+					options,
+				),
+			).toBe(false)
+			expect(
+				isToolAllowedForMode(
+					"new_task",
+					architectMode,
+					[],
+					{ new_task: false },
+					undefined,
+					undefined,
+					undefined,
+					options,
+				),
+			).toBe(false)
+			expect(() =>
+				validateToolUse(
+					"nonexistent" as ToolName,
+					architectMode,
+					[],
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					options,
+				),
+			).toThrow(/Unknown tool/)
+		})
+
+		it("keeps the mode's file restrictions with the flag on", () => {
+			expect(() =>
+				validateToolUse(
+					"write_to_file",
+					architectMode,
+					[],
+					undefined,
+					{ path: "src/a.ts", content: "x" },
+					undefined,
+					undefined,
+					{ allowAllToolGroups: true },
+				),
+			).toThrow(/only edit files matching/)
 		})
 	})
 })

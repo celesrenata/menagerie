@@ -453,3 +453,37 @@ describe("filterNativeToolsForMode - access_mcp_resource allowlist", () => {
 		})
 	})
 })
+
+describe("filterNativeToolsForMode - allowAllToolGroups", () => {
+	const nativeTools = [makeTool("execute_command"), makeTool("read_file"), makeTool("write_to_file")]
+	const names = (tools: OpenAI.Chat.ChatCompletionTool[]) =>
+		tools.map((t) => ("function" in t ? t.function.name : ""))
+
+	it("advertises tools from every group when on", () => {
+		const result = filterNativeToolsForMode(nativeTools, "architect", undefined, undefined, undefined, {
+			allowAllToolGroups: true,
+		})
+		expect(names(result)).toContain("execute_command")
+	})
+
+	it("does not advertise out-of-mode tools when off or unset", () => {
+		expect(
+			names(filterNativeToolsForMode(nativeTools, "architect", undefined, undefined, undefined, {})),
+		).not.toContain("execute_command")
+		expect(
+			names(
+				filterNativeToolsForMode(nativeTools, "architect", undefined, undefined, undefined, {
+					allowAllToolGroups: false,
+				}),
+			),
+		).not.toContain("execute_command")
+	})
+
+	it("still drops disabled tools when on", () => {
+		const result = filterNativeToolsForMode(nativeTools, "architect", undefined, undefined, undefined, {
+			allowAllToolGroups: true,
+			disabledTools: ["execute_command"],
+		})
+		expect(names(result)).not.toContain("execute_command")
+	})
+})
