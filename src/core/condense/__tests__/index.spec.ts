@@ -1780,8 +1780,7 @@ describe("transformMessagesForCondensing", () => {
 })
 
 describe("getEffectiveMessageIndices", () => {
-	const effectiveByIndices = (messages: ApiMessage[]) =>
-		getEffectiveMessageIndices(messages).map((i) => messages[i])
+	const effectiveByIndices = (messages: ApiMessage[]) => getEffectiveMessageIndices(messages).map((i) => messages[i])
 
 	it("matches getEffectiveApiHistory with a summary and truncation marker", () => {
 		const messages: ApiMessage[] = [
@@ -1842,6 +1841,7 @@ describe("summarizeConversation input budget (hierarchical summarization)", () =
 						yield { type: "usage" as const, totalCost: 0.5, outputTokens: 10 }
 					})()),
 		)
+		// Double assertion: minimal ApiHandler stub exposing only the methods summarizeConversation uses.
 		const handler = {
 			createMessage: create,
 			countTokens: vi.fn(countByLength),
@@ -1887,7 +1887,7 @@ describe("summarizeConversation input budget (hierarchical summarization)", () =
 		expect(create).toHaveBeenCalledTimes(1)
 	})
 
-	it("makes a single request when the handler window is unknown", async () => {
+	it("makes a single request when the window is unknown and the input fits the default budget", async () => {
 		const { handler, create } = makeHandler(undefined)
 		const result = await summarizeConversation({
 			messages: bigMessages(30, 8_000),
@@ -1897,6 +1897,52 @@ describe("summarizeConversation input budget (hierarchical summarization)", () =
 		})
 		expect(result.error).toBeUndefined()
 		expect(create).toHaveBeenCalledTimes(1)
+	})
+
+	it("applies a default budget (chunking) when the handler window is unknown and input is large", async () => {
+		const { handler, create } = makeHandler(undefined)
+		const result = await summarizeConversation({
+			messages: bigMessages(100, 7_000), // ~175k tokens, below per-block bounding
+			apiHandler: handler,
+			systemPrompt: "sys",
+			taskId,
+		})
+		expect(result.error).toBeUndefined()
+		expect(create.mock.calls.length).toBeGreaterThan(1)
+		for (const call of create.mock.calls) {
+			expect(requestTokens(call[1] as Anthropic.MessageParam[])).toBeLessThanOrEqual(100_000)
+		}
+	})
+
+	it("keeps every request within budget with a prior summary and one over-budget message", async () => {
+		const { handler, create } = makeHandler(WINDOW)
+		const budget = Math.floor(WINDOW * 0.9) - 6144
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "task", ts: 1 },
+			{
+				role: "user",
+				content: [{ type: "text", text: "## Conversation Summary\nearlier work" }],
+				isSummary: true,
+				condenseId: "c1",
+				ts: 2,
+			},
+			{ role: "assistant", content: "ok", ts: 3 },
+			{
+				role: "user",
+				content: Array.from({ length: 40 }, (_, i) => ({
+					type: "text" as const,
+					text: `${i}`.padEnd(3_900, "y"),
+				})),
+				ts: 4,
+			},
+			...bigMessages(10, 8_000).map((m, i) => ({ ...m, ts: 10 + i })),
+		]
+		const result = await summarizeConversation({ messages, apiHandler: handler, systemPrompt: "sys", taskId })
+		expect(result.error).toBeUndefined()
+		expect(create.mock.calls.length).toBeGreaterThan(1)
+		for (const call of create.mock.calls) {
+			expect(requestTokens(call[1] as Anthropic.MessageParam[])).toBeLessThanOrEqual(budget)
+		}
 	})
 
 	it("head/tail caps a 1M-char tool result with the omitted-characters marker", async () => {

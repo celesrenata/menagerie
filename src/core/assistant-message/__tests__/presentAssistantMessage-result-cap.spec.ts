@@ -49,6 +49,7 @@ interface MockTask {
 }
 
 // The mock Task implements only what presentAssistantMessage touches; a structural cast is unavoidable.
+// Double assertion: MockTask is a minimal structural stand-in for the large Task class.
 const asTask = (task: MockTask): Task => task as unknown as Task
 
 describe("presentAssistantMessage - discovery tool result cap", () => {

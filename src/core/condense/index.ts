@@ -13,11 +13,7 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { generateFoldedFileContext } from "./foldedFileContext"
 import { compactHistoricalEnvironmentDetails } from "../task/compactEnvironmentDetails"
 import { awaitWithStreamTimeout, StreamIdleTimeoutError, type StreamWaitPhase } from "../task/streamIdleTimeout"
-import {
-	SUMMARY_MAX_OUTPUT_TOKENS,
-	computeCondenseInputBudget,
-	splitMessagesIntoChunks,
-} from "./chunkedSummary"
+import { SUMMARY_MAX_OUTPUT_TOKENS, computeCondenseInputBudget, splitMessagesIntoChunks } from "./chunkedSummary"
 import { getApiRequestTimeout, getApiStreamIdleTimeout } from "../../api/providers/utils/timeout-config"
 
 export type { FoldedFileContextResult, FoldedFileContextOptions } from "./foldedFileContext"
@@ -25,6 +21,8 @@ export type { FoldedFileContextResult, FoldedFileContextOptions } from "./folded
 const MAX_SUMMARY_TOOL_RESULT_CHARS = 12_000
 const MIN_SUMMARY_TOOL_RESULT_CHARS = 2_000
 const MAX_SUMMARY_DEPTH = 3
+/** Conservative per-request input budget (tokens) used when the condensing handler's window is unknown. */
+const DEFAULT_CONDENSE_INPUT_BUDGET = 100_000
 const MAX_SUMMARY_FILE_CONTEXT_CHARS = 10_000
 
 /** Old folded reminders are regenerated from the current files after condensing. */
@@ -296,19 +294,19 @@ async function countMessagesTokens(apiHandler: ApiHandler, messages: RequestMess
 }
 
 /**
- * Input budget for one summarizer request, or undefined when the condensing handler's window is
- * unknown (callers then send a single request, as before).
+ * Input budget for one summarizer request. Falls back to DEFAULT_CONDENSE_INPUT_BUDGET when the
+ * condensing handler's window is unknown, so input is never unbounded.
  */
 async function resolveInputBudget(
 	apiHandler: ApiHandler,
 	explicitBudget: number | undefined,
 	promptText: string,
-): Promise<number | undefined> {
+): Promise<number> {
 	if (explicitBudget !== undefined) {
-		return isValidTokenCount(explicitBudget) ? explicitBudget : undefined
+		return isValidTokenCount(explicitBudget) ? explicitBudget : DEFAULT_CONDENSE_INPUT_BUDGET
 	}
 	const contextWindow = apiHandler.getCondenseContextWindow?.() ?? apiHandler.getModel?.()?.info?.contextWindow
-	if (!isValidTokenCount(contextWindow)) return undefined
+	if (!isValidTokenCount(contextWindow)) return DEFAULT_CONDENSE_INPUT_BUDGET
 	const promptTokens = await apiHandler.countTokens([{ type: "text", text: promptText }])
 	return computeCondenseInputBudget({
 		contextWindow,
@@ -428,7 +426,12 @@ async function runSummaryRequest(params: {
 		// failures, ordinary 4xx request failures, or a parent cancellation.
 		const retryable =
 			!outerSignal?.aborted &&
-			(status === undefined || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500)
+			(status === undefined ||
+				status === 408 ||
+				status === 409 ||
+				status === 425 ||
+				status === 429 ||
+				status >= 500)
 
 		return {
 			cost,
@@ -445,6 +448,28 @@ async function runSummaryRequest(params: {
 		return { cost, error: t("common:errors.condense_failed") }
 	}
 	return { summary, cost }
+}
+
+/**
+ * Returns the message unchanged if it fits `budget` tokens; otherwise flattens it to text and
+ * head/tail truncates it (halving the character cap) until it fits.
+ */
+async function fitMessageToBudget(
+	apiHandler: ApiHandler,
+	message: RequestMessage,
+	budget: number,
+): Promise<RequestMessage> {
+	if ((await countMessagesTokens(apiHandler, [message])) <= budget) return message
+	const text = toCountBlocks([message])
+		.map((block) => (block.type === "text" ? block.text : ""))
+		.join("\n")
+	let maxChars = Math.max(2, Math.floor(budget * 3))
+	let candidate: RequestMessage = { role: message.role, content: boundSummaryToolResult(text, maxChars) }
+	while (maxChars > 2 && (await countMessagesTokens(apiHandler, [candidate])) > budget) {
+		maxChars = Math.floor(maxChars / 2)
+		candidate = { role: message.role, content: boundSummaryToolResult(text, maxChars) }
+	}
+	return candidate
 }
 
 /**
@@ -473,7 +498,12 @@ async function summarizeHierarchically(params: {
 	let items = body
 
 	for (let depth = 0; depth <= MAX_SUMMARY_DEPTH; depth++) {
-		const chunks = await splitMessagesIntoChunks(items, budget, countMessage)
+		// A single message above the budget would otherwise become an over-budget chunk.
+		const fitted: RequestMessage[] = []
+		for (const item of items) {
+			fitted.push(await fitMessageToBudget(apiHandler, item, budget))
+		}
+		const chunks = await splitMessagesIntoChunks(fitted, budget, countMessage)
 		const partials: string[] = []
 
 		for (const chunk of chunks) {
@@ -486,7 +516,9 @@ async function summarizeHierarchically(params: {
 			}
 			const first = chunk[0]
 			const lead: RequestMessage[] =
-				first?.role === "assistant" ? [{ role: "user", content: "[Earlier part of the conversation omitted]" }] : []
+				first?.role === "assistant"
+					? [{ role: "user", content: "[Earlier part of the conversation omitted]" }]
+					: []
 			const result = await runRequest([...lead, ...chunk, finalRequestMessage])
 			cost += result.cost
 			if ("error" in result) {
@@ -535,8 +567,8 @@ export type SummarizeConversationOptions = {
 	rooIgnoreController?: RooIgnoreController
 	/**
 	 * Max input tokens (conversation content) one summarizer request may carry. When absent it is
-	 * derived from the condensing handler's context window; when that is unknown the whole
-	 * conversation is sent in a single request.
+	 * derived from the condensing handler's context window; when that is unknown a conservative
+	 * default (100k tokens) is used.
 	 */
 	inputTokenBudget?: number
 }
@@ -646,22 +678,19 @@ export async function summarizeConversation(options: SummarizeConversationOption
 
 	const budget = await resolveInputBudget(apiHandler, inputTokenBudget, `${promptToUse}\n${condenseInstructions}`)
 	let overBudget = false
-	if (budget !== undefined) {
-		// Shrink per-message caps until the input fits; chunk only if that is not enough.
-		const caps = [MAX_SUMMARY_TOOL_RESULT_CHARS, 6_000, 3_000, MIN_SUMMARY_TOOL_RESULT_CHARS]
-		for (const cap of caps) {
-			if (cap !== MAX_SUMMARY_TOOL_RESULT_CHARS) {
-				requestMessages = transformMessagesForCondensing(imageFreeMessages, cap).map(({ role, content }) => ({
-					role,
-					content: boundOversizedText(content, cap),
-				}))
-			}
-			overBudget = (await countMessagesTokens(apiHandler, requestMessages.slice(0, -1))) > budget
-			if (!overBudget) break
+	// Shrink per-message caps until the input fits; chunk only if that is not enough.
+	const caps = [MAX_SUMMARY_TOOL_RESULT_CHARS, 6_000, 3_000, MIN_SUMMARY_TOOL_RESULT_CHARS]
+	for (const cap of caps) {
+		if (cap !== MAX_SUMMARY_TOOL_RESULT_CHARS) {
+			requestMessages = transformMessagesForCondensing(imageFreeMessages, cap).map(({ role, content }) => ({
+				role,
+				content: boundOversizedText(content, cap),
+			}))
 		}
+		overBudget = (await countMessagesTokens(apiHandler, requestMessages.slice(0, -1))) > budget
+		if (!overBudget) break
 	}
-
-	if (overBudget && budget !== undefined) {
+	if (overBudget) {
 		const result = await summarizeHierarchically({
 			body: requestMessages.slice(0, -1),
 			finalRequestMessage,
