@@ -12,6 +12,7 @@ vitest.mock("execa", () => {
 					yield "test output\n"
 				})(),
 			kill: mockKill,
+			once: vitest.fn(),
 		})
 	})
 	return { execa, ExecaError: class extends Error {} }

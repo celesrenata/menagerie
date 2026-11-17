@@ -2,7 +2,8 @@
 
 import { RooTerminalCallbacks } from "../types"
 import { ExecaTerminal } from "../ExecaTerminal"
-import { ExecaTerminalProcess } from "../ExecaTerminalProcess"
+import { ExecaTerminalProcess, SHELL_EXIT_DRAIN_GRACE_MS } from "../ExecaTerminalProcess"
+import { execa } from "execa"
 
 describe("ExecaTerminal", () => {
 	it("rejects the command promise when process startup rejects", async () => {
@@ -50,4 +51,38 @@ describe("ExecaTerminal", () => {
 		expect(result).toBeTypeOf("string")
 		expect(result).toContain("total")
 	})
+
+	it("completes after the shell exits even when an orphaned descendant holds the output pipe open", async () => {
+		if (process.platform === "win32") {
+			return
+		}
+
+		// The marker makes the orphaned sleep identifiable so the test can clean it up.
+		const marker = `sleep 29.${String(Date.now() % 1_000_000).padStart(6, "0")}`
+		const terminal = new ExecaTerminal(1, "/tmp")
+		let result: string | undefined
+		const onShellExecutionComplete = vi.fn()
+
+		try {
+			const started = Date.now()
+			await terminal.runCommand(`(${marker} &); echo before-exit; exit 3`, {
+				onLine: vi.fn(),
+				onCompleted: (output) => {
+					result = output
+				},
+				onShellExecutionStarted: vi.fn(),
+				onShellExecutionComplete,
+			})
+
+			expect(Date.now() - started).toBeLessThan(SHELL_EXIT_DRAIN_GRACE_MS + 5_000)
+			expect(result).toContain("before-exit")
+			expect(result).toContain("background process is still holding the output open")
+			expect(onShellExecutionComplete).toHaveBeenCalledWith(
+				expect.objectContaining({ exitCode: 3 }),
+				expect.anything(),
+			)
+		} finally {
+			await execa("pkill", ["-9", "-f", marker], { reject: false })
+		}
+	}, 15_000)
 })

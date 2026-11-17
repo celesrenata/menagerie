@@ -8,6 +8,11 @@ import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { getShell } from "../../utils/shell"
 import { getUtf8LocaleEnv } from "./localeEnv"
 
+/** How long to keep draining output after the shell exits before giving up on the pipe. */
+export const SHELL_EXIT_DRAIN_GRACE_MS = 2_000
+
+const STREAM_ABANDONED = Symbol("streamAbandoned")
+
 export class ExecaTerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<RooTerminal>
 	private aborted = false
@@ -87,24 +92,67 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 			this.terminal.setActiveStream(stream, this.pid)
 
-			for await (const line of stream) {
-				if (this.aborted) {
-					break
+			// The output stream only ends once every holder of the pipe closes it. A
+			// background or orphaned descendant (e.g. one that ignored SIGTERM from
+			// `timeout`) can keep it open forever after the shell itself has exited.
+			// Once the shell exits, allow a short drain window, then stop waiting.
+			let shellExit: { code: number | null; signal: NodeJS.Signals | null } | undefined
+			let graceTimer: NodeJS.Timeout | undefined
+			const streamAbandoned = new Promise<typeof STREAM_ABANDONED>((resolve) => {
+				this.subprocess?.once("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+					shellExit = { code, signal }
+					graceTimer = setTimeout(() => resolve(STREAM_ABANDONED), SHELL_EXIT_DRAIN_GRACE_MS)
+				})
+			})
+
+			const iterator = stream[Symbol.asyncIterator]()
+			let abandoned = false
+
+			try {
+				while (true) {
+					const next = await Promise.race([iterator.next(), streamAbandoned])
+
+					if (next === STREAM_ABANDONED) {
+						abandoned = true
+						break
+					}
+
+					if (next.done) {
+						break
+					}
+
+					const line = next.value
+
+					if (this.aborted) {
+						break
+					}
+
+					this.fullOutput += line
+
+					const now = Date.now()
+
+					if (this.isListening && (now - this.lastEmitTime_ms > 500 || this.lastEmitTime_ms === 0)) {
+						this.emitRemainingBufferIfListening()
+						this.lastEmitTime_ms = now
+					}
+
+					this.startHotTimer(line)
 				}
-
-				this.fullOutput += line
-
-				const now = Date.now()
-
-				if (this.isListening && (now - this.lastEmitTime_ms > 500 || this.lastEmitTime_ms === 0)) {
-					this.emitRemainingBufferIfListening()
-					this.lastEmitTime_ms = now
-				}
-
-				this.startHotTimer(line)
+			} finally {
+				clearTimeout(graceTimer)
 			}
 
-			if (this.aborted) {
+			if (abandoned) {
+				this.abandonHeldOpenStream()
+
+				const code = shellExit?.code ?? undefined
+				const signalName = shellExit?.signal ?? undefined
+				console.warn(
+					`[ExecaTerminalProcess#run] shell exited (code=${code}, signal=${signalName}) but a descendant process kept the output open; stopped waiting`,
+				)
+				this.fullOutput += `\n[Shell exited, but a background process is still holding the output open. Stopped waiting after ${SHELL_EXIT_DRAIN_GRACE_MS / 1000}s; that process may still be running.]\n`
+				this.emit("shell_execution_complete", { exitCode: code, signalName })
+			} else if (this.aborted) {
 				let timeoutId: NodeJS.Timeout | undefined
 
 				const kill = new Promise<void>((resolve) => {
@@ -130,9 +178,11 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				if (timeoutId) {
 					clearTimeout(timeoutId)
 				}
-			}
 
-			this.emit("shell_execution_complete", { exitCode: 0 })
+				this.emit("shell_execution_complete", { exitCode: 0 })
+			} else {
+				this.emit("shell_execution_complete", { exitCode: 0 })
+			}
 		} catch (error) {
 			if (error instanceof ExecaError) {
 				console.error(`[ExecaTerminalProcess#run] shell execution error: ${error.message}`)
@@ -153,6 +203,24 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		this.emit("completed", this.fullOutput)
 		this.emit("continue")
 		this.subprocess = undefined
+	}
+
+	/**
+	 * Releases our end of an output pipe that a descendant is still holding open,
+	 * so the pending read and the execa promise settle instead of leaking.
+	 */
+	private abandonHeldOpenStream() {
+		const subprocess = this.subprocess
+
+		if (!subprocess) {
+			return
+		}
+
+		// Destroying the streams makes execa reject; nothing else awaits it here.
+		subprocess.catch(() => {})
+		subprocess.all?.destroy()
+		subprocess.stdout?.destroy()
+		subprocess.stderr?.destroy()
 	}
 
 	public override continue() {
