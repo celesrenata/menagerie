@@ -1815,3 +1815,152 @@ describe("getEffectiveMessageIndices", () => {
 		expect(effectiveByIndices(messages)).toEqual(getEffectiveApiHistory(messages))
 	})
 })
+
+describe("summarizeConversation input budget (hierarchical summarization)", () => {
+	// Token count = text length / 4 so inputs are easy to size.
+	const countByLength = (blocks: Anthropic.Messages.ContentBlockParam[]) =>
+		Promise.resolve(
+			blocks.reduce((sum, block) => sum + (block.type === "text" ? Math.ceil(block.text.length / 4) : 1), 0),
+		)
+
+	const requestTokens = (messages: Anthropic.MessageParam[]) =>
+		messages.reduce(
+			(sum, m) =>
+				sum + (typeof m.content === "string" ? Math.ceil(m.content.length / 4) : JSON.stringify(m).length / 4),
+			0,
+		)
+
+	function makeHandler(
+		contextWindow: number | undefined,
+		createMessage?: (...args: unknown[]) => AsyncGenerator<unknown, void, unknown>,
+	) {
+		const create = vi.fn(
+			createMessage ??
+				(() =>
+					(async function* () {
+						yield { type: "text" as const, text: "partial summary" }
+						yield { type: "usage" as const, totalCost: 0.5, outputTokens: 10 }
+					})()),
+		)
+		const handler = {
+			createMessage: create,
+			countTokens: vi.fn(countByLength),
+			getModel: vi.fn().mockReturnValue({ id: "m", info: contextWindow ? { contextWindow } : {} }),
+		} as unknown as ApiHandler
+		return { handler, create }
+	}
+
+	const bigMessages = (count: number, chars: number): ApiMessage[] =>
+		Array.from({ length: count }, (_, i) => ({
+			role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
+			content: `${i}:`.padEnd(chars, "x"),
+			ts: i + 1,
+		}))
+
+	// 20_000-token window -> budget well above 2 * 6144 so reduction can converge.
+	const WINDOW = 40_000
+
+	it("splits over-budget input into several requests that each fit the budget and sums cost", async () => {
+		const { handler, create } = makeHandler(WINDOW)
+		const messages = bigMessages(30, 8_000) // ~2k tokens each, ~60k total
+		const result = await summarizeConversation({ messages, apiHandler: handler, systemPrompt: "sys", taskId })
+
+		expect(result.error).toBeUndefined()
+		expect(result.summary).toBe("partial summary")
+		expect(create.mock.calls.length).toBeGreaterThan(1)
+		const budget = Math.floor(WINDOW * 0.9) - 6144 - (await countByLength([{ type: "text", text: "x" }])) // upper bound
+		for (const call of create.mock.calls) {
+			expect(requestTokens(call[1] as Anthropic.MessageParam[])).toBeLessThanOrEqual(budget)
+		}
+		expect(result.cost).toBeCloseTo(0.5 * create.mock.calls.length)
+	})
+
+	it("makes exactly one request when the input fits", async () => {
+		const { handler, create } = makeHandler(WINDOW)
+		const result = await summarizeConversation({
+			messages: bigMessages(4, 400),
+			apiHandler: handler,
+			systemPrompt: "sys",
+			taskId,
+		})
+		expect(result.error).toBeUndefined()
+		expect(create).toHaveBeenCalledTimes(1)
+	})
+
+	it("makes a single request when the handler window is unknown", async () => {
+		const { handler, create } = makeHandler(undefined)
+		const result = await summarizeConversation({
+			messages: bigMessages(30, 8_000),
+			apiHandler: handler,
+			systemPrompt: "sys",
+			taskId,
+		})
+		expect(result.error).toBeUndefined()
+		expect(create).toHaveBeenCalledTimes(1)
+	})
+
+	it("head/tail caps a 1M-char tool result with the omitted-characters marker", async () => {
+		const { handler, create } = makeHandler(WINDOW)
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "task", ts: 1 },
+			{
+				role: "assistant",
+				content: [{ type: "tool_use", id: "t1", name: "list_files", input: { path: "." } }],
+				ts: 2,
+			},
+			{
+				role: "user",
+				content: [{ type: "tool_result", tool_use_id: "t1", content: "a".repeat(1_000_000) }],
+				ts: 3,
+			},
+			{ role: "assistant", content: "done", ts: 4 },
+		]
+		await summarizeConversation({ messages, apiHandler: handler, systemPrompt: "sys", taskId })
+		const sent = JSON.stringify(create.mock.calls.map((c) => c[1]))
+		expect(sent).toContain("characters from this saved tool result")
+		expect(sent.length).toBeLessThan(100_000)
+	})
+
+	it("returns the failing call's error and retryable flag without a summary message", async () => {
+		let n = 0
+		const { handler } = makeHandler(WINDOW, () => {
+			n++
+			if (n === 2) {
+				throw Object.assign(new Error("overloaded"), { status: 503 })
+			}
+			return (async function* () {
+				yield { type: "text" as const, text: "partial summary" }
+			})()
+		})
+		const result = await summarizeConversation({
+			messages: bigMessages(30, 8_000),
+			apiHandler: handler,
+			systemPrompt: "sys",
+			taskId,
+		})
+		expect(result.error).toBeTruthy()
+		expect(result.retryable).toBe(true)
+		expect(result.summary).toBe("")
+		expect(result.messages.some((m) => m.isSummary)).toBe(false)
+	})
+
+	it("stops issuing further chunk requests once aborted", async () => {
+		const controller = new AbortController()
+		const { handler, create } = makeHandler(WINDOW, () => {
+			controller.abort()
+			return (async function* () {
+				yield { type: "text" as const, text: "partial summary" }
+			})()
+		})
+		const result = await summarizeConversation({
+			messages: bigMessages(30, 8_000),
+			apiHandler: handler,
+			systemPrompt: "sys",
+			taskId,
+			metadata: { taskId, mode: "code", abortSignal: controller.signal } as ApiHandlerCreateMessageMetadata,
+		})
+		expect(create).toHaveBeenCalledTimes(1)
+		expect(result.error).toBeTruthy()
+		expect(result.retryable).toBeFalsy()
+	})
+})

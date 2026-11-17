@@ -13,11 +13,18 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { generateFoldedFileContext } from "./foldedFileContext"
 import { compactHistoricalEnvironmentDetails } from "../task/compactEnvironmentDetails"
 import { awaitWithStreamTimeout, StreamIdleTimeoutError, type StreamWaitPhase } from "../task/streamIdleTimeout"
+import {
+	SUMMARY_MAX_OUTPUT_TOKENS,
+	computeCondenseInputBudget,
+	splitMessagesIntoChunks,
+} from "./chunkedSummary"
 import { getApiRequestTimeout, getApiStreamIdleTimeout } from "../../api/providers/utils/timeout-config"
 
 export type { FoldedFileContextResult, FoldedFileContextOptions } from "./foldedFileContext"
 
 const MAX_SUMMARY_TOOL_RESULT_CHARS = 12_000
+const MIN_SUMMARY_TOOL_RESULT_CHARS = 2_000
+const MAX_SUMMARY_DEPTH = 3
 const MAX_SUMMARY_FILE_CONTEXT_CHARS = 10_000
 
 /** Old folded reminders are regenerated from the current files after condensing. */
@@ -36,12 +43,12 @@ export function removeRedundantSummaryContext(messages: ApiMessage[]): ApiMessag
 	})
 }
 
-function boundSummaryToolResult(content: string): string {
-	if (content.length <= MAX_SUMMARY_TOOL_RESULT_CHARS) return content
-	const half = MAX_SUMMARY_TOOL_RESULT_CHARS / 2
+function boundSummaryToolResult(content: string, maxChars: number = MAX_SUMMARY_TOOL_RESULT_CHARS): string {
+	if (content.length <= maxChars) return content
+	const half = maxChars / 2
 	return (
 		content.slice(0, half) +
-		`\n[Omitted ${content.length - MAX_SUMMARY_TOOL_RESULT_CHARS} characters from this saved tool result; re-read the source if needed.]\n` +
+		`\n[Omitted ${content.length - maxChars} characters from this saved tool result; re-read the source if needed.]\n` +
 		content.slice(-half)
 	)
 }
@@ -70,10 +77,13 @@ export function toolUseToText(block: Anthropic.Messages.ToolUseBlockParam): stri
  * Converts a tool_result block to a text representation.
  * This allows the conversation to be summarized without requiring the tools parameter.
  */
-export function toolResultToText(block: Anthropic.Messages.ToolResultBlockParam): string {
+export function toolResultToText(
+	block: Anthropic.Messages.ToolResultBlockParam,
+	maxChars: number = MAX_SUMMARY_TOOL_RESULT_CHARS,
+): string {
 	const errorSuffix = block.is_error ? " (Error)" : ""
 	if (typeof block.content === "string") {
-		return `[Tool Result${errorSuffix}]\n${boundSummaryToolResult(block.content)}`
+		return `[Tool Result${errorSuffix}]\n${boundSummaryToolResult(block.content, maxChars)}`
 	} else if (Array.isArray(block.content)) {
 		const contentText = block.content
 			.map((contentBlock) => {
@@ -87,7 +97,7 @@ export function toolResultToText(block: Anthropic.Messages.ToolResultBlockParam)
 				return `[${(contentBlock as { type: string }).type}]`
 			})
 			.join("\n")
-		return `[Tool Result${errorSuffix}]\n${boundSummaryToolResult(contentText)}`
+		return `[Tool Result${errorSuffix}]\n${boundSummaryToolResult(contentText, maxChars)}`
 	}
 	return `[Tool Result${errorSuffix}]`
 }
@@ -102,6 +112,7 @@ export function toolResultToText(block: Anthropic.Messages.ToolResultBlockParam)
  */
 export function convertToolBlocksToText(
 	content: string | Anthropic.Messages.ContentBlockParam[],
+	maxToolResultChars: number = MAX_SUMMARY_TOOL_RESULT_CHARS,
 ): string | Anthropic.Messages.ContentBlockParam[] {
 	if (typeof content === "string") {
 		return content
@@ -117,7 +128,7 @@ export function convertToolBlocksToText(
 		if (block.type === "tool_result") {
 			return {
 				type: "text" as const,
-				text: toolResultToText(block),
+				text: toolResultToText(block, maxToolResultChars),
 			}
 		}
 		return block
@@ -133,10 +144,10 @@ export function convertToolBlocksToText(
  */
 export function transformMessagesForCondensing<
 	T extends { role: string; content: string | Anthropic.Messages.ContentBlockParam[] },
->(messages: T[]): T[] {
+>(messages: T[], maxToolResultChars: number = MAX_SUMMARY_TOOL_RESULT_CHARS): T[] {
 	return messages.map((msg) => ({
 		...msg,
-		content: convertToolBlocksToText(msg.content),
+		content: convertToolBlocksToText(msg.content, maxToolResultChars),
 	}))
 }
 
@@ -243,128 +254,79 @@ export function extractCommandBlocks(message: ApiMessage): string {
 	return matches.join("\n")
 }
 
-export type SummarizeResponse = {
-	messages: ApiMessage[] // The messages after summarization
-	summary: string // The summary text; empty string for no summary
-	cost: number // The cost of the summarization operation
-	newContextTokens?: number // The number of tokens in the context for the next API request
-	error?: string // Populated iff the operation fails: error message shown to the user on failure (see Task.ts)
-	errorDetails?: string // Detailed error information including stack trace and API error info
-	retryable?: boolean // True only for transient API/transport failures safe to retry once automatically
-	condenseId?: string // The unique ID of the created Summary message, for linking to condense_context clineMessage
+type SummaryRequestResult =
+	| { summary: string; cost: number }
+	| { error: string; errorDetails?: string; retryable?: boolean; cost: number }
+
+type RequestMessage = Anthropic.MessageParam
+
+function isValidTokenCount(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value) && value > 0
 }
 
-export type SummarizeConversationOptions = {
-	messages: ApiMessage[]
-	apiHandler: ApiHandler
-	systemPrompt: string
-	taskId: string
-	isAutomaticTrigger?: boolean
-	customCondensingPrompt?: string
-	metadata?: ApiHandlerCreateMessageMetadata
-	environmentDetails?: string
-	filesReadByRoo?: string[]
-	cwd?: string
-	rooIgnoreController?: RooIgnoreController
+/** Bounds plain text blocks larger than 4x the per-result cap with the same head/tail format. */
+function boundOversizedText(
+	content: string | Anthropic.Messages.ContentBlockParam[],
+	maxChars: number,
+): string | Anthropic.Messages.ContentBlockParam[] {
+	const limit = maxChars * 4
+	if (typeof content === "string") {
+		return content.length > limit ? boundSummaryToolResult(content, maxChars) : content
+	}
+	return content.map((block) =>
+		block.type === "text" && block.text.length > limit
+			? { ...block, text: boundSummaryToolResult(block.text, maxChars) }
+			: block,
+	)
+}
+
+function toCountBlocks(messages: RequestMessage[]): Anthropic.Messages.ContentBlockParam[] {
+	return messages.flatMap((message) =>
+		typeof message.content === "string"
+			? [{ type: "text" as const, text: message.content }]
+			: message.content.map((block) =>
+					block.type === "text" ? block : { type: "text" as const, text: `[${block.type}]` },
+				),
+	)
+}
+
+async function countMessagesTokens(apiHandler: ApiHandler, messages: RequestMessage[]): Promise<number> {
+	const blocks = toCountBlocks(messages)
+	return blocks.length === 0 ? 0 : apiHandler.countTokens(blocks)
 }
 
 /**
- * Summarizes the conversation messages using an LLM call.
- *
- * This implements the "fresh start" model where:
- * - The summary becomes a user message (not assistant)
- * - Post-condense, the model sees only the summary (true fresh start)
- * - All messages are still stored but tagged with condenseParent
- * - <command> blocks from the original task are preserved across condensings
- * - File context (folded code definitions) can be preserved for continuity
- *
- * Environment details handling:
- * - For AUTOMATIC condensing (isAutomaticTrigger=true): Environment details are included
- *   in the summary because the API request is already in progress and the next user
- *   message won't have fresh environment details injected.
- * - For MANUAL condensing (isAutomaticTrigger=false): Environment details are NOT included
- *   because fresh environment details will be injected on the very next turn via
- *   getEnvironmentDetails() in recursivelyMakeClineRequests().
+ * Input budget for one summarizer request, or undefined when the condensing handler's window is
+ * unknown (callers then send a single request, as before).
  */
-export async function summarizeConversation(options: SummarizeConversationOptions): Promise<SummarizeResponse> {
-	const {
-		messages,
-		apiHandler,
-		systemPrompt,
-		taskId,
-		isAutomaticTrigger,
-		customCondensingPrompt,
-		metadata,
-		environmentDetails,
-		filesReadByRoo,
-		cwd,
-		rooIgnoreController,
-	} = options
-	TelemetryService.instance.captureContextCondensed(
-		taskId,
-		isAutomaticTrigger ?? false,
-		!!customCondensingPrompt?.trim(),
-	)
-
-	const response: SummarizeResponse = { messages, cost: 0, summary: "" }
-
-	// Get messages to summarize (all messages since the last summary, if any)
-	const messagesToSummarize = getMessagesSinceLastSummary(messages)
-
-	if (messagesToSummarize.length <= 1) {
-		const error =
-			messages.length <= 1
-				? t("common:errors.condense_not_enough_messages")
-				: t("common:errors.condensed_recently")
-		return { ...response, error }
+async function resolveInputBudget(
+	apiHandler: ApiHandler,
+	explicitBudget: number | undefined,
+	promptText: string,
+): Promise<number | undefined> {
+	if (explicitBudget !== undefined) {
+		return isValidTokenCount(explicitBudget) ? explicitBudget : undefined
 	}
+	const contextWindow = apiHandler.getCondenseContextWindow?.() ?? apiHandler.getModel?.()?.info?.contextWindow
+	if (!isValidTokenCount(contextWindow)) return undefined
+	const promptTokens = await apiHandler.countTokens([{ type: "text", text: promptText }])
+	return computeCondenseInputBudget({
+		contextWindow,
+		outputReserve: SUMMARY_MAX_OUTPUT_TOKENS,
+		promptTokens,
+	})
+}
 
-	// Check if there's a recent summary in the messages (edge case)
-	const recentSummaryExists = messagesToSummarize.some((message: ApiMessage) => message.isSummary)
-
-	if (recentSummaryExists && messagesToSummarize.length <= 2) {
-		const error = t("common:errors.condensed_recently")
-		return { ...response, error }
-	}
-
-	// Use custom prompt if provided and non-empty, otherwise use the default CONDENSE prompt
-	// This respects user's custom condensing prompt setting
-	const condenseInstructions = customCondensingPrompt?.trim() || supportPrompt.default.CONDENSE
-
-	const finalRequestMessage: Anthropic.MessageParam = {
-		role: "user",
-		content: condenseInstructions,
-	}
-
-	// Inject synthetic tool_results for orphan tool_calls to prevent API rejections
-	// (e.g., when user triggers condense after receiving attempt_completion but before responding)
-	const messagesWithToolResults = injectSyntheticToolResults(
-		removeRedundantSummaryContext(compactHistoricalEnvironmentDetails(messagesToSummarize, false)),
-	)
-
-	// Transform tool_use and tool_result blocks to text representations.
-	// This is necessary because some providers (like Bedrock via LiteLLM) require the `tools` parameter
-	// when tool blocks are present. By converting them to text, we can send the conversation for
-	// summarization without needing to pass the tools parameter.
-	const messagesWithTextToolBlocks = transformMessagesForCondensing(
-		maybeRemoveImageBlocks([...messagesWithToolResults, finalRequestMessage], apiHandler),
-	)
-
-	const requestMessages = messagesWithTextToolBlocks.map(({ role, content }) => ({ role, content }))
-
-	// Note: this doesn't need to be a stream, consider using something like apiHandler.completePrompt
-	const promptToUse = SUMMARY_PROMPT
-
-	// Validate that the API handler supports message creation
-	if (!apiHandler || typeof apiHandler.createMessage !== "function") {
-		console.error("API handler is invalid for condensing. Cannot proceed.")
-		const error = t("common:errors.condense_handler_invalid")
-		return { ...response, error }
-	}
-
+/** Runs one streamed summarizer request and maps failures to the condense error shape. */
+async function runSummaryRequest(params: {
+	apiHandler: ApiHandler
+	systemPrompt: string
+	requestMessages: RequestMessage[]
+	metadata?: ApiHandlerCreateMessageMetadata
+}): Promise<SummaryRequestResult> {
+	const { apiHandler, systemPrompt, requestMessages, metadata } = params
 	let summary = ""
 	let cost = 0
-	let outputTokens = 0
 
 	// The summarizer runs before any request timer of the caller, so it needs its own
 	// first-chunk and idle bounds. Its controller also follows the caller's signal.
@@ -382,11 +344,11 @@ export async function summarizeConversation(options: SummarizeConversationOption
 		// Historical tool blocks are already plain text above. Offering executable
 		// tools here can make the summarizer generate a tool call that this loop
 		// never consumes, leaving context management waiting for an empty summary.
-		// Keep the original metadata for the next-request token accounting below.
+		// Keep the original metadata for the next-request token accounting.
 		const summaryMetadata = metadata
 			? {
 					...metadata,
-					maxOutputTokens: 6144,
+					maxOutputTokens: SUMMARY_MAX_OUTPUT_TOKENS,
 					tools: undefined,
 					tool_choice: undefined,
 					parallelToolCalls: undefined,
@@ -395,7 +357,7 @@ export async function summarizeConversation(options: SummarizeConversationOption
 					abortSignal: condenseController.signal,
 				}
 			: undefined
-		const it = apiHandler.createMessage(promptToUse, requestMessages, summaryMetadata)[Symbol.asyncIterator]()
+		const it = apiHandler.createMessage(systemPrompt, requestMessages, summaryMetadata)[Symbol.asyncIterator]()
 		let phase: StreamWaitPhase = "first_chunk"
 
 		for (;;) {
@@ -423,7 +385,6 @@ export async function summarizeConversation(options: SummarizeConversationOption
 			} else if (chunk.type === "usage") {
 				// Record final usage chunk only
 				cost = chunk.totalCost ?? 0
-				outputTokens = chunk.outputTokens ?? 0
 			}
 		}
 	} catch (error) {
@@ -470,7 +431,6 @@ export async function summarizeConversation(options: SummarizeConversationOption
 			(status === undefined || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500)
 
 		return {
-			...response,
 			cost,
 			error: t("common:errors.condense_api_failed", { message: errorMessage }),
 			errorDetails,
@@ -481,10 +441,247 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	}
 
 	summary = summary.trim()
-
 	if (summary.length === 0) {
-		const error = t("common:errors.condense_failed")
-		return { ...response, cost, error }
+		return { cost, error: t("common:errors.condense_failed") }
+	}
+	return { summary, cost }
+}
+
+/**
+ * Map-reduce summarization: summarizes budget-sized chunks, then summarizes the partial summaries,
+ * repeating (bounded depth) until one request carries the whole remaining input. No content is
+ * dropped before it is summarized.
+ */
+async function summarizeHierarchically(params: {
+	body: RequestMessage[]
+	finalRequestMessage: RequestMessage
+	budget: number
+	apiHandler: ApiHandler
+	runRequest: (messages: RequestMessage[]) => Promise<SummaryRequestResult>
+	signal?: AbortSignal
+}): Promise<SummaryRequestResult> {
+	const { body, finalRequestMessage, budget, apiHandler, runRequest, signal } = params
+	let cost = 0
+
+	// Partial summaries are up to SUMMARY_MAX_OUTPUT_TOKENS each; reduction only converges when
+	// at least two fit in one request.
+	if (budget <= 2 * SUMMARY_MAX_OUTPUT_TOKENS) {
+		return { cost, error: t("common:errors.condense_failed") }
+	}
+
+	const countMessage = (message: RequestMessage) => countMessagesTokens(apiHandler, [message])
+	let items = body
+
+	for (let depth = 0; depth <= MAX_SUMMARY_DEPTH; depth++) {
+		const chunks = await splitMessagesIntoChunks(items, budget, countMessage)
+		const partials: string[] = []
+
+		for (const chunk of chunks) {
+			if (signal?.aborted) {
+				return {
+					cost,
+					retryable: false,
+					error: t("common:errors.condense_api_failed", { message: "aborted" }),
+				}
+			}
+			const first = chunk[0]
+			const lead: RequestMessage[] =
+				first?.role === "assistant" ? [{ role: "user", content: "[Earlier part of the conversation omitted]" }] : []
+			const result = await runRequest([...lead, ...chunk, finalRequestMessage])
+			cost += result.cost
+			if ("error" in result) {
+				return { ...result, cost }
+			}
+			partials.push(result.summary)
+		}
+
+		if (partials.length === 1) {
+			return { summary: partials[0]!, cost }
+		}
+
+		const labeled: RequestMessage[] = partials.map((partial, i) => ({
+			role: "user",
+			content: `Partial summary ${i + 1} of ${partials.length}:\n${partial}`,
+		}))
+		const combined: RequestMessage = { role: "user", content: labeled.map((m) => m.content).join("\n\n") }
+		items = (await countMessage(combined)) <= budget ? [combined] : labeled
+	}
+
+	return { cost, error: t("common:errors.condense_failed") }
+}
+
+export type SummarizeResponse = {
+	messages: ApiMessage[] // The messages after summarization
+	summary: string // The summary text; empty string for no summary
+	cost: number // The cost of the summarization operation
+	newContextTokens?: number // The number of tokens in the context for the next API request
+	error?: string // Populated iff the operation fails: error message shown to the user on failure (see Task.ts)
+	errorDetails?: string // Detailed error information including stack trace and API error info
+	retryable?: boolean // True only for transient API/transport failures safe to retry once automatically
+	condenseId?: string // The unique ID of the created Summary message, for linking to condense_context clineMessage
+}
+
+export type SummarizeConversationOptions = {
+	messages: ApiMessage[]
+	apiHandler: ApiHandler
+	systemPrompt: string
+	taskId: string
+	isAutomaticTrigger?: boolean
+	customCondensingPrompt?: string
+	metadata?: ApiHandlerCreateMessageMetadata
+	environmentDetails?: string
+	filesReadByRoo?: string[]
+	cwd?: string
+	rooIgnoreController?: RooIgnoreController
+	/**
+	 * Max input tokens (conversation content) one summarizer request may carry. When absent it is
+	 * derived from the condensing handler's context window; when that is unknown the whole
+	 * conversation is sent in a single request.
+	 */
+	inputTokenBudget?: number
+}
+
+/**
+ * Summarizes the conversation messages using an LLM call.
+ *
+ * This implements the "fresh start" model where:
+ * - The summary becomes a user message (not assistant)
+ * - Post-condense, the model sees only the summary (true fresh start)
+ * - All messages are still stored but tagged with condenseParent
+ * - <command> blocks from the original task are preserved across condensings
+ * - File context (folded code definitions) can be preserved for continuity
+ *
+ * Environment details handling:
+ * - For AUTOMATIC condensing (isAutomaticTrigger=true): Environment details are included
+ *   in the summary because the API request is already in progress and the next user
+ *   message won't have fresh environment details injected.
+ * - For MANUAL condensing (isAutomaticTrigger=false): Environment details are NOT included
+ *   because fresh environment details will be injected on the very next turn via
+ *   getEnvironmentDetails() in recursivelyMakeClineRequests().
+ */
+export async function summarizeConversation(options: SummarizeConversationOptions): Promise<SummarizeResponse> {
+	const {
+		messages,
+		apiHandler,
+		systemPrompt,
+		taskId,
+		isAutomaticTrigger,
+		customCondensingPrompt,
+		metadata,
+		environmentDetails,
+		filesReadByRoo,
+		cwd,
+		rooIgnoreController,
+		inputTokenBudget,
+	} = options
+	TelemetryService.instance.captureContextCondensed(
+		taskId,
+		isAutomaticTrigger ?? false,
+		!!customCondensingPrompt?.trim(),
+	)
+
+	const response: SummarizeResponse = { messages, cost: 0, summary: "" }
+
+	// Get messages to summarize (all messages since the last summary, if any)
+	const messagesToSummarize = getMessagesSinceLastSummary(messages)
+
+	if (messagesToSummarize.length <= 1) {
+		const error =
+			messages.length <= 1
+				? t("common:errors.condense_not_enough_messages")
+				: t("common:errors.condensed_recently")
+		return { ...response, error }
+	}
+
+	// Check if there's a recent summary in the messages (edge case)
+	const recentSummaryExists = messagesToSummarize.some((message: ApiMessage) => message.isSummary)
+
+	if (recentSummaryExists && messagesToSummarize.length <= 2) {
+		const error = t("common:errors.condensed_recently")
+		return { ...response, error }
+	}
+
+	// Use custom prompt if provided and non-empty, otherwise use the default CONDENSE prompt
+	// This respects user's custom condensing prompt setting
+	const condenseInstructions = customCondensingPrompt?.trim() || supportPrompt.default.CONDENSE
+
+	const finalRequestMessage: Anthropic.MessageParam = {
+		role: "user",
+		content: condenseInstructions,
+	}
+
+	// Inject synthetic tool_results for orphan tool_calls to prevent API rejections
+	// (e.g., when user triggers condense after receiving attempt_completion but before responding)
+	const messagesWithToolResults = injectSyntheticToolResults(
+		removeRedundantSummaryContext(compactHistoricalEnvironmentDetails(messagesToSummarize, false)),
+	)
+
+	const imageFreeMessages = maybeRemoveImageBlocks([...messagesWithToolResults, finalRequestMessage], apiHandler)
+
+	// Transform tool_use and tool_result blocks to text representations.
+	// This is necessary because some providers (like Bedrock via LiteLLM) require the `tools` parameter
+	// when tool blocks are present. By converting them to text, we can send the conversation for
+	// summarization without needing to pass the tools parameter.
+	let requestMessages = transformMessagesForCondensing(imageFreeMessages).map(({ role, content }) => ({
+		role,
+		content,
+	}))
+
+	// Note: this doesn't need to be a stream, consider using something like apiHandler.completePrompt
+	const promptToUse = SUMMARY_PROMPT
+
+	// Validate that the API handler supports message creation
+	if (!apiHandler || typeof apiHandler.createMessage !== "function") {
+		console.error("API handler is invalid for condensing. Cannot proceed.")
+		const error = t("common:errors.condense_handler_invalid")
+		return { ...response, error }
+	}
+
+	const outerSignal = metadata?.abortSignal
+	const runRequest = (messagesForRequest: Anthropic.MessageParam[]) =>
+		runSummaryRequest({ apiHandler, systemPrompt: promptToUse, requestMessages: messagesForRequest, metadata })
+
+	let summary = ""
+	let cost = 0
+
+	const budget = await resolveInputBudget(apiHandler, inputTokenBudget, `${promptToUse}\n${condenseInstructions}`)
+	let overBudget = false
+	if (budget !== undefined) {
+		// Shrink per-message caps until the input fits; chunk only if that is not enough.
+		const caps = [MAX_SUMMARY_TOOL_RESULT_CHARS, 6_000, 3_000, MIN_SUMMARY_TOOL_RESULT_CHARS]
+		for (const cap of caps) {
+			if (cap !== MAX_SUMMARY_TOOL_RESULT_CHARS) {
+				requestMessages = transformMessagesForCondensing(imageFreeMessages, cap).map(({ role, content }) => ({
+					role,
+					content: boundOversizedText(content, cap),
+				}))
+			}
+			overBudget = (await countMessagesTokens(apiHandler, requestMessages.slice(0, -1))) > budget
+			if (!overBudget) break
+		}
+	}
+
+	if (overBudget && budget !== undefined) {
+		const result = await summarizeHierarchically({
+			body: requestMessages.slice(0, -1),
+			finalRequestMessage,
+			budget,
+			apiHandler,
+			runRequest,
+			signal: outerSignal,
+		})
+		cost = result.cost
+		if ("error" in result) {
+			return { ...response, ...result }
+		}
+		summary = result.summary
+	} else {
+		const result = await runRequest(requestMessages)
+		cost = result.cost
+		if ("error" in result) {
+			return { ...response, ...result }
+		}
+		summary = result.summary
 	}
 
 	// Extract command blocks from the first message (original task)
