@@ -624,6 +624,43 @@ export function getMessagesSinceLastSummary(messages: ApiMessage[]): ApiMessage[
 }
 
 /**
+ * Returns the indices into `messages` that getEffectiveApiHistory would send (before its
+ * orphan tool_result content filtering, which never removes a whole-message index it keeps).
+ */
+export function getEffectiveMessageIndices(messages: ApiMessage[]): number[] {
+	let lastSummaryIndex = -1
+	const existingSummaryIds = new Set<string>()
+	messages.forEach((msg, index) => {
+		if (msg.isSummary === true) {
+			lastSummaryIndex = index
+		}
+		if (msg.isSummary && msg.condenseId) {
+			existingSummaryIds.add(msg.condenseId)
+		}
+	})
+	const start = lastSummaryIndex >= 0 ? lastSummaryIndex : 0
+	const existingTruncationIds = new Set<string>()
+	for (let i = start; i < messages.length; i++) {
+		const msg = messages[i]!
+		if (msg.isTruncationMarker && msg.truncationId) {
+			existingTruncationIds.add(msg.truncationId)
+		}
+	}
+	const indices: number[] = []
+	for (let i = start; i < messages.length; i++) {
+		const msg = messages[i]!
+		if (lastSummaryIndex < 0 && msg.condenseParent && existingSummaryIds.has(msg.condenseParent)) {
+			continue
+		}
+		if (msg.truncationParent && existingTruncationIds.has(msg.truncationParent)) {
+			continue
+		}
+		indices.push(i)
+	}
+	return indices
+}
+
+/**
  * Filters the API conversation history to get the "effective" messages to send to the API.
  *
  * Fresh Start Model:

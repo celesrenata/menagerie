@@ -2045,3 +2045,57 @@ describe("Context Management", () => {
 		})
 	})
 })
+
+const HUGE = "word ".repeat(40_000)
+function buildSummarizedHistory(postCount: number): ApiMessage[] {
+	const pre: ApiMessage[] = [
+		{ role: "user", content: "Task", ts: 1, condenseParent: "X" },
+		{ role: "assistant", content: HUGE, ts: 2, condenseParent: "X" },
+		{ role: "user", content: HUGE, ts: 3, condenseParent: "X" },
+	]
+	const summary: ApiMessage = {
+		role: "user",
+		content: "Summary",
+		ts: 4,
+		isSummary: true,
+		condenseId: "X",
+	}
+	const post: ApiMessage[] = Array.from({ length: postCount }, (_, i) => ({
+		role: i % 2 === 0 ? ("assistant" as const) : ("user" as const),
+		content: "word ".repeat(100),
+		ts: 10 + i,
+	}))
+	return [...pre, summary, ...post]
+}
+
+describe("manageContext truncation with a prior summary", () => {
+	beforeEach(() => {
+		if (!TelemetryService.hasInstance()) {
+			TelemetryService.createInstance([])
+		}
+	})
+
+	it("counts only effective messages after truncation", async () => {
+		const messages = buildSummarizedHistory(10)
+		const result = await manageContext({
+			messages,
+			totalTokens: 5000,
+			contextWindow: 1000,
+			maxTokens: 100,
+			apiHandler: mockApiHandler,
+			autoCondenseContext: false,
+			autoCondenseContextPercent: 100,
+			systemPrompt: "System prompt",
+			taskId,
+			profileThresholds: {},
+			currentProfileId: "default",
+		})
+
+		expect(result.truncationId).toBeDefined()
+		// Pre-summary condenseParent messages are ~40k tokens each and must not be counted.
+		expect(result.newContextTokensAfterTruncation).toBeLessThan(2000)
+		expect(result.newContextTokensAfterTruncation!).toBeLessThan(result.prevContextTokens)
+		const hiddenTs = result.messages.filter((m) => m.truncationParent).map((m) => m.ts)
+		expect(hiddenTs.every((ts) => ts! >= 10)).toBe(true)
+	})
+})

@@ -435,3 +435,50 @@ describe("Non-Destructive Sliding Window Truncation", () => {
 		})
 	})
 })
+
+const HUGE = "word ".repeat(40_000)
+function buildSummarizedHistory(postCount: number): ApiMessage[] {
+	const pre: ApiMessage[] = [
+		{ role: "user", content: "Task", ts: 1, condenseParent: "X" },
+		{ role: "assistant", content: HUGE, ts: 2, condenseParent: "X" },
+		{ role: "user", content: HUGE, ts: 3, condenseParent: "X" },
+	]
+	const summary: ApiMessage = {
+		role: "user",
+		content: "Summary",
+		ts: 4,
+		isSummary: true,
+		condenseId: "X",
+	}
+	const post: ApiMessage[] = Array.from({ length: postCount }, (_, i) => ({
+		role: i % 2 === 0 ? ("assistant" as const) : ("user" as const),
+		content: "word ".repeat(100),
+		ts: 10 + i,
+	}))
+	return [...pre, summary, ...post]
+}
+
+describe("Truncation with a prior summary", () => {
+	beforeEach(() => {
+		if (!TelemetryService.hasInstance()) {
+			TelemetryService.createInstance([])
+		}
+	})
+
+	it("only hides post-summary messages and never hides the summary", () => {
+		const messages = buildSummarizedHistory(6)
+		const result = truncateConversation(messages, 0.5, "task")
+
+		// 7 effective messages (summary + 6) -> floor(6 * 0.5) = 3 -> even 2
+		expect(result.messagesRemoved).toBe(2)
+		const hiddenTs = result.messages.filter((m) => m.truncationParent).map((m) => m.ts)
+		expect(hiddenTs).toEqual([10, 11])
+		const summary = result.messages.find((m) => m.isSummary)!
+		expect(summary.truncationParent).toBeUndefined()
+		// Pre-summary messages are not re-tagged
+		expect(result.messages.slice(0, 3).every((m) => !m.truncationParent)).toBe(true)
+		// Marker is inserted among effective messages (after the summary)
+		const markerIndex = result.messages.findIndex((m) => m.isTruncationMarker)
+		expect(markerIndex).toBeGreaterThan(result.messages.findIndex((m) => m.isSummary))
+	})
+})

@@ -135,7 +135,9 @@ const convergeableTranscriptArb = fc
 			shapes.push({ kind: "assistant", hidden: true })
 			tokens.push(0)
 		}
-		for (let i = 0; i < cfg.extraMarkers; i++) {
+		// A hidden message is only excluded from the sent history when its marker exists.
+		const markerCount = cfg.extraHidden > 0 ? Math.max(1, cfg.extraMarkers) : cfg.extraMarkers
+		for (let i = 0; i < markerCount; i++) {
 			shapes.push({ kind: "assistant", marker: true })
 			tokens.push(0)
 		}
@@ -319,5 +321,25 @@ describe("convergentReduction — Property 4", () => {
 		expect(result.messages).toBe(messages)
 		expect(result.resultTokens).toBe(currentTokens)
 		expect(result.prevTokens).toBe(currentTokens)
+	})
+
+	it("counts only the effective history when a summary precedes the transcript", async () => {
+		const { messages, model } = buildTranscript(
+			[{ kind: "user" }, { kind: "assistant" }, { kind: "user" }, { kind: "assistant" }, { kind: "user" }],
+			[1_000_000, 1_000_000, 10, 10, 10],
+		)
+		messages[0]!.condenseParent = "X"
+		messages[1]!.condenseParent = "X"
+		messages[2]!.isSummary = true
+		messages[2]!.condenseId = "X"
+		const result = await convergentReduction({
+			messages,
+			currentTokens: 2_000_030,
+			targetTokens: 100,
+			countTokens: makeCountTokens(model),
+		})
+		// Pre-summary messages are not sent, so the effective history already fits.
+		expect(result.converged).toBe(true)
+		expect(result.resultTokens).toBeLessThanOrEqual(100)
 	})
 })

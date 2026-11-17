@@ -12,6 +12,7 @@ import {
 	summarizeConversation,
 	getMessagesSinceLastSummary,
 	getEffectiveApiHistory,
+	getEffectiveMessageIndices,
 	cleanupAfterTruncation,
 	extractCommandBlocks,
 	injectSyntheticToolResults,
@@ -1775,5 +1776,42 @@ describe("transformMessagesForCondensing", () => {
 
 		// Original should still have tool_use type
 		expect(messages[0].content[0].type).toBe("tool_use")
+	})
+})
+
+describe("getEffectiveMessageIndices", () => {
+	const effectiveByIndices = (messages: ApiMessage[]) =>
+		getEffectiveMessageIndices(messages).map((i) => messages[i])
+
+	it("matches getEffectiveApiHistory with a summary and truncation marker", () => {
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "old", ts: 1, condenseParent: "c1" },
+			{ role: "assistant", content: "old2", ts: 2, condenseParent: "c1" },
+			{ role: "user", content: "summary", ts: 3, isSummary: true, condenseId: "c1" },
+			{ role: "assistant", content: "hidden", ts: 4, truncationParent: "t1" },
+			{ role: "user", content: "marker", ts: 5, isTruncationMarker: true, truncationId: "t1" },
+			{ role: "assistant", content: "kept", ts: 6 },
+		]
+		expect(effectiveByIndices(messages)).toEqual(getEffectiveApiHistory(messages))
+		expect(getEffectiveMessageIndices(messages)).toEqual([2, 4, 5])
+	})
+
+	it("matches getEffectiveApiHistory without a summary, including orphan condenseParent", () => {
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "orphan", ts: 1, condenseParent: "gone" },
+			{ role: "assistant", content: "hidden", ts: 2, truncationParent: "t1" },
+			{ role: "user", content: "marker", ts: 3, isTruncationMarker: true, truncationId: "t1" },
+			{ role: "assistant", content: "kept", ts: 4 },
+		]
+		expect(effectiveByIndices(messages)).toEqual(getEffectiveApiHistory(messages))
+		expect(getEffectiveMessageIndices(messages)).toEqual([0, 2, 3])
+	})
+
+	it("excludes condenseParent messages whose summary exists (no later summary index case)", () => {
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "a", ts: 1, condenseParent: "c1" },
+			{ role: "user", content: "b", ts: 2 },
+		]
+		expect(effectiveByIndices(messages)).toEqual(getEffectiveApiHistory(messages))
 	})
 })

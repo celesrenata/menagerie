@@ -1,4 +1,5 @@
 import type { ApiMessage } from "../task-persistence/apiMessages"
+import { getEffectiveApiHistory, getEffectiveMessageIndices } from "../condense"
 
 /**
  * Resilient Context Recovery — Deterministic_Reduction / Convergent_Reduction.
@@ -41,13 +42,7 @@ export interface ConvergentReductionResult {
  * the sliding-window truncation in `context-management/index.ts`.
  */
 function getVisibleMessageIndices(messages: ApiMessage[]): number[] {
-	const visibleIndices: number[] = []
-	messages.forEach((msg, index) => {
-		if (!msg.truncationParent && !msg.isTruncationMarker) {
-			visibleIndices.push(index)
-		}
-	})
-	return visibleIndices
+	return getEffectiveMessageIndices(messages).filter((index) => !messages[index]!.isTruncationMarker)
 }
 
 /**
@@ -83,7 +78,7 @@ export async function convergentReduction(input: ConvergentReductionInput): Prom
 	for (let count = 2; count <= maxEvenRemovable; count += 2) {
 		const dropped = new Set<number>(visibleIndices.slice(1, 1 + count))
 		const candidate = messages.filter((_, index) => !dropped.has(index))
-		const candidateTokens = await countTokens(candidate)
+		const candidateTokens = await countTokens(getEffectiveApiHistory(candidate))
 		if (candidateTokens <= targetTokens) {
 			return { messages: candidate, resultTokens: candidateTokens, converged: true, prevTokens }
 		}
@@ -92,7 +87,7 @@ export async function convergentReduction(input: ConvergentReductionInput): Prom
 	// Nothing more can be removed without touching the preserved core. Count the irreducible core and
 	// report whether it fits. When it still exceeds the target this is the Req 5.1 terminal condition.
 	const irreducible = messages.filter((_, index) => !removableVisibleSet.has(index))
-	const irreducibleTokens = await countTokens(irreducible)
+	const irreducibleTokens = await countTokens(getEffectiveApiHistory(irreducible))
 	return {
 		messages: irreducible,
 		resultTokens: irreducibleTokens,

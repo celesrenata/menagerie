@@ -5734,7 +5734,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			try {
 				const truncateResult = await manageContext({
 					messages: this.apiConversationHistory,
-					totalTokens: contextTokens,
+					// Use the fresh effective-history size, not the stale last-reported size.
+					totalTokens: Math.max(contextTokens, Math.max(0, prevContextTokens - lastMessageTokens)),
 					maxTokens,
 					contextWindow,
 					apiHandler: condensingApiHandler,

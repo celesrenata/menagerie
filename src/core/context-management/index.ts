@@ -4,7 +4,14 @@ import crypto from "crypto"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { ApiHandler, ApiHandlerCreateMessageMetadata } from "../../api"
-import { MAX_CONDENSE_THRESHOLD, MIN_CONDENSE_THRESHOLD, summarizeConversation, SummarizeResponse } from "../condense"
+import {
+	MAX_CONDENSE_THRESHOLD,
+	MIN_CONDENSE_THRESHOLD,
+	getEffectiveApiHistory,
+	getEffectiveMessageIndices,
+	summarizeConversation,
+	SummarizeResponse,
+} from "../condense"
 import { ApiMessage } from "../task-persistence/apiMessages"
 import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
@@ -83,13 +90,7 @@ export type TruncationResult = {
 }
 
 function getVisibleMessageIndices(messages: ApiMessage[]): number[] {
-	const visibleIndices: number[] = []
-	messages.forEach((msg, index) => {
-		if (!msg.truncationParent && !msg.isTruncationMarker) {
-			visibleIndices.push(index)
-		}
-	})
-	return visibleIndices
+	return getEffectiveMessageIndices(messages).filter((index) => !messages[index]!.isTruncationMarker)
 }
 
 async function estimateMessageTokens(message: ApiMessage, apiHandler: ApiHandler): Promise<number> {
@@ -466,9 +467,10 @@ export async function manageContext({
 		const truncationResult = applyTruncation(messages, messagesToRemove, taskId)
 
 		// Calculate new context tokens after truncation by counting non-truncated messages
-		// Messages with truncationParent are hidden, so we count only those without it
-		const effectiveMessages = truncationResult.messages.filter(
-			(msg) => !msg.truncationParent && !msg.isTruncationMarker,
+		// Count only what is actually sent: the effective history (post-summary, non-truncated),
+		// excluding the truncation marker as before.
+		const effectiveMessages = getEffectiveApiHistory(truncationResult.messages).filter(
+			(msg) => !msg.isTruncationMarker,
 		)
 
 		// Include system prompt tokens so this value matches what we send to the API.
