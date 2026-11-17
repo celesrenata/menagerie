@@ -40,6 +40,7 @@ import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { isToolAllowedForMode, isValidToolName, validateToolUse } from "../tools/validateToolUse"
 import { buildToolRequirements } from "../prompts/tools/effective-tool-policy"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
+import { DISCOVERY_RESULT_TOOLS, capToolResultText } from "../tools/helpers/toolResultCap"
 import type { ToolResultContext } from "../tools/ProgressAwareLoopDetector"
 
 import { decide as explorationDecide } from "../exploration/explorationPolicy"
@@ -765,6 +766,11 @@ export async function executeAssistantMessageBlock(
 					resultContent =
 						textBlocks.map((item) => (item as Anthropic.TextBlockParam).text).join("\n") ||
 						"(tool did not return anything)"
+				}
+
+				// Cap unbounded file-discovery output before it enters history.
+				if (DISCOVERY_RESULT_TOOLS.includes(block.name)) {
+					resultContent = capToolResultText(resultContent)
 				}
 
 				// Merge approval feedback into tool result (GitHub #10465)
