@@ -8,7 +8,10 @@
 		"heading": "Escolha seu provedor",
 		"chooseProvider": "Menagerie precisa de um provedor LLM para funcionar. Escolha um para começar, você pode adicionar mais depois.",
 		"goBack": "Voltar",
-		"finish": "Concluir"
+		"finish": "Concluir",
+		"setupKind": "Tipo de configuração",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Outro provedor"
 	},
 	"telemetry": {
 		"helpImprove": "Ajude a melhorar o Zoo Code",

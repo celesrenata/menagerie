@@ -8,7 +8,10 @@
 		"heading": "Sağlayıcınızı seçin",
 		"chooseProvider": "Menagerie'un çalışması için bir LLM sağlayıcısına ihtiyacı var. Başlamak için bir tane seç, sonra daha fazlasını ekleyebilirsin.",
 		"goBack": "Geri",
-		"finish": "Bitir"
+		"finish": "Bitir",
+		"setupKind": "Kurulum türü",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Diğer sağlayıcı"
 	},
 	"telemetry": {
 		"helpImprove": "Zoo Code'u iyileştirmeye yardımcı ol",

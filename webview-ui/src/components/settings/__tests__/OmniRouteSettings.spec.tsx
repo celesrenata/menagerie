@@ -57,6 +57,27 @@ const renderSettings = (
 describe("OmniRouteSettings", () => {
 	beforeEach(() => vi.clearAllMocks())
 
+	it("compact mode shows only the per-profile connection setup", () => {
+		render(
+			<TooltipProvider>
+				<OmniRouteSettings
+					compact
+					apiConfiguration={{ apiProvider: providerIdentifiers.openai, openAiIsOmniRoute: true }}
+					setApiConfigurationField={vi.fn() as never}
+				/>
+			</TooltipProvider>,
+		)
+		expect(screen.getByText("settings:omniroute.serverUrl")).toBeInTheDocument()
+		expect(screen.getByTestId("omniroute-check-connection")).toBeInTheDocument()
+		expect(screen.getByTestId("omniroute-reader-route")).toBeInTheDocument()
+		expect(screen.queryByText("settings:omniroute.useOmniRoute")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("parallel-capacity-reader")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("omniroute-published-lane-routing")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("parallel-read-exclusions-files")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("omniroute-route-flags")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("omniroute-add-route")).not.toBeInTheDocument()
+	})
+
 	it("binds the OmniRoute opt-in checkbox to cachedState via setApiConfigurationField", () => {
 		const setApiConfigurationField = vi.fn()
 		renderSettings({ apiProvider: providerIdentifiers.openai }, setApiConfigurationField)
@@ -230,10 +251,7 @@ describe("OmniRouteSettings — route-reference flags (Requirement 15)", () => {
 			status: "connected",
 			entries: [{ id: "hybrid/code", kind: "public" }],
 		})
-		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toHaveAttribute(
-			"data-flag-reason",
-			"missing",
-		)
+		expect(screen.getByTestId("omniroute-route-flag-openAiModelId")).toHaveAttribute("data-flag-reason", "missing")
 	})
 
 	it("flags each flagged custom route id", () => {

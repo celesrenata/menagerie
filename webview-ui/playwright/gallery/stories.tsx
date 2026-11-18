@@ -228,4 +228,25 @@ export const stories: Record<string, Story> = {
 			</AppProviders>
 		)
 	},
+	"welcome-omniroute-setup": async () => {
+		const [{ AppProviders }, { default: WelcomeViewProvider }, { providerIdentifiers }] = await Promise.all([
+			import("../AppProviders"),
+			import("@/components/welcome/WelcomeViewProvider"),
+			import("@roo-code/types"),
+		])
+		return (
+			<AppProviders
+				initialState={{
+					apiConfiguration: {
+						apiProvider: providerIdentifiers.openai,
+						openAiIsOmniRoute: true,
+						openAiBaseUrl: "https://omniroute.example",
+						openAiApiKey: "omniroute-key",
+						openAiModelId: "hybrid/code",
+					},
+				}}>
+				<WelcomeViewProvider />
+			</AppProviders>
+		)
+	},
 }

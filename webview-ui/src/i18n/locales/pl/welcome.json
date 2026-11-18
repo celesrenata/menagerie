@@ -8,7 +8,10 @@
 		"heading": "Wybierz swojego dostawcę",
 		"chooseProvider": "Menagerie potrzebuje dostawcy LLM, aby działać. Wybierz jeden, aby zacząć, możesz dodać więcej później.",
 		"goBack": "Wróć",
-		"finish": "Zakończ"
+		"finish": "Zakończ",
+		"setupKind": "Typ konfiguracji",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Inny dostawca"
 	},
 	"telemetry": {
 		"helpImprove": "Pomóż ulepszyć Zoo Code",

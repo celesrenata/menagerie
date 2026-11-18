@@ -8,7 +8,10 @@
 		"heading": "Pilih penyedia Anda",
 		"chooseProvider": "Menagerie memerlukan penyedia LLM untuk bekerja. Pilih satu untuk memulai, Anda dapat menambahkan lebih banyak nanti.",
 		"goBack": "Kembali",
-		"finish": "Selesai"
+		"finish": "Selesai",
+		"setupKind": "Jenis penyiapan",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Penyedia lain"
 	},
 	"telemetry": {
 		"helpImprove": "Bantu Tingkatkan Zoo Code",

@@ -39,6 +39,23 @@ vi.mock("../../settings/ApiOptions", () => ({
 	),
 }))
 
+vi.mock("../../settings/OmniRouteSettings", () => ({
+	OmniRouteSettings: ({ apiConfiguration, setApiConfigurationField, compact }: any) => (
+		<div data-testid="omniroute-settings" data-compact={String(compact)}>
+			<button
+				data-testid="fill-omniroute"
+				onClick={() => {
+					setApiConfigurationField("openAiBaseUrl", "https://omniroute.example")
+					setApiConfigurationField("openAiApiKey", "omni-key")
+					setApiConfigurationField("openAiModelId", "hybrid/code")
+				}}>
+				fill
+			</button>
+			<span data-testid="omniroute-model">{apiConfiguration.openAiModelId ?? ""}</span>
+		</div>
+	),
+}))
+
 vi.mock("../../common/Tab", () => ({
 	Tab: ({ children }: any) => <div data-testid="tab">{children}</div>,
 	TabContent: ({ children, className }: any) => (
@@ -258,6 +275,73 @@ describe("WelcomeViewProvider", () => {
 
 		expect(screen.getByText(/welcome:landing.greeting/)).toBeInTheDocument()
 		expect(screen.queryByTestId("api-options")).not.toBeInTheDocument()
+	})
+
+	describe("OmniRoute setup", () => {
+		it("offers OmniRoute as a first-run setup choice and switches to its compact settings", () => {
+			const { setApiConfiguration } = renderWelcomeViewProvider()
+			fireEvent.click(screen.getByTestId("button-primary"))
+
+			expect(screen.getByTestId("welcome-setup-omniroute")).toHaveAttribute("aria-pressed", "false")
+			fireEvent.click(screen.getByTestId("welcome-setup-omniroute"))
+
+			expect(screen.getByTestId("welcome-setup-omniroute")).toHaveAttribute("aria-pressed", "true")
+			expect(screen.getByTestId("omniroute-settings")).toHaveAttribute("data-compact", "true")
+			expect(screen.queryByTestId("api-options")).not.toBeInTheDocument()
+			expect(setApiConfiguration).toHaveBeenLastCalledWith({
+				apiProvider: providerIdentifiers.openai,
+				openAiIsOmniRoute: true,
+			})
+		})
+
+		it("saves the OmniRoute profile once server, key and route are set", () => {
+			renderWelcomeViewProvider()
+			fireEvent.click(screen.getByTestId("button-primary"))
+			fireEvent.click(screen.getByTestId("welcome-setup-omniroute"))
+			fireEvent.click(screen.getByTestId("fill-omniroute"))
+			fireEvent.click(screen.getByText(/welcome:providerSignup.finish/))
+
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "upsertApiConfiguration",
+				text: "default",
+				apiConfiguration: {
+					apiProvider: providerIdentifiers.openai,
+					openAiIsOmniRoute: true,
+					openAiBaseUrl: "https://omniroute.example",
+					openAiApiKey: "omni-key",
+					openAiModelId: "hybrid/code",
+				},
+			})
+		})
+
+		it("shows a validation error instead of saving an incomplete OmniRoute profile", () => {
+			renderWelcomeViewProvider()
+			fireEvent.click(screen.getByTestId("button-primary"))
+			fireEvent.click(screen.getByTestId("welcome-setup-omniroute"))
+			fireEvent.click(screen.getByText(/welcome:providerSignup.finish/))
+
+			expect(screen.getByRole("alert")).toHaveTextContent("settings:validation.openAi")
+			expect(vscode.postMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: "upsertApiConfiguration" }),
+			)
+		})
+
+		it("preselects OmniRoute for an existing OmniRoute profile and can switch back", () => {
+			renderWelcomeViewProvider({
+				apiConfiguration: {
+					apiProvider: providerIdentifiers.openai,
+					openAiIsOmniRoute: true,
+					openAiBaseUrl: "https://omniroute.example",
+					openAiApiKey: "omni-key",
+					openAiModelId: "hybrid/reader",
+				},
+			})
+			fireEvent.click(screen.getByTestId("button-primary"))
+
+			expect(screen.getByTestId("omniroute-model")).toHaveTextContent("hybrid/reader")
+			fireEvent.click(screen.getByTestId("welcome-setup-other"))
+			expect(screen.getByTestId("api-options")).toHaveAttribute("data-provider", "openrouter")
+		})
 	})
 
 	it("imports settings from the landing screen", () => {

@@ -8,7 +8,10 @@
 		"heading": "プロバイダーを選択",
 		"chooseProvider": "Menagerieが機能するにはLLMプロバイダーが必要です。始めるために1つを選択してください。後から追加することもできます。",
 		"goBack": "戻る",
-		"finish": "完了"
+		"finish": "完了",
+		"setupKind": "セットアップの種類",
+		"omniroute": "OmniRoute",
+		"otherProvider": "その他のプロバイダー"
 	},
 	"telemetry": {
 		"helpImprove": "Zoo Codeの改善にご協力ください",

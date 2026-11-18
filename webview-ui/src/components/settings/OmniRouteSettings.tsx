@@ -62,12 +62,7 @@ type ParallelCapacityMap = Partial<Record<RouteCapabilityOption, number>>
 type ParallelReadDenylist = NonNullable<GlobalSettings["parallelReadDenylist"]>
 
 /** The four editable denylist categories, rendered as one textarea each. */
-const READ_DENYLIST_FIELDS: readonly (keyof ParallelReadDenylist)[] = [
-	"vendoredDirs",
-	"rootDirs",
-	"files",
-	"globs",
-]
+const READ_DENYLIST_FIELDS: readonly (keyof ParallelReadDenylist)[] = ["vendoredDirs", "rootDirs", "files", "globs"]
 
 /**
  * Read the current text out of a `VSCodeTextArea`. The toolkit wraps a native
@@ -96,8 +91,11 @@ type OmniRouteSettingsProps = {
 	parallelCapacityMap?: ParallelCapacityMap
 	/** The persisted read-exclusion denylist, read from `cachedState` (never live state). */
 	parallelReadDenylist?: ParallelReadDenylist
-	/** Writes the capacity map / denylist back to the SettingsView `cachedState`. */
-	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
+	/**
+	 * Writes the capacity map / denylist back to the SettingsView `cachedState`. Optional
+	 * because `compact` mode (first-run welcome) renders none of those global settings.
+	 */
+	setCachedStateField?: SetCachedStateField<keyof ExtensionStateContextType>
 	/**
 	 * The saved codebase-index embedder model id, read from `cachedState` (never
 	 * live state). Flagged alongside the profile route references when its base URL
@@ -111,6 +109,13 @@ type OmniRouteSettingsProps = {
 	codebaseIndexEmbedderBaseUrl?: string
 	/** The saved profile's display name, shown as the flag source (Requirement 15.4). */
 	profileName?: string
+	/**
+	 * First-run welcome mode: render only the per-profile connection setup (server URL,
+	 * API key, connection check, route catalog, reader/reasoner defaults). Hides the
+	 * fleet-wide global settings, the use-OmniRoute toggle (the caller has already
+	 * chosen OmniRoute), route-reference flags, and custom routes.
+	 */
+	compact?: boolean
 }
 
 /**
@@ -132,6 +137,7 @@ export const OmniRouteSettings = ({
 	codebaseIndexEmbedderModelId,
 	codebaseIndexEmbedderBaseUrl,
 	profileName,
+	compact = false,
 }: OmniRouteSettingsProps) => {
 	const { t } = useAppTranslation()
 
@@ -337,7 +343,7 @@ export const OmniRouteSettings = ({
 			} else {
 				next[capability] = parsed
 			}
-			setCachedStateField("parallelCapacityMap", next)
+			setCachedStateField?.("parallelCapacityMap", next)
 		},
 		[parallelCapacityMap, setCachedStateField],
 	)
@@ -353,7 +359,7 @@ export const OmniRouteSettings = ({
 				.map((line) => line.trim())
 				.filter((line) => line.length > 0)
 			const next: ParallelReadDenylist = { ...(parallelReadDenylist ?? {}), [field]: entries }
-			setCachedStateField("parallelReadDenylist", next)
+			setCachedStateField?.("parallelReadDenylist", next)
 		},
 		[parallelReadDenylist, setCachedStateField],
 	)
@@ -362,109 +368,117 @@ export const OmniRouteSettings = ({
 		<div className="flex flex-col gap-4">
 			<div className="text-sm text-vscode-descriptionForeground">{t("settings:omniroute.description")}</div>
 
-			{/* Block 0: Parallel backend capacity map (fleet-wide; always visible, not gated on
+			{!compact && (
+				<>
+					{/* Block 0: Parallel backend capacity map (fleet-wide; always visible, not gated on
 			    `isOmniRoute`). Each input tunes the per-capability real inference-slot count the
 			    parallel-task scheduler admits; an unset capability uses the default and values are
 			    floored to >= 1 downstream. Bound to `cachedState` via `setCachedStateField`. */}
-			<div className="flex flex-col gap-2">
-				<label className="block font-medium">{t("settings:omniroute.parallelCapacity.label")}</label>
-				<div className="text-sm text-vscode-descriptionForeground">
-					{t("settings:omniroute.parallelCapacity.hint")}
-				</div>
-				<div className="grid grid-cols-2 gap-2">
-					{ROUTE_CAPABILITY_OPTIONS.map((capability) => {
-						const inputId = `parallel-capacity-${capability}`
-						return (
-							<div key={capability} className="flex flex-col gap-1">
-								<label htmlFor={inputId} className="text-sm">
-									{capability}
-								</label>
-								<VSCodeTextField
-									id={inputId}
-									type="text"
-									inputMode="numeric"
-									value={
-										parallelCapacityMap?.[capability] !== undefined
-											? String(parallelCapacityMap[capability])
-											: ""
-									}
-									onInput={(e: unknown) =>
-										updateCapacitySlot(
-											capability,
-											(e as { target: HTMLInputElement }).target.value,
-										)
-									}
-									placeholder={t("settings:omniroute.parallelCapacity.defaultPlaceholder")}
-									aria-label={t("settings:omniroute.parallelCapacity.inputAriaLabel", {
-										capability,
-									})}
-									data-testid={inputId}
-								/>
-							</div>
-						)
-					})}
-				</div>
-			</div>
+					<div className="flex flex-col gap-2">
+						<label className="block font-medium">{t("settings:omniroute.parallelCapacity.label")}</label>
+						<div className="text-sm text-vscode-descriptionForeground">
+							{t("settings:omniroute.parallelCapacity.hint")}
+						</div>
+						<div className="grid grid-cols-2 gap-2">
+							{ROUTE_CAPABILITY_OPTIONS.map((capability) => {
+								const inputId = `parallel-capacity-${capability}`
+								return (
+									<div key={capability} className="flex flex-col gap-1">
+										<label htmlFor={inputId} className="text-sm">
+											{capability}
+										</label>
+										<VSCodeTextField
+											id={inputId}
+											type="text"
+											inputMode="numeric"
+											value={
+												parallelCapacityMap?.[capability] !== undefined
+													? String(parallelCapacityMap[capability])
+													: ""
+											}
+											onInput={(e: unknown) =>
+												updateCapacitySlot(
+													capability,
+													(e as { target: HTMLInputElement }).target.value,
+												)
+											}
+											placeholder={t("settings:omniroute.parallelCapacity.defaultPlaceholder")}
+											aria-label={t("settings:omniroute.parallelCapacity.inputAriaLabel", {
+												capability,
+											})}
+											data-testid={inputId}
+										/>
+									</div>
+								)
+							})}
+						</div>
+					</div>
 
-			{/* Block 0a: Published lane routing (opt-in, default off; Requirement 14.6).
+					{/* Block 0a: Published lane routing (opt-in, default off; Requirement 14.6).
 			    When enabled, a routeless parallel worker resolves its model id to the
 			    published Public_Route of its Capability_Lane instead of today's
 			    lane→role-route fallback. Bound to `cachedState` via `setCachedStateField`,
 			    never live state (AGENTS.md Settings-View rule). */}
-			<div className="flex flex-col gap-1">
-				<Checkbox
-					data-testid="omniroute-published-lane-routing"
-					checked={publishedLaneRouting ?? false}
-					onChange={(checked: boolean) =>
-						setCachedStateField("openAiOmniRoutePublishedLaneRouting", checked)
-					}>
-					{t("settings:omniroute.publishedLaneRouting.label")}
-				</Checkbox>
-				<div className="text-sm text-vscode-descriptionForeground">
-					{t("settings:omniroute.publishedLaneRouting.hint")}
-				</div>
-			</div>
+					<div className="flex flex-col gap-1">
+						<Checkbox
+							data-testid="omniroute-published-lane-routing"
+							checked={publishedLaneRouting ?? false}
+							onChange={(checked: boolean) =>
+								setCachedStateField?.("openAiOmniRoutePublishedLaneRouting", checked)
+							}>
+							{t("settings:omniroute.publishedLaneRouting.label")}
+						</Checkbox>
+						<div className="text-sm text-vscode-descriptionForeground">
+							{t("settings:omniroute.publishedLaneRouting.hint")}
+						</div>
+					</div>
 
-			{/* Block 0b: Parallel read exclusions (fleet-wide; always visible, not gated on
+					{/* Block 0b: Parallel read exclusions (fleet-wide; always visible, not gated on
 			    `isOmniRoute`). Each textarea edits one denylist category (newline-delimited
 			    entries) that the parallel-worker read path uses to skip vendored/generated
 			    files. Emptying a category CLEARS it (per-field replace), re-enabling reading
 			    that category. Bound to `cachedState` via `setCachedStateField`. */}
-			<div className="flex flex-col gap-2">
-				<label className="block font-medium">{t("settings:omniroute.parallelReadExclusions.label")}</label>
-				<div className="text-sm text-vscode-descriptionForeground">
-					{t("settings:omniroute.parallelReadExclusions.hint")}
-				</div>
-				<div className="flex flex-col gap-2">
-					{READ_DENYLIST_FIELDS.map((field) => {
-						const headingId = `parallel-read-exclusions-${field}-label`
-						const testId = `parallel-read-exclusions-${field}`
-						return (
-							<div key={field} className="flex flex-col gap-1">
-								<label id={headingId} className="text-sm" data-testid={`${testId}-heading`}>
-									{t(`settings:omniroute.parallelReadExclusions.fields.${field}`)}
-								</label>
-								<VSCodeTextArea
-									resize="vertical"
-									rows={3}
-									value={(parallelReadDenylist?.[field] ?? []).join("\n")}
-									onInput={(event) => updateDenylistField(field, textareaValue(event))}
-									className="w-full"
-									aria-labelledby={headingId}
-									data-testid={testId}
-								/>
-							</div>
-						)
-					})}
-				</div>
-			</div>
+					<div className="flex flex-col gap-2">
+						<label className="block font-medium">
+							{t("settings:omniroute.parallelReadExclusions.label")}
+						</label>
+						<div className="text-sm text-vscode-descriptionForeground">
+							{t("settings:omniroute.parallelReadExclusions.hint")}
+						</div>
+						<div className="flex flex-col gap-2">
+							{READ_DENYLIST_FIELDS.map((field) => {
+								const headingId = `parallel-read-exclusions-${field}-label`
+								const testId = `parallel-read-exclusions-${field}`
+								return (
+									<div key={field} className="flex flex-col gap-1">
+										<label id={headingId} className="text-sm" data-testid={`${testId}-heading`}>
+											{t(`settings:omniroute.parallelReadExclusions.fields.${field}`)}
+										</label>
+										<VSCodeTextArea
+											resize="vertical"
+											rows={3}
+											value={(parallelReadDenylist?.[field] ?? []).join("\n")}
+											onInput={(event) => updateDenylistField(field, textareaValue(event))}
+											className="w-full"
+											aria-labelledby={headingId}
+											data-testid={testId}
+										/>
+									</div>
+								)
+							})}
+						</div>
+					</div>
+				</>
+			)}
 
 			{/* Block 1: Endpoint setup */}
-			<Checkbox
-				checked={isOmniRoute}
-				onChange={(checked: boolean) => setApiConfigurationField("openAiIsOmniRoute", checked)}>
-				{t("settings:omniroute.useOmniRoute")}
-			</Checkbox>
+			{!compact && (
+				<Checkbox
+					checked={isOmniRoute}
+					onChange={(checked: boolean) => setApiConfigurationField("openAiIsOmniRoute", checked)}>
+					{t("settings:omniroute.useOmniRoute")}
+				</Checkbox>
+			)}
 
 			{isOmniRoute && (
 				<>
@@ -493,7 +507,7 @@ export const OmniRouteSettings = ({
 					</div>
 
 					{/* Block 2: Connection check / refresh */}
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<Button variant="secondary" onClick={requestCatalog} data-testid="omniroute-check-connection">
 							{t("settings:omniroute.checkConnection")}
 						</Button>
@@ -519,43 +533,43 @@ export const OmniRouteSettings = ({
 					    missing). The saved value is NEVER rewritten and the request is NEVER
 					    blocked (Requirement 15.5/15.8). On a failed or Public_Route-less refresh,
 					    prior flags are kept and a "not validated" note is shown (Requirement 15.6). */}
-					<div className="flex flex-col gap-1" data-testid="omniroute-route-flags">
-						{routeFlags.length > 0 ? (
-							<ul className="flex flex-col gap-1 m-0 p-0 list-none">
-								{routeFlags.map((flag) => (
-									<li
-										key={`${flag.source}:${flag.setting}:${flag.id}`}
-										className="text-sm text-vscode-errorForeground"
-										data-testid={`omniroute-route-flag-${flag.setting}`}
-										data-flag-id={flag.id}
-										data-flag-reason={flag.reason}>
-										{t("settings:omniroute.routeFlags.flag", {
-											source: flag.source,
-											setting: flag.setting,
-											id: flag.id,
-											reason: t(`settings:omniroute.routeFlags.reason.${flag.reason}`),
-										})}
-									</li>
-								))}
-							</ul>
-						) : null}
-						{!referencesValidated ? (
-							<div
-								className="text-sm text-vscode-descriptionForeground"
-								data-testid="omniroute-route-flags-not-validated">
-								{t("settings:omniroute.routeFlags.notValidated")}
-							</div>
-						) : null}
-					</div>
+					{!compact && (
+						<div className="flex flex-col gap-1" data-testid="omniroute-route-flags">
+							{routeFlags.length > 0 ? (
+								<ul className="flex flex-col gap-1 m-0 p-0 list-none">
+									{routeFlags.map((flag) => (
+										<li
+											key={`${flag.source}:${flag.setting}:${flag.id}`}
+											className="text-sm text-vscode-errorForeground"
+											data-testid={`omniroute-route-flag-${flag.setting}`}
+											data-flag-id={flag.id}
+											data-flag-reason={flag.reason}>
+											{t("settings:omniroute.routeFlags.flag", {
+												source: flag.source,
+												setting: flag.setting,
+												id: flag.id,
+												reason: t(`settings:omniroute.routeFlags.reason.${flag.reason}`),
+											})}
+										</li>
+									))}
+								</ul>
+							) : null}
+							{!referencesValidated ? (
+								<div
+									className="text-sm text-vscode-descriptionForeground"
+									data-testid="omniroute-route-flags-not-validated">
+									{t("settings:omniroute.routeFlags.notValidated")}
+								</div>
+							) : null}
+						</div>
+					)}
 
 					{/* Block 3: Catalog */}
 					<div className="flex flex-col gap-2">
 						<label className="block font-medium">{t("settings:omniroute.catalog")}</label>
 						<VSCodeTextField
 							value={search}
-							onInput={(e: unknown) =>
-								setSearch((e as { target: HTMLInputElement }).target.value)
-							}
+							onInput={(e: unknown) => setSearch((e as { target: HTMLInputElement }).target.value)}
 							placeholder={t("settings:omniroute.searchPlaceholder")}
 							className="w-full"
 							data-testid="omniroute-catalog-search"
@@ -618,88 +632,90 @@ export const OmniRouteSettings = ({
 						</VSCodeTextField>
 					</div>
 
-					<div className="flex flex-col gap-2">
-						<label className="block font-medium">{t("settings:omniroute.customRoutes")}</label>
-						{customRoutes.length === 0 ? (
-							<div className="text-sm text-vscode-descriptionForeground">
-								{t("settings:omniroute.noCustomRoutes")}
-							</div>
-						) : (
-							customRoutes.map((route, index) => (
-								<div key={index} className="flex items-center gap-2">
-									<span className="flex-1">
-										<span className="font-medium">{route.name}</span>
-										<span className="text-vscode-descriptionForeground">
-											{" → "}
-											{route.modelId}
-										</span>
-									</span>
-									<select
-										value={route.capability ?? ""}
-										onChange={(e) => updateRouteCapability(index, e.target.value)}
-										aria-label={t("settings:omniroute.routeCapability")}
-										data-testid={`omniroute-route-capability-${index}`}
-										className="bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-1 py-0.5">
-										<option value="">{t("settings:omniroute.capabilityUnclassified")}</option>
-										{ROUTE_CAPABILITY_OPTIONS.map((capability) => (
-											<option key={capability} value={capability}>
-												{capability}
-											</option>
-										))}
-									</select>
-									<StandardTooltip content={t("settings:common.remove")}>
-										<VSCodeButton
-											appearance="icon"
-											onClick={() => removeCustomRoute(index)}
-											data-testid={`omniroute-remove-route-${index}`}>
-											<span className="codicon codicon-trash"></span>
-										</VSCodeButton>
-									</StandardTooltip>
+					{!compact && (
+						<div className="flex flex-col gap-2">
+							<label className="block font-medium">{t("settings:omniroute.customRoutes")}</label>
+							{customRoutes.length === 0 ? (
+								<div className="text-sm text-vscode-descriptionForeground">
+									{t("settings:omniroute.noCustomRoutes")}
 								</div>
-							))
-						)}
-						<div className="flex items-center gap-2">
-							<VSCodeTextField
-								value={newRouteName}
-								onInput={(e: unknown) =>
-									setNewRouteName((e as { target: HTMLInputElement }).target.value)
-								}
-								placeholder={t("settings:omniroute.routeName")}
-								className="flex-1"
-								data-testid="omniroute-new-route-name"
-							/>
-							<VSCodeTextField
-								value={newRouteModelId}
-								onInput={(e: unknown) =>
-									setNewRouteModelId((e as { target: HTMLInputElement }).target.value)
-								}
-								placeholder={t("settings:omniroute.routeModelId")}
-								className="flex-1"
-								data-testid="omniroute-new-route-model"
-							/>
-							<select
-								value={newRouteCapability}
-								onChange={(e) => setNewRouteCapability(e.target.value)}
-								aria-label={t("settings:omniroute.routeCapability")}
-								data-testid="omniroute-new-route-capability"
-								className="bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-1 py-0.5">
-								<option value="">{t("settings:omniroute.capabilityUnclassified")}</option>
-								{ROUTE_CAPABILITY_OPTIONS.map((capability) => (
-									<option key={capability} value={capability}>
-										{capability}
-									</option>
-								))}
-							</select>
-							<StandardTooltip content={t("settings:common.add")}>
-								<VSCodeButton
-									appearance="icon"
-									onClick={addCustomRoute}
-									data-testid="omniroute-add-route">
-									<span className="codicon codicon-add"></span>
-								</VSCodeButton>
-							</StandardTooltip>
+							) : (
+								customRoutes.map((route, index) => (
+									<div key={index} className="flex items-center gap-2">
+										<span className="flex-1">
+											<span className="font-medium">{route.name}</span>
+											<span className="text-vscode-descriptionForeground">
+												{" → "}
+												{route.modelId}
+											</span>
+										</span>
+										<select
+											value={route.capability ?? ""}
+											onChange={(e) => updateRouteCapability(index, e.target.value)}
+											aria-label={t("settings:omniroute.routeCapability")}
+											data-testid={`omniroute-route-capability-${index}`}
+											className="bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-1 py-0.5">
+											<option value="">{t("settings:omniroute.capabilityUnclassified")}</option>
+											{ROUTE_CAPABILITY_OPTIONS.map((capability) => (
+												<option key={capability} value={capability}>
+													{capability}
+												</option>
+											))}
+										</select>
+										<StandardTooltip content={t("settings:common.remove")}>
+											<VSCodeButton
+												appearance="icon"
+												onClick={() => removeCustomRoute(index)}
+												data-testid={`omniroute-remove-route-${index}`}>
+												<span className="codicon codicon-trash"></span>
+											</VSCodeButton>
+										</StandardTooltip>
+									</div>
+								))
+							)}
+							<div className="flex items-center gap-2">
+								<VSCodeTextField
+									value={newRouteName}
+									onInput={(e: unknown) =>
+										setNewRouteName((e as { target: HTMLInputElement }).target.value)
+									}
+									placeholder={t("settings:omniroute.routeName")}
+									className="flex-1"
+									data-testid="omniroute-new-route-name"
+								/>
+								<VSCodeTextField
+									value={newRouteModelId}
+									onInput={(e: unknown) =>
+										setNewRouteModelId((e as { target: HTMLInputElement }).target.value)
+									}
+									placeholder={t("settings:omniroute.routeModelId")}
+									className="flex-1"
+									data-testid="omniroute-new-route-model"
+								/>
+								<select
+									value={newRouteCapability}
+									onChange={(e) => setNewRouteCapability(e.target.value)}
+									aria-label={t("settings:omniroute.routeCapability")}
+									data-testid="omniroute-new-route-capability"
+									className="bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-1 py-0.5">
+									<option value="">{t("settings:omniroute.capabilityUnclassified")}</option>
+									{ROUTE_CAPABILITY_OPTIONS.map((capability) => (
+										<option key={capability} value={capability}>
+											{capability}
+										</option>
+									))}
+								</select>
+								<StandardTooltip content={t("settings:common.add")}>
+									<VSCodeButton
+										appearance="icon"
+										onClick={addCustomRoute}
+										data-testid="omniroute-add-route">
+										<span className="codicon codicon-add"></span>
+									</VSCodeButton>
+								</StandardTooltip>
+							</div>
 						</div>
-					</div>
+					)}
 				</>
 			)}
 		</div>

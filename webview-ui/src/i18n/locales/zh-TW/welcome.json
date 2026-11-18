@@ -8,7 +8,10 @@
 		"heading": "選擇供應商",
 		"chooseProvider": "Menagerie 需要 LLM 供應商才能運作。選擇一個以開始使用，您可以稍後新增更多。",
 		"goBack": "返回",
-		"finish": "完成"
+		"finish": "完成",
+		"setupKind": "設定類型",
+		"omniroute": "OmniRoute",
+		"otherProvider": "其他提供者"
 	},
 	"telemetry": {
 		"helpImprove": "幫助改進 Zoo Code",

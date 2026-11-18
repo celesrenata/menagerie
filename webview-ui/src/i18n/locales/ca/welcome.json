@@ -8,7 +8,10 @@
 		"heading": "Tria el teu proveïdor",
 		"chooseProvider": "Menagerie necessita un proveïdor de LLM per funcionar. Tria-ne un per començar, pots afegir-ne més tard.",
 		"goBack": "Enrere",
-		"finish": "Finalitza"
+		"finish": "Finalitza",
+		"setupKind": "Tipus de configuració",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Un altre proveïdor"
 	},
 	"telemetry": {
 		"helpImprove": "Ajuda a millorar Zoo Code",

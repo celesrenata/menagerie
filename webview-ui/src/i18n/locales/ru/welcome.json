@@ -8,7 +8,10 @@
 		"heading": "Выберите поставщика услуг",
 		"chooseProvider": "Menagerie нужен LLM-провайдер для работы. Выберите один для начала, вы можете добавить больше позже.",
 		"goBack": "Назад",
-		"finish": "Завершить"
+		"finish": "Завершить",
+		"setupKind": "Тип настройки",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Другой провайдер"
 	},
 	"telemetry": {
 		"helpImprove": "Помогите улучшить Zoo Code",

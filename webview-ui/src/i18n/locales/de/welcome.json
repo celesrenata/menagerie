@@ -8,7 +8,10 @@
 		"heading": "Wähle deinen Anbieter",
 		"chooseProvider": "Menagerie braucht einen LLM-Anbieter, um zu funktionieren. Wähle einen aus, um loszulegen. Du kannst später mehr hinzufügen.",
 		"goBack": "Zurück",
-		"finish": "Beenden"
+		"finish": "Beenden",
+		"setupKind": "Einrichtungsart",
+		"omniroute": "OmniRoute",
+		"otherProvider": "Anderer Anbieter"
 	},
 	"telemetry": {
 		"helpImprove": "Hilf, Zoo Code zu verbessern",
