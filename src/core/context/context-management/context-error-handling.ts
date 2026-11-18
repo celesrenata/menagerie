@@ -31,6 +31,8 @@ function checkIsOpenRouterContextWindowError(error: unknown): boolean {
 			/\bmaximum\s*context\b/i,
 			/\b(?:input\s*)?tokens?\s*exceed/i,
 			/\btoo\s*many\s*tokens?\b/i,
+			// Self-hosted granite4 engine (via OmniRoute): "prompt is 73999 tokens; the context is 73728"
+			/\bprompt\s+is\s+\d+\s+tokens?\b.*\bcontext\s+is\s+\d+/i,
 		] as const
 
 		return (

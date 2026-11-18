@@ -97,6 +97,11 @@ describe("checkContextWindowExceededError", () => {
 			})
 		})
 
+		it("should detect granite4 engine prompt-over-context errors relayed by OmniRoute", () => {
+			const error = { status: 400, message: "400 [400]: prompt is 73999 tokens; the context is 73728" }
+			expect(checkContextWindowExceededError(error)).toBe(true)
+		})
+
 		it("should not detect non-context 400 errors", () => {
 			const error = {
 				status: 400,

@@ -213,6 +213,9 @@ function queuedResponseForAsk(type: ClineAsk, text?: string): QueuedAskResolutio
 }
 
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
+// Every Nth consecutive failed API attempt forces a context compression, independent of token
+// estimates: a server whose token count disagrees with ours otherwise rejects the same transcript forever.
+export const FORCED_CONDENSE_AFTER_FAILED_ATTEMPTS = 25
 // A parallel worker's 9th consecutive failed request (1 original + 8 retries) fails it.
 const PARALLEL_WORKER_MAX_API_RETRIES = 8
 
@@ -317,6 +320,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * `recovery` field, never injecting it verbatim into the parent's conversation history (Req 6.6).
 	 */
 	private recoveryAttempts: RecoveryAttemptTelemetry[] = []
+	/** Consecutive first-chunk API failures; reset when a request starts streaming. */
+	private consecutiveFailedApiAttempts = 0
 	private readonly lifetimeController = new AbortController()
 	get lifetimeSignal(): AbortSignal {
 		return this.lifetimeController.signal
@@ -5122,6 +5127,64 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return this.api.getModel().info
 	}
 
+	/**
+	 * Forces context compression after FORCED_CONDENSE_AFTER_FAILED_ATTEMPTS consecutive failed
+	 * attempts, regardless of thresholds or token estimates. Tries a full summarize-condense first;
+	 * when that cannot shrink the history (e.g. the summary request is rejected for the same reason),
+	 * deterministically drops the oldest half of the transcript so the next attempt is different.
+	 */
+	private async forceCondenseAfterRepeatedFailures(): Promise<void> {
+		if (this.abort || this.abandoned) return
+		console.warn(
+			`[Task#${this.taskId}] ${this.consecutiveFailedApiAttempts} consecutive failed API attempts; forcing context compression.`,
+		)
+		const historyBefore = this.apiConversationHistory
+		try {
+			await this.condenseContext()
+		} catch (error) {
+			console.warn(`[Task#${this.taskId}] Forced condense failed: ${String(error)}`)
+		}
+		if (this.abort || this.abandoned || this.apiConversationHistory !== historyBefore) return
+
+		const countTokens = async (messages: ApiMessage[]): Promise<number> => {
+			let total = 0
+			for (const message of messages) {
+				if (Array.isArray(message.content)) {
+					total += await estimateTokenCount(message.content, this.api)
+				} else if (typeof message.content === "string") {
+					total += await estimateTokenCount([{ type: "text", text: message.content }], this.api)
+				}
+			}
+			return total
+		}
+		const currentTokens = await countTokens(getEffectiveApiHistory(historyBefore))
+		const reduction = await convergentReduction({
+			messages: historyBefore,
+			currentTokens,
+			targetTokens: Math.floor(currentTokens / 2),
+			countTokens,
+		})
+		if (reduction.messages === historyBefore) return
+		await this.overwriteApiConversationHistory(reduction.messages)
+		const contextTruncation: ContextTruncation = {
+			truncationId: crypto.randomUUID(),
+			messagesRemoved: Math.max(0, historyBefore.length - reduction.messages.length),
+			prevContextTokens: reduction.prevTokens,
+			newContextTokens: reduction.resultTokens,
+		}
+		await this.say(
+			"sliding_window_truncation",
+			undefined /* text */,
+			undefined /* images */,
+			false /* partial */,
+			undefined /* checkpoint */,
+			undefined /* progressStatus */,
+			{ isNonInteractive: true } /* options */,
+			undefined /* contextCondense */,
+			contextTruncation,
+		)
+	}
+
 	private async handleContextWindowExceededError(requestModelInfo: ModelInfo): Promise<RetryDecision> {
 		const state = await this.providerRef.deref()?.getState()
 		const { profileThresholds = {} } = state ?? {}
@@ -5970,6 +6033,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					timeoutMs: getApiRequestTimeout(),
 					phase: "first_chunk",
 				})
+				this.consecutiveFailedApiAttempts = 0
 				yield firstChunk.value
 				this.isWaitingForFirstChunk = false
 			} catch (error) {
@@ -5990,6 +6054,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Drop this generation's lease before recovery, backoff, user ask, or
 				// a nested retry so the slot is free while we wait (P5).
 				this.releaseGenerationLease()
+
+				this.consecutiveFailedApiAttempts++
+				if (this.consecutiveFailedApiAttempts % FORCED_CONDENSE_AFTER_FAILED_ATTEMPTS === 0) {
+					await this.forceCondenseAfterRepeatedFailures()
+				}
 
 				// If it's a context window error and we haven't exceeded max retries for this error type
 				if (

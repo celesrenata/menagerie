@@ -185,6 +185,13 @@ export const OMNIROUTE_ROUTE_CONTEXT_WINDOWS: Readonly<Record<string, number>> =
 	// 9B reader, kept deliberately small (OmniRoute combo context_length 32768).
 	"hybrid/reader": 32768,
 	"local/m5-reader": 32768,
+	// Granite 4.2 8B on gremlin-1's 4070 Ti SUPER (granite4-infer --max-context 73728).
+	// Kept here, not as an OmniRoute combo context_length: that field also drives
+	// OmniRoute's reactive compaction, which trims every tool result to 2000 chars
+	// at this window and leaves the reader re-reading files it can never see whole.
+	"pool/tier1/reader": 73728,
+	"local/reader": 73728,
+	"secure/reader": 73728,
 	"hybrid/tiny": 32768,
 	"hybrid/fast": 32768,
 }

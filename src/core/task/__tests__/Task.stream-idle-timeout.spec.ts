@@ -417,6 +417,31 @@ describe("Task stream first-chunk and idle timeouts", () => {
 		expect(apiReqStartedRows(task).some((row) => row.cancelReason === "streaming_failed")).toBe(false)
 	})
 
+	it("forces a context compression after 25 consecutive failed attempts", async () => {
+		const { task, createMessage, stopLoop, run } = await createLoopTask()
+		const condenseContext = vi.spyOn(task, "condenseContext").mockResolvedValue(undefined)
+		let calls = 0
+		createMessage.mockImplementation(() => {
+			calls++
+			return calls <= 25 ? failingStream({ status: 503, message: "service unavailable" }) : stopLoop()
+		})
+		await run()
+		expect(condenseContext).toHaveBeenCalledTimes(1)
+	})
+
+	it("resets the forced-compression counter when a request starts streaming", async () => {
+		const { task, createMessage, stopLoop, run } = await createLoopTask()
+		const condenseContext = vi.spyOn(task, "condenseContext").mockResolvedValue(undefined)
+		let calls = 0
+		createMessage.mockImplementation(() => {
+			calls++
+			if (calls === 20) return asyncStreamFrom<ApiStreamChunk>([{ type: "text", text: "ok" }])
+			return calls <= 40 ? failingStream({ status: 503, message: "service unavailable" }) : stopLoop()
+		})
+		await run()
+		expect(condenseContext).not.toHaveBeenCalled()
+	})
+
 	it("aborts the first request's signal on a first-chunk timeout before the controller is cleared", async () => {
 		const { task, createMessage, stopLoop, run } = await createLoopTask()
 		let fieldStillSetAtAbort: boolean | undefined
